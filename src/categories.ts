@@ -1,0 +1,201 @@
+// What data each public function reads or writes, so a program can decide what to allow (an agent
+// that builds content but never reads students' work) without classifying the driver by hand.
+
+/**
+ * A kind of data a function reads or writes:
+ * - `none`: the session or the site, nothing of anyone's; also functions that only parse what the
+ *   caller already fetched (a page, HTML, JSON), whose data belongs to whatever fetched it.
+ * - `own`: the person's own data and actions (their courses, attempts, submissions, grades).
+ * - `course-content`: what teachers make (structure, activities' content and settings, rubrics' definitions, questions).
+ * - `others-aggregate`: counts about others that identify no one ("2 of 4 submitted").
+ * - `others-personal`: others' data or work (names, roles, submissions, posts, attempts, responses, grades).
+ * - `others-write`: deciding about others (grades, feedback, extensions, overrides, completion).
+ * - `communication`: writing to or before others (forum posts, messages).
+ * - `any`: generic primitives that reach whatever they're pointed at (services, pages, forms).
+ */
+export const ALL_DATA_CATEGORIES = ["none", "own", "course-content", "others-aggregate", "others-personal", "others-write", "communication", "any"] as const;
+export type DataCategory = (typeof ALL_DATA_CATEGORIES)[number];
+
+const NONE: readonly DataCategory[] = ["none"];
+const OWN: readonly DataCategory[] = ["own"];
+const CONTENT: readonly DataCategory[] = ["course-content"];
+const PERSONAL: readonly DataCategory[] = ["others-personal"];
+const ANY: readonly DataCategory[] = ["any"];
+
+/**
+ * The data categories of every function exported from the package, and of the browser manager's
+ * methods (`BrowserManager.<method>`). A function that may touch several kinds lists them all; a
+ * program takes the strictest. Functions that read activities of any module answer per module
+ * through `moduleCategories()`.
+ */
+export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> = {
+  // The browser and the session.
+  createBrowserManager: NONE,
+  // The context is what every function takes: what's done with it is classified by those functions.
+  "BrowserManager.context": NONE,
+  "BrowserManager.openChannel": NONE,
+  "BrowserManager.chromiumDownload": NONE,
+  "BrowserManager.visible": NONE,
+  "BrowserManager.setVisible": NONE,
+  "BrowserManager.show": NONE,
+  "BrowserManager.tab": ANY,
+  "BrowserManager.saveSession": NONE,
+  "BrowserManager.close": NONE,
+  canShowWindow: NONE,
+  parseSiteUrl: NONE,
+  findMoodleSite: NONE,
+  readWwwroot: NONE,
+  publicSiteInfo: NONE,
+  siteName: NONE,
+  logIn: NONE,
+  logOut: NONE,
+  waitForLogin: NONE,
+  readSessionFacts: NONE,
+  isLoggedIn: NONE,
+  pageIsLoggedIn: NONE,
+  followPages: NONE,
+  moduleCategories: NONE,
+
+  // Generic primitives.
+  callService: ANY,
+  parseServiceResponse: NONE,
+  openSitePage: ANY,
+  openForm: ANY,
+  formValue: ANY,
+  setFields: ANY,
+  uploadToDraft: ANY,
+  submitForm: ANY,
+  editCourse: ANY,
+
+  // Parsing and pacing helpers: nothing fetched.
+  decodeEntities: NONE,
+  isoDate: NONE,
+  readTexts: NONE,
+  readMedia: NONE,
+  htmlToTexts: NONE,
+  readingSeconds: NONE,
+  pause: NONE,
+  checkLocalFiles: NONE,
+  fileNameFor: NONE,
+  toCourse: NONE,
+  structureOf: NONE,
+  assignmentsOf: NONE,
+  overviewField: NONE,
+  readActivityDetails: NONE,
+  readAssignmentIds: NONE,
+  readDiscussionRows: NONE,
+  readGradeRows: NONE,
+  readQuizView: NONE,
+  readQuestions: NONE,
+  readNavigation: NONE,
+  readStudentAssignment: NONE,
+  readSubmissionContent: NONE,
+  readSurveyPage: NONE,
+  panelGrade: NONE,
+  fillGradingForm: NONE,
+
+  // The person.
+  readOwnProfile: OWN,
+  readPageConfig: OWN,
+  whoAmI: OWN,
+  courseAbilities: OWN,
+  listCourses: OWN,
+  myGrades: OWN,
+  deadlines: OWN,
+  pendingActivities: OWN,
+  userById: PERSONAL,
+  courseRoles: PERSONAL,
+
+  // Courses and their content. The course's state carries the person's own completion.
+  courseState: ["course-content", "own"],
+  courseStructure: ["course-content", "own"],
+  activityDetails: CONTENT,
+  courseFormat: CONTENT,
+  courseActivityTypes: CONTENT,
+  listAssignments: CONTENT,
+  assignmentIds: CONTENT,
+  forumInstanceId: CONTENT,
+  activityContent: CONTENT,
+  createActivity: CONTENT,
+  updateActivity: CONTENT,
+  editActivity: CONTENT,
+  duplicateActivity: CONTENT,
+  deleteActivity: CONTENT,
+  addSection: CONTENT,
+  editSection: CONTENT,
+  deleteSection: CONTENT,
+  renameActivity: CONTENT,
+  renameSection: CONTENT,
+  activitiesOverview: ["course-content", "own", "others-aggregate"],
+  courseUpdates: ["course-content", "others-aggregate"],
+  // Course files, or others' (a submission's, a post's attachment): a program checks the URL.
+  downloadFile: ["course-content", "others-personal"],
+
+  // Assignments.
+  studentAssignment: ["course-content", "own"],
+  saveSubmission: OWN,
+  submitForGrading: OWN,
+  listParticipants: PERSONAL,
+  participantDates: PERSONAL,
+  gradingPanelHtml: PERSONAL,
+  assignmentSubmissions: PERSONAL,
+  submitGradingForm: ["others-write"],
+  gradeSubmission: ["others-personal", "others-write"],
+
+  // Quizzes: a teacher may review someone else's attempt.
+  quizInfo: ["course-content", "own"],
+  startAttempt: OWN,
+  startQuizAttempt: OWN,
+  readAttempt: OWN,
+  saveAnswers: OWN,
+  answerQuizQuestions: OWN,
+  finishAttempt: OWN,
+  finishQuizAttempt: OWN,
+  readReview: ["own", "others-personal"],
+
+  // Forums.
+  listDiscussions: PERSONAL,
+  forumDiscussions: PERSONAL,
+  discussionPosts: PERSONAL,
+  discussion: PERSONAL,
+  replyToPost: ["communication"],
+  startDiscussion: ["communication"],
+
+  // Surveys.
+  getSurvey: ["course-content", "own"],
+  submitSurvey: OWN,
+};
+
+// Modules whose activities hold only what teachers made: nobody else's work or responses.
+const CONTENT_MODULES = new Set(["page", "book", "label", "url", "resource", "folder", "imscp", "subsection", "qbank"]);
+// Modules that also hold participants' work or responses (forum posts, glossary entries, attempts…).
+const PARTICIPANT_MODULES = new Set([
+  "assign",
+  "quiz",
+  "feedback",
+  "questionnaire",
+  "choice",
+  "lesson",
+  "h5pactivity",
+  "scorm",
+  "survey",
+  "lti",
+  "bigbluebuttonbn",
+  "forum",
+  "glossary",
+  "wiki",
+  "data",
+  "workshop",
+  "chat",
+]);
+
+/**
+ * The data a teacher reads when reading an activity of `module` with everything in it: course
+ * content alone for what teachers make (pages, books, files…), also others' personal data where
+ * participants leave work or responses. An unknown module (a plugin) could hold anything: `any`.
+ */
+export function moduleCategories(module: string): readonly DataCategory[] {
+  if (CONTENT_MODULES.has(module)) return CONTENT;
+  if (PARTICIPANT_MODULES.has(module)) return ["course-content", "others-personal"];
+  return ANY;
+}

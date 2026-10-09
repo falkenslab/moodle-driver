@@ -2,6 +2,7 @@
 // the person's own session. What isn't exported here is internal.
 export * from "./options.js";
 export * from "./browser.js";
+export * from "./categories.js";
 export { SESSION_COOKIES_FILE } from "./sessionCookies.js";
 export * from "./moodle/activities.js";
 export * from "./moodle/ajax.js";

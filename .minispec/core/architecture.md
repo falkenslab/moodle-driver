@@ -13,6 +13,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `options.ts` — what a program chooses: `BrowserOptions` (profile, channel, headless, download), channels, trails, `parseSiteUrl()`.
 - `browser.ts` — `createBrowserManager()`: the persistent context opened on first use and reused, one operation at a time; a headed request relaunches it with a window; Chromium downloaded in the background when no browser is installed (ADR-001); shown or hidden on demand (`setVisible`), following pages in one working tab (`show`, `tab`, ADR-007); refuses a window where there's no screen.
 - `sessionCookies.ts` — session cookies saved in the profile and restored on launch (ADR-003). `chromiumInstaller.ts` — Playwright's CLI as a process tree that ends with the program.
+- `categories.ts` — what data each public function reads or writes (`DATA_CATEGORIES`, `moduleCategories()`), for programs that restrict what an agent may do; a test fails on an undeclared export.
 - `moodle/session.ts` — whether a page has a user logged in (body class, `M.cfg.userId`, login and logout links), `openSitePage()`, `logOut()`, and the hook that lets the browser follow the pages functions open.
 - `moodle/ajax.ts` — `callService()`: AJAX from a kept logged-in tab with its `sesskey`, a stale tab replaced, session errors as `NotLoggedInError` (ADR-004); `readPageConfig()`.
 - `moodle/forms.ts` — forms: fields by name (TinyMCE through its API), draft-area uploads as the file picker does, submit, validation errors by field. `moodle/inPage.ts` — `inPage()`.

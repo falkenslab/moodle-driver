@@ -20,7 +20,7 @@ const courses = await listCourses(await browser.context(), site);
 await browser.close();
 ```
 
-Functions take the browser context and the site first, then ids and an options object. Errors a program can act on have their own classes (`NotLoggedInError`, `NoDisplayError`, `BrowserDownloadingError`…). Test helpers (a fake Moodle served inside a browser context) are in `@falkenslab/moodle-driver/testing`.
+Functions take the browser context and the site first, then ids and an options object. Errors a program can act on have their own classes (`NotLoggedInError`, `NoDisplayError`, `BrowserDownloadingError`…). Test helpers (a fake Moodle served inside a browser context) are in `@falkenslab/moodle-driver/testing`. Every function declares the data it touches in `DATA_CATEGORIES` (own, course content, others' personal data, grading others, communication…), so a program can allow only some kinds.
 
 ## Development
 
