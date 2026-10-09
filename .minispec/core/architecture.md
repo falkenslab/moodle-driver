@@ -26,6 +26,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `moodle/gradebook.ts` — the grader report and the gradebook setup read by data attributes; categories and items changed through Moodle's dynamic forms (`core_form_dynamic_form`) and the setup page's move action.
 - `moodle/questionBank.ts` — question banks (Moodle 5: qbank activities, quizzes' own) and their questions read from the bank page by field names and icons; imports through the import form; single questions through their type's edit form. A bank's module is checked first: opening any activity's bank page creates categories for it.
 - `moodle/messages.ts` — the person's notifications and conversations, and sending a private message, through the popover's and the messaging drawer's services.
+- `moodle/calendar.ts` — course events created through the calendar's event form (a fragment opened at the start time, so no dates are filled in the person's time zone), read from the upcoming view, deleted through its service.
 - `moodle/courses.ts`, `moodle/course.ts`, `moodle/structure.ts` — the person's courses; a course's state and activity details; its structure, assignments and what's pending.
 - `moodle/content.ts` — a page, book, label, URL, file or folder viewed as a person would. `moodle/files.ts` — local files checked, site files downloaded with the session.
 - `moodle/editor.ts`, `moodle/activities.ts` — the course editor's actions and renames; creating, updating, moving, duplicating and deleting activities and sections, each answering with the structure afterwards.

@@ -7,6 +7,7 @@ export { SESSION_COOKIES_FILE } from "./sessionCookies.js";
 export * from "./moodle/activities.js";
 export * from "./moodle/ajax.js";
 export * from "./moodle/assign.js";
+export * from "./moodle/calendar.js";
 export * from "./moodle/completion.js";
 export * from "./moodle/content.js";
 export * from "./moodle/course.js";

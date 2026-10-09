@@ -198,6 +198,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   conversations: PERSONAL,
   conversation: PERSONAL,
   sendMessage: ["communication"],
+
+  // The calendar: the person's upcoming events; course events are what teachers set.
+  upcomingEvents: ["own", "course-content"],
+  createEvent: CONTENT,
+  deleteEvent: CONTENT,
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.
