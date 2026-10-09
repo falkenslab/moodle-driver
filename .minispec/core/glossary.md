@@ -1,11 +1,33 @@
 # Glossary
 
-> Domain terms. Use these names; don't invent others. Delete these hints.
+## Site
 
-## <Term>
+The Moodle installation the driver works on, given by its base URL (`siteUrl`, ending in `/`).
 
-<Short definition.>
+## Profile
 
-## <Term>
+The browser's persistent user-data folder: it keeps the person's Moodle session between runs. Only one browser can use it at a time.
 
-<Short definition.>
+## Channel
+
+Which browser Playwright launches: the system's `msedge` or `chrome`, or `chromium`, downloaded when neither is installed (ADR-001).
+
+## Course module id (cmid)
+
+The id of an activity in a course, which every activity function takes; not the activity's instance id, which some services want and the driver finds itself.
+
+## Kept tab
+
+The logged-in tab the driver keeps for AJAX services, with its `sesskey` (ADR-004).
+
+## Working tab
+
+The one tab a program can drive itself (`tab()`), the same one the browser follows pages in while shown (ADR-007).
+
+## Trail
+
+How student actions view and do things: `realistic`, through the real pages at a person's pace, or `fast` (ADR-005).
+
+## Consumer
+
+A program that uses the driver: moodle-mcp, a CLI.

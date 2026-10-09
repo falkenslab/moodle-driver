@@ -3,7 +3,7 @@ import { chromium, type Browser, type BrowserContext, type Route } from "playwri
 export const SITE = "http://moodle.test/";
 
 /**
- * A Moodle page reduced to what the server reads: the body class, `M.cfg` (`wwwroot`, `sesskey`,
+ * A Moodle page reduced to what the driver reads: the body class, `M.cfg` (`wwwroot`, `sesskey`,
  * `userId`), the logout link in the user menu and the page heading, as Moodle 5.2 renders them.
  */
 export function moodlePage({

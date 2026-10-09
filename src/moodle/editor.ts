@@ -17,7 +17,7 @@ export type EditorAction =
   | "section_delete";
 
 /**
- * Runs one of the course editor's actions through its own service (ADR-008), as the editor does:
+ * Runs one of the course editor's actions through its own service (ADR-004), as the editor does:
  * ids of activities or sections, and a target section (`cm_move`: at its end; `section_add`,
  * `section_move_after`: after it) or a target activity (`cm_move`: before it).
  */
@@ -38,7 +38,7 @@ export async function editCourse(
   });
 }
 
-// A course's format doesn't change while the server runs.
+// A course's format doesn't change while a program runs.
 const formats = new Map<string, string>();
 
 /** The course format (topics, weeks…), a class of the course page's body: no service tells teachers. */

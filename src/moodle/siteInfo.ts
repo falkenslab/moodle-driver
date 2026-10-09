@@ -4,7 +4,7 @@ import { decodeEntities } from "./text.js";
 
 const TIMEOUT_MS = 60_000;
 
-/** The parts of `tool_mobile_get_public_config` (Moodle 5.2) the server reports. */
+/** The parts of `tool_mobile_get_public_config` (Moodle 5.2) the driver reads. */
 interface PublicConfig {
   wwwroot: string;
   sitename: string;

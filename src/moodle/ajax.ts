@@ -19,7 +19,7 @@ const SESSION_ERRORS = new Set(["servicerequireslogin", "invalidsesskey"]);
 // A light page that needs a session: the tab only lends its cookies and `M.cfg.sesskey`.
 const SERVICE_PAGE = "user/preferences.php";
 
-/** The tab kept open per context for service calls (ADR-008), and the site it belongs to. */
+/** The tab kept open per context for service calls (ADR-004), and the site it belongs to. */
 const servicePages = new WeakMap<BrowserContext, { page: Page; siteUrl: string }>();
 
 /** The response of `lib/ajax/service.php` for one request: `data`, or throws. */
@@ -66,14 +66,14 @@ async function servicePage(context: BrowserContext, siteUrl: string, fresh: bool
   // The program may have changed the site since the tab was opened.
   if (current && !current.page.isClosed() && current.siteUrl === siteUrl && !fresh) return current.page;
   await current?.page.close().catch(() => undefined);
-  // The kept tab isn't a tool's page: nothing to follow when it's replaced.
+  // The kept tab isn't a page a function works on: nothing to follow when it's replaced.
   const page = await openSitePage(context, siteUrl, SERVICE_PAGE, { follow: false });
   servicePages.set(context, { page, siteUrl });
   return page;
 }
 
 /**
- * Calls one of Moodle's AJAX services as the logged-in person (ADR-008). Throws `NotLoggedInError`
+ * Calls one of Moodle's AJAX services as the logged-in person (ADR-004). Throws `NotLoggedInError`
  * when there's no session, `MoodleServiceError` when the service fails.
  */
 export async function callService<T>(context: BrowserContext, siteUrl: string, methodname: string, args: Record<string, unknown>): Promise<T> {

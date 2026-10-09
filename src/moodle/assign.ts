@@ -87,7 +87,7 @@ export interface PluginContent {
 /**
  * The content of a submission as the grader's panel renders it: per plugin, the full block
  * (`.full_assignsubmission_<plugin>_<sid>`) or, for content short enough to have none, the summary
- * one. Parsed in the page, by class only (ADR-006). The comments plugin isn't the submission.
+ * one. Parsed in the page, by class only (ADR-004). The comments plugin isn't the submission.
  */
 export function readSubmissionContent(page: Page, html: string): Promise<PluginContent[]> {
   return page.evaluate((html) => {

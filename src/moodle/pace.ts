@@ -1,4 +1,4 @@
-// Reading at a person's pace (ADR-012): about 240 words a minute, bounded per page.
+// Reading at a person's pace (ADR-005): about 240 words a minute, bounded per page.
 const WORDS_PER_SECOND = 4;
 const MIN_SECONDS = 3;
 const MAX_SECONDS = 90;

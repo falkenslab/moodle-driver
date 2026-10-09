@@ -6,7 +6,7 @@ import type { BrowserContext, Cookie } from "playwright-core";
  * Chromium drops session cookies (no expiry) when a persistent profile closes, and Moodle's
  * `MoodleSession` is one (confirmed empirically, Edge and playwright-core 1.64, Moodle 5.2): the
  * profile alone would forget the login on every restart. They are kept in this file inside the
- * profile, as sensitive as the profile itself (ADR-007).
+ * profile, as sensitive as the profile itself (ADR-003).
  */
 export const SESSION_COOKIES_FILE = "moodle-mcp-session-cookies.json";
 

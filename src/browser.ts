@@ -26,15 +26,15 @@ export interface BrowserManager {
   /** Whether the browser shows a window now: what `setVisible` asked for, else the options. */
   visible(): boolean;
   /**
-   * Shows the browser (relaunching it with a window now, session kept) and follows the tools' pages
-   * in it, or hides it (closing the window; the next call runs headless). ADR-011.
+   * Shows the browser (relaunching it with a window now, session kept) and follows the pages functions open
+   * in it, or hides it (closing the window; the next call runs headless). ADR-007.
    */
   setVisible(visible: boolean): Promise<void>;
   /** While following, brings `url` (a site page) to the front of the window; best effort, never throws. */
   show(url: string): Promise<void>;
-  /** The one tab the browser tools work in (ADR-010), the same one following shows; opens the browser if needed. */
+  /** The one working tab a program drives itself (ADR-007), the same one following shows; opens the browser if needed. */
   tab(): Promise<Page>;
-  /** Saves the session cookies of the open context, if any (ADR-007). */
+  /** Saves the session cookies of the open context, if any (ADR-003). */
   saveSession(): Promise<void>;
   close(): Promise<void>;
 }
@@ -56,7 +56,7 @@ export class NoDisplayError extends Error {
 
 /**
  * Whether a window can be shown. On Linux it needs an X or Wayland display; without one (Docker, a
- * server) the server refuses rather than trying, so it never reaches a display it wasn't given.
+ * server) the driver refuses rather than trying, so it never reaches a display it wasn't given.
  */
 export function canShowWindow(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): boolean {
   return platform !== "linux" || Boolean(env.DISPLAY || env.WAYLAND_DISPLAY);
@@ -86,7 +86,7 @@ export function createBrowserManager(
   let shown: boolean | undefined;
   let followTab: Page | undefined;
   // The download runs in the background, outside the queue: it takes minutes, longer than some
-  // clients wait for a tool call, so calls meanwhile answer at once that it's downloading.
+  // callers wait, so calls meanwhile answer at once that it's downloading.
   let download: Promise<void> | undefined;
   let downloadFailure: string | undefined;
 
@@ -107,7 +107,7 @@ export function createBrowserManager(
 
   function downloading(extra = ""): BrowserDownloadingError {
     return new BrowserDownloadingError(
-      `${config.channel === "chromium" ? "Chromium isn't downloaded yet" : "Neither Microsoft Edge nor Google Chrome is available"}, so the server is downloading it (about 180 MB, into PLAYWRIGHT_BROWSERS_PATH or the user's ms-playwright cache).${extra} Tell the person, and try again in a minute or two.`,
+      `${config.channel === "chromium" ? "Chromium isn't downloaded yet" : "Neither Microsoft Edge nor Google Chrome is available"}, so it's being downloaded (about 180 MB, into PLAYWRIGHT_BROWSERS_PATH or the user's ms-playwright cache).${extra} Try again in a minute or two.`,
     );
   }
   // One operation at a time: two launches on the same profile would fail.
@@ -205,7 +205,7 @@ export function createBrowserManager(
         if (tab.url() !== url) await tab.goto(url, { waitUntil: "domcontentloaded" });
         await tab.bringToFront();
       } catch {
-        // Following is a courtesy: a page that doesn't load never changes the tool's result.
+        // Following is a courtesy: a page that doesn't load never changes a function's result.
       }
     },
     tab: async () => workTab(await manager.context()),

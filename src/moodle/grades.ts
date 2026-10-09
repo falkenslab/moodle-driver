@@ -21,7 +21,7 @@ export class NoGradeReportError extends Error {
   override name = "NoGradeReportError";
 }
 
-/** The rows of `table.user-grade`, by cell classes, never by header texts (ADR-006). */
+/** The rows of `table.user-grade`, by cell classes, never by header texts (ADR-004). */
 export function readGradeRows(page: Page): Promise<GradeRow[]> {
   return page.evaluate(() => {
     interface Element {

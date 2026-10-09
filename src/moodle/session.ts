@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from "playwright-core";
 
-/** No live Moodle session: the client should have the person log in (ADR-002). */
+/** No live Moodle session: the person has to log in again (ADR-002). */
 export class NotLoggedInError extends Error {
   override name = "NotLoggedInError";
   constructor() {
@@ -52,10 +52,10 @@ export async function pageIsLoggedIn(page: Page, siteUrl: string): Promise<boole
   return isLoggedIn(page.url(), siteUrl, await readSessionFacts(page));
 }
 
-// While the person watches (ADR-011), a context's browser manager shows the pages tools worked on.
+// While the person watches (ADR-007), a context's browser manager shows the pages functions worked on.
 const followers = new WeakMap<BrowserContext, (url: string) => Promise<void>>();
 
-/** Has `show` called with the page each tool opened, once the tool is done with it. */
+/** Has `show` called with the page each function opened, once it's done with it. */
 export function followPages(context: BrowserContext, show: (url: string) => Promise<void>): void {
   followers.set(context, show);
 }
@@ -69,7 +69,7 @@ export async function openSitePage(context: BrowserContext, siteUrl: string, pat
   try {
     await page.goto(new URL(path, siteUrl).href, { waitUntil: "domcontentloaded" });
     if (!(await pageIsLoggedIn(page, siteUrl))) throw new NotLoggedInError();
-    // The page as the tool opened it (a form's URL, not where posting it led), once the tool closes it.
+    // The page as it was opened (a form's URL, not where posting it led), once it's closed.
     const opened = page.url();
     if (follow) page.once("close", () => void followers.get(context)?.(opened));
     return page;

@@ -32,7 +32,7 @@ export interface CourseState {
   }[];
 }
 
-/** The course page's own state: sections and activities, as a JSON string (ADR-008). */
+/** The course page's own state: sections and activities, as a JSON string (ADR-004). */
 export async function courseState(context: BrowserContext, siteUrl: string, courseId: number): Promise<CourseState> {
   return JSON.parse(await callService<string>(context, siteUrl, "core_courseformat_get_state", { courseid: courseId })) as CourseState;
 }
