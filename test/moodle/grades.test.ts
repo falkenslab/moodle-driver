@@ -18,11 +18,12 @@ const REPORT = `<table class="user-grade"><thead><tr><th class="column-itemname"
 ${item(21, "quiz", "Quiz 1", "8.00", "0–10", "<p>Well done</p>")}
 ${item(22, "assign", "Task 1", "-", "0–10")}
 ${item(23, "assign", "Task 2", "-", "0–10")}
-<tr class="cat_1 lastrow"><th class="level1 baggt column-itemname">Course total</th><td class="level1 baggt item column-grade"><div>8.00</div></td><td class="level1 baggt item column-range">0–30</td></tr>
+<tr><th class="level2 baggt column-itemname"><div class="categoryitem">Programming total</div></th><td class="level2 baggt item column-grade"><div>8.00</div></td></tr>
+<tr class="cat_1 lastrow"><th class="level1 baggt column-itemname"><div class="courseitem">Course total</div></th><td class="level1 baggt item column-grade"><div>8.00</div></td><td class="level1 baggt item column-range">0–30</td></tr>
 </tbody></table>`;
 
 describe("readGradeRows", { skip: !browser && "no system browser" }, () => {
-  it("reads items, categories and the total by cell classes, without the action menus", async () => {
+  it("reads items, categories and the totals by cell classes, without the action menus", async () => {
     const page = await browser!.newPage();
     await page.setContent(REPORT);
     const rows = await readGradeRows(page);
@@ -33,6 +34,7 @@ describe("readGradeRows", { skip: !browser && "no system browser" }, () => {
         ["item", "Quiz 1", 21, "8.00", "0–10", "Well done"],
         ["item", "Task 1", 22, undefined, "0–10", undefined],
         ["item", "Task 2", 23, undefined, "0–10", undefined],
+        ["categoryTotal", "Programming total", undefined, "8.00", undefined, undefined],
         ["courseTotal", "Course total", undefined, "8.00", "0–30", undefined],
       ],
     );

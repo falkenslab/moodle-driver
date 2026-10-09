@@ -3,7 +3,8 @@ import { openSitePage } from "./session.js";
 
 /** A row of the user grade report, values as Moodle shows them ("-" left out). */
 export interface GradeRow {
-  kind: "item" | "category" | "courseTotal";
+  /** A category's total row is "categoryTotal"; the course's, "courseTotal". */
+  kind: "item" | "category" | "categoryTotal" | "courseTotal";
   name: string;
   activityId?: number;
   activityType?: string;
@@ -40,7 +41,9 @@ export function readGradeRows(page: Page): Promise<GradeRow[]> {
       const nameCell = row.querySelector(".column-itemname");
       if (!nameCell || row.querySelector("th.column-itemname[scope='col'], thead")) continue;
       const classes = nameCell.className;
-      const kind = /\bbaggt\b/.test(classes) ? "courseTotal" : /\bcategory\b/.test(classes) ? "category" : /\bitem\b/.test(classes) ? "item" : undefined;
+      // Both totals are "baggt" rows; a category's holds a categoryitem block (confirmed empirically, Moodle 5.2).
+      const total = nameCell.querySelector(".categoryitem") ? "categoryTotal" : "courseTotal";
+      const kind = /\bbaggt\b/.test(classes) ? total : /\bcategory\b/.test(classes) ? "category" : /\bitem\b/.test(classes) ? "item" : undefined;
       if (!kind) continue;
       const values: Record<string, string | undefined> = {};
       for (const column of ["grade", "range", "percentage", "weight", "lettergrade", "feedback", "contributiontocoursetotal"]) {
