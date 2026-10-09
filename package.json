@@ -1,0 +1,55 @@
+{
+  "name": "@falkenslab/moodle-driver",
+  "version": "0.1.0",
+  "description": "Work a Moodle site with the person's own session, through a real browser (Playwright): no web services, no tokens",
+  "author": "Falkenslab",
+  "license": "MIT",
+  "keywords": [
+    "moodle",
+    "lms",
+    "playwright",
+    "automation",
+    "browser"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "tsx --test --test-concurrency=1 \"test/**/*.test.ts\"",
+    "test:docker": "node scripts/in-docker.mjs npm test",
+    "prepare": "npm run build"
+  },
+  "peerDependencies": {
+    "playwright-core": "^1.64.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.0",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "playwright-core": "^1.64.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.1"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
