@@ -1,5 +1,7 @@
 # Gradebook
 
+Issue: [#8](https://github.com/falkenslab/moodle-driver/issues/8)
+
 ## Goal
 
 Read the grader report and the gradebook setup; change items and add categories.

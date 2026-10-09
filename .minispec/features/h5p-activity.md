@@ -1,5 +1,7 @@
 # H5P activity
 
+Issue: [#9](https://github.com/falkenslab/moodle-driver/issues/9)
+
 ## Goal
 
 `h5pActivity(context, siteUrl, cmid)`: an H5P activity's content type, attempts and score.

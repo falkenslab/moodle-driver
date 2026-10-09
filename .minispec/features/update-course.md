@@ -1,5 +1,7 @@
 # Update course
 
+Issue: [#17](https://github.com/falkenslab/moodle-driver/issues/17)
+
 ## Goal
 
 `updateCourse(context, siteUrl, courseId, { fullName?, shortName?, summary?, settings? })`: a course's names, summary and other settings.

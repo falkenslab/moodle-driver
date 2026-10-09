@@ -1,5 +1,7 @@
 # API tests
 
+Issue: [#2](https://github.com/falkenslab/moodle-driver/issues/2)
+
 ## Goal
 
 Every public function tested here, against the fake Moodle, not only through moodle-mcp's tools.

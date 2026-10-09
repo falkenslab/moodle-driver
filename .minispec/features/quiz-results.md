@@ -1,5 +1,7 @@
 # Quiz results
 
+Issue: [#14](https://github.com/falkenslab/moodle-driver/issues/14)
+
 ## Goal
 
 `quizResults(context, siteUrl, quizId, { responses? })`: a quiz's attempts with grades and per-question marks.

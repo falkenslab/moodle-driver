@@ -1,5 +1,7 @@
 # Lessons
 
+Issue: [#10](https://github.com/falkenslab/moodle-driver/issues/10)
+
 ## Goal
 
 `lessonPage` and `answerLessonPage`: go through a lesson page by page.

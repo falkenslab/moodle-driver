@@ -1,5 +1,7 @@
 # Rubric
 
+Issue: [#16](https://github.com/falkenslab/moodle-driver/issues/16)
+
 ## Goal
 
 `rubric(context, siteUrl, cmid)`: an assignment's grading method and its rubric or marking guide, with criteria and levels; `gradeSubmission` grading by them.

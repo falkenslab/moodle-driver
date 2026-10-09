@@ -1,5 +1,7 @@
 # Calendar events
 
+Issue: [#3](https://github.com/falkenslab/moodle-driver/issues/3)
+
 ## Goal
 
 `createEvent` and `deleteEvent`: course calendar events.

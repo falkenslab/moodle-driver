@@ -1,5 +1,7 @@
 # Participants and groups
 
+Issue: [#12](https://github.com/falkenslab/moodle-driver/issues/12)
+
 ## Goal
 
 `participants` (with an inactivity filter) and `groups`.

@@ -1,5 +1,7 @@
 # Forum moderation
 
+Issue: [#7](https://github.com/falkenslab/moodle-driver/issues/7)
+
 ## Goal
 
 `setDiscussionState`: pin, unpin, lock and unlock discussions.

@@ -1,5 +1,7 @@
 # Activity settings
 
+Issue: [#1](https://github.com/falkenslab/moodle-driver/issues/1)
+
 ## Goal
 
 `activitySettings(context, siteUrl, cmid)`: one activity's settings as its form holds them, so a program can edit from what's there with `updateActivity`.

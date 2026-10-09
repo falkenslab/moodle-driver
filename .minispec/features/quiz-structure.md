@@ -1,5 +1,7 @@
 # Quiz structure
 
+Issue: [#15](https://github.com/falkenslab/moodle-driver/issues/15)
+
 ## Goal
 
 `quizStructure` and `addQuestionsToQuiz`: what a quiz holds, and filling it from the bank.
