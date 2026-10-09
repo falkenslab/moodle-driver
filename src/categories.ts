@@ -203,6 +203,10 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   upcomingEvents: ["own", "course-content"],
   createEvent: CONTENT,
   deleteEvent: CONTENT,
+
+  // H5P: the content (course content) and the person's own attempts.
+  h5pActivity: ["course-content", "own"],
+  readH5PAttempts: NONE,
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.

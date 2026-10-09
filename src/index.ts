@@ -20,6 +20,7 @@ export * from "./moodle/forumPosts.js";
 export * from "./moodle/gradebook.js";
 export * from "./moodle/grades.js";
 export * from "./moodle/grading.js";
+export * from "./moodle/h5p.js";
 export * from "./moodle/login.js";
 export * from "./moodle/messages.js";
 export * from "./moodle/overview.js";
