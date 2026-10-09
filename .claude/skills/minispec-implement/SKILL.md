@@ -39,9 +39,12 @@ Do not read the whole `.minispec/` — only what the task needs.
 - Write code that satisfies the feature's **Changes**, respecting
   `conventions.md` and `principles.md`.
 - Stay within scope: no refactors outside the feature (a principle).
+- For a new or changed export, follow the `add-export` skill; tests run only in Docker (`npm run test:docker`).
+- Update the documentation in the same change (`update-docs`): doc comments on every new export, `README.md` and `.minispec/core/` where they describe what changed.
 
 ### 4. Verify
 
+- Run the `verify` skill.
 - Check the result against the feature's **Acceptance** section, point by point.
 - Report what passes and what doesn't.
 
@@ -54,6 +57,15 @@ When the feature is done and verified, MiniSpec says to:
 2. Then **delete** `features/<slug>.md`.
 
 Tell the user this and offer to do it. Do not delete without confirmation.
+
+### 6. Close its issue
+
+Every feature and bugfix note has a GitHub issue (label `feature` or `fix`), linked from the `Issue:` line under the note's title (otherwise find it by the file's path in its body, `gh issue list --search`). When the work is committed and pushed:
+
+- reference it in the commit that completes it (`Closes #N`), the same commit that deletes the note;
+- then comment on it, in English, a short description of the solution and how it was implemented — what changed for a program using the driver, the design choices, how it was verified (tests in Docker, the sandbox), the commits — and make sure it's closed (`gh issue close N --comment "…"` if the commit didn't close it).
+
+No issue found, or no GitHub remote yet: say so and offer to open one (`sync-issues`); don't close an issue for work that isn't pushed.
 
 ## Rules
 

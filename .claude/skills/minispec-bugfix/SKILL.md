@@ -18,6 +18,7 @@ it lives under `.minispec/features/`.
    - **Cause** — root cause.
    - **Solution** — what was changed.
    - **Verification** — how the fix was confirmed.
+5. Open its GitHub issue, one per note, in this repo: title and body in English (ADR-008) (the symptom as a program using the driver sees it, and the cause), label `fix` (`gh label create fix` if the repo lacks it), and a last line `Fix: \`.minispec/features/fix-<slug>.md\``. Then link the note to it: a line `Issue: [#N](<issue URL>)` right under the note's title. When the fix is committed, close it as `minispec-implement` says (`Closes #N` in the commit, then the summary comment). If the repo has no GitHub remote yet, skip this step and say so; `sync-issues` opens it later.
 
 ## Rules
 
