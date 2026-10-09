@@ -176,6 +176,14 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   overrideCompletion: ["others-write"],
   completionReport: PERSONAL,
   readCompletionReport: NONE,
+
+  // The gradebook: everyone's grades, and its setup (course content).
+  graderReport: PERSONAL,
+  readGraderReport: NONE,
+  gradebookSetup: CONTENT,
+  readGradebookSetup: NONE,
+  updateGradeItem: CONTENT,
+  addGradeCategory: CONTENT,
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.
