@@ -28,6 +28,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `moodle/messages.ts` — the person's notifications and conversations, and sending a private message, through the popover's and the messaging drawer's services.
 - `moodle/calendar.ts` — course events created through the calendar's event form (a fragment opened at the start time, so no dates are filled in the person's time zone), read from the upcoming view, deleted through its service.
 - `moodle/h5p.ts` — an H5P activity's content type (from its player page's settings) and the person's attempts (their report, by position and icon); playing it is the working tab's (ADR-007).
+- `moodle/lesson.ts` — a lesson page by page as a student: content pages' buttons, question forms, the feedback after an answer and the end, read by their forms; Moodle's "resume where you left" is accepted.
 - `moodle/courses.ts`, `moodle/course.ts`, `moodle/structure.ts` — the person's courses; a course's state and activity details; its structure, assignments and what's pending.
 - `moodle/content.ts` — a page, book, label, URL, file or folder viewed as a person would. `moodle/files.ts` — local files checked, site files downloaded with the session.
 - `moodle/editor.ts`, `moodle/activities.ts` — the course editor's actions and renames; creating, updating, moving, duplicating and deleting activities and sections, each answering with the structure afterwards.
