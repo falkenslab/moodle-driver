@@ -191,6 +191,13 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   readBankQuestions: NONE,
   importQuestions: CONTENT,
   createQuestion: CONTENT,
+
+  // Messaging: the person's own notifications; conversations hold others' messages; sending is communication.
+  notifications: OWN,
+  markNotificationsRead: OWN,
+  conversations: PERSONAL,
+  conversation: PERSONAL,
+  sendMessage: ["communication"],
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.
