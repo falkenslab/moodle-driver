@@ -1,0 +1,15 @@
+node_modules/
+dist/
+# Browser profiles (never inside the repo, but just in case)
+profile/
+profiles/
+.profile/
+*.profile/
+# Environment
+.env
+.env.*
+!.env.example
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
