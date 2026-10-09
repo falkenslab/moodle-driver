@@ -22,6 +22,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `moodle/login.ts` — `logIn()`: the user at once if there's a session, else a window at the login page waiting for the person (ADR-002).
 - `moodle/user.ts` — a user by id, the site's name, roles and abilities in a course, `whoAmI()`.
 - `moodle/participants.ts` — a course's participants and groups from the participants table's service, filtered by role, group and inactivity; roles and groups by id from the page's filters.
+- `moodle/completion.ts` — manual completion (the person's), overrides (a teacher's) through their services; the progress report read by its links and icon names.
 - `moodle/courses.ts`, `moodle/course.ts`, `moodle/structure.ts` — the person's courses; a course's state and activity details; its structure, assignments and what's pending.
 - `moodle/content.ts` — a page, book, label, URL, file or folder viewed as a person would. `moodle/files.ts` — local files checked, site files downloaded with the session.
 - `moodle/editor.ts`, `moodle/activities.ts` — the course editor's actions and renames; creating, updating, moving, duplicating and deleting activities and sections, each answering with the structure afterwards.

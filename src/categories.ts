@@ -170,6 +170,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   groups: PERSONAL,
   participantFilters: ["course-content"],
   readParticipantRows: NONE,
+
+  // Completion: the person's own, deciding someone else's, everyone's report.
+  setCompletion: OWN,
+  overrideCompletion: ["others-write"],
+  completionReport: PERSONAL,
+  readCompletionReport: NONE,
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.
