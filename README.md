@@ -2,7 +2,7 @@
 
 Work a Moodle site with the person's own session, through a real browser (Playwright): no web services, no tokens. Read courses, content, assignments, quizzes, forums, grades and surveys; create and edit activities and sections; grade; answer as a student at a person's pace. Every function returns plain data.
 
-Status: early development, not published. Extracted from [moodle-mcp](../moodle-mcp), its first consumer. The design is in `.minispec/` (start with `core/project.md` and the decisions).
+Extracted from moodle-mcp, its first consumer. The design is in `.minispec/` (start with `core/project.md` and the decisions).
 
 ## Why a browser
 

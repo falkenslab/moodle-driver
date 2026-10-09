@@ -28,4 +28,4 @@ Let any program do in Moodle what the person can do, with their own session, wit
 
 ## Status
 
-Version 0.x, nothing published: what moodle-mcp had, extracted on 9 October 2026; consumed from the sibling folder (`file:../moodle-driver`). New Moodle areas come one feature at a time (see `features/`).
+Not on npm yet: what moodle-mcp had, extracted on 9 October 2026; consumed from the sibling folder (`file:../moodle-driver`). New Moodle areas come one feature at a time (see `features/`).
