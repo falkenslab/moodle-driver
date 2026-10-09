@@ -1,5 +1,7 @@
 import type { BrowserContext, Page } from "playwright-core";
+import type { Trail } from "../options.js";
 import { setFields } from "./forms.js";
+import { pause, readingSeconds } from "./pace.js";
 import { inPage } from "./inPage.js";
 import { openSitePage } from "./session.js";
 
@@ -288,4 +290,40 @@ export async function readReview(context: BrowserContext, siteUrl: string, attem
   } finally {
     await page.close().catch(() => undefined);
   }
+}
+
+/** Starts an attempt, or continues the one in progress, and gives its questions. */
+export async function startQuizAttempt(context: BrowserContext, siteUrl: string, quizId: number): Promise<{ attemptId: number; questions: Question[] }> {
+  const attemptId = await startAttempt(context, siteUrl, quizId);
+  return { attemptId, questions: await readAttempt(context, siteUrl, attemptId) };
+}
+
+/**
+ * Saves answers in an attempt in progress without finishing it, and gives its questions afterwards.
+ * With the realistic trail, it first takes the time a reader needs for the questions and their
+ * options (ADR-005), calling `onProgress` with the seconds elapsed and the total.
+ */
+export async function answerQuizQuestions(
+  context: BrowserContext,
+  siteUrl: string,
+  attemptId: number,
+  answers: { slot: number; responses: Record<string, string> }[],
+  { trail = "realistic", onProgress }: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void } = {},
+): Promise<{ attemptId: number; questions: Question[] }> {
+  const beforeSave =
+    trail === "realistic"
+      ? async (questions: Question[]) => {
+          const seconds = readingSeconds(questions.map((q) => [q.text, ...q.fields.flatMap((f) => [f.label ?? "", ...(f.options ?? []).map((o) => o.label)])].join(" ")).join(" "));
+          await pause(seconds, (elapsed) => onProgress?.(elapsed, seconds));
+        }
+      : undefined;
+  await saveAnswers(context, siteUrl, attemptId, answers, beforeSave);
+  return { attemptId, questions: await readAttempt(context, siteUrl, attemptId) };
+}
+
+/** Submits an attempt for grading, and gives its review when the quiz shows it. */
+export async function finishQuizAttempt(context: BrowserContext, siteUrl: string, attemptId: number) {
+  await finishAttempt(context, siteUrl, attemptId);
+  const review = await readReview(context, siteUrl, attemptId).catch(() => undefined);
+  return { attemptId, finished: true as const, review };
 }

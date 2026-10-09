@@ -1,5 +1,7 @@
 import type { BrowserContext } from "playwright-core";
-import { MoodleServiceError, callService } from "./ajax.js";
+import { MoodleServiceError, callService, readPageConfig } from "./ajax.js";
+import { courseState } from "./course.js";
+import { isoDate } from "./courses.js";
 import { openSitePage } from "./session.js";
 
 /** A user as `core_user_get_users_by_field` returns it (Moodle 5.2), the fields read. */
@@ -61,4 +63,43 @@ export async function courseAbilities(context: BrowserContext, siteUrl: string, 
     canGrade = false;
   }
   return { canEdit: items.content_items.length > 0, canGrade };
+}
+
+export interface Me {
+  userId: number;
+  username?: string;
+  fullName: string;
+  email?: string;
+  /** The interface language in use. */
+  language: string;
+  timeZone: string;
+  firstAccess?: string;
+  lastAccess?: string;
+  site: { name?: string; url: string };
+  /** With a course: the person's roles there and what they can do. */
+  course?: { id: number; roles: { id: number; name: string }[]; canEdit: boolean; canGrade: boolean };
+}
+
+/** Who the logged-in person is; with `courseId`, also their roles and abilities in that course. */
+export async function whoAmI(context: BrowserContext, siteUrl: string, courseId?: number): Promise<Me> {
+  const cfg = await readPageConfig(context, siteUrl);
+  const user = await userById(context, siteUrl, cfg.userId);
+  const me: Me = {
+    userId: cfg.userId,
+    username: user?.username,
+    fullName: user?.fullname ?? "",
+    email: user?.email,
+    language: cfg.language,
+    timeZone: cfg.timeZone,
+    firstAccess: isoDate(user?.firstaccess),
+    lastAccess: isoDate(user?.lastaccess),
+    site: { name: await siteName(context, siteUrl), url: siteUrl },
+  };
+  if (courseId !== undefined) {
+    // The course's state checks that it exists and the person can see it, and gives a section.
+    const state = await courseState(context, siteUrl, courseId);
+    const abilities = await courseAbilities(context, siteUrl, courseId, Number(state.section[0]?.id ?? 0));
+    me.course = { id: courseId, roles: await courseRoles(context, siteUrl, cfg.userId, courseId), ...abilities };
+  }
+  return me;
 }
