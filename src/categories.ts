@@ -212,6 +212,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   lessonPage: ["course-content", "own"],
   answerLessonPage: OWN,
   readLessonPage: NONE,
+
+  // Choices: the person's own answer.
+  getChoice: ["course-content", "own"],
+  answerChoice: OWN,
+  readChoice: NONE,
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.
