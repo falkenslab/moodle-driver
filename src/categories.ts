@@ -164,6 +164,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Surveys.
   getSurvey: ["course-content", "own"],
   submitSurvey: OWN,
+
+  // Participants and groups.
+  participants: PERSONAL,
+  groups: PERSONAL,
+  participantFilters: ["course-content"],
+  readParticipantRows: NONE,
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.
