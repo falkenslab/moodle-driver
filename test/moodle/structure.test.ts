@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { CourseState, readActivityDetails, structureOf } from "../../src/index.js";
-import { SITE, launchTestBrowser } from "../../src/testing/index.js";
+import { CourseState, MoodleServiceError, NotLoggedInError, courseStructure, listAssignments, pendingActivities, readActivityDetails, structureOf } from "../../src/index.js";
+import { SITE, ServiceFailure, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());
 
@@ -56,3 +56,95 @@ describe("readActivityDetails", { skip: !browser && "no system browser" }, () =>
   });
 });
 
+describe("courseStructure", { skip: !browser && "no system browser" }, () => {
+  it("reads the state, and the course and section pages only with details", async () => {
+    const context = await browser!.newContext();
+    const state: FakeMoodleState = {
+      user: { id: 3, fullName: "T" },
+      pagesServed: [],
+      bodies: { "/course/view.php": COURSE_PAGE, "/course/section.php": SECTION_PAGE },
+      services: { core_courseformat_get_state: () => JSON.stringify(STATE) },
+    };
+    await serveFakeMoodle(context, state);
+    const plain = await courseStructure(context, SITE, 5);
+    assert.deepEqual(plain.course, { id: 5, url: `${SITE}course/view.php?id=5` });
+    assert.deepEqual(plain.sections.map((s) => s.id), [10, 11, 12]);
+    assert.equal(plain.sections[0]?.activities[1]?.dates, undefined);
+    assert.deepEqual(state.pagesServed!.filter((p) => p.startsWith("/course/")), []);
+    const { sections } = await courseStructure(context, SITE, 5, { details: true });
+    assert.deepEqual(sections[0]?.activities[1]?.dates, [{ label: "Opened", value: "Monday, 5 October" }, { label: "Closes", value: "Friday, 9 October" }]);
+    assert.equal(sections[1]?.activities[0]?.restriction, "Not available unless: You achieve a pass in Quiz 1");
+    assert.deepEqual(state.pagesServed!.filter((p) => p.startsWith("/course/")), ["/course/view.php", "/course/section.php"]);
+    await context.close();
+  });
+
+  it("passes Moodle's error for a course the person can't see", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "T" }, services: { core_courseformat_get_state: () => { throw new ServiceFailure("invalidrecordunknown"); } } });
+    await assert.rejects(courseStructure(context, SITE, 6), (error: unknown) => error instanceof MoodleServiceError && error.errorcode === "invalidrecordunknown");
+    await context.close();
+  });
+});
+
+describe("listAssignments", { skip: !browser && "no system browser" }, () => {
+  it("asks for the course's state and keeps its assignments", async () => {
+    const context = await browser!.newContext();
+    const state: FakeMoodleState = { user: { id: 3, fullName: "T" }, serviceCalls: [], services: { core_courseformat_get_state: () => JSON.stringify(STATE) } };
+    await serveFakeMoodle(context, state);
+    assert.deepEqual((await listAssignments(context, SITE, 5)).map((a) => [a.id, a.section.title]), [[22, "Unit 1 & 2"]]);
+    assert.deepEqual(state.serviceCalls?.[0], { methodname: "core_courseformat_get_state", args: { courseid: 5 } });
+    await context.close();
+  });
+});
+
+/** A grade report row as Moodle 5.2 renders it, reduced; the data is made up. */
+function gradeRow(cmid: number, type: string, name: string, grade: string): string {
+  return `<tr><th class="level2 item column-itemname" scope="row"><div class="rowtitle"><a class="gradeitemheader" href="${SITE}mod/${type}/view.php?id=${cmid}">${name}</a></div></th>
+<td class="level2 item column-grade"><div>${grade}</div></td><td class="level2 item column-range">0–10</td></tr>`;
+}
+const REPORT = `<table class="user-grade"><tbody>${gradeRow(21, "quiz", "Quiz 1", "8.00")}${gradeRow(22, "assign", "Task 1", "-")}${gradeRow(23, "assign", "Task 2", "-")}</tbody></table>`;
+
+describe("pendingActivities", { skip: !browser && "no system browser" }, () => {
+  // The quiz is graded; task 1 is incomplete; task 2 is done; the page isn't graded nor tracked.
+  const tracked = (track: boolean): CourseState => ({
+    section: [{ id: "10", number: 0, title: "General", cmlist: ["20", "21", "22", "23"] }],
+    cm: [
+      { id: "20", name: "Notes", module: "page", visible: true, sectionid: "10" },
+      { id: "21", name: "Quiz 1", module: "quiz", visible: true, sectionid: "10" },
+      { id: "22", name: "Task 1", module: "assign", visible: true, sectionid: "10", ...(track ? { istrackeduser: true, completionstate: 0, isoverallcomplete: false } : {}) },
+      { id: "23", name: "Task 2", module: "assign", visible: true, sectionid: "10", ...(track ? { istrackeduser: true, completionstate: 1, isoverallcomplete: true } : {}) },
+    ],
+  });
+  const COURSE = `<ul><li class="activity" data-for="cmitem" data-id="22"><div data-region="activity-dates"><div class="date-item"><span class="date-item-label">Due:</span> Friday</div></div></li></ul>`;
+  const site = (course: CourseState): FakeMoodleState => ({
+    user: { id: 3, fullName: "S" },
+    bodies: { "/grade/report/user/index.php": REPORT, "/course/view.php": COURSE },
+    services: { core_courseformat_get_state: () => JSON.stringify(course) },
+  });
+
+  it("lists tracked activities not complete, with their dates", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, site(tracked(true)));
+    const { completionTracked, pending } = await pendingActivities(context, SITE, 5);
+    assert.equal(completionTracked, true);
+    assert.deepEqual(pending.map((p) => [p.activityId, p.reason, p.completion]), [[22, "incomplete", "incomplete"]]);
+    assert.deepEqual(pending[0]?.dates, [{ label: "Due", value: "Friday" }]);
+    await context.close();
+  });
+
+  it("lists graded activities without a grade where completion isn't tracked", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, site(tracked(false)));
+    const { completionTracked, pending } = await pendingActivities(context, SITE, 5);
+    assert.equal(completionTracked, false);
+    assert.deepEqual(pending.map((p) => [p.activityId, p.reason]), [[22, "not-graded"], [23, "not-graded"]]);
+    await context.close();
+  });
+
+  it("throws NotLoggedInError without a session", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, {});
+    await assert.rejects(pendingActivities(context, SITE, 5), NotLoggedInError);
+    await context.close();
+  });
+});

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { readQuestions } from "../../src/index.js";
-import { SITE, launchTestBrowser } from "../../src/testing/index.js";
+import type { BrowserContext, Route } from "playwright-core";
+import { FormError, QuizError, answerQuizQuestions, finishQuizAttempt, quizInfo, readQuestions, readReview, startQuizAttempt } from "../../src/index.js";
+import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
 after(() => browser?.close());
@@ -36,5 +37,149 @@ describe("readQuestions", { skip: !browser && "no system browser" }, () => {
     assert.deepEqual(q3?.fields[0], { name: "q9:3_sub0", kind: "select", label: "frog", options: [{ value: "0", label: "Choose..." }, { value: "1", label: "mammal" }, { value: "2", label: "amphibian" }], value: "0" });
     assert.deepEqual(JSON.parse(JSON.stringify(q3?.fields[1])), { name: "q9:3_notes", kind: "text" });
     await page.close();
+  });
+});
+
+const NAV = `<div id="mod_quiz_navblock"><a class="qnbutton" id="quiznavbutton1" data-quiz-page="0"></a><a class="qnbutton" id="quiznavbutton2" data-quiz-page="0"></a><a class="qnbutton" id="quiznavbutton3" data-quiz-page="1"></a></div>`;
+
+/** The quiz's pages, served from a state that keeps the answers saved and whether the attempt is finished. */
+function fakeQuiz() {
+  const saved: URLSearchParams[] = [];
+  let finished = false;
+  const page = (body: string, bodyId: string) => moodlePage({ userId: 4, body, bodyId });
+  const routes = async (context: BrowserContext) => {
+    await context.route(`${SITE}mod/quiz/**`, (route: Route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const html = (body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
+      const go = (to: string) => html(`<script>location.replace("${SITE}${to}")</script>`);
+      switch (url.pathname) {
+        case "/mod/quiz/view.php":
+          return html(
+            page(
+              `<div id="region-main"><div id="intro">Practice quiz.</div><form method="post" action="${SITE}mod/quiz/startattempt.php"><input type="hidden" name="cmid" value="26"><button type="submit">Attempt quiz</button></form>
+<div class="quizinfo"><p>Attempts allowed: 3</p><p>Grading method: Highest grade</p></div>
+<div class="card"><table class="quizreviewsummary"><tr><th>Status</th><td>Finished</td></tr><tr><th>Grade</th><td>5.00 out of 10.00</td></tr></table><a href="${SITE}mod/quiz/review.php?attempt=8&amp;cmid=26">Review</a></div></div>`,
+              "page-mod-quiz-view",
+            ),
+          );
+        case "/mod/quiz/startattempt.php":
+          return go("mod/quiz/attempt.php?attempt=9&cmid=26");
+        case "/mod/quiz/attempt.php": {
+          if (finished) return html(page("<p>This attempt is finished.</p>", "page-mod-quiz-attempt"));
+          const p = url.searchParams.get("page") ?? "0";
+          const last = saved.find((form) => form.has("q9:1_answer"));
+          const q1 = Q1.replace("STATE1", last?.get("q9:1_answer") ? "answersaved" : "notyetanswered").replace("CHECKED1", last?.get("q9:1_answer") === "1" ? "checked" : "");
+          const questions = p === "0" ? q1 + Q2 : Q3;
+          return html(page(`<form id="responseform" method="post" action="${SITE}mod/quiz/processattempt.php?cmid=26"><input type="hidden" name="attempt" value="9">${questions}<input type="submit" name="next" value="Next page"></form>${NAV}`, "page-mod-quiz-attempt"));
+        }
+        case "/mod/quiz/processattempt.php": {
+          const form = new URLSearchParams(request.postData() ?? "");
+          if (form.get("finishattempt") === "1") {
+            finished = true;
+            return go("mod/quiz/review.php?attempt=9&cmid=26");
+          }
+          saved.push(form);
+          return go("mod/quiz/attempt.php?attempt=9&cmid=26&page=1");
+        }
+        case "/mod/quiz/summary.php":
+          if (finished) return html(page("<p>This attempt is finished.</p>", "page-mod-quiz-summary"));
+          return html(page(`<form method="post" action="${SITE}mod/quiz/processattempt.php"><input type="hidden" name="attempt" value="9"><input type="hidden" name="finishattempt" value="1"><button type="submit">Submit all and finish</button></form>`, "page-mod-quiz-summary"));
+        case "/mod/quiz/review.php":
+          // Moodle sends an unfinished attempt's review back to the attempt.
+          if (!finished) return html(page("<p>Attempt in progress.</p>", "page-mod-quiz-attempt"));
+          return html(
+            page(
+              `<table class="quizreviewsummary"><tr><th>Status</th><td>Finished</td></tr><tr><th>Marks</th><td>3.00/3.00</td></tr></table>${Q1.replace("STATE1", "correct").replace("CHECKED1", "checked").replace('_:sequencecheck" value="1"></div>', `_:sequencecheck" value="1"><div class="rightanswer">The correct answer is 'True'.</div></div>`)}`,
+              "page-mod-quiz-review",
+            ),
+          );
+        default:
+          return route.continue();
+      }
+    });
+  };
+  return { saved, routes };
+}
+
+describe("quiz attempts", { skip: !browser && "no system browser" }, () => {
+  async function site() {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" } });
+    const quiz = fakeQuiz();
+    await quiz.routes(context);
+    return { context, saved: quiz.saved };
+  }
+  const fast = { trail: "fast" } as const;
+
+  it("reads the quiz's info and attempts", async () => {
+    const { context } = await site();
+    const info = await quizInfo(context, SITE, 26);
+    assert.equal(info.intro, "Practice quiz.");
+    assert.deepEqual(info.info, ["Attempts allowed: 3", "Grading method: Highest grade"]);
+    assert.deepEqual(info.attempts, [{ attemptId: 8, inProgress: false, details: [{ label: "Status", value: "Finished" }, { label: "Grade", value: "5.00 out of 10.00" }] }]);
+    assert.equal(info.canStart, true);
+    await context.close();
+  });
+
+  it("refuses an activity that isn't a quiz", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" } });
+    // Another module's page has another body id.
+    await context.route(`${SITE}mod/quiz/view.php**`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 4, bodyId: "page-mod-page-view" }) }));
+    await assert.rejects(quizInfo(context, SITE, 5), (error: unknown) => error instanceof QuizError && /isn't a quiz/.test(error.message));
+    await assert.rejects(startQuizAttempt(context, SITE, 5), QuizError);
+    await context.close();
+  });
+
+  it("starts, answers page by page, finishes and reviews", async () => {
+    const { context, saved } = await site();
+    const started = await startQuizAttempt(context, SITE, 26);
+    assert.equal(started.attemptId, 9);
+    assert.deepEqual(started.questions.map((q) => [q.slot, q.page]), [[1, 0], [2, 0], [3, 1]]);
+    const answers: { slot: number; responses: Record<string, string> }[] = [
+      { slot: 1, responses: { "q9:1_answer": "1" } },
+      { slot: 2, responses: { "q9:2_choice0": "1", "q9:2_choice1": "0" } },
+      { slot: 3, responses: { "q9:3_sub0": "2" } },
+    ];
+    const answered = await answerQuizQuestions(context, SITE, 9, answers, fast);
+    assert.equal(saved.length, 2);
+    assert.equal(saved[0]?.get("q9:1_answer"), "1");
+    assert.deepEqual(saved[0]?.getAll("q9:2_choice0"), ["0", "1"]);
+    assert.equal(saved[1]?.get("q9:3_sub0"), "2");
+    assert.equal(answered.questions[0]?.state, "answersaved");
+    assert.equal(answered.questions[0]?.fields[0]?.value, "1");
+    const done = await finishQuizAttempt(context, SITE, 9);
+    assert.deepEqual([done.attemptId, done.finished], [9, true]);
+    assert.deepEqual(done.review?.summary, [{ label: "Status", value: "Finished" }, { label: "Marks", value: "3.00/3.00" }]);
+    assert.equal(done.review?.questions[0]?.state, "correct");
+    assert.equal(done.review?.questions[0]?.rightAnswer, "The correct answer is 'True'.");
+    assert.deepEqual(await readReview(context, SITE, 9), done.review);
+    await assert.rejects(finishQuizAttempt(context, SITE, 9), (error: unknown) => error instanceof QuizError && /can't be finished/.test(error.message));
+    await assert.rejects(answerQuizQuestions(context, SITE, 9, [{ slot: 1, responses: { "q9:1_answer": "0" } }], fast), /isn't open/);
+    await context.close();
+  });
+
+  it("takes a reader's time before saving with the realistic trail", async () => {
+    const { context, saved } = await site();
+    const progress: [number, number][] = [];
+    await answerQuizQuestions(context, SITE, 9, [{ slot: 3, responses: { "q9:3_sub0": "1" } }], { onProgress: (elapsed, total) => progress.push([elapsed, total]) });
+    assert.equal(saved.length, 1);
+    assert.deepEqual(progress, [[3, 3]]);
+    await context.close();
+  });
+
+  it("refuses an answer to a field or slot the attempt doesn't have, saving nothing", async () => {
+    const { context, saved } = await site();
+    await assert.rejects(answerQuizQuestions(context, SITE, 9, [{ slot: 1, responses: { "q9:1_nonexistent": "1" } }], fast), (error: unknown) => error instanceof FormError && /no such field: q9:1_nonexistent/.test(error.message));
+    await assert.rejects(answerQuizQuestions(context, SITE, 9, [{ slot: 7, responses: { "q9:7_answer": "1" } }], fast), /no question in slot 7/);
+    assert.equal(saved.length, 0);
+    await context.close();
+  });
+
+  it("refuses the review of an attempt in progress", async () => {
+    const { context } = await site();
+    await assert.rejects(readReview(context, SITE, 9), (error: unknown) => error instanceof QuizError && /review isn't available/.test(error.message));
+    await context.close();
   });
 });

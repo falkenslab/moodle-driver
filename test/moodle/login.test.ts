@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
-import { LoginTimeoutError, LoginWindowClosedError, waitForLogin } from "../../src/index.js";
-import { SITE, launchTestBrowser, serveFakeMoodle } from "../../src/testing/index.js";
+import { LoginTimeoutError, LoginWindowClosedError, logIn, waitForLogin, type ContextOptions } from "../../src/index.js";
+import { SITE, fakeBrowserManager, launchTestBrowser, serveFakeMoodle } from "../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());
 
@@ -59,3 +59,44 @@ describe("waitForLogin", { skip: !browser && "no system browser" }, () => {
   });
 });
 
+describe("logIn", { skip: !browser && "no system browser" }, () => {
+  /** A browser manager over `context` that records what it's asked. */
+  function manager(context: BrowserContext) {
+    const requests: ContextOptions[] = [];
+    const calls = { closed: 0, saved: 0 };
+    const browser = fakeBrowserManager({
+      context: async (options = {}) => (requests.push(options), context),
+      close: async () => void calls.closed++,
+      saveSession: async () => void calls.saved++,
+    });
+    return { browser, requests, calls };
+  }
+
+  it("returns the user at once when the session is alive, without a window", async () => {
+    const context = await fakeSite({ user: { id: 9, fullName: "Alan Turing" } });
+    const { browser, requests, calls } = manager(context);
+    assert.deepEqual(await logIn(browser, SITE, { timeoutMs: 10_000 }), { status: "already-logged-in", userId: 9, fullName: "Alan Turing" });
+    assert.deepEqual(requests, [{}]);
+    assert.deepEqual(calls, { closed: 0, saved: 0 });
+    await context.close();
+  });
+
+  it("opens a window, waits for the person, saves the session and goes back to headless", async () => {
+    const state: State = {};
+    const context = await fakeSite(state);
+    const { browser, requests, calls } = manager(context);
+    logInLater(context, state, 1500);
+    assert.deepEqual(await logIn(browser, SITE, { timeoutMs: 20_000 }), { status: "logged-in", userId: 4, fullName: "Grace Hopper" });
+    assert.deepEqual(requests, [{}, { headed: true }]);
+    assert.deepEqual(calls, { closed: 1, saved: 1 });
+    await context.close();
+  });
+
+  it("closes the window when nobody logs in in time", async () => {
+    const context = await fakeSite({});
+    const { browser, calls } = manager(context);
+    await assert.rejects(logIn(browser, SITE, { timeoutMs: 200 }), LoginTimeoutError);
+    assert.deepEqual(calls, { closed: 1, saved: 0 });
+    await context.close();
+  });
+});

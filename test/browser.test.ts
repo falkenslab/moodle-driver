@@ -230,7 +230,7 @@ describe("createBrowserManager", () => {
       const installer = fakeInstall(installed);
       const browser = createBrowserManager(config(), launch, installer.install);
       await assert.rejects(browser.context(), BrowserDownloadingError);
-      await assert.rejects(browser.context(), /Neither Microsoft Edge nor Google Chrome is available, so the server is downloading it/);
+      await assert.rejects(browser.context(), /Neither Microsoft Edge nor Google Chrome is available, so it's being downloaded/);
       assert.equal(installer.calls(), 1);
       assert.equal(browser.chromiumDownload(), "downloading");
       installer.finish();

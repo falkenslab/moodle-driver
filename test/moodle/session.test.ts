@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { NotLoggedInError, isLoggedIn, openSitePage, readSessionFacts } from "../../src/moodle/session.js";
-import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../src/testing/fakeMoodle.js";
+import { NotLoggedInError, isLoggedIn, logOut, openSitePage, readSessionFacts } from "../../src/moodle/session.js";
+import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/fakeMoodle.js";
 
 const browser = await launchTestBrowser();
 after(() => browser?.close());
@@ -53,6 +53,35 @@ describe("openSitePage", { skip: !browser && "no system browser" }, () => {
     state.user = { id: 3, fullName: "Ada Lovelace" };
     const page = await openSitePage(context, SITE, "my/");
     assert.equal(page.url(), `${SITE}my/`);
+    await context.close();
+  });
+});
+
+describe("logOut", { skip: !browser && "no system browser" }, () => {
+  /** A fake site whose logout link ends the session, unless `ends` is false. */
+  async function site(state: FakeMoodleState, ends = true) {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, state);
+    await context.route(`${SITE}login/logout.php**`, (route) => {
+      if (ends) delete state.user;
+      return route.fulfill({ status: 200, contentType: "text/html", body: `<body class="notloggedin"><script>var M={cfg:{userId:0}}</script>Logged out</body>` });
+    });
+    return context;
+  }
+
+  it("logs out, and says when nobody was logged in", async () => {
+    const state: FakeMoodleState = { user: { id: 3, fullName: "T" } };
+    const context = await site(state);
+    assert.equal(await logOut(context, SITE), true);
+    assert.equal(state.user, undefined);
+    assert.equal(await logOut(context, SITE), false);
+    assert.equal(context.pages().length, 0);
+    await context.close();
+  });
+
+  it("throws when Moodle keeps the session", async () => {
+    const context = await site({ user: { id: 3, fullName: "T" } }, false);
+    await assert.rejects(logOut(context, SITE), /still logged in/);
     await context.close();
   });
 });

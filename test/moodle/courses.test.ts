@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { MoodleCourse, toCourse } from "../../src/index.js";
-import { SITE, launchTestBrowser } from "../../src/testing/index.js";
+import { MoodleCourse, NotLoggedInError, listCourses, toCourse } from "../../src/index.js";
+import { SITE, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());
 
@@ -44,3 +44,25 @@ describe("toCourse", () => {
   });
 });
 
+describe("listCourses", { skip: !browser && "no system browser" }, () => {
+  const services = { core_course_get_enrolled_courses_by_timeline_classification: () => ({ courses: RAW, nextoffset: 2 }) };
+
+  it("lists the courses, including those hidden from the dashboard by default", async () => {
+    const context = await browser!.newContext();
+    const state: FakeMoodleState = { user: { id: 3, fullName: "T" }, services, serviceCalls: [] };
+    await serveFakeMoodle(context, state);
+    const courses = await listCourses(context, SITE);
+    assert.deepEqual(courses.map((c) => [c.id, c.fullname]), [[7, "Programming '101' & databases"], [2, "Sandbox"]]);
+    assert.equal(state.serviceCalls?.[0]?.args.classification, "allincludinghidden");
+    await listCourses(context, SITE, "past");
+    assert.equal(state.serviceCalls?.[1]?.args.classification, "past");
+    await context.close();
+  });
+
+  it("throws NotLoggedInError without a session", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { services });
+    await assert.rejects(listCourses(context, SITE), NotLoggedInError);
+    await context.close();
+  });
+});
