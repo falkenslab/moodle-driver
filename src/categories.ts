@@ -184,6 +184,13 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   readGradebookSetup: NONE,
   updateGradeItem: CONTENT,
   addGradeCategory: CONTENT,
+
+  // Question banks: what teachers write.
+  questionBanks: CONTENT,
+  questions: CONTENT,
+  readBankQuestions: NONE,
+  importQuestions: CONTENT,
+  createQuestion: CONTENT,
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.
