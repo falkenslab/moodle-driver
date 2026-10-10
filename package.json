@@ -62,5 +62,8 @@
   },
   "bugs": {
     "url": "https://github.com/falkenslab/moodle-driver/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
