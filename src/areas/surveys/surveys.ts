@@ -2,12 +2,16 @@ import type { BrowserContext, Page } from "playwright-core";
 import { setFields } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
 import { openSitePage } from "../../core/session.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** The two survey modules: the questionnaire plugin (mod_questionnaire) and Moodle's feedback. */
 export type SurveyType = "questionnaire" | "feedback";
 
-export class SurveyError extends Error {
+export class SurveyError extends MoodleDriverError {
   override name = "SurveyError";
+  constructor(message: string) {
+    super(message, "survey");
+  }
 }
 
 /** One field of a survey question, by its form name. */

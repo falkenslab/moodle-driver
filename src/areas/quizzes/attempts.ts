@@ -4,10 +4,14 @@ import { dateSelectorValues, openForm, setFields, submitForm, type FieldValue } 
 import { pause, readingSeconds } from "../../core/pace.js";
 import { inPage } from "../../core/inPage.js";
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** The quiz or attempt isn't there, or the person can't do what was asked. */
-export class QuizError extends Error {
+export class QuizError extends MoodleDriverError {
   override name = "QuizError";
+  constructor(message: string) {
+    super(message, "quiz");
+  }
 }
 
 /** A label and value as Moodle shows them (site language). */

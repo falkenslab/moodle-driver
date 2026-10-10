@@ -4,10 +4,14 @@ import type { BrowserContext, Page } from "playwright-core";
 import { MoodleServiceError, callService } from "../../core/ajax.js";
 import { openSitePage } from "../../core/session.js";
 import { COMPLETION_STATES, type CompletionState } from "../courses/structure.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** Completion can't be changed or read there: not enabled, automatic, or not allowed. */
-export class CompletionError extends Error {
+export class CompletionError extends MoodleDriverError {
   override name = "CompletionError";
+  constructor(message: string) {
+    super(message, "completion");
+  }
 }
 
 /** Moodle's refusals, in its terms. */

@@ -1,5 +1,6 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { openSitePage } from "../../core/session.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** A row of the user grade report, values as Moodle shows them ("-" left out). */
 export interface GradeRow {
@@ -18,8 +19,11 @@ export interface GradeRow {
 }
 
 /** The person can't see the grade report of that course. */
-export class NoGradeReportError extends Error {
+export class NoGradeReportError extends MoodleDriverError {
   override name = "NoGradeReportError";
+  constructor(message: string) {
+    super(message, "no-grade-report");
+  }
 }
 
 /** The rows of `table.user-grade`, by cell classes, never by header texts (ADR-004). */

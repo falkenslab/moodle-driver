@@ -9,6 +9,7 @@ import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldVa
 import { inPage } from "../../core/inPage.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { structureOf, type CourseSection } from "../courses/structure.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** "stealth": hidden from the course page but available by link, where the site allows it. */
 export const ACTIVITY_VISIBILITIES = ["shown", "hidden", "stealth"] as const;
@@ -48,7 +49,7 @@ function fieldsFor(type: string, input: ActivityFields): Record<string, FieldVal
     // A label's text is its description field; a page has its own content editor.
     if (type === "label") values["introeditor[text]"] = input.content;
     else if (type === "page") values["page[text]"] = input.content;
-    else throw new Error(`content is for pages and labels; for a ${type}, use description or settings.`);
+    else throw new MoodleDriverError(`content is for pages and labels; for a ${type}, use description or settings.`, "invalid-input");
   }
   if (input.url !== undefined) values.externalurl = input.url;
   if (input.visibility !== undefined) values.visible = FORM_VISIBILITY[input.visibility];
@@ -72,13 +73,13 @@ export async function createActivity(
   if (input.files) await checkLocalFiles(input.files);
   const before = await courseState(context, siteUrl, input.courseId);
   const target = before.section.find((s) => Number(s.id) === input.sectionId);
-  if (!target) throw new Error(`Course ${input.courseId} has no section ${input.sectionId}. Take its id from the course structure.`);
+  if (!target) throw new MoodleDriverError(`Course ${input.courseId} has no section ${input.sectionId}. Take its id from the course structure.`, "not-found");
 
   const page = await openForm(context, siteUrl, `course/modedit.php?add=${input.type}&course=${input.courseId}&section=${target.number}&return=0`);
   try {
     if (input.files && input.files.length > 0) {
       const draft = await formValue(page, "files");
-      if (!draft) throw new Error(`A ${input.type} takes no files in its form.`);
+      if (!draft) throw new MoodleDriverError(`A ${input.type} takes no files in its form.`, "not-available");
       await uploadToDraft(page, draft, input.files);
     }
     // Hidden unless asked: a teacher publishes after checking.
@@ -277,8 +278,11 @@ export function readFormFields(page: Page): Promise<FormField[]> {
 }
 
 /** Nobody can see that activity's settings: not an activity, or not the person's to edit. */
-export class ActivitySettingsError extends Error {
+export class ActivitySettingsError extends MoodleDriverError {
   override name = "ActivitySettingsError";
+  constructor(message: string) {
+    super(message, "activity-settings");
+  }
 }
 
 /**

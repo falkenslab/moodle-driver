@@ -2,13 +2,14 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { BrowserContext } from "playwright-core";
 import { NotLoggedInError } from "./session.js";
+import { MoodleDriverError } from "./errors.js";
 
 /** Local files given to upload (a submission, an attachment, a resource): absolute, and there. */
 export async function checkLocalFiles(files: string[]): Promise<void> {
   for (const file of files) {
-    if (!path.isAbsolute(file)) throw new Error(`Give files as absolute paths: "${file}".`);
+    if (!path.isAbsolute(file)) throw new MoodleDriverError(`Give files as absolute paths: "${file}".`, "invalid-input");
     await access(file).catch(() => {
-      throw new Error(`There's no file at ${file}.`);
+      throw new MoodleDriverError(`There's no file at ${file}.`, "not-found");
     });
   }
 }
@@ -46,14 +47,14 @@ export interface DownloadedFile {
 export async function downloadFile(context: BrowserContext, siteUrl: string, url: string, destDir: string): Promise<DownloadedFile> {
   const target = new URL(url);
   const origin = new URL(siteUrl).origin;
-  if (target.origin !== origin) throw new Error(`Only files of ${origin} can be downloaded with the session; ${target.origin} isn't the site.`);
-  if (!path.isAbsolute(destDir)) throw new Error(`Give the destination folder as an absolute path: "${destDir}".`);
+  if (target.origin !== origin) throw new MoodleDriverError(`Only files of ${origin} can be downloaded with the session; ${target.origin} isn't the site.`, "outside-site");
+  if (!path.isAbsolute(destDir)) throw new MoodleDriverError(`Give the destination folder as an absolute path: "${destDir}".`, "invalid-input");
   // The context's request API carries its cookies without opening a tab.
   const response = await context.request.get(target.href, { maxRedirects: 5 });
   const contentType = response.headers()["content-type"]?.split(";")[0]?.trim();
   // A file the session can't reach comes back as the login page.
   if (contentType === "text/html" && new URL(response.url()).pathname.includes("/login/")) throw new NotLoggedInError();
-  if (!response.ok()) throw new Error(`Moodle answered ${response.status()} for ${target.pathname}: the file doesn't exist or you can't see it.`);
+  if (!response.ok()) throw new MoodleDriverError(`Moodle answered ${response.status()} for ${target.pathname}: the file doesn't exist or you can't see it.`, "not-found");
   await mkdir(destDir, { recursive: true });
   const body = await response.body();
   const saved = await freePath(destDir, fileNameFor(target, response.headers()["content-disposition"]));

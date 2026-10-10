@@ -5,10 +5,14 @@ import type { BrowserContext, Page } from "playwright-core";
 import { callService } from "../../core/ajax.js";
 import { setFields, type FieldValue } from "../../core/forms.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** The gradebook can't be read or changed: not allowed, recalculating, or a value Moodle refuses. */
-export class GradebookError extends Error {
+export class GradebookError extends MoodleDriverError {
   override name = "GradebookError";
+  constructor(message: string) {
+    super(message, "gradebook");
+  }
 }
 
 /** Moodle's aggregations by their constant (GRADE_AGGREGATE_*). */

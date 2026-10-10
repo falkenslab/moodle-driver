@@ -1,6 +1,7 @@
 import type { BrowserContext } from "playwright-core";
 import { callService } from "./ajax.js";
 import { openSitePage } from "./session.js";
+import { MoodleDriverError } from "./errors.js";
 
 /** The course editor's actions this server uses (`core_courseformat\stateactions`, Moodle 4.0–5.2). */
 export type EditorAction =
@@ -53,7 +54,7 @@ export async function courseFormat(context: BrowserContext, siteUrl: string, cou
       .split(" ")
       .find((name) => name.startsWith("format-"))
       ?.slice("format-".length);
-    if (!format) throw new Error(`Course ${courseId}'s format isn't on its page.`);
+    if (!format) throw new MoodleDriverError(`Course ${courseId}'s format isn't on its page.`, "unexpected-page");
     formats.set(key, format);
     return format;
   } finally {

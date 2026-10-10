@@ -4,10 +4,14 @@ import type { BrowserContext, Page } from "playwright-core";
 import { inPage } from "../../core/inPage.js";
 import { openSitePage } from "../../core/session.js";
 import { decodeEntities } from "../../core/text.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** The activity isn't an H5P activity the person can open. */
-export class NotAnH5PActivityError extends Error {
+export class NotAnH5PActivityError extends MoodleDriverError {
   override name = "NotAnH5PActivityError";
+  constructor(message: string) {
+    super(message, "not-an-h5p-activity");
+  }
 }
 
 export interface H5PAttempt {

@@ -28,6 +28,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 - `text.ts` — entities decoded, elements' text with paragraphs and lists, media in content. `pace.ts` — a person's reading pace for the realistic trail (ADR-005).
 - `site.ts` — a site's base URL from any page (no browser). `login.ts` — `logIn()`: the user at once if there's a session, else a window at the login page waiting for the person (ADR-002).
 - `editor.ts` — the course editor's actions and renames. `files.ts` — local files checked, site files downloaded with the session.
+- `errors.ts` — `MoodleDriverError`, the base of every error the driver throws, and its stable codes (`MoodleErrorCode`).
 
 ### `areas/`: one folder per Moodle area
 

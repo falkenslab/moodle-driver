@@ -1,6 +1,7 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { MoodleDriverError } from "../core/errors.js";
 
 export type InstallChromium = () => Promise<void>;
 
@@ -47,6 +48,6 @@ export const installChromium: InstallChromium = () =>
     child.on("exit", (code) => {
       process.off("exit", stop);
       if (code === 0) resolve();
-      else reject(new Error(`Chromium's installer exited with code ${code}`));
+      else reject(new MoodleDriverError(`Chromium's installer exited with code ${code}`, "chromium-install-failed"));
     });
   });

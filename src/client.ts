@@ -32,6 +32,7 @@ import { courseStructure, listAssignments, pendingActivities } from "./areas/cou
 import { saveSubmission, studentAssignment, submitForGrading } from "./areas/assignments/student.js";
 import { getSurvey, submitSurvey } from "./areas/surveys/surveys.js";
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
+import { MoodleDriverError } from "./core/errors.js";
 
 /**
  * The functions that take the browser context and the site first, of the high-level API: each becomes
@@ -232,7 +233,7 @@ export function createMoodle(options: MoodleOptions): Moodle {
     answerLessonPage: async (cmid, answer, given) => answerLessonPage(await browser.context(), site, cmid, answer, pace(given, onProgress)),
     downloadFile: async (url, destDir) => {
       const folder = destDir ?? defaults.downloadDir;
-      if (!folder) throw new Error("Give downloadFile a folder, or createMoodle a downloadDir.");
+      if (!folder) throw new MoodleDriverError("Give downloadFile a folder, or createMoodle a downloadDir.", "invalid-input");
       return downloadFile(await browser.context(), site, url, folder);
     },
     tab: () => browser.tab(),

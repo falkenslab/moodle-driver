@@ -5,7 +5,7 @@
 - ESM TypeScript; relative imports inside `src/` use explicit `.js` extensions (NodeNext).
 - The public API is what `src/index.ts` exports; test helpers are what `src/testing/index.ts` exports (`@falkenslab/moodle-driver/testing`). Everything else is internal.
 - Functions take the browser context and the site URL first, then the ids, then an options object (as `Moodle` methods, without the first two, ADR-009); they return plain data (ISO dates, decoded texts), never Playwright objects.
-- Errors a program can act on have their own class (`NotLoggedInError`, `NotAForumError`…) and a message in Moodle's terms: the module, the course structure, logging in again; never a consumer's tool or setting.
+- Every error thrown on purpose is a `MoodleDriverError` (`src/core/errors.ts`) with a stable `code`, never a plain `Error`. Errors a program can act on have their own subclass (`NotLoggedInError`, `NotAForumError`…, code: the name in kebab case) and a message in Moodle's terms: the module, the course structure, logging in again; never a consumer's tool or setting. The rest take a generic code (`invalid-input`, `not-found`, `not-available`…).
 - Every public function declares the data it reads or writes (own, course content, others' personal data, writing about others, communication, aggregates, any) in `src/categories.ts`, a test enforcing it (the `data-categories` card; consumers such as moodle-mcp restrict agents with it).
 - The library never prints (`no-console`): a program's stdout may be a protocol.
 - Every function that reads a site page opens it with `openSitePage()`, so a missing session is always `NotLoggedInError`.

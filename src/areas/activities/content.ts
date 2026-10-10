@@ -4,6 +4,7 @@ import type { Trail } from "../../options.js";
 import { pause, readingSeconds } from "../../core/pace.js";
 import { openSitePage } from "../../core/session.js";
 import { readMedia, readTexts, type MediaItem } from "../../core/text.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 export const CONTENT_TYPES = ["page", "book", "label", "url", "resource", "folder"] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
@@ -12,8 +13,11 @@ export type ContentType = (typeof CONTENT_TYPES)[number];
 const MAX_CHAPTERS = 200;
 
 /** The activity isn't of the given type, or the person can't view it. */
-export class NotViewableError extends Error {
+export class NotViewableError extends MoodleDriverError {
   override name = "NotViewableError";
+  constructor(message: string) {
+    super(message, "not-viewable");
+  }
 }
 
 export interface ActivityContent {

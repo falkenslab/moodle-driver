@@ -21,7 +21,7 @@ Read `.minispec/core/architecture.md` first if you don't know where the area liv
 - Every page the function reads is opened with `openSitePage()`, so a missing session is always `NotLoggedInError`.
 - Selectors: prefer ids, data attributes, body ids and URLs over visible texts (the site's language changes them). When the page isn't what's expected, fail with a clear message.
 - Page code with helper functions goes through `inPage()`; plain `page.evaluate()` callbacks stay anonymous (tsx's keepNames breaks named functions inside the page).
-- Errors a program can act on get their own class (`NotAForumError`…) with a message in Moodle's terms: the module, the course structure, logging in again.
+- Errors a program can act on get their own subclass of `MoodleDriverError` (`NotAForumError`…) with its code added to `MoodleErrorCode` and a message in Moodle's terms: the module, the course structure, logging in again. Anything else is a `MoodleDriverError` with a generic code, never a plain `Error`.
 - No `console.*`: a program's stdout may be a protocol. No password ever typed, stored or asked for (ADR-002).
 - Relative imports inside `src/` use explicit `.js` extensions (NodeNext).
 - Prefer optional parameters with the previous behavior as default, so existing consumers do not break.

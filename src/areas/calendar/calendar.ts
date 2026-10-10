@@ -5,10 +5,14 @@ import { MoodleServiceError, callService } from "../../core/ajax.js";
 import { isoDate } from "../courses/list.js";
 import { setFields, type FieldValue } from "../../core/forms.js";
 import { decodeEntities } from "../../core/text.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** Moodle refused the event, or it isn't there. */
-export class CalendarError extends Error {
+export class CalendarError extends MoodleDriverError {
   override name = "CalendarError";
+  constructor(message: string) {
+    super(message, "calendar");
+  }
 }
 
 export interface CalendarEvent {

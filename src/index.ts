@@ -1,5 +1,6 @@
 // The public API of @falkenslab/moodle-driver: everything a program needs to work a Moodle site with
 // the person's own session. What isn't exported here is internal.
+export * from "./core/errors.js";
 export * from "./options.js";
 export * from "./browser/manager.js";
 export * from "./categories.js";

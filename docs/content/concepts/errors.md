@@ -4,7 +4,7 @@ Errors a program can act on have their own class, and their messages speak Moodl
 
 ## Catching them
 
-Every class extends `Error` and sets `name` to its class name, so both `instanceof` and `error.name` work (the latter across bundles).
+Every error the driver throws on purpose is a `MoodleDriverError`, or one of its subclasses, with a stable `code` and `name` set to its class name. Match by class, `name` or `code`, never by message: the wording may change in any release. `error.name` and `error.code` also work across bundles.
 
 ```ts
 import { NotLoggedInError, MoodleServiceError, FormError } from "@falkenslab/moodle-driver";
@@ -23,6 +23,31 @@ try {
   }
 }
 ```
+
+Errors with no class of their own are `MoodleDriverError` with a generic code:
+
+| Code | When |
+| --- | --- |
+| `invalid-input` | An argument can't work: a relative path, an empty message, `content` for a module that has none, `downloadFile` with no folder |
+| `not-found` | What was named isn't there: a section of the course, a local file, a site file (Moodle answered 404) |
+| `not-available` | The activity doesn't have it: an assignment without feedback comments, a forum without attachments, a module without files |
+| `outside-site` | A file to download isn't on the site |
+| `unexpected-page` | A page doesn't have what the driver reads from it |
+| `logout-failed` | Moodle didn't end the session |
+| `chromium-install-failed` | Playwright's installer failed |
+
+```ts
+import { MoodleDriverError } from "@falkenslab/moodle-driver";
+
+try {
+  await moodle.downloadFile("https://campus.example.org/pluginfile.php/1/x.pdf", "/home/ada/files");
+} catch (error) {
+  if (error instanceof MoodleDriverError && error.code === "not-found") console.error("Gone, or not visible to you.");
+  else throw error;
+}
+```
+
+Each class's code is its name in kebab case without `Error` (`NotLoggedInError` is `not-logged-in`, `SurveyError` is `survey`); the type `MoodleErrorCode` lists them all.
 
 ## The session and the browser
 

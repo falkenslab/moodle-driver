@@ -8,6 +8,7 @@ import { checkLocalFiles } from "../../core/files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
 import { NotAForumError, discussionPosts, forumInstanceId, htmlToTexts, listDiscussions } from "./discussions.js";
 import { decodeEntities } from "../../core/text.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 export interface ForumDiscussion {
   id: number;
@@ -91,13 +92,13 @@ export interface PostInput {
 async function post(context: BrowserContext, siteUrl: string, formPath: string, input: PostInput & { subject?: string }): Promise<string> {
   // Moodle takes "<p></p>" as a message and posts it blank (confirmed empirically, 5.2).
   const text = input.message.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-  if (text === "" && !/<(img|video|audio|iframe)\b/i.test(input.message)) throw new Error("The message is empty: write something before posting.");
+  if (text === "" && !/<(img|video|audio|iframe)\b/i.test(input.message)) throw new MoodleDriverError("The message is empty: write something before posting.", "invalid-input");
   if (input.files) await checkLocalFiles(input.files);
   const page = await openForm(context, siteUrl, formPath);
   try {
     if (input.files && input.files.length > 0) {
       const draft = await formValue(page, "attachments");
-      if (!draft) throw new Error("This forum takes no attachments.");
+      if (!draft) throw new MoodleDriverError("This forum takes no attachments.", "not-available");
       await uploadToDraft(page, draft, input.files);
     }
     const values: Record<string, FieldValue> = { "message[text]": input.message, ...input.fields };

@@ -7,10 +7,14 @@ import { setFields } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
 import { pause, readingSeconds } from "../../core/pace.js";
 import { openSitePage } from "../../core/session.js";
+import { MoodleDriverError } from "../../core/errors.js";
 
 /** The lesson isn't there, or the page can't take that answer. */
-export class LessonError extends Error {
+export class LessonError extends MoodleDriverError {
   override name = "LessonError";
+  constructor(message: string) {
+    super(message, "lesson");
+  }
 }
 
 /** One input of a question page, by its form name. */
