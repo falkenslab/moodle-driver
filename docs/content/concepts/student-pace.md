@@ -2,6 +2,10 @@
 
 When a program acts as a student, Moodle records what it does as the student's: page views in the logs, time on the course, completion that depends on viewing. A program that reads a whole book in a second, or answers a quiz the moment it opens, leaves logs no person would. The functions that act as a student take a `trail` option to choose (ADR-005).
 
+**Terms:** [trail](../reference/glossary.md#trail).
+
+![Two trails: realistic, through the real pages at a reader's pace, or fast, at once](/img/diagrams/student-pace.svg)
+
 ## The two trails
 
 ```ts

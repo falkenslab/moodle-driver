@@ -2,6 +2,8 @@
 
 The driver never handles a password. The person logs in by hand, in a browser window the driver opens at the site's login page, with whatever the site uses: its own form, single sign-on, two factors. The driver waits until there's a session and keeps it in a browser profile on disk, so later runs start already logged in.
 
+![Log in once: a window the first time, the session kept in the profile, no window afterwards until Moodle ends the session](/img/diagrams/log-in-once.svg)
+
 ## The profile
 
 A profile is a folder where the browser keeps its cookies and storage, the same as a browser's user profile. Choose one per person and per site, outside your program's folder and outside any repository: it holds a live session, as sensitive as a password.

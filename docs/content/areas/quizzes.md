@@ -2,6 +2,8 @@
 
 Quizzes from both sides. A student reads a quiz's page, starts or continues an attempt, answers its questions page by page (at a person's pace by default) and finishes it, then reads the review. A teacher reads every attempt with its grade and marks per question (and the answers given), reads which questions a quiz holds, adds questions from a bank (chosen or random), and gives a student other dates, a time limit or more attempts with a user override. Quizzes are identified by their course module id (the `id` in `mod/quiz/view.php?id=`), attempts by Moodle's attempt id.
 
+**Terms:** [quiz](../reference/glossary.md#quiz), [attempt](../reference/glossary.md#attempt), [slot](../reference/glossary.md#slot), [review](../reference/glossary.md#review), [override](../reference/glossary.md#override).
+
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 Everything is read from Moodle's own pages by their structure (body ids, form names, classes, links), so it works in any interface language; texts such as dates, states and grades come as the site shows them, in its language. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)); the others are `QuizError`, and `FormError` where a form is involved.
@@ -166,12 +168,12 @@ if (!info.canStart) throw new Error(`Can't attempt: ${info.messages.join(" ")}`)
 const { attemptId, questions } = await moodle.startQuizAttempt(quizId);
 
 // Choose an answer for each question: here, the first option of every choice and select field,
-// skipping "clear my choice" (-1) and a drop-down's "Choose..." (0).
+// skipping "clear my choice" (-1) and a drop-down's "Choose..." (0); a true/false radio's "0" is "False", a real answer.
 const answers = questions.map((question) => {
   const responses: Record<string, string> = {};
   for (const field of question.fields) {
     if ((field.kind === "choice" || field.kind === "select") && field.options) {
-      const option = field.options.find((o) => o.value !== "-1" && o.value !== "0") ?? field.options[0];
+      const option = field.options.find((o) => o.value !== "-1" && !(field.kind === "select" && o.value === "0")) ?? field.options[0];
       if (option) responses[field.name] = option.value;
     }
   }

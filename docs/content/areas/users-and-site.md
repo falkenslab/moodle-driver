@@ -2,6 +2,8 @@
 
 Who the logged-in person is, other users by id, a user's roles and the person's abilities in a course, and what the site tells about itself, before and after logging in. Anyone logged in can use them; what Moodle shows of another user depends on the person's rights. Three functions need no browser or session at all (`parseSiteUrl`, `findMoodleSite`, `publicSiteInfo`): a program can use them to check the site the person gives before [logging in](../getting-started/logging-in.md).
 
+**Terms:** [site](../reference/glossary.md#site), [session](../reference/glossary.md#session), [role](../reference/glossary.md#role).
+
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 ## whoAmI

@@ -2,6 +2,8 @@
 
 There are two ways to call the driver, and they're the same operations:
 
+**Terms:** [course module id](../reference/glossary.md#course-module-id), [changed](../reference/glossary.md#changed), [site](../reference/glossary.md#site).
+
 - **The Moodle object**: `createMoodle()` keeps the site and the browser, and has every operation as a method. The usual way.
 - **The functions**: every operation is also an exported function that takes the browser context and the site first. For programs that manage the browser themselves, work several sites, or go [lower level](low-level.md).
 

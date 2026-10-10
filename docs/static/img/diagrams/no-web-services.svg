@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 400" width="980" height="400" font-family="Segoe UI, system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <title>Two ways to automate Moodle: its web services need an administrator, a token and enabled functions; moodle-driver only needs the person to log in once.</title>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  <rect width="980" height="400" rx="24" fill="#f8fafc"/>
+  <text x="490" y="44" font-size="22" font-weight="800" text-anchor="middle" fill="#0f172a">Two ways to automate Moodle</text>
+
+  <!-- Web services -->
+  <g filter="url(#shadow)"><rect x="30" y="70" width="440" height="300" rx="20" fill="#fef2f2" stroke="#dc2626" stroke-width="3"/></g>
+  <text x="250" y="110" font-size="20" font-weight="800" text-anchor="middle" fill="#991b1b">😩 Moodle's web services</text>
+  <g font-size="16" fill="#7f1d1d">
+    <text x="60" y="152">1️⃣  Ask an administrator to enable them</text>
+    <text x="60" y="190">2️⃣  Get a service and a token created</text>
+    <text x="60" y="228">3️⃣  Only the functions they enabled</text>
+    <text x="60" y="266">4️⃣  Keep the token secret: it's a key</text>
+    <text x="60" y="304">⛔  Many sites keep them switched off</text>
+  </g>
+  <rect x="120" y="322" width="260" height="32" rx="16" fill="#fee2e2"/>
+  <text x="250" y="344" font-size="14" font-weight="600" text-anchor="middle" fill="#991b1b">an administrator decides 📄📄</text>
+
+  <!-- VS -->
+  <circle cx="490" cy="220" r="30" fill="#0f172a"/>
+  <text x="490" y="228" font-size="20" font-weight="800" text-anchor="middle" fill="#ffffff">vs</text>
+
+  <!-- moodle-driver -->
+  <g filter="url(#shadow)"><rect x="510" y="70" width="440" height="300" rx="20" fill="#f0fdf4" stroke="#16a34a" stroke-width="3"/></g>
+  <text x="730" y="110" font-size="20" font-weight="800" text-anchor="middle" fill="#166534">😄 moodle-driver</text>
+  <g font-size="16" fill="#14532d">
+    <text x="540" y="152">1️⃣  The person logs in once, in a window</text>
+    <text x="572" y="190">(SSO and two-factor work too) 🔑</text>
+    <text x="540" y="228">2️⃣  Your program works as them, in the</text>
+    <text x="572" y="266">same pages and services Moodle uses</text>
+    <text x="540" y="304">✅  Nothing to ask, nothing to configure</text>
+  </g>
+  <rect x="600" y="322" width="260" height="32" rx="16" fill="#dcfce7"/>
+  <text x="730" y="344" font-size="14" font-weight="600" text-anchor="middle" fill="#166534">running in minutes ⚡</text>
+</svg>

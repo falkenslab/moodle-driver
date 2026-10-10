@@ -61,7 +61,7 @@ it("lists the person's courses", { skip: !browser && "no browser" }, async () =>
 
 For pages that change with what the program does (a form that posts, a quiz attempt), add a `context.route` after `serveFakeMoodle`: Playwright matches the route registered last first.
 
-```ts
+```ts fragment
 await context.route(`${SITE}mod/choice/view.php**`, (route) => {
   if (route.request().method() === "POST") chosen = new URLSearchParams(route.request().postData() ?? "").get("answer");
   return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 4, bodyId: "page-mod-choice-view", body: choicePage(chosen) }) });
@@ -91,6 +91,8 @@ await serveFakeMoodle(context, { user: { id: 4, fullName: "Ada Lovelace" }, serv
 const moodle = createMoodle({ site: SITE, browser: fakeBrowserManager({ context: async () => context }) });
 const courses = await moodle.listCourses();
 ```
+
+The fake manager's `close()` does nothing, so `moodle.close()` (or the end of an `await using` block) leaves the context open: pass `close: () => context.close()` to have it closed, or close the context yourself at the end of the test.
 
 ## Grading panels
 

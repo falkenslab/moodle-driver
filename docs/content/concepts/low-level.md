@@ -2,6 +2,8 @@
 
 The areas cover what programs ask most, but Moodle has far more. The primitives the driver is built with have their own entry point, `@falkenslab/moodle-driver/internals`, so a program can reach what isn't covered yet the same way, with the person's session and Moodle's own checks. Most are in the `any` [data category](data-categories.md): they reach whatever they're pointed at.
 
+**Terms:** [internals](../reference/glossary.md#internals), [ajax service](../reference/glossary.md#ajax-service), [sesskey](../reference/glossary.md#sesskey).
+
 ```ts
 import { callService, openSitePage, setFields, submitForm } from "@falkenslab/moodle-driver/internals";
 ```

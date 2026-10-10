@@ -2,6 +2,8 @@
 
 The student's side of an assignment: reading it as the student's page shows it, saving a submission (online text, files or both) and submitting it for grading. Everything goes through the assignment's own pages and forms (`mod/assign/view.php`), as the person would, so Moodle logs it and applies its own rules (dates, cut-off, attempts, the submission statement). The teacher's side (everyone's submissions, grading, extensions) is in [grading](grading.md); an assignment's id comes from the [course structure](courses.md) or `listAssignments`.
 
+**Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission).
+
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 ## studentAssignment

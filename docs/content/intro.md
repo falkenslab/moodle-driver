@@ -7,7 +7,13 @@ sidebar_label: Introduction
 
 `@falkenslab/moodle-driver` is a Node.js library that gives a program full control of a Moodle site as any user, through a real browser: no API, no web services, no tokens. It opens the site in the system's Edge or Chrome (or Chromium) with [Playwright](https://playwright.dev), on a persistent profile where the person logs in by hand, and from then on works the site with that session, as the person would: it reads courses, content, assignments, quizzes and grades, posts in forums, grades submissions, builds activities and sections, and answers as a student. Every function returns plain data.
 
+![moodle-driver at a glance: your program calls the driver, which works Moodle through a real browser with the person's session, and gets plain data back](/img/diagrams/at-a-glance.svg)
+
+![What it can do as a student, as a teacher, and for your program](/img/diagrams/what-it-can-do.svg)
+
 ## Why a browser
+
+![Two ways to automate Moodle: web services need an administrator and a token; moodle-driver needs the person to log in once](/img/diagrams/no-web-services.svg)
 
 Moodle has a web services API, but using it needs a token, and many institutions don't enable web services for students or teachers, or don't let them create tokens. Single sign-on (SAML, OAuth, CAS) makes it harder still. A browser, on the other hand, is something every Moodle user already has.
 
@@ -42,7 +48,8 @@ Programs that work Moodle for a person: an assistant that grades or answers foru
 ```ts
 import { createMoodle } from "@falkenslab/moodle-driver";
 
-const moodle = createMoodle({
+// `await using` closes the browser when the program ends, also on an error.
+await using moodle = createMoodle({
   site: "https://campus.example.org/",
   profileDir: "/home/me/.moodle-profile",
   headless: true,
@@ -50,12 +57,10 @@ const moodle = createMoodle({
 });
 
 // The first time, a window opens at the login page and waits for the person to log in there.
-await moodle.logIn({ timeoutMs: 300_000 });
+await moodle.logIn();
 
 const courses = await moodle.listCourses();
 for (const course of courses) console.log(course.id, course.fullname);
-
-await moodle.close();
 ```
 
 ## Where to go next
@@ -64,5 +69,7 @@ await moodle.close();
 - [Logging in](getting-started/logging-in.md): profiles, sessions and windows.
 - [Your first program](getting-started/first-program.md): a complete script, step by step.
 - [How it works](concepts/how-it-works.md): services, pages and why the driver reads Moodle the way it does.
+- [Examples](examples/index.md): complete programs for real tasks, as a student, as a teacher and for your program, commented step by step.
 - [Moodle areas](areas/courses.md): one page per area, with every function.
+- [Glossary](reference/glossary.md): Moodle's terms (submission, attempt, slot, override…) explained for programmers.
 - The API reference, generated from the code, in the top bar.

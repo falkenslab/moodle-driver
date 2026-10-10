@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 300" width="980" height="300" font-family="Segoe UI, system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <title>Log in once: the first time a window opens and the person logs in; the session is kept in the profile folder; later runs need no window until Moodle ends the session.</title>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.15"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="980" height="300" rx="24" fill="#f8fafc"/>
+  <text x="490" y="44" font-size="22" font-weight="800" text-anchor="middle" fill="#0f172a">Log in once, work for days 🗓️</text>
+
+  <!-- timeline -->
+  <line x1="60" y1="230" x2="930" y2="230" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round"/>
+
+  <g filter="url(#shadow)">
+    <rect x="40" y="70" width="200" height="130" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <rect x="270" y="70" width="200" height="130" rx="18" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <rect x="500" y="70" width="200" height="130" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <rect x="730" y="70" width="210" height="130" rx="18" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="140" y="112" font-size="32">🔑</text>
+    <text x="140" y="144" font-size="16" font-weight="700" fill="#78350f">First run</text>
+    <text x="140" y="166" font-size="13" fill="#78350f">a window opens at the</text>
+    <text x="140" y="184" font-size="13" fill="#78350f">login page; the person logs in</text>
+
+    <text x="370" y="112" font-size="32">💾</text>
+    <text x="370" y="144" font-size="16" font-weight="700" fill="#0c4a6e">Session kept</text>
+    <text x="370" y="166" font-size="13" fill="#0c4a6e">in the profile folder,</text>
+    <text x="370" y="184" font-size="13" fill="#0c4a6e">cookies included</text>
+
+    <text x="600" y="112" font-size="32">🤫</text>
+    <text x="600" y="144" font-size="16" font-weight="700" fill="#14532d">Next runs</text>
+    <text x="600" y="166" font-size="13" fill="#14532d">no window at all:</text>
+    <text x="600" y="184" font-size="13" fill="#14532d">logIn() answers at once</text>
+
+    <text x="835" y="112" font-size="32">⌛</text>
+    <text x="835" y="144" font-size="16" font-weight="700" fill="#7f1d1d">Moodle ends it</text>
+    <text x="835" y="166" font-size="13" fill="#7f1d1d">NotLoggedInError:</text>
+    <text x="835" y="184" font-size="13" fill="#7f1d1d">logIn() opens the window again</text>
+  </g>
+  <g fill="#475569">
+    <circle cx="140" cy="230" r="10"/><circle cx="370" cy="230" r="10"/><circle cx="600" cy="230" r="10"/><circle cx="835" cy="230" r="10"/>
+  </g>
+  <g font-size="14" text-anchor="middle" fill="#334155">
+    <text x="140" y="262">day 1</text>
+    <text x="370" y="262">always</text>
+    <text x="600" y="262">day 2, 3, 4…</text>
+    <text x="835" y="262">someday</text>
+  </g>
+  <text x="490" y="290" font-size="13" text-anchor="middle" fill="#64748b">The password never goes through your program: SSO, CAS and two-factor work as they do for the person 🔒</text>
+</svg>

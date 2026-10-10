@@ -2,6 +2,10 @@
 
 Some programs must not reach everything the person could: an assistant that builds a course but never reads students' work, a tool that may read grades but never change them. The driver can't decide that for them, but it declares, for every public function, which kinds of data it reads or writes, so a program can allow some kinds and refuse the rest without classifying the driver by hand.
 
+**Terms:** [data category](../reference/glossary.md#data-category).
+
+![The data categories, from harmless to powerful, with an example function each](/img/diagrams/data-categories.svg)
+
 ## The categories
 
 ```ts

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 470" width="980" height="470" font-family="Segoe UI, system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <title>Data categories, from harmless to powerful: none, own, course content, others' aggregate, others' personal, writing about others, communication, any.</title>
+  <defs>
+    <linearGradient id="scale" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="0.5" stop-color="#eab308"/>
+      <stop offset="1" stop-color="#ef4444"/>
+    </linearGradient>
+  </defs>
+  <rect width="980" height="470" rx="24" fill="#f8fafc"/>
+  <text x="490" y="44" font-size="22" font-weight="800" text-anchor="middle" fill="#0f172a">What does each call touch? 🚦</text>
+
+  <rect x="40" y="70" width="14" height="370" rx="7" fill="url(#scale)"/>
+  <text x="70" y="86" font-size="13" fill="#15803d" font-weight="700">harmless</text>
+  <text x="70" y="436" font-size="13" fill="#b91c1c" font-weight="700">powerful</text>
+
+  <g font-size="15">
+    <!-- each row: chip + description + examples -->
+    <rect x="150" y="70" width="190" height="36" rx="18" fill="#e2e8f0"/><text x="245" y="94" text-anchor="middle" font-weight="700" fill="#334155">⚪ none</text>
+    <text x="360" y="94" fill="#334155">nothing of anyone: parsing, the site's public facts</text>
+    <text x="935" y="94" text-anchor="end" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="13">publicSiteInfo</text>
+
+    <rect x="150" y="116" width="190" height="36" rx="18" fill="#bbf7d0"/><text x="245" y="140" text-anchor="middle" font-weight="700" fill="#166534">🟢 own</text>
+    <text x="360" y="140" fill="#334155">the person's own data and actions</text>
+    <text x="935" y="140" text-anchor="end" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="13">myGrades, saveSubmission</text>
+
+    <rect x="150" y="162" width="190" height="36" rx="18" fill="#bfdbfe"/><text x="245" y="186" text-anchor="middle" font-weight="700" fill="#1e40af">🔵 course-content</text>
+    <text x="360" y="186" fill="#334155">what teachers made: sections, pages, activities</text>
+    <text x="935" y="186" text-anchor="end" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="13">courseStructure</text>
+
+    <rect x="150" y="208" width="190" height="36" rx="18" fill="#fef08a"/><text x="245" y="232" text-anchor="middle" font-weight="700" fill="#854d0e">🟡 others-aggregate</text>
+    <text x="360" y="232" fill="#334155">counts about others, nobody named</text>
+    <text x="935" y="232" text-anchor="end" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="13">courseUpdates</text>
+
+    <rect x="150" y="254" width="190" height="36" rx="18" fill="#fed7aa"/><text x="245" y="278" text-anchor="middle" font-weight="700" fill="#9a3412">🟠 others-personal</text>
+    <text x="360" y="278" fill="#334155">other people's work, grades, names</text>
+    <text x="935" y="278" text-anchor="end" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="13">assignmentSubmissions</text>
+
+    <rect x="150" y="300" width="190" height="36" rx="18" fill="#fecaca"/><text x="245" y="324" text-anchor="middle" font-weight="700" fill="#991b1b">🔴 others-write</text>
+    <text x="360" y="324" fill="#334155">deciding about others: grades, extensions</text>
+    <text x="935" y="324" text-anchor="end" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="13">gradeSubmission</text>
+
+    <rect x="150" y="346" width="190" height="36" rx="18" fill="#e9d5ff"/><text x="245" y="370" text-anchor="middle" font-weight="700" fill="#6b21a8">🟣 communication</text>
+    <text x="360" y="370" fill="#334155">speaking to others: posts, messages</text>
+    <text x="935" y="370" text-anchor="end" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="13">sendMessage, replyToPost</text>
+
+    <rect x="150" y="392" width="190" height="36" rx="18" fill="#1e293b"/><text x="245" y="416" text-anchor="middle" font-weight="700" fill="#f8fafc">⚫ any</text>
+    <text x="360" y="416" fill="#334155">whatever it's pointed at: raw services, pages</text>
+    <text x="935" y="416" text-anchor="end" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="13">callService</text>
+  </g>
+  <text x="490" y="458" font-size="13" text-anchor="middle" fill="#64748b">DATA_CATEGORIES lists them for every function: allow only some, and an agent can't go further 🛡️</text>
+</svg>

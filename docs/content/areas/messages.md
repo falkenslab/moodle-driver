@@ -2,6 +2,8 @@
 
 This area covers the person's Moodle messaging: their notifications (`notifications`, `markNotificationsRead`), their conversations (`conversations`, `conversation`) and sending a private message (`sendMessage`). It works the same for students and teachers, always as the logged-in person: there's no reading someone else's messages. Forum posts are in [Forums](forums.md).
 
+**Terms:** [notification](../reference/glossary.md#notification), [conversation](../reference/glossary.md#conversation).
+
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 Everything goes through the services Moodle's own notification popover and messaging drawer call. People come as a user id and a full name; messages come as plain text (paragraphs and lists kept, markup removed), dates as ISO strings in UTC.

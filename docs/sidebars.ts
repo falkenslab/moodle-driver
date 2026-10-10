@@ -29,6 +29,43 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Examples",
+      link: { type: "doc", id: "examples/index" },
+      items: [
+        {
+          type: "category",
+          label: "As a student",
+          items: [
+            "examples/weekly-agenda",
+            "examples/download-course-files",
+            "examples/read-course-content",
+            "examples/submit-assignment",
+            "examples/answer-quiz",
+            "examples/surveys-and-choices",
+          ],
+        },
+        {
+          type: "category",
+          label: "As a teacher",
+          items: [
+            "examples/grade-submissions",
+            "examples/extensions-and-overrides",
+            "examples/message-inactive-students",
+            "examples/daily-report",
+            "examples/build-course",
+            "examples/export-grades-csv",
+            "examples/questions-into-quiz",
+          ],
+        },
+        {
+          type: "category",
+          label: "For your program",
+          items: ["examples/errors-and-sessions", "examples/several-sites", "examples/moodle-services", "examples/testing-your-program"],
+        },
+      ],
+    },
+    {
+      type: "category",
       label: "Moodle areas",
       items: [
         "areas/courses",
@@ -60,7 +97,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Reference",
-      items: ["reference/troubleshooting", "reference/compatibility", "reference/development", "reference/versioning"],
+      items: ["reference/glossary", "reference/troubleshooting", "reference/compatibility", "reference/development", "reference/versioning"],
     },
   ],
   api: [{ type: "doc", id: "api/index", label: "Overview" }, ...apiSidebar],

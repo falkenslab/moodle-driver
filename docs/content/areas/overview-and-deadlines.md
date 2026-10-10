@@ -2,6 +2,8 @@
 
 This area answers "what is there to do, and what changed": Moodle 5's activities overview of a course (`activitiesOverview`), the person's deadlines from the calendar (`deadlines`), and what changed in a course's activities since a date (`courseUpdates`). All three work for students and teachers; each shows what Moodle shows the person (a student sees their own submission and grade, a teacher how many submitted and what needs grading).
 
+**Terms:** [activity](../reference/glossary.md#activity), [calendar event](../reference/glossary.md#calendar-event).
+
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 What the person still has to do in one course, by completion or missing grades, is `pendingActivities`, documented in [Courses](courses.md#pendingactivities).

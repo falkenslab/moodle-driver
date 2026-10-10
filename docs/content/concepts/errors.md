@@ -2,6 +2,8 @@
 
 Errors a program can act on have their own class, and their messages speak Moodle's terms: the module, the course structure, logging in again. They never name a program's own tools or settings, so a program can show them as they are or explain them in its own words.
 
+**Terms:** [error code](../reference/glossary.md#error-code).
+
 ## Catching them
 
 Every error the driver throws on purpose is a `MoodleError`, or one of its subclasses, with a stable `code` and `name` set to its class name. Match by class, `name` or `code`, never by message: the wording may change in any release. `error.name` and `error.code` also work across bundles.

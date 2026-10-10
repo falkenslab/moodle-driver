@@ -2,6 +2,8 @@
 
 Going through a lesson activity page by page, as a student does: reading the page the person is on (content with its buttons, or a question with its form), answering it, and getting Moodle's feedback and the page that follows, until the end of the lesson. Moodle keeps where the person is, so a program reads and answers one page at a time with the lesson's course module id alone, across calls and runs. Teachers' editing of lessons and their reports aren't covered.
 
+**Terms:** [lesson page](../reference/glossary.md#lesson-page), [trail](../reference/glossary.md#trail).
+
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 Pages are read from the lesson's forms and blocks (form actions, input names, classes), so it works in any interface language; texts come in the site's language. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)), and `LessonError` when the id isn't a lesson the person can open.

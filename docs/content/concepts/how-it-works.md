@@ -2,6 +2,10 @@
 
 The driver does in Moodle what the person's browser does when they use the site: it loads Moodle's pages with their session, and from those pages calls the services Moodle's own JavaScript calls. Knowing how lets you predict what a call costs, what Moodle logs and why it works in any interface language.
 
+**Terms:** [ajax service](../reference/glossary.md#ajax-service), [sesskey](../reference/glossary.md#sesskey), [kept tab](../reference/glossary.md#kept-tab), [working tab](../reference/glossary.md#working-tab).
+
+![The journey of one call, from your program to Moodle and back](/img/diagrams/journey-of-a-call.svg)
+
 ```mermaid
 flowchart LR
   P[Your program] --> D[moodle-driver]

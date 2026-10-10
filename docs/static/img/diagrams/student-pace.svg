@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 320" width="980" height="320" font-family="Segoe UI, system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <title>Two trails: realistic goes through the real pages at a person's reading pace, so Moodle records the activity as a person's; fast reads everything at once.</title>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  <rect width="980" height="320" rx="24" fill="#f8fafc"/>
+  <text x="490" y="44" font-size="22" font-weight="800" text-anchor="middle" fill="#0f172a">Two trails: as a person, or at once</text>
+
+  <!-- Realistic lane -->
+  <g filter="url(#shadow)"><rect x="30" y="70" width="920" height="105" rx="18" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/></g>
+  <text x="60" y="112" font-size="34">🐢</text>
+  <text x="104" y="104" font-size="18" font-weight="800" fill="#065f46">"realistic"</text>
+  <text x="104" y="126" font-size="13" fill="#065f46">the default</text>
+  <g font-size="14" fill="#064e3b" text-anchor="middle">
+    <rect x="230" y="92" width="120" height="44" rx="12" fill="#a7f3d0"/><text x="290" y="119">📄 page 1</text>
+    <rect x="360" y="92" width="140" height="44" rx="12" fill="#d1fae5" stroke="#10b981" stroke-dasharray="5 4"/><text x="430" y="119">⏳ reads 40 s</text>
+    <rect x="510" y="92" width="120" height="44" rx="12" fill="#a7f3d0"/><text x="570" y="119">📄 page 2</text>
+    <rect x="640" y="92" width="140" height="44" rx="12" fill="#d1fae5" stroke="#10b981" stroke-dasharray="5 4"/><text x="710" y="119">⏳ reads 25 s</text>
+    <rect x="790" y="92" width="140" height="44" rx="12" fill="#a7f3d0"/><text x="860" y="119">✅ done</text>
+  </g>
+  <text x="230" y="160" font-size="13" fill="#065f46">The real pages, one by one, about 240 words a minute: Moodle's logs and completion see a person reading 👀</text>
+
+  <!-- Fast lane -->
+  <g filter="url(#shadow)"><rect x="30" y="190" width="920" height="105" rx="18" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/></g>
+  <text x="60" y="232" font-size="34">🐇</text>
+  <text x="104" y="224" font-size="18" font-weight="800" fill="#1e3a8a">"fast"</text>
+  <text x="104" y="246" font-size="13" fill="#1e3a8a">when time matters</text>
+  <g font-size="14" fill="#1e3a8a" text-anchor="middle">
+    <rect x="230" y="212" width="260" height="44" rx="12" fill="#bfdbfe"/><text x="360" y="239">📚 the whole book (print view)</text>
+    <rect x="500" y="212" width="140" height="44" rx="12" fill="#bfdbfe"/><text x="570" y="239">✅ done</text>
+  </g>
+  <text x="230" y="280" font-size="13" fill="#1e3a8a">Everything at once, no pauses: for a teacher's tools, backups, or reading content to process it ⚡</text>
+</svg>
