@@ -30,6 +30,7 @@ export * from "./moodle/pace.js";
 export * from "./moodle/participants.js";
 export * from "./moodle/questionBank.js";
 export * from "./moodle/quiz.js";
+export * from "./moodle/quizResults.js";
 export * from "./moodle/session.js";
 export * from "./moodle/site.js";
 export * from "./moodle/siteInfo.js";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { FormError, QuizError, answerQuizQuestions, finishQuizAttempt, quizInfo, readQuestions, readReview, setQuizOverride, startQuizAttempt } from "../../src/index.js";
+import { FormError, QuizError, answerQuizQuestions, finishQuizAttempt, quizInfo, readQuestions, quizResults, readReview, setQuizOverride, startQuizAttempt } from "../../src/index.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -212,6 +212,57 @@ ${date("timeopen")}${date("timeclose")}<input type="hidden" name="timelimit[enab
       ["4", "1", "30", "19", "20", "60", "5", "0"],
     );
     await assert.rejects(setQuizOverride(context, SITE, 27, 9, { attempts: 2 }), (error: Error) => error instanceof QuizError && /User 9 can't get an override/.test(error.message));
+    await context.close();
+  });
+});
+
+describe("quizResults", { skip: !browser && "no system browser" }, () => {
+  /** The overview and responses reports as Moodle 5.2 renders them, reduced; one attempt, made up. */
+  const question = (slot: number, value: string, result: string) =>
+    `<td class="cell"><a href="${SITE}mod/quiz/reviewquestion.php?attempt=9&amp;slot=${slot}"><span class="que"><i class="icon"></i><span class="${result}">${value}</span></span></a></td>`;
+  const report = (mode: "overview" | "responses") => {
+    const times = mode === "overview" ? `<td>9 Oct 1:30 PM</td><td>9 Oct 1:31 PM</td><td>50 secs</td>` : "";
+    const heads = mode === "overview" ? `<th>Started</th><th>Completed</th><th>Duration</th>` : "";
+    const answers = mode === "overview" ? question(1, "1.00", "correct") + question(2, "-", "notanswered") : question(1, "True", "correct") + question(2, "-", "notanswered");
+    return `<div id="region-main"><table id="attempts"><thead><tr><th class="header c0">Select</th><th class="header c1 picture"></th><th class="header c2 bold sticky-column">Name</th><th class="header c3">Email</th><th>Status</th>${heads}<th class="header bold">Grade/10.00</th><th>Q. 1</th><th>Q. 2</th></tr></thead>
+<tbody><tr class="gradedattempt"><td><input name="attemptid[]" type="checkbox" value="9"></td><td class="cell picture"><a href="${SITE}user/view.php?id=4&amp;course=3"><span class="userinitials">AS</span></a></td>
+<td class="cell bold sticky-column"><a href="${SITE}user/view.php?id=4&amp;course=3">Ana Student</a><br><a class="reviewlink" href="${SITE}mod/quiz/review.php?attempt=9">Review attempt</a></td><td>ana@example.org</td><td>Finished</td>${times}
+<td class="cell bold"><a href="${SITE}mod/quiz/review.php?attempt=9">5.00</a></td>${answers}</tr></tbody></table></div>`;
+  };
+
+  it("reads each attempt's person, state, dates, grade and marks, and the responses when asked", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+    await context.route(`${SITE}mod/quiz/report.php**`, (route: Route) => {
+      const mode = new URL(route.request().url()).searchParams.get("mode") as "overview" | "responses";
+      return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-quiz-report", body: report(mode) }) });
+    });
+    assert.deepEqual(await quizResults(context, SITE, 27, { responses: true }), {
+      quiz: { id: 27 },
+      attempts: [
+        {
+          attemptId: 9,
+          userId: 4,
+          fullName: "Ana Student",
+          state: "Finished",
+          started: "9 Oct 1:30 PM",
+          completed: "9 Oct 1:31 PM",
+          duration: "50 secs",
+          grade: "5.00",
+          questions: [
+            { slot: 1, mark: "1.00", result: "correct", response: "True" },
+            { slot: 2, result: "notanswered" },
+          ],
+        },
+      ],
+    });
+    await context.close();
+  });
+
+  it("passes Moodle's refusal", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" }, bodies: { "/mod/quiz/report.php": `<div data-rel="fatalerror"><p class="errormessage">You cannot access this report</p></div>` } });
+    await assert.rejects(quizResults(context, SITE, 27), /You cannot access this report/);
     await context.close();
   });
 });

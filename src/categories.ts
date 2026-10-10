@@ -162,6 +162,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   finishQuizAttempt: OWN,
   readReview: ["own", "others-personal"],
   setQuizOverride: ["others-write"],
+  quizResults: PERSONAL,
+  readQuizReport: NONE,
 
   // Forums.
   listDiscussions: PERSONAL,
