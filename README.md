@@ -1,6 +1,6 @@
 # moodle-driver
 
-Work a Moodle site with the person's own session, through a real browser (Playwright): no web services, no tokens. Read courses, content, assignments, quizzes, forums, grades and surveys; create and edit activities and sections; grade; answer as a student at a person's pace. Every function returns plain data.
+Work a Moodle site with the person's own session, through a real browser (Playwright): no web services, no tokens. Read courses, content, assignments, quizzes, forums, grades, surveys, choices, lessons and H5P activities; create and edit activities, sections, course settings, calendar events and questions; grade (rubrics and marking guides too), grant extensions and quiz overrides, set up the gradebook and completion; list participants and groups; read notifications and send messages; answer as a student at a person's pace. Every function returns plain data.
 
 Extracted from moodle-mcp, its first consumer. The design is in `.minispec/` (start with `core/project.md` and the decisions).
 
