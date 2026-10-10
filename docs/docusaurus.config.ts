@@ -76,6 +76,8 @@ const config: Config = {
   ],
 
   themeConfig: {
+    // What GitHub, chat apps and social sites show for a shared link.
+    image: "img/social-card.png",
     colorMode: { respectPrefersColorScheme: true },
     navbar: {
       title: "moodle-driver",

@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🎓 moodle-driver
+<img src="docs/static/img/logo.svg" alt="moodle-driver logo: a terminal prompt, >m_" width="112"/>
+
+# moodle-driver
 
 **Everything a person does in Moodle, from your Node.js code.**<br/>
 Through a real browser, with their own login: no web services, no tokens, no admin.
