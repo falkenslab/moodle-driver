@@ -72,7 +72,8 @@ More, complete and commented: [📖 use-case examples](https://falkenslab.github
 Every method is also a command of `moodle`, which comes with the package: no project, no code.
 
 ```bash
-npm i -g github:falkenslab/moodle-driver
+git clone https://github.com/falkenslab/moodle-driver.git && cd moodle-driver
+npm install && npm link                            # the moodle command, everywhere
 moodle login --site https://campus.example.org/   # 🔑 once: a window opens, you log in
 moodle list-courses
 moodle deadlines --days 7
@@ -95,7 +96,7 @@ Tables at a terminal, JSON for scripts, errors with their code and an exit statu
 
 ## 📦 Install
 
-Not on npm yet. The command, globally: `npm i -g github:falkenslab/moodle-driver`. The library, from a clone next to your program:
+Not on npm yet: from a clone, next to your program (`npm link` in it also gives you the `moodle` command everywhere).
 
 ```bash
 git clone https://github.com/falkenslab/moodle-driver.git

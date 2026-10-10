@@ -9,9 +9,15 @@ Every operation of the driver is also a command of `moodle`, for trying it, scri
 Everywhere, as a command of your system:
 
 ```bash
-npm i -g @falkenslab/moodle-driver     # once it's on npm
-npm i -g github:falkenslab/moodle-driver   # meanwhile, from GitHub
+# Once it's on npm
+npm i -g @falkenslab/moodle-driver
+
+# Meanwhile, from a clone
+git clone https://github.com/falkenslab/moodle-driver.git
+cd moodle-driver && npm install && npm link
 ```
+
+`npm i -g github:falkenslab/moodle-driver` doesn't work: npm builds a package installed from git with its development dependencies, and a global install puts those in the wrong place (an npm bug, not the driver's). `npm link` from a clone does the same and works.
 
 In a project that already uses the library, it's there too: `npx moodle …` runs it from `node_modules/.bin`, handy to look at what a function returns while you write your program. Without installing anything: `npx -p @falkenslab/moodle-driver moodle …`.
 
