@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { GradingError, NotAnAssignmentError, assignmentSubmissions, gradeSubmission, rubric } from "../../src/index.js";
-import { PANEL, SITE, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/index.js";
+import { GradingError, NotAnAssignmentError, assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "../../src/index.js";
+import { PANEL, SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
 after(() => browser?.close());
@@ -174,6 +174,46 @@ describe("rubric", { skip: !browser && "no system browser" }, () => {
     const form = new URLSearchParams(JSON.parse(String(submitted[0]?.jsonformdata)) as string);
     assert.deepEqual([form.get("advancedgrading[criteria][1][levelid]"), form.get("advancedgrading[criteria][2][levelid]"), form.get("advancedgrading[criteria][2][remark]")], ["3", "5", "Check the bounds."]);
     await assert.rejects(gradeSubmission(context, SITE, 42, 7, { rubric: { 9: 1 } }), /no such field: advancedgrading\[criteria\]\[9\]\[levelid\]/);
+    await context.close();
+  });
+});
+
+describe("extensions", { skip: !browser && "no system browser" }, () => {
+  /** The extension form as Moodle 5.2's, reduced and made up: a date selector in Madrid's time zone, prefilled with the extension. */
+  function extensionForm(until?: { day: number; hour: number }) {
+    const select = (part: string, values: number[], selected?: number) => `<select name="extensionduedate[${part}]">${values.map((v) => `<option value="${v}"${v === selected ? " selected" : ""}>${v}</option>`).join("")}</select>`;
+    const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+    return moodlePage({
+      userId: 3,
+      bodyId: "page-mod-assign-view",
+      body: `<form class="mform" method="post" action="${SITE}mod/assign/view.php"><input type="hidden" name="selectedusers" value="7"><input type="hidden" name="action" value="saveextension">
+<input type="hidden" name="extensionduedate[enabled]" value="0"><input type="checkbox" name="extensionduedate[enabled]" value="1"${until ? " checked" : ""}>
+${select("day", range(1, 31), until?.day ?? 1)}${select("month", range(1, 12), 10)}${select("year", [2026], 2026)}${select("hour", range(0, 23), until?.hour ?? 0)}${select("minute", range(0, 59), 30)}
+<input type="submit" name="submitbutton" value="Save changes"></form>`,
+    });
+  }
+
+  it("grants several participants an extension in their time zone, and submissions report its date", async () => {
+    const posted: URLSearchParams[] = [];
+    const context = await browser!.newContext();
+    const state = submissionsSite(43);
+    await serveFakeMoodle(context, state);
+    await context.route(`${SITE}mod/assign/view.php**`, (route) => {
+      const url = new URL(route.request().url());
+      if (route.request().method() === "POST") {
+        posted.push(new URLSearchParams(route.request().postData() ?? ""));
+        return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-assign-view" }) });
+      }
+      if (url.searchParams.get("action") === "grantextension") return route.fulfill({ status: 200, contentType: "text/html", body: extensionForm(url.searchParams.get("userid") === "8" ? { day: 23, hour: 14 } : undefined) });
+      return route.fallback();
+    });
+    await grantExtension(context, SITE, 43, [7, 9], new Date("2026-10-23T12:30:00Z"));
+    const form = posted[0]!;
+    assert.deepEqual([form.get("selectedusers"), form.getAll("extensionduedate[enabled]").at(-1), form.get("extensionduedate[day]"), form.get("extensionduedate[hour]"), form.get("extensionduedate[minute]")], ["7,9", "1", "23", "14", "30"]);
+    const { submissions } = await assignmentSubmissions(context, SITE, 43, { includeContent: false });
+    assert.equal(submissions.find((s) => s.userId === 8)?.extensionDueDate, "2026-10-23T12:30:00.000Z");
+    assert.equal(submissions.find((s) => s.userId === 7)?.extensionDueDate, undefined);
+    await assert.rejects(grantExtension(context, SITE, 43, [], new Date()), /Give the participants/);
     await context.close();
   });
 });

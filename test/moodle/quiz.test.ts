@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { FormError, QuizError, answerQuizQuestions, finishQuizAttempt, quizInfo, readQuestions, readReview, startQuizAttempt } from "../../src/index.js";
+import { FormError, QuizError, answerQuizQuestions, finishQuizAttempt, quizInfo, readQuestions, readReview, setQuizOverride, startQuizAttempt } from "../../src/index.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -180,6 +180,38 @@ describe("quiz attempts", { skip: !browser && "no system browser" }, () => {
   it("refuses the review of an attempt in progress", async () => {
     const { context } = await site();
     await assert.rejects(readReview(context, SITE, 9), (error: unknown) => error instanceof QuizError && /review isn't available/.test(error.message));
+    await context.close();
+  });
+});
+
+describe("setQuizOverride", { skip: !browser && "no system browser" }, () => {
+  /** The user override form as Moodle 5.2's, reduced and made up: only users without an override are offered. */
+  const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => `<option value="${from + i}">${from + i}</option>`).join("");
+  const date = (name: string) =>
+    `<input type="hidden" name="${name}[enabled]" value="0"><input type="checkbox" name="${name}[enabled]" value="1"><select name="${name}[day]">${range(1, 31)}</select><select name="${name}[month]">${range(1, 12)}</select><select name="${name}[year]">${range(2026, 2027)}</select><select name="${name}[hour]">${range(0, 23)}</select><select name="${name}[minute]">${range(0, 59)}</select>`;
+  const FORM = `<form class="mform" method="post" action="${SITE}mod/quiz/overrideedit.php"><select name="userid"><option value="">No selection</option><option value="4">Ana Student</option></select>
+${date("timeopen")}${date("timeclose")}<input type="hidden" name="timelimit[enabled]" value="0"><input type="checkbox" name="timelimit[enabled]" value="1"><input name="timelimit[number]" value="0"><select name="timelimit[timeunit]"><option value="3600">hours</option><option value="60">minutes</option></select>
+<select name="attempts">${range(0, 10)}</select><input type="submit" name="submitbutton" value="Save"></form>`;
+
+  it("fills the override form, the close date in the person's time zone, and refuses a user it doesn't offer", async () => {
+    const posted: URLSearchParams[] = [];
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+    await context.route(`${SITE}mod/quiz/overrideedit.php**`, (route: Route) => {
+      if (route.request().method() === "POST") {
+        posted.push(new URLSearchParams(route.request().postData() ?? ""));
+        return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-quiz-overrides" }) });
+      }
+      return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-quiz-overrideedit", body: FORM }) });
+    });
+    const result = await setQuizOverride(context, SITE, 27, 4, { close: new Date("2026-11-30T18:00:00Z"), timeLimitMinutes: 20, attempts: 5 });
+    assert.match(result.changed, /closes 2026-11-30T18:00:00.000Z, 20 minutes, 5 attempts/);
+    const form = posted[0]!;
+    assert.deepEqual(
+      [form.get("userid"), form.getAll("timeclose[enabled]").at(-1), form.get("timeclose[day]"), form.get("timeclose[hour]"), form.get("timelimit[number]"), form.get("timelimit[timeunit]"), form.get("attempts"), form.getAll("timeopen[enabled]").at(-1)],
+      ["4", "1", "30", "19", "20", "60", "5", "0"],
+    );
+    await assert.rejects(setQuizOverride(context, SITE, 27, 9, { attempts: 2 }), (error: Error) => error instanceof QuizError && /User 9 can't get an override/.test(error.message));
     await context.close();
   });
 });

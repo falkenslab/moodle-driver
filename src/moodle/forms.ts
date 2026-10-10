@@ -187,3 +187,43 @@ export async function submitForm(page: Page, button: string): Promise<void> {
   });
   if (errors.length > 0) throw new FormError("Moodle refused the form:", errors);
 }
+
+/**
+ * The values of a Moodle date selector's parts (`name[day]`, `[month]`, `[year]`, `[hour]`,
+ * `[minute]`) for `date`, in the person's time zone (`M.cfg.usertimezone`), which is how Moodle
+ * reads them. Its "enable" checkbox, when it has one, is the caller's to set first.
+ */
+export async function dateSelectorValues(page: Page, name: string, date: Date): Promise<Record<string, FieldValue>> {
+  const timeZone = await page.evaluate(() => (globalThis as unknown as { M?: { cfg?: { usertimezone?: string } } }).M?.cfg?.usertimezone ?? "UTC");
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(date);
+  } catch {
+    throw new FormError(`The person's time zone in Moodle ("${timeZone}") isn't one the driver knows, so a date can't be set.`, [{ field: name, message: "unknown time zone" }]);
+  }
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { [`${name}[day]`]: part("day"), [`${name}[month]`]: part("month"), [`${name}[year]`]: part("year"), [`${name}[hour]`]: part("hour"), [`${name}[minute]`]: part("minute") };
+}
+
+/** The date a Moodle date selector holds (`name[day]`… in the person's time zone), or undefined when it's off. */
+export async function dateSelectorDate(page: Page, name: string): Promise<Date | undefined> {
+  const read = await page.evaluate((name) => {
+    const g = globalThis as unknown as { M?: { cfg?: { usertimezone?: string } }; document: { querySelector(s: string): { value: string; checked: boolean; type: string } | null } };
+    const enabled = g.document.querySelector(`form.mform [name="${name}[enabled]"][type="checkbox"]`);
+    if (enabled && !enabled.checked) return undefined;
+    // Anonymous callbacks only: see the conventions on page.evaluate.
+    const [year, month, day, hour, minute] = ["year", "month", "day", "hour", "minute"].map((p) => Number(g.document.querySelector(`form.mform [name="${name}[${p}]"]`)?.value) || 0);
+    return { timeZone: g.M?.cfg?.usertimezone ?? "UTC", year: year!, month: month!, day: day!, hour: hour!, minute: minute! };
+  }, name);
+  if (!read || !read.year) return undefined;
+  // The wall time in that zone: start from it as if UTC, then take away the zone's offset at that moment (twice, across a DST change).
+  const wall = Date.UTC(read.year, read.month - 1, read.day, read.hour, read.minute);
+  let time = wall;
+  for (let i = 0; i < 2; i++) {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: read.timeZone, year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(new Date(time));
+    const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+    const shown = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"));
+    time += wall - shown;
+  }
+  return new Date(time);
+}

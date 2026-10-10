@@ -54,6 +54,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   isLoggedIn: NONE,
   pageIsLoggedIn: NONE,
   followPages: NONE,
+  dateSelectorValues: NONE,
+  dateSelectorDate: NONE,
   moodleErrorMessage: NONE,
   moduleCategories: NONE,
 
@@ -146,6 +148,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   submitGradingForm: ["others-write"],
   gradeSubmission: ["others-personal", "others-write"],
   rubric: CONTENT,
+  grantExtension: ["others-write"],
   readGradingDefinition: NONE,
 
   // Quizzes: a teacher may review someone else's attempt.
@@ -158,6 +161,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   finishAttempt: OWN,
   finishQuizAttempt: OWN,
   readReview: ["own", "others-personal"],
+  setQuizOverride: ["others-write"],
 
   // Forums.
   listDiscussions: PERSONAL,

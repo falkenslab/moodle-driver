@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from "playwright-core";
 import type { Trail } from "../options.js";
-import { setFields } from "./forms.js";
+import { dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "./forms.js";
 import { pause, readingSeconds } from "./pace.js";
 import { inPage } from "./inPage.js";
 import { openSitePage } from "./session.js";
@@ -326,4 +326,38 @@ export async function finishQuizAttempt(context: BrowserContext, siteUrl: string
   await finishAttempt(context, siteUrl, attemptId);
   const review = await readReview(context, siteUrl, attemptId).catch(() => undefined);
   return { attemptId, finished: true as const, review };
+}
+
+/**
+ * Sets a user override on a quiz, through its override form: other opening and closing dates, a time
+ * limit in minutes, or a number of attempts (0 unlimited); what isn't given stays the quiz's.
+ */
+export async function setQuizOverride(
+  context: BrowserContext,
+  siteUrl: string,
+  quizId: number,
+  userId: number,
+  { open, close, timeLimitMinutes, attempts }: { open?: Date; close?: Date; timeLimitMinutes?: number; attempts?: number },
+): Promise<{ changed: string }> {
+  const page = await openForm(context, siteUrl, `mod/quiz/overrideedit.php?action=adduser&cmid=${quizId}`).catch(() => {
+    throw new QuizError(`You can't add overrides to activity ${quizId}: it isn't a quiz, or you aren't allowed.`);
+  });
+  try {
+    const values: Record<string, FieldValue> = { userid: String(userId) };
+    if (open) Object.assign(values, { "timeopen[enabled]": true, ...(await dateSelectorValues(page, "timeopen", open)) });
+    if (close) Object.assign(values, { "timeclose[enabled]": true, ...(await dateSelectorValues(page, "timeclose", close)) });
+    if (timeLimitMinutes !== undefined) Object.assign(values, { "timelimit[enabled]": true, "timelimit[number]": timeLimitMinutes, "timelimit[timeunit]": 60 });
+    if (attempts !== undefined) values.attempts = String(attempts);
+    const offered = await page.evaluate(
+      (user) => (globalThis as unknown as { document: { querySelector(s: string): unknown } }).document.querySelector(`form.mform select[name="userid"] option[value="${user}"]`) !== null,
+      userId,
+    );
+    if (!offered) throw new QuizError(`User ${userId} can't get an override in quiz ${quizId}: not a participant, or already overridden (change that override in Moodle).`);
+    await setFields(page, values);
+    await submitForm(page, "submitbutton");
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  const what = [open && `opens ${open.toISOString()}`, close && `closes ${close.toISOString()}`, timeLimitMinutes !== undefined && `${timeLimitMinutes} minutes`, attempts !== undefined && `${attempts || "unlimited"} attempts`].filter(Boolean);
+  return { changed: `Override for user ${userId} in quiz ${quizId}: ${what.join(", ") || "the quiz's settings"}.` };
 }

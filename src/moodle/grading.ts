@@ -1,9 +1,9 @@
 // A teacher's side of an assignment: everyone's submissions, and grading one participant as the
 // grader does (its panel's form, submitted through the grading service).
 import type { BrowserContext, Page } from "playwright-core";
-import { GradingError, assignmentIds, fillGradingForm, gradingPanelHtml, listParticipants, panelGrade, participantDates, readSubmissionContent, submitGradingForm, type PluginContent } from "./assign.js";
+import { GradingError, NotAnAssignmentError, assignmentIds, fillGradingForm, gradingPanelHtml, listParticipants, panelGrade, participantDates, readSubmissionContent, submitGradingForm, type PluginContent } from "./assign.js";
 import { isoDate } from "./courses.js";
-import type { FieldValue } from "./forms.js";
+import { dateSelectorDate, dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "./forms.js";
 import { inPage } from "./inPage.js";
 
 /** The grader's feedback comments field, when the assignment has them on. */
@@ -17,12 +17,25 @@ export interface Submission {
   submitted: boolean;
   needsGrading: boolean;
   extensionGranted: boolean;
+  /** Until when, where an extension is granted. */
+  extensionDueDate?: string;
   allowSubmissionsFrom?: string;
   /** For this participant: overrides and extensions included. */
   dueDate?: string;
   cutoffDate?: string;
   /** Per submission plugin; only for submitted and draft submissions. */
   content?: PluginContent[];
+}
+
+/** An extension's date, as its form holds it (no service open to AJAX gives it). */
+async function extensionDate(context: BrowserContext, siteUrl: string, cmid: number, userId: number): Promise<string | undefined> {
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grantextension&userid=${userId}`).catch(() => undefined);
+  if (!page) return undefined;
+  try {
+    return (await dateSelectorDate(page, "extensionduedate"))?.toISOString();
+  } finally {
+    await page.close().catch(() => undefined);
+  }
 }
 
 /** Every participant's submission to an assignment, with its content unless `includeContent` is false. */
@@ -45,6 +58,7 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
         submitted: participant.submitted,
         needsGrading: participant.requiregrading,
         extensionGranted: participant.grantedextension,
+        extensionDueDate: participant.grantedextension ? await extensionDate(context, siteUrl, cmid, participant.id) : undefined,
         allowSubmissionsFrom: isoDate(dates.allowsubmissionsfromdate),
         dueDate: isoDate(dates.duedate),
         cutoffDate: isoDate(dates.cutoffdate),
@@ -183,4 +197,22 @@ export async function rubric(context: BrowserContext, siteUrl: string, cmid: num
   } finally {
     await page.close().catch(() => undefined);
   }
+}
+
+/**
+ * Grants participants an extension until a date, through the assignment's extension form (several at
+ * once as its bulk action does). Moodle refuses a date before the assignment's due date.
+ */
+export async function grantExtension(context: BrowserContext, siteUrl: string, cmid: number, userIds: number[], until: Date): Promise<{ changed: string }> {
+  if (userIds.length === 0) throw new GradingError("Give the participants to grant the extension to.");
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grantextension&userid=${userIds[0]}`).catch(() => {
+    throw new NotAnAssignmentError(`You can't grant extensions in activity ${cmid}: it isn't an assignment, or you aren't allowed.`);
+  });
+  try {
+    await setFields(page, { selectedusers: userIds.join(","), "extensionduedate[enabled]": true, ...(await dateSelectorValues(page, "extensionduedate", until)) });
+    await submitForm(page, "submitbutton");
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  return { changed: `Extension until ${until.toISOString()} granted to user${userIds.length > 1 ? "s" : ""} ${userIds.join(", ")} in assignment ${cmid}.` };
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { FormError, setFields } from "../../src/index.js";
+import { FormError, dateSelectorDate, dateSelectorValues, setFields } from "../../src/index.js";
 import { launchTestBrowser } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -18,6 +18,27 @@ describe("setFields", { skip: !browser && "no system browser" }, () => {
     await assert.rejects(setFields(page, { "grade[modgrade_point]": 80 }), (error: Error) => error instanceof FormError && /disabled.*grade\[modgrade_point\]/.test(error.message));
     await setFields(page, { "grade[modgrade_rescalegrades]": "no", "grade[modgrade_point]": 80 });
     assert.equal(await page.inputValue('[name="grade[modgrade_point]"]'), "80");
+    await page.close();
+  });
+});
+
+describe("date selectors", { skip: !browser && "no system browser" }, () => {
+  // A date selector as Moodle renders it, in a person's time zone (Madrid: CEST in October, CET in November).
+  const select = (part: string, from: number, to: number) => `<select name="due[${part}]">${Array.from({ length: to - from + 1 }, (_, i) => `<option value="${from + i}">${from + i}</option>`).join("")}</select>`;
+  const FORM = `<script>var M = { cfg: { usertimezone: "Europe/Madrid" } };</script><form class="mform"><input type="checkbox" name="due[enabled]" value="1" checked>
+${select("day", 1, 31)}${select("month", 1, 12)}${select("year", 2025, 2027)}${select("hour", 0, 23)}${select("minute", 0, 59)}</form>`;
+
+  it("sets and reads a date in the person's time zone, on either side of a daylight saving change", async () => {
+    const page = await browser!.newPage();
+    await page.setContent(FORM);
+    for (const date of [new Date("2026-10-23T12:30:00Z"), new Date("2026-11-30T18:00:00Z")]) {
+      const values = await dateSelectorValues(page, "due", date);
+      await setFields(page, values);
+      assert.deepEqual(await dateSelectorDate(page, "due"), date);
+    }
+    assert.deepEqual(await dateSelectorValues(page, "due", new Date("2026-10-23T12:30:00Z")), { "due[day]": 23, "due[month]": 10, "due[year]": 2026, "due[hour]": 14, "due[minute]": 30 });
+    await setFields(page, { "due[enabled]": false });
+    assert.equal(await dateSelectorDate(page, "due"), undefined);
     await page.close();
   });
 });
