@@ -51,7 +51,7 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
   const parser = includeContent ? await context.newPage() : undefined;
   const submissions: Submission[] = [];
   try {
-    // One participant at a time: the calls share the kept service tab (ADR-004).
+    // One participant at a time: one person at a time, as Moodle expects of a session.
     for (const participant of participants) {
       const dates = await participantDates(context, siteUrl, ids.instanceId, participant.id);
       const status = participant.submissionstatus || "none";

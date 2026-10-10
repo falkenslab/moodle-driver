@@ -17,7 +17,7 @@ sidebar_label: Introduction
 
 Moodle has a web services API, but using it needs a token, and many institutions don't enable web services for students or teachers, or don't let them create tokens. Single sign-on (SAML, OAuth, CAS) makes it harder still. Logging in, on the other hand, is something every Moodle user already does.
 
-moodle-driver logs in the way the person does, in a browser window, once; it keeps the session in a profile on disk, and then calls the same AJAX services Moodle's own pages call from a logged-in tab, or reads and fills the pages and forms themselves where no service helps. It never types, stores or asks for a password.
+moodle-driver logs in the way the person does, in a browser window, once; it keeps the session in a profile on disk, and then calls the same AJAX services Moodle's own pages call, with that session, or reads and fills the pages and forms themselves where no service helps. It never types, stores or asks for a password.
 
 ## What it covers
 

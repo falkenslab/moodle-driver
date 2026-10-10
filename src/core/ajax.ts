@@ -1,6 +1,7 @@
-import type { BrowserContext, Page } from "playwright-core";
-import { NotLoggedInError, openSitePage } from "./session.js";
+import type { BrowserContext } from "playwright-core";
+import { NotLoggedInError, fetchSitePage, readMoodleConfig } from "./session.js";
 import { MoodleError } from "./errors.js";
+import { siteFetch } from "./http.js";
 
 /** A Moodle AJAX service answered with an exception. */
 export class MoodleServiceError extends MoodleError {
@@ -14,14 +15,34 @@ export class MoodleServiceError extends MoodleError {
   }
 }
 
-// What service.php answers when the session is gone or the tab's sesskey is from an older one.
+// What service.php answers when the session is gone or the sesskey is from an older one.
 const SESSION_ERRORS = new Set(["servicerequireslogin", "invalidsesskey"]);
 
-// A light page that needs a session: the tab only lends its cookies and `M.cfg.sesskey`.
-const SERVICE_PAGE = "user/preferences.php";
+// A light page that needs a session: its `M.cfg` carries the session's sesskey and the person's settings.
+const SESSION_PAGE = "user/preferences.php";
 
-/** The tab kept open per context for service calls (ADR-004), and the site it belongs to. */
-const servicePages = new WeakMap<BrowserContext, { page: Page; siteUrl: string }>();
+/** What `M.cfg` says about the logged-in person. */
+export interface PageConfig {
+  userId: number;
+  language: string;
+  timeZone: string;
+}
+
+// Per context: the site, the session's sesskey and the person's settings, read once from a page (ADR-011).
+const sessions = new WeakMap<BrowserContext, { siteUrl: string; sesskey: string; config: PageConfig }>();
+
+async function session(context: BrowserContext, siteUrl: string, fresh: boolean) {
+  const current = sessions.get(context);
+  // The program may have changed the site since the sesskey was read.
+  if (current && current.siteUrl === siteUrl && !fresh) return current;
+  const { html } = await fetchSitePage(context, siteUrl, SESSION_PAGE, { follow: false });
+  const cfg = readMoodleConfig(html) ?? {};
+  if (typeof cfg.sesskey !== "string") throw new NotLoggedInError();
+  const config = { userId: Number(cfg.userId), language: String(cfg.language), timeZone: String(cfg.usertimezone) };
+  const next = { siteUrl, sesskey: cfg.sesskey, config };
+  sessions.set(context, next);
+  return next;
+}
 
 /** The response of `lib/ajax/service.php` for one request: `data`, or throws. */
 export function parseServiceResponse<T>(methodname: string, status: number, body: string): T {
@@ -41,69 +62,33 @@ export function parseServiceResponse<T>(methodname: string, status: number, body
   throw new MoodleServiceError(methodname, exception.errorcode ?? "unknown", exception.message ?? "no message");
 }
 
-async function postFromPage(page: Page, methodname: string, args: unknown): Promise<{ status: number; body: string }> {
-  return page.evaluate(
-    async ({ methodname, args }) => {
-      // Runs in the page, with its cookies and Moodle's globals.
-      const g = globalThis as unknown as {
-        M: { cfg: { wwwroot: string; sesskey: string } };
-        fetch(url: string, init: object): Promise<{ status: number; text(): Promise<string> }>;
-      };
-      const url = `${g.M.cfg.wwwroot}/lib/ajax/service.php?sesskey=${encodeURIComponent(g.M.cfg.sesskey)}&info=${encodeURIComponent(methodname)}`;
-      const response = await g.fetch(url, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify([{ index: 0, methodname, args }]),
-      });
-      return { status: response.status, body: await response.text() };
-    },
-    { methodname, args },
-  );
-}
-
-async function servicePage(context: BrowserContext, siteUrl: string, fresh: boolean): Promise<Page> {
-  const current = servicePages.get(context);
-  // The program may have changed the site since the tab was opened.
-  if (current && !current.page.isClosed() && current.siteUrl === siteUrl && !fresh) return current.page;
-  await current?.page.close().catch(() => undefined);
-  // The kept tab isn't a page a function works on: nothing to follow when it's replaced.
-  const page = await openSitePage(context, siteUrl, SERVICE_PAGE, { follow: false });
-  servicePages.set(context, { page, siteUrl });
-  return page;
-}
-
 /**
- * Calls one of Moodle's AJAX services as the logged-in person (ADR-004). Throws `NotLoggedInError`
- * when there's no session, `MoodleServiceError` when the service fails.
+ * Calls one of Moodle's AJAX services as the logged-in person: a request to `lib/ajax/service.php`
+ * with the profile's session and its sesskey, as Moodle's pages make them, without a tab (ADR-004,
+ * ADR-011). Throws `NotLoggedInError` when there's no session, `MoodleServiceError` when the service fails.
  */
 export async function callService<T>(context: BrowserContext, siteUrl: string, methodname: string, args: Record<string, unknown>): Promise<T> {
   for (const fresh of [false, true]) {
-    const page = await servicePage(context, siteUrl, fresh);
-    const { status, body } = await postFromPage(page, methodname, args);
+    const { sesskey } = await session(context, siteUrl, fresh);
+    const url = new URL(`lib/ajax/service.php?sesskey=${encodeURIComponent(sesskey)}&info=${encodeURIComponent(methodname)}`, siteUrl).href;
+    const { status, body } = await siteFetch(context, url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([{ index: 0, methodname, args }]),
+    });
     try {
       return parseServiceResponse<T>(methodname, status, body);
     } catch (error) {
       const sessionError = error instanceof MoodleServiceError && SESSION_ERRORS.has(error.errorcode);
       if (!sessionError) throw error;
-      // The kept tab's session may be stale (a new login, an expiry): a new tab tells which.
+      // The sesskey may be stale (a new login, an expiry): reading it again tells which.
       if (fresh) throw new NotLoggedInError();
     }
   }
   throw new NotLoggedInError(); // Unreachable: the fresh attempt returns or throws.
 }
 
-/** What `M.cfg` says about the logged-in person on the kept service tab. */
-export interface PageConfig {
-  userId: number;
-  language: string;
-  timeZone: string;
-}
-
+/** The logged-in person's id, interface language and time zone, from `M.cfg`, read now: someone else may have logged in since. */
 export async function readPageConfig(context: BrowserContext, siteUrl: string): Promise<PageConfig> {
-  const page = await servicePage(context, siteUrl, false);
-  return page.evaluate(() => {
-    const cfg = (globalThis as unknown as { M: { cfg: { userId: number; language: string; usertimezone: string } } }).M.cfg;
-    return { userId: cfg.userId, language: cfg.language, timeZone: cfg.usertimezone };
-  });
+  return (await session(context, siteUrl, true)).config;
 }

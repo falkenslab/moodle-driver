@@ -134,7 +134,7 @@ Many writes are idempotent where Moodle's are: marking an activity done twice, p
 
 ## One thing at a time
 
-Operations share the browser and the kept service tab. Call them one after another (`await` each) rather than in parallel on the same object: Moodle's session and form tokens are per person, and a site behaves best with one person doing one thing at a time. Several sites, or several people, take one object (and one profile) each.
+Operations share the browser and the person's session. Call them one after another (`await` each) rather than in parallel on the same object: Moodle's session and form tokens are per person, and a site behaves best with one person doing one thing at a time. Several sites, or several people, take one object (and one profile) each.
 
 ## Permissions are Moodle's
 

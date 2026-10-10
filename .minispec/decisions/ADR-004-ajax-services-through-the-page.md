@@ -6,10 +6,10 @@ The driver reads and writes Moodle through the AJAX services its own pages use (
 
 ## Motivation
 
-The services return structured data, independent of the interface's language and theme, and are what Moodle's own JavaScript calls, so they exist on any site where the page works. Scraped HTML changes with themes and versions. A web service token would need the site to enable web services and the person to create a token, a credential a program would have to hold (ADR-002); many institutions don't allow either. Every other Moodle client found (moodle-client, moodle-webservice, joodle, the Moodle MCP servers) depends on that token: working with the person's own session is what this driver adds.
+The services return structured data, independent of the interface's language and theme, and are what Moodle's own JavaScript calls, so they exist on any site where the page works. Scraped HTML changes with themes and versions. A web service token would need the site to enable web services and the person to create a token, a credential a program would have to hold (ADR-002); many institutions don't allow either. Most Moodle clients found (moodle-client, moodle-webservice, joodle, the Moodle MCP servers) depend on that token; working with the person's own session is what this driver adds to them. (moodle-cli, found later, also uses the person's session, taken from their own browser's cookies, for reads.)
 
 ## Consequences
 
 - The driver acts only as the person logged in, with their permissions: a service the page can't call, it can't either.
-- One tab with a session is kept open and reused for service calls (`src/core/ajax.ts`); a `servicerequireslogin` or `invalidsesskey` answer means a new tab, and if the site shows its login page, `NotLoggedInError`.
+- Services were called from a tab kept open per context; since ADR-011 they go over HTTP with the session's `sesskey`, read again once on `servicerequireslogin` or `invalidsesskey`, and `NotLoggedInError` if the site shows its login page.
 - Which service a function uses is an internal detail: a service missing in an older Moodle is a bug to fix in that function, with the Moodle version noted.

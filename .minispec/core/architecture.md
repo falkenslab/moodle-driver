@@ -5,7 +5,7 @@
 ```
 program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts, ADR-009) or the functions; internals.ts: the primitives (ADR-010)
   createBrowserManager(options) --> browser/manager.ts (persistent context on the profile, system channel or Chromium)
-  area functions (context, siteUrl, ids, options) --> core/ajax.ts (AJAX from a kept tab) | core/session.ts (openSitePage) | core/forms.ts --> Moodle
+  area functions (context, siteUrl, ids, options) --> core/ajax.ts (AJAX over HTTP) | core/session.ts (openSitePage) | core/forms.ts --> Moodle
 ```
 
 ## Key pieces (`src/`)
@@ -24,7 +24,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 ### `core/`: what every area is built on
 
 - `session.ts` — whether a page has a user logged in (body class, `M.cfg.userId`, login and logout links), `openSitePage()`, `logOut()`, and the hook that lets the browser follow the pages functions open.
-- `ajax.ts` — `callService()`: AJAX from a kept logged-in tab with its `sesskey`, a stale tab replaced, session errors as `NotLoggedInError` (ADR-004); `readPageConfig()`.
+- `ajax.ts` — `callService()`: AJAX over HTTP with the profile's session and the `sesskey` read from a light page, a stale one read again, session errors as `NotLoggedInError` (ADR-004, ADR-011); `http.ts` — requests without a tab (`context.request`, or the fake Moodle's transport); `readPageConfig()`.
 - `forms.ts` — forms: fields by name (TinyMCE through its API), draft-area uploads as the file picker does, submit, validation errors by field, date selectors in the person's time zone. `inPage.ts` — `inPage()`.
 - `text.ts` — entities decoded, elements' text with paragraphs and lists, media in content. `pace.ts` — a person's reading pace for the realistic trail (ADR-005).
 - `site.ts` — a site's base URL from any page (no browser). `login.ts` — `logIn()`: the user at once if there's a session, else a window at the login page waiting for the person (ADR-002).

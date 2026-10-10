@@ -78,7 +78,7 @@ function courseAbilities(context: BrowserContext, siteUrl: string, courseId: num
 
 ## siteName
 
-The site's name, from its public settings (`tool_mobile_get_public_config`) through the logged-in tab.
+The site's name, from its public settings (`tool_mobile_get_public_config`) with the person's session.
 
 ```ts
 function siteName(context: BrowserContext, siteUrl: string): Promise<string | undefined>;

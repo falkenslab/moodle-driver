@@ -1,5 +1,6 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { MoodleError } from "./errors.js";
+import { siteFetch } from "./http.js";
 
 /** No live Moodle session: the person has to log in again (ADR-002). */
 export class NotLoggedInError extends MoodleError {
@@ -78,6 +79,56 @@ export async function openSitePage(context: BrowserContext, siteUrl: string, pat
     await page.close().catch(() => undefined);
     throw error;
   }
+}
+
+/** `M.cfg` as a Moodle page's HTML sets it (`M.cfg = {…};`), parsed; `undefined` when it has none. */
+export function readMoodleConfig(html: string): Record<string, unknown> | undefined {
+  const start = html.indexOf("M.cfg = {");
+  if (start < 0) return undefined;
+  // The object literal is JSON (Moodle writes it with json_encode): its end is where the braces balance.
+  let depth = 0;
+  let inString = false;
+  const from = html.indexOf("{", start);
+  for (let i = from; i < html.length; i++) {
+    const c = html[i];
+    if (inString) {
+      if (c === "\\") i++;
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) {
+      try {
+        return JSON.parse(html.slice(from, i + 1)) as Record<string, unknown>;
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+/** What a page's HTML says about its session, read as `readSessionFacts` reads a page. */
+export function htmlSessionFacts(html: string): SessionFacts {
+  const userId = readMoodleConfig(html)?.userId;
+  const bodyClass = /<body\b[^>]*\bclass="([^"]*)"/i.exec(html)?.[1] ?? "notloggedin";
+  return {
+    notLoggedIn: /(^|\s)notloggedin(\s|$)/.test(bodyClass),
+    userId: typeof userId === "number" ? userId : null,
+    hasLogoutLink: /href="[^"]*\/login\/logout\.php/.test(html),
+    hasLoginLink: /href="[^"]*\/login\/index\.php/.test(html),
+  };
+}
+
+/**
+ * A page of the site over HTTP with the profile's session, without a tab (ADR-011): its final URL and
+ * HTML. Throws `NotLoggedInError` when Moodle answers with its login page. While the browser is shown,
+ * the working tab shows the page afterwards (ADR-007), unless `follow` is false.
+ */
+export async function fetchSitePage(context: BrowserContext, siteUrl: string, path: string, { follow = true } = {}): Promise<{ url: string; html: string }> {
+  const response = await siteFetch(context, new URL(path, siteUrl).href);
+  if (!isLoggedIn(response.url, siteUrl, htmlSessionFacts(response.body))) throw new NotLoggedInError();
+  if (follow) void followers.get(context)?.(response.url);
+  return { url: response.url, html: response.body };
 }
 
 /**

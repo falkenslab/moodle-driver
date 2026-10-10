@@ -1,6 +1,10 @@
-import { chromium, type Browser, type BrowserContext, type Route } from "playwright-core";
+import { chromium, type Browser, type BrowserContext, type Page, type Route } from "playwright-core";
+import { setTransport } from "../core/http.js";
 
 export const SITE = "http://moodle.test/";
+
+// The fake's own blank page, for requests the driver makes without a tab.
+const TRANSPORT_PATH = "__fake-transport";
 
 /**
  * A Moodle page reduced to what the driver reads: the body class, `M.cfg` (`wwwroot`, `sesskey`,
@@ -72,8 +76,27 @@ export interface FakeMoodleState {
  * like Moodle's, exceptions included.
  */
 export async function serveFakeMoodle(context: BrowserContext, state: FakeMoodleState): Promise<void> {
+  // The driver's requests without a tab (`context.request`) don't go through routes: here they go
+  // through a blank page of the site's origin, whose `fetch` does (the page itself isn't counted).
+  let transportPage: Promise<Page> | undefined;
+  setTransport(context, async (url, request) => {
+    transportPage ??= context.newPage().then(async (page) => {
+      await page.goto(`${SITE}${TRANSPORT_PATH}`);
+      return page;
+    });
+    const page = await transportPage;
+    return page.evaluate(
+      async ({ url, request }) => {
+        const g = globalThis as unknown as { fetch(url: string, init: object): Promise<{ status: number; url: string; text(): Promise<string> }> };
+        const response = await g.fetch(url, { method: request.method ?? "GET", headers: request.headers, body: request.body, credentials: "same-origin" });
+        return { status: response.status, url: response.url, body: await response.text() };
+      },
+      { url, request },
+    );
+  });
   await context.route(`${SITE}**`, async (route: Route) => {
     const url = new URL(route.request().url());
+    if (url.pathname === `/${TRANSPORT_PATH}`) return route.fulfill({ status: 200, contentType: "text/html", body: "<!DOCTYPE html><title>transport</title>" });
     const sesskey = state.sesskey ?? "s1";
     if (url.pathname === "/lib/ajax/service.php") {
       const json = (body: unknown) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });

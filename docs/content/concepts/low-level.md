@@ -16,13 +16,13 @@ They follow the same versioning as the main entry, but they're closer to Moodle:
 function callService<T>(context: BrowserContext, siteUrl: string, methodname: string, args: Record<string, unknown>): Promise<T>;
 ```
 
-Also a method of the object: `moodle.callService<T>(methodname, args)`. Calls one of Moodle's AJAX services from the kept logged-in tab, with its `sesskey`, as Moodle's pages do. It throws `NotLoggedInError` when there's no session and `MoodleServiceError` (with `errorcode`) when the service fails. Only services Moodle opens to AJAX work (`'ajax' => true` in their `db/services.php`); others answer `servicenotavailable`, even if the mobile app can use them.
+Also a method of the object: `moodle.callService<T>(methodname, args)`. Calls one of Moodle's AJAX services with the person's session and its `sesskey`, as Moodle's pages do, over HTTP without a tab. It throws `NotLoggedInError` when there's no session and `MoodleServiceError` (with `errorcode`) when the service fails. Only services Moodle opens to AJAX work (`'ajax' => true` in their `db/services.php`); others answer `servicenotavailable`, even if the mobile app can use them.
 
 ```ts
 const groups = await moodle.callService<{ id: number; name: string }[]>("core_group_get_course_groups", { courseid: 3 });
 ```
 
-`readPageConfig(context, siteUrl)` reads the person's id, interface language and time zone from the same tab; `readOwnProfile(context, siteUrl)` the person's id and name from their profile page.
+`readPageConfig(context, siteUrl)` reads the person's id, interface language and time zone from a page's `M.cfg`; `readOwnProfile(context, siteUrl)` the person's id and name from their profile page.
 
 ## Opening a page
 
@@ -33,6 +33,8 @@ function openSitePage(context: BrowserContext, siteUrl: string, path: string, op
 Opens a page of the site (a path relative to it) in a new tab and checks there's a session, throwing `NotLoggedInError` when Moodle answers with its login page. Close the page when done. It's also a method, `moodle.openSitePage(path)`, like `moodle.openForm(path)`. While the browser is shown on demand, the page is shown afterwards in the working tab (`follow: false` skips it).
 
 Read pages by structure, not by text (see [How it works](how-it-works.md)): the body id names the page (`page-mod-quiz-view`), ids and data attributes name things. `moodleErrorMessage(page)` gives Moodle's message on an error page; `readSessionFacts(page)` and `pageIsLoggedIn(page, siteUrl)` tell whether a page has a user logged in. `readTexts(page, selector)` gives elements' text with paragraphs and lists, and `readMedia(page, selector)` the media in them.
+
+To read a page's HTML without a tab, `fetchSitePage(context, siteUrl, path)` gives its final URL and HTML over HTTP with the profile's session, and throws `NotLoggedInError` when Moodle answers with its login page; `readMoodleConfig(html)` parses its `M.cfg`, and `htmlSessionFacts(html)` tells whether someone is logged in. Moodle's server takes most of a page's time, so it's lighter rather than much faster (ADR-011).
 
 ## Forms
 

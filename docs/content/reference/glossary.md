@@ -10,7 +10,7 @@ Anything a teacher adds to a course section: an assignment, a quiz, a forum, but
 
 ### AJAX service
 
-A function of Moodle's web services that its own pages call from JavaScript through `lib/ajax/service.php`, with the page's [sesskey](#sesskey), answering JSON; only those declared for AJAX (`'ajax' => true`) work from a browser, others answer `servicenotavailable`. The driver calls them from its [kept tab](#kept-tab) wherever one does the job, and gives a program the same door with `callService` (also `moodle.callService`); a failure comes as `MoodleServiceError` with Moodle's `errorcode`. See [How it works](../concepts/how-it-works.md) and [Going lower level](../concepts/low-level.md).
+A function of Moodle's web services that its own pages call from JavaScript through `lib/ajax/service.php`, with the page's [sesskey](#sesskey), answering JSON; only those declared for AJAX (`'ajax' => true`) work from a browser, others answer `servicenotavailable`. The driver calls them over HTTP with the person's session and its sesskey, without a tab, wherever one does the job, and gives a program the same door with `callService` (also `moodle.callService`); a failure comes as `MoodleServiceError` with Moodle's `errorcode`. See [How it works](../concepts/how-it-works.md) and [Going lower level](../concepts/low-level.md).
 `moodle.callService("core_group_get_course_groups", { courseid: 3 })`
 
 ### Assignment
@@ -129,7 +129,7 @@ A part of a course page holding activities: a topic or a week depending on the c
 
 ### Sesskey
 
-The token Moodle gives each session (`M.cfg.sesskey` in its pages) and expects with every action that changes something and every AJAX call, to tell the person's own requests from forged ones. A program never handles it: the driver reads it from a logged-in page, the [kept tab](#kept-tab) for services, and an `invalidsesskey` answer makes it replace a stale tab. See [How it works](../concepts/how-it-works.md).
+The token Moodle gives each session (`M.cfg.sesskey` in its pages) and expects with every action that changes something and every AJAX call, to tell the person's own requests from forged ones. A program never handles it: the driver reads it once from a logged-in page and sends it with every service call, and an `invalidsesskey` answer makes it read it again. See [How it works](../concepts/how-it-works.md).
 
 ### Slot
 
@@ -164,10 +164,6 @@ The stable `code` every error the driver throws on purpose carries: `MoodleError
 ### Internals
 
 The entry point `@falkenslab/moodle-driver/internals`, with the primitives the operations are built from: `callService`, `openSitePage`, `openForm`, `setFields`, `submitForm`, `inPage`, `courseState`, `editCourse` and others. They follow the same versioning as the main entry but are closer to Moodle, taking pages, form names and service names. See [Going lower level](../concepts/low-level.md).
-
-### Kept tab
-
-The logged-in tab the driver keeps open per browser context and site, on a light page, to call Moodle's [AJAX services](#ajax-service) with its cookies and [sesskey](#sesskey); a stale one (a new login, an expired session) is replaced once before the call gives up with `NotLoggedInError`. A program doesn't see it; `callService` uses it. See [How it works](../concepts/how-it-works.md).
 
 ### Profile
 

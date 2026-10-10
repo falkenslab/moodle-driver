@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { NotLoggedInError, isLoggedIn, logOut, openSitePage, readSessionFacts } from "../../src/core/session.js";
+import { NotLoggedInError, fetchSitePage, htmlSessionFacts, isLoggedIn, logOut, openSitePage, readMoodleConfig, readSessionFacts } from "../../src/core/session.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/fakeMoodle.js";
 
 const browser = await launchTestBrowser();
@@ -82,6 +82,34 @@ describe("logOut", { skip: !browser && "no system browser" }, () => {
   it("throws when Moodle keeps the session", async () => {
     const context = await site({ user: { id: 3, fullName: "T" } }, false);
     await assert.rejects(logOut(context, SITE), /still logged in/);
+    await context.close();
+  });
+});
+
+describe("reading a page's HTML", () => {
+  it("parses M.cfg as Moodle writes it, escaped slashes and nested objects included", () => {
+    const html = moodlePage({ userId: 4, sesskey: "abc" }).replace("M.cfg = {", 'M.cfg = {"homeurl":{"a":"}"},');
+    assert.deepEqual(readMoodleConfig(html), { homeurl: { a: "}" }, wwwroot: "http://moodle.test", sesskey: "abc", userId: 4, language: "en", usertimezone: "Europe/Madrid" });
+    assert.equal(readMoodleConfig("<html><body>No Moodle here</body></html>"), undefined);
+  });
+
+  it("tells a person's page from a guest's and from the login page", () => {
+    assert.deepEqual(htmlSessionFacts(moodlePage({ userId: 4 })), { notLoggedIn: false, userId: 4, hasLogoutLink: true, hasLoginLink: false });
+    assert.equal(isLoggedIn(SITE, SITE, htmlSessionFacts(moodlePage({ userId: 4, guest: true }))), false);
+    assert.equal(isLoggedIn(SITE, SITE, htmlSessionFacts(moodlePage({ userId: 0 }))), false);
+  });
+});
+
+describe("fetchSitePage", { skip: !browser && "no system browser" }, () => {
+  it("gives a page's HTML with the session, and NotLoggedInError without one", async () => {
+    const context = await browser!.newContext();
+    const state: FakeMoodleState = { user: { id: 4, fullName: "Ada Lovelace" }, bodies: { "/my/courses.php": "<p id='mine'>My courses</p>" } };
+    await serveFakeMoodle(context, state);
+    const { url, html } = await fetchSitePage(context, SITE, "my/courses.php");
+    assert.equal(url, `${SITE}my/courses.php`);
+    assert.ok(html.includes("<p id='mine'>My courses</p>"));
+    delete state.user;
+    await assert.rejects(fetchSitePage(context, SITE, "my/courses.php"), NotLoggedInError);
     await context.close();
   });
 });

@@ -2,7 +2,7 @@
 // that goes lower level than them (a service the driver doesn't wrap, a form of its own, a page read
 // by hand). Stable as the main entry is, but closer to Moodle: they take pages and form names.
 export { callService, readPageConfig, type PageConfig } from "./core/ajax.js";
-export { openSitePage, readSessionFacts, isLoggedIn, pageIsLoggedIn, moodleErrorMessage, type SessionFacts } from "./core/session.js";
+export { openSitePage, fetchSitePage, readSessionFacts, htmlSessionFacts, readMoodleConfig, isLoggedIn, pageIsLoggedIn, moodleErrorMessage, type SessionFacts } from "./core/session.js";
 export { readOwnProfile } from "./core/login.js";
 export { openForm, formValue, setFields, submitForm, uploadToDraft, dateSelectorValues, dateSelectorDate } from "./core/forms.js";
 export { inPage } from "./core/inPage.js";

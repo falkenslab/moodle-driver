@@ -153,7 +153,7 @@ export async function deadlines(context: BrowserContext, siteUrl: string, { cour
 
 /** What changed in a course's activities since a date, with their names from the course's state. */
 export async function courseUpdates(context: BrowserContext, siteUrl: string, courseId: number, since: Date) {
-  // One after the other: the first call may have to open the kept service tab.
+  // One after the other: the first call may have to read the session's sesskey.
   const { instances } = await callService<{ instances: { contextlevel: string; id: number; updates: { name: string; timeupdated?: number; itemids?: number[] }[] }[] }>(context, siteUrl, "core_course_get_updates_since", {
     courseid: courseId,
     since: Math.floor(since.getTime() / 1000),

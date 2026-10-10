@@ -49,7 +49,7 @@ try {
 
 ## Step by step
 
-1. `moodle.callService<T>(methodname, args)` posts to Moodle's `lib/ajax/service.php` from a logged-in tab, with the session's `sesskey`, as Moodle's own pages do. `T` is what the program expects back: the driver doesn't check it, so declare only the fields you read.
+1. `moodle.callService<T>(methodname, args)` posts to Moodle's `lib/ajax/service.php` with the person's session and its `sesskey`, as Moodle's own pages do. `T` is what the program expects back: the driver doesn't check it, so declare only the fields you read.
 2. `moodle.openSitePage(path)` opens a page of the site in a new tab, as a Playwright `Page`, and throws `NotLoggedInError` if Moodle answers with its login page. The program reads it by structure: the body id (`page-badges-mybadges`) says which page it is, and classes find what's on it, so the program works whatever the site's language. `readTexts` from `/internals` gives elements' text with paragraphs and lists kept.
 3. `moodle.openForm(path)` opens a page with a Moodle form and waits for its editors and its dependencies (fields that enable others). `setFields` sets fields by name, one at a time so Moodle's handlers run in between; `submitForm` clicks the named button and reads Moodle's validation messages.
 4. Each page is closed in a `finally`: unlike the driver's operations, these give the program a page, and it's the program's.

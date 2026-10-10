@@ -16,10 +16,6 @@ Which browser Playwright launches: the system's `msedge` or `chrome`, or `chromi
 
 The id of an activity in a course, which every activity function takes; not the activity's instance id, which some services want and the driver finds itself.
 
-## Kept tab
-
-The logged-in tab the driver keeps for AJAX services, with its `sesskey` (ADR-004).
-
 ## Working tab
 
 The one tab a program can drive itself (`tab()`), the same one the browser follows pages in while shown (ADR-007).

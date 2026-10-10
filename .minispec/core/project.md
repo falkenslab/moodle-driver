@@ -7,7 +7,7 @@
 ## What it does
 
 - Drives the system's Edge or Chrome with `playwright-core`, or Chromium downloaded on first use when there is neither (ADR-001), on a persistent profile where the person logs in by hand (ADR-002), keeping the session across restarts (ADR-003).
-- Calls Moodle's AJAX services from a logged-in tab, the ones the interface itself uses, and reads pages and forms by their structure where no service helps (ADR-004).
+- Calls Moodle's AJAX services over HTTP with the person's session (ADR-011), the ones the interface itself uses, and reads pages and forms by their structure where no service helps (ADR-004).
 - Covers, so far: courses (and their settings) and their structure, content activities, files, assignments (student and teacher), grading (rubrics and marking guides included), extensions and quiz overrides, quizzes (their results and questions), forums (and their moderation), grades, surveys (questionnaire, feedback, choice), the activities overview, deadlines, course updates, creating and editing activities and sections, participants and groups, activity completion and the progress report, the gradebook (grader report, categories, weights), question banks (listing, GIFT and XML imports, single questions), notifications and messages, calendar events, H5P activities (content type, attempts), lessons, site information, logging in and out.
 - Acts as a student at a person's pace when asked (the trail, ADR-005), so Moodle logs views and completion as for a person.
 - Shows the browser on demand and keeps one working tab a program can use (ADR-007).

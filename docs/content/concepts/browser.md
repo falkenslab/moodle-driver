@@ -2,7 +2,7 @@
 
 `createMoodle()` makes a `BrowserManager` from its options (it's `moodle.browser`), or takes yours; `createBrowserManager(options)` makes one on its own. It's the one persistent browser your program works Moodle with. It launches nothing until it's needed, keeps the browser open between calls, and closes it on `close()`.
 
-**Terms:** [profile](../reference/glossary.md#profile), [working tab](../reference/glossary.md#working-tab), [shown on demand](../reference/glossary.md#shown-on-demand), [kept tab](../reference/glossary.md#kept-tab).
+**Terms:** [profile](../reference/glossary.md#profile), [working tab](../reference/glossary.md#working-tab), [shown on demand](../reference/glossary.md#shown-on-demand).
 
 ## Options
 

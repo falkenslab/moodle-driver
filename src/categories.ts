@@ -62,6 +62,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   logIn: NONE,
   logOut: NONE,
   readSessionFacts: NONE,
+  htmlSessionFacts: NONE,
+  readMoodleConfig: NONE,
   isLoggedIn: NONE,
   pageIsLoggedIn: NONE,
   dateSelectorValues: NONE,
@@ -72,6 +74,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Generic primitives.
   callService: ANY,
   openSitePage: ANY,
+  fetchSitePage: ANY,
   inPage: ANY,
   openForm: ANY,
   formValue: ANY,

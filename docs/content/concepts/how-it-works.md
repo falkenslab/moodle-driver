@@ -2,7 +2,7 @@
 
 The driver does in Moodle what the person's browser does when they use the site: it loads Moodle's pages with their session, and from those pages calls the services Moodle's own JavaScript calls. Knowing how lets you predict what a call costs, what Moodle logs and why it works in any interface language.
 
-**Terms:** [ajax service](../reference/glossary.md#ajax-service), [sesskey](../reference/glossary.md#sesskey), [kept tab](../reference/glossary.md#kept-tab), [working tab](../reference/glossary.md#working-tab).
+**Terms:** [ajax service](../reference/glossary.md#ajax-service), [sesskey](../reference/glossary.md#sesskey), [working tab](../reference/glossary.md#working-tab).
 
 ![The journey of one call, from your program to Moodle and back](/img/diagrams/journey-of-a-call.svg)
 
@@ -20,7 +20,7 @@ flowchart LR
 
 ## Services first, pages where no service helps
 
-Moodle's pages call AJAX services (`lib/ajax/service.php`) for most of what they show: the course's state, a forum's posts, a grading panel, a table of participants. Those services answer JSON, are stable across themes and languages, and check permissions as the page would. The driver calls them from a logged-in tab of the site, with that tab's `sesskey`, exactly as the page does. It keeps one such tab open per context and site (on the person's preferences page, a light page) and reuses it; a stale tab (a new login, an expired session) is replaced once before giving up with `NotLoggedInError`.
+Moodle's pages call AJAX services (`lib/ajax/service.php`) for most of what they show: the course's state, a forum's posts, a grading panel, a table of participants. Those services answer JSON, are stable across themes and languages, and check permissions as the page would. The driver calls them as the page does, with the person's session and its `sesskey`, but without a tab: an HTTP request carrying the profile's cookies (`service.php` needs nothing a browser adds). It reads the `sesskey` once from a light page (the person's preferences) and keeps it; when Moodle says it's stale (a new login, an expired session), it's read again once before giving up with `NotLoggedInError`. Pages and forms open in tabs: measured, reading them without one gains little, because Moodle's server takes most of the time (ADR-011).
 
 Many things have no AJAX service open to the browser, or have one only for the mobile app: submitting an assignment, posting in a forum, a quiz attempt, an activity's settings, a choice. For those the driver loads the page and reads it, or fills and submits the same form the person would, with the same validation and the same messages. Where Moodle renders a form inside the page from a service (dynamic forms, fragments), the driver asks for it, fills it in a blank tab and sends it back serialized, as the page's modal does.
 
