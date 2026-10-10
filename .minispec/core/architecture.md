@@ -36,6 +36,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `moodle/assign.ts`, `moodle/grading.ts`, `moodle/submission.ts` — an assignment's ids, participants and panels; everyone's submissions and grading (simple, rubric levels, guide scores; the grading method read from the panel); extensions through their form (dates in the person's time zone, `dateSelectorValues`/`dateSelectorDate`); the student's side (save, submit).
 - `moodle/quiz.ts` — a quiz's page, attempts (questions by form name, answers page by page, finish), reviews; user overrides through their form.
 - `moodle/quizResults.ts` — a quiz's attempts from its overview and responses reports: ids from inputs and links, the grade column by its class, state and dates by position from it.
+- `moodle/quizStructure.ts` — a quiz's slots and pages from its edit page; bank and random questions added as its bank actions post them (an attempted quiz can't change).
 - `moodle/forum.ts`, `moodle/forumPosts.ts` — discussions from the forum's pages (pinned and locked included), posts through the service; replying and starting discussions through the post form; pinning and locking through their services.
 - `moodle/grades.ts`, `moodle/overview.ts`, `moodle/survey.ts` — the user grade report; the activities overview, deadlines and course updates; questionnaire and feedback surveys.
 - `testing/` — the fake Moodle served inside a browser context, grading panel HTML, a browser manager that launches nothing.
