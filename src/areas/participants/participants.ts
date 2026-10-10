@@ -4,7 +4,7 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { callService } from "../../core/ajax.js";
 import { openSitePage } from "../../core/session.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 export interface Participant {
   userId: number;
@@ -21,7 +21,7 @@ export interface CourseGroup {
 }
 
 /** The person can't see the course's participants. */
-export class NoParticipantsError extends MoodleDriverError {
+export class NoParticipantsError extends MoodleError {
   override name = "NoParticipantsError";
   constructor(message: string) {
     super(message, "no-participants");

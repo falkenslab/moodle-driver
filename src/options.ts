@@ -1,4 +1,4 @@
-import { MoodleDriverError } from "./core/errors.js";
+import { MoodleError } from "./core/errors.js";
 // What a program using the driver chooses: the browser, its profile, the site, how student actions
 // look in Moodle's logs. Plain values: the driver reads no environment or arguments of its own.
 
@@ -28,7 +28,7 @@ export interface BrowserOptions {
 }
 
 /** A site URL that isn't one. */
-export class MoodleUrlError extends MoodleDriverError {
+export class MoodleUrlError extends MoodleError {
   override name = "MoodleUrlError";
   constructor(message: string) {
     super(message, "moodle-url");

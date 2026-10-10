@@ -48,7 +48,7 @@ interface ActivityFields {
 
 Errors:
 
-- A `MoodleDriverError` when a file path isn't absolute or doesn't exist (`invalid-input`, `not-found`), when the course has no section with that id (`not-found`), when `content` is given for a type other than a page or label (`invalid-input`), or when the type's form takes no files (`not-available`).
+- A `MoodleError` when a file path isn't absolute or doesn't exist (`invalid-input`, `not-found`), when the course has no section with that id (`not-found`), when `content` is given for a type other than a page or label (`invalid-input`), or when the type's form takes no files (`not-available`).
 - `FormError` when a field isn't in the form or is disabled (see below), when uploading fails, or when Moodle refuses the form; its `fields` hold Moodle's message per field (`{ field: "name", message: "You must supply a value here." }`).
 - `NotLoggedInError` without a session.
 
@@ -60,7 +60,7 @@ Changes an existing activity through its form: only what's given changes, and th
 function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields): Promise<CourseChange>;
 ```
 
-It takes the same `ActivityFields` as `createActivity`, reading the activity's module and course from the form. Errors are the same `FormError` cases, and a `MoodleDriverError` (`invalid-input`) for `content` on a type other than a page or label.
+It takes the same `ActivityFields` as `createActivity`, reading the activity's module and course from the form. Errors are the same `FormError` cases, and a `MoodleError` (`invalid-input`) for `content` on a type other than a page or label.
 
 ## activitySettings
 

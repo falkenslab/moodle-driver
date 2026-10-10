@@ -1,9 +1,9 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { NotLoggedInError, openSitePage } from "./session.js";
-import { MoodleDriverError } from "./errors.js";
+import { MoodleError } from "./errors.js";
 
 /** A Moodle AJAX service answered with an exception. */
-export class MoodleServiceError extends MoodleDriverError {
+export class MoodleServiceError extends MoodleError {
   override name = "MoodleServiceError";
   constructor(
     readonly methodname: string,

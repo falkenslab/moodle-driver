@@ -2,13 +2,13 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { BrowserContext, Page } from "playwright-core";
 import { openSitePage } from "./session.js";
-import { MoodleDriverError } from "./errors.js";
+import { MoodleError } from "./errors.js";
 
 /** A form field's value: text, a number, a checkbox, or a multiple select's values. */
 export type FieldValue = string | number | boolean | string[];
 
 /** Moodle refused the form, or a field to set isn't in it. */
-export class FormError extends MoodleDriverError {
+export class FormError extends MoodleError {
   override name = "FormError";
   constructor(
     message: string,

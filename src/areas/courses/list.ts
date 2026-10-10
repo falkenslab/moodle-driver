@@ -3,7 +3,7 @@ import { callService } from "../../core/ajax.js";
 import { openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
 import { NotLoggedInError } from "../../core/session.js";
 import { decodeEntities } from "../../core/text.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** Which courses by their dates; "all" includes those the person hid from their dashboard. */
 export const COURSE_CLASSIFICATIONS = ["all", "inprogress", "future", "past"] as const;
@@ -74,7 +74,7 @@ export async function listCourses(context: BrowserContext, siteUrl: string, clas
 }
 
 /** A course that isn't there, or the person can't change. */
-export class CourseError extends MoodleDriverError {
+export class CourseError extends MoodleError {
   override name = "CourseError";
   constructor(message: string) {
     super(message, "course");

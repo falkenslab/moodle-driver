@@ -4,7 +4,7 @@ import { installChromium, type InstallChromium } from "./chromium.js";
 import { SYSTEM_CHANNELS, type BrowserOptions, type Channel } from "../options.js";
 import { followPages } from "../core/session.js";
 import { restoreSessionCookies, saveSessionCookies } from "./cookies.js";
-import { MoodleDriverError } from "../core/errors.js";
+import { MoodleError } from "../core/errors.js";
 
 type LaunchPersistentContext = typeof chromium.launchPersistentContext;
 
@@ -41,7 +41,7 @@ export interface BrowserManager {
 }
 
 /** No installed browser could be launched, and Chromium can't be downloaded (ADR-001). */
-export class BrowserNotFoundError extends MoodleDriverError {
+export class BrowserNotFoundError extends MoodleError {
   override name = "BrowserNotFoundError";
   constructor(message: string) {
     super(message, "browser-not-found");
@@ -49,7 +49,7 @@ export class BrowserNotFoundError extends MoodleDriverError {
 }
 
 /** No browser yet: Chromium is downloading in the background, and the call should be retried later. */
-export class BrowserDownloadingError extends MoodleDriverError {
+export class BrowserDownloadingError extends MoodleError {
   override name = "BrowserDownloadingError";
   constructor(message: string) {
     super(message, "browser-downloading");
@@ -57,7 +57,7 @@ export class BrowserDownloadingError extends MoodleDriverError {
 }
 
 /** A window was asked for where there's no screen to show it (a container, a server). */
-export class NoDisplayError extends MoodleDriverError {
+export class NoDisplayError extends MoodleError {
   override name = "NoDisplayError";
   constructor(message: string) {
     super(message, "no-display");

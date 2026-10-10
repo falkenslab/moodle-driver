@@ -7,10 +7,10 @@ import { setFields } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
 import { pause, readingSeconds } from "../../core/pace.js";
 import { openSitePage } from "../../core/session.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** The lesson isn't there, or the page can't take that answer. */
-export class LessonError extends MoodleDriverError {
+export class LessonError extends MoodleError {
   override name = "LessonError";
   constructor(message: string) {
     super(message, "lesson");

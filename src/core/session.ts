@@ -1,8 +1,8 @@
 import type { BrowserContext, Page } from "playwright-core";
-import { MoodleDriverError } from "./errors.js";
+import { MoodleError } from "./errors.js";
 
 /** No live Moodle session: the person has to log in again (ADR-002). */
-export class NotLoggedInError extends MoodleDriverError {
+export class NotLoggedInError extends MoodleError {
   override name = "NotLoggedInError";
   constructor() {
     super("There is no Moodle session, or it expired: the person has to log in again.", "not-logged-in");
@@ -100,7 +100,7 @@ export async function logOut(context: BrowserContext, siteUrl: string): Promise<
     const confirm = page.locator('form[action*="/login/logout.php"] [type="submit"]');
     if ((await confirm.count()) > 0) await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), confirm.first().click()]);
     await page.goto(home, { waitUntil: "domcontentloaded" });
-    if (await pageIsLoggedIn(page, siteUrl)) throw new MoodleDriverError("Moodle didn't end the session: the person is still logged in. Try again, or log out in the browser.", "logout-failed");
+    if (await pageIsLoggedIn(page, siteUrl)) throw new MoodleError("Moodle didn't end the session: the person is still logged in. Try again, or log out in the browser.", "logout-failed");
     return true;
   } finally {
     await page.close().catch(() => undefined);

@@ -2,18 +2,18 @@
 import type { BrowserContext, Page } from "playwright-core";
 import type { BrowserManager } from "../browser/manager.js";
 import { NotLoggedInError, openSitePage, pageIsLoggedIn } from "./session.js";
-import { MoodleDriverError } from "./errors.js";
+import { MoodleError } from "./errors.js";
 
 const POLL_MS = 1000;
 
-export class LoginTimeoutError extends MoodleDriverError {
+export class LoginTimeoutError extends MoodleError {
   override name = "LoginTimeoutError";
   constructor(message: string) {
     super(message, "login-timeout");
   }
 }
 
-export class LoginWindowClosedError extends MoodleDriverError {
+export class LoginWindowClosedError extends MoodleError {
   override name = "LoginWindowClosedError";
   constructor() {
     super("The login window was closed before the person logged in.", "login-window-closed");

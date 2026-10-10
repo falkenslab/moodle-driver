@@ -8,10 +8,10 @@ import type { BrowserContext, Page } from "playwright-core";
 import { checkLocalFiles } from "../../core/files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** The bank isn't there, or Moodle refused the questions. */
-export class QuestionBankError extends MoodleDriverError {
+export class QuestionBankError extends MoodleError {
   override name = "QuestionBankError";
   constructor(message: string) {
     super(message, "question-bank");

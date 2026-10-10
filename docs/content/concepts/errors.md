@@ -4,7 +4,7 @@ Errors a program can act on have their own class, and their messages speak Moodl
 
 ## Catching them
 
-Every error the driver throws on purpose is a `MoodleDriverError`, or one of its subclasses, with a stable `code` and `name` set to its class name. Match by class, `name` or `code`, never by message: the wording may change in any release. `error.name` and `error.code` also work across bundles.
+Every error the driver throws on purpose is a `MoodleError`, or one of its subclasses, with a stable `code` and `name` set to its class name. Match by class, `name` or `code`, never by message: the wording may change in any release. `error.name` and `error.code` also work across bundles.
 
 ```ts
 import { NotLoggedInError, MoodleServiceError, FormError } from "@falkenslab/moodle-driver";
@@ -24,7 +24,7 @@ try {
 }
 ```
 
-Errors with no class of their own are `MoodleDriverError` with a generic code:
+Errors with no class of their own are `MoodleError` with a generic code:
 
 | Code | When |
 | --- | --- |
@@ -37,12 +37,12 @@ Errors with no class of their own are `MoodleDriverError` with a generic code:
 | `chromium-install-failed` | Playwright's installer failed |
 
 ```ts
-import { MoodleDriverError } from "@falkenslab/moodle-driver";
+import { MoodleError } from "@falkenslab/moodle-driver";
 
 try {
   await moodle.downloadFile("https://campus.example.org/pluginfile.php/1/x.pdf", "/home/ada/files");
 } catch (error) {
-  if (error instanceof MoodleDriverError && error.code === "not-found") console.error("Gone, or not visible to you.");
+  if (error instanceof MoodleError && error.code === "not-found") console.error("Gone, or not visible to you.");
   else throw error;
 }
 ```

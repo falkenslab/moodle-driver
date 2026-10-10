@@ -1,6 +1,6 @@
 /**
  * What went wrong, stable across releases: match errors by `code` (or by class), never by message,
- * whose wording may change. Each error class has its own code; `MoodleDriverError` itself takes one
+ * whose wording may change. Each error class has its own code; `MoodleError` itself takes one
  * of the generic ones.
  */
 export type MoodleErrorCode =
@@ -43,8 +43,8 @@ export type MoodleErrorCode =
   | "survey";
 
 /** Every error the driver throws on purpose: one class to catch, a stable `code` to tell them apart. */
-export class MoodleDriverError extends Error {
-  override name = "MoodleDriverError";
+export class MoodleError extends Error {
+  override name = "MoodleError";
   readonly code: MoodleErrorCode;
   constructor(message: string, code: MoodleErrorCode) {
     super(message);

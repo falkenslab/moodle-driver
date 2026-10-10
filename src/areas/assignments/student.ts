@@ -3,10 +3,10 @@ import { checkLocalFiles } from "../../core/files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** The assignment isn't there, or the person can't do that now. */
-export class SubmissionError extends MoodleDriverError {
+export class SubmissionError extends MoodleError {
   override name = "SubmissionError";
   constructor(message: string) {
     super(message, "submission");

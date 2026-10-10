@@ -6,7 +6,7 @@ import { isoDate } from "../courses/list.js";
 import { dateSelectorDate, dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
 import { NotLoggedInError } from "../../core/session.js";
 import { inPage } from "../../core/inPage.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** The grader's feedback comments field, when the assignment has them on. */
 const FEEDBACK_FIELD = "assignfeedbackcomments_editor[text]";
@@ -121,7 +121,7 @@ export async function gradeSubmission(
   try {
     const serialized = await fillGradingForm(page, await gradingPanelHtml(context, siteUrl, ids.contextId, userId), values).catch((error: Error) => {
       if (feedback !== undefined && error.message.includes(FEEDBACK_FIELD)) {
-        throw new MoodleDriverError("This assignment has no feedback comments: grade it without feedback, or turn feedback comments on in its settings.", "not-available");
+        throw new MoodleError("This assignment has no feedback comments: grade it without feedback, or turn feedback comments on in its settings.", "not-available");
       }
       throw error;
     });

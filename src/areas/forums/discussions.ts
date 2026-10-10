@@ -2,10 +2,10 @@ import type { BrowserContext, Page } from "playwright-core";
 import { MoodleServiceError, callService } from "../../core/ajax.js";
 import { openSitePage } from "../../core/session.js";
 import { readTexts } from "../../core/text.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** The id isn't a forum's course module, or the person can't see it. */
-export class NotAForumError extends MoodleDriverError {
+export class NotAForumError extends MoodleError {
   override name = "NotAForumError";
   constructor(message: string) {
     super(message, "not-a-forum");

@@ -5,10 +5,10 @@ import { callService, readPageConfig } from "../../core/ajax.js";
 import { isoDate } from "../courses/list.js";
 import { htmlToTexts } from "../forums/discussions.js";
 import { decodeEntities } from "../../core/text.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** Moodle didn't deliver a message. */
-export class MessageError extends MoodleDriverError {
+export class MessageError extends MoodleError {
   override name = "MessageError";
   constructor(message: string) {
     super(message, "message");

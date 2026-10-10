@@ -2,7 +2,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { callService } from "../../core/ajax.js";
 import { setFields, type FieldValue } from "../../core/forms.js";
 import { openSitePage } from "../../core/session.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** An assignment's ids beyond its course module id, which only the grader page shows. */
 export interface AssignmentIds {
@@ -11,7 +11,7 @@ export interface AssignmentIds {
 }
 
 /** The id isn't an assignment's course module, or the person can't grade it. */
-export class NotAnAssignmentError extends MoodleDriverError {
+export class NotAnAssignmentError extends MoodleError {
   override name = "NotAnAssignmentError";
   constructor(message: string) {
     super(message, "not-an-assignment");
@@ -168,7 +168,7 @@ export async function gradingPanelHtml(context: BrowserContext, siteUrl: string,
 }
 
 /** Moodle's grader didn't take the grade. */
-export class GradingError extends MoodleDriverError {
+export class GradingError extends MoodleError {
   override name = "GradingError";
   constructor(message: string) {
     super(message, "grading");

@@ -26,10 +26,10 @@ It fetches the file through the browser context's request API, which carries the
 
 Errors:
 
-- A `MoodleDriverError` (`outside-site`) when the URL isn't of the site's origin: the session's cookies go nowhere else, so links to other sites (a YouTube video, an external URL resource) can't be downloaded with it.
-- A `MoodleDriverError` (`invalid-input`) when `destDir` isn't absolute.
+- A `MoodleError` (`outside-site`) when the URL isn't of the site's origin: the session's cookies go nowhere else, so links to other sites (a YouTube video, an external URL resource) can't be downloaded with it.
+- A `MoodleError` (`invalid-input`) when `destDir` isn't absolute.
 - `NotLoggedInError` when Moodle answers with its login page: the session expired, or the file needs a session the person doesn't have.
-- A `MoodleDriverError` (`not-found`) with the HTTP status when Moodle answers with an error (`Moodle answered 404 for ...`): the file doesn't exist, or the person can't see it.
+- A `MoodleError` (`not-found`) with the HTTP status when Moodle answers with an error (`Moodle answered 404 for ...`): the file doesn't exist, or the person can't see it.
 
 `fileNameFor(url, disposition)` is the naming rule on its own, exported for a program that fetches files itself.
 
@@ -41,7 +41,7 @@ Checks that local files to upload are given as absolute paths and exist.
 function checkLocalFiles(files: string[]): Promise<void>;
 ```
 
-It throws a `MoodleDriverError` for the first path that isn't absolute (`invalid-input`: `Give files as absolute paths: "brief.txt".`) or doesn't exist (`not-found`: `There's no file at /home/ada/brief.txt.`). Every function that uploads calls it first, before opening any page, so a wrong path never leaves a half-filled form. A program can call it earlier, to tell the person before starting.
+It throws a `MoodleError` for the first path that isn't absolute (`invalid-input`: `Give files as absolute paths: "brief.txt".`) or doesn't exist (`not-found`: `There's no file at /home/ada/brief.txt.`). Every function that uploads calls it first, before opening any page, so a wrong path never leaves a half-filled form. A program can call it earlier, to tell the person before starting.
 
 ## Uploading in forms
 
@@ -56,7 +56,7 @@ Functions that take local files take them as absolute paths and upload them as t
 
 What can go wrong, besides `checkLocalFiles`' errors:
 
-- The form has no file area: a `MoodleDriverError` with code `not-available` from `createActivity` (`A url takes no files in its form.`) or the forum functions (`This forum takes no attachments.`), a `SubmissionError` from `saveSubmission` (`Assignment 45 doesn't take file submissions.`).
+- The form has no file area: a `MoodleError` with code `not-available` from `createActivity` (`A url takes no files in its form.`) or the forum functions (`This forum takes no attachments.`), a `SubmissionError` from `saveSubmission` (`Assignment 45 doesn't take file submissions.`).
 - The upload fails: a `FormError` whose `fields` hold one `{ field: "files", message }` per file with Moodle's answer, such as a file over the size limit or of a type the activity doesn't accept, or `the site has no upload repository enabled` when the site turned the upload repository off.
 - Moodle refuses the form when it's saved: a `FormError` with Moodle's messages by field.
 

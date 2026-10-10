@@ -3,10 +3,10 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { inPage } from "../../core/inPage.js";
 import { openSitePage } from "../../core/session.js";
-import { MoodleDriverError } from "../../core/errors.js";
+import { MoodleError } from "../../core/errors.js";
 
 /** The choice isn't there, or the person can't answer it now. */
-export class ChoiceError extends MoodleDriverError {
+export class ChoiceError extends MoodleError {
   override name = "ChoiceError";
   constructor(message: string) {
     super(message, "choice");

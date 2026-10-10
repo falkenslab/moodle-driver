@@ -58,7 +58,7 @@ Errors (`SubmissionError` unless said otherwise):
 - Neither online text nor files given.
 - The edit page can't be opened: submitted already, past its cut-off date, or not the person's to submit.
 - Files given to an assignment that doesn't take file submissions, or online text to one that doesn't take it; nothing is saved.
-- A `MoodleDriverError` (`invalid-input`, `not-found`) when a file path isn't absolute or doesn't exist, checked before opening anything.
+- A `MoodleError` (`invalid-input`, `not-found`) when a file path isn't absolute or doesn't exist, checked before opening anything.
 - `FormError` when the upload fails (the site has no upload repository enabled, a file too big or of a type the assignment doesn't accept) or Moodle refuses the form, with its messages by field.
 
 ## submitForGrading
