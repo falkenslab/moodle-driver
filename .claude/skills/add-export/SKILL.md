@@ -29,7 +29,7 @@ Read `.minispec/core/architecture.md` first if you don't know where the area liv
 
 ## 3. Export
 
-Add the symbol to `src/index.ts` (the public API), or to `src/testing/index.ts` for test helpers. Consumers must never need deep imports. Helpers exported from a module only so tests can reach them are deliberately **not** re-exported.
+Add the symbol to `src/index.ts` (the public API), or to `src/testing/index.ts` for test helpers. Consumers must never need deep imports. Helpers exported from a module only so tests can reach them are deliberately **not** re-exported. A function taking `(context, siteUrl, …)` also goes into `SITE_FUNCTIONS` in `src/client.ts`, so the `Moodle` object has it as a method (ADR-009); declare its data categories in `src/categories.ts`.
 
 ## 4. Test
 

@@ -3,13 +3,14 @@
 ## Flow
 
 ```
-program (moodle-mcp, a CLI) --> index.ts (public API)
+program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts, ADR-009) or the functions
   createBrowserManager(options) --> browser.ts (persistent context on the profile, system channel or Chromium)
   area functions (context, siteUrl, ids, options) --> moodle/ajax.ts (AJAX from a kept tab) | moodle/session.ts (openSitePage) | moodle/forms.ts --> Moodle
 ```
 
 ## Key pieces (`src/`)
 
+- `client.ts` — `createMoodle()`: one site and its browser as an object whose methods are the site functions, bound (ADR-009).
 - `options.ts` — what a program chooses: `BrowserOptions` (profile, channel, headless, download), channels, trails, `parseSiteUrl()`.
 - `browser.ts` — `createBrowserManager()`: the persistent context opened on first use and reused, one operation at a time; a headed request relaunches it with a window; Chromium downloaded in the background when no browser is installed (ADR-001); shown or hidden on demand (`setVisible`), following pages in one working tab (`show`, `tab`, ADR-007); refuses a window where there's no screen.
 - `sessionCookies.ts` — session cookies saved in the profile and restored on launch (ADR-003). `chromiumInstaller.ts` — Playwright's CLI as a process tree that ends with the program.

@@ -24,13 +24,25 @@ const ANY: readonly DataCategory[] = ["any"];
 
 /**
  * The data categories of every function exported from the package, and of the browser manager's
- * methods (`BrowserManager.<method>`). A function that may touch several kinds lists them all; a
+ * methods (`BrowserManager.<method>`) and the Moodle object's own (`Moodle.<method>`; its other methods are
+ * the functions of the same name). A function that may touch several kinds lists them all; a
  * program takes the strictest. Functions that read activities of any module answer per module
  * through `moduleCategories()`.
  */
 export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> = {
   // The browser and the session.
   createBrowserManager: NONE,
+  // The Moodle object: its bound methods are classified as their functions, of the same name.
+  createMoodle: NONE,
+  "Moodle.context": NONE,
+  "Moodle.logIn": NONE,
+  "Moodle.publicSiteInfo": NONE,
+  "Moodle.callService": ANY,
+  "Moodle.tab": ANY,
+  "Moodle.visible": NONE,
+  "Moodle.setVisible": NONE,
+  "Moodle.saveSession": NONE,
+  "Moodle.close": NONE,
   // The context is what every function takes: what's done with it is classified by those functions.
   "BrowserManager.context": NONE,
   "BrowserManager.openChannel": NONE,
