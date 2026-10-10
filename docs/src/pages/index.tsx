@@ -32,20 +32,17 @@ const FEATURES: { title: string; text: string }[] = [
   },
 ];
 
-const EXAMPLE = `import { createBrowserManager, logIn, listCourses, assignmentSubmissions, gradeSubmission } from "@falkenslab/moodle-driver";
+const EXAMPLE = `import { createMoodle } from "@falkenslab/moodle-driver";
 
-const site = "https://campus.example.org/";
-const browser = createBrowserManager({ profileDir: "/home/me/.moodle-profile", headless: true, downloadBrowser: true });
+const moodle = createMoodle({ site: "https://campus.example.org/", profileDir: "/home/me/.moodle-profile", headless: true, downloadBrowser: true });
+await moodle.logIn({ timeoutMs: 300_000 }); // a window opens only the first time
 
-await logIn(browser, site, { timeoutMs: 300_000 }); // a window opens only the first time
-const context = await browser.context();
-
-const courses = await listCourses(context, site);
-const { submissions } = await assignmentSubmissions(context, site, 35);
+const courses = await moodle.listCourses();
+const { submissions } = await moodle.assignmentSubmissions(35);
 for (const s of submissions.filter((s) => s.needsGrading)) {
-  await gradeSubmission(context, site, 35, s.userId, { grade: "8", feedback: "<p>Good work.</p>" });
+  await moodle.gradeSubmission(35, s.userId, { grade: "8", feedback: "<p>Good work.</p>" });
 }
-await browser.close();`;
+await moodle.close();`;
 
 export default function Home(): ReactNode {
   return (
@@ -82,8 +79,8 @@ export default function Home(): ReactNode {
           <div className="col col--8 col--offset-2">
             <h2>Log in once, then work the site</h2>
             <p>
-              The person logs in by hand in a browser window, once; the session stays in a profile on disk. Every function takes the browser context and
-              the site, then ids, and returns plain data.
+              The person logs in by hand in a browser window, once; the session stays in a profile on disk. Every operation is a method of the
+              Moodle object, takes ids and options, and returns plain data.
             </p>
             <CodeBlock language="ts">{EXAMPLE}</CodeBlock>
           </div>

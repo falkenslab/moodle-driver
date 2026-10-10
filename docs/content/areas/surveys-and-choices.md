@@ -2,6 +2,8 @@
 
 Answering surveys and choices as a student does: reading a survey's questions with their fields and filling it in page by page, and reading a choice's options and choosing one or several. Two survey modules are supported: Moodle's feedback (`feedback`) and the questionnaire plugin (`questionnaire`, mod_questionnaire). Moodle's older "survey" module (fixed instruments such as COLLES and ATTLS) isn't. These functions act as the person, on their own answers; teachers' views of the responses aren't covered.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 Everything is read from the activities' pages and forms (body ids, form names, labels), so it works in any interface language; the texts come in the site's language. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)).
 
 ## getSurvey
@@ -105,13 +107,12 @@ In a multiple choice, the options not given are unticked, so `optionIds` is the 
 ## Example
 
 ```ts
-import { answerChoice, getChoice, getSurvey, submitSurvey, SurveyError } from "@falkenslab/moodle-driver";
+import { SurveyError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 // A feedback activity (course module 34): answer every required question.
-const survey = await getSurvey(context, site, 34, "feedback");
+const survey = await moodle.getSurvey(34, "feedback");
 if (survey.canAnswer) {
   const responses: Record<string, string> = {};
   for (const question of survey.questions) {
@@ -121,7 +122,7 @@ if (survey.canAnswer) {
     else if (field.options?.length) responses[field.name] = field.options[0]!.value;
   }
   try {
-    const { messages } = await submitSurvey(context, site, 34, "feedback", responses);
+    const { messages } = await moodle.submitSurvey(34, "feedback", responses);
     console.log(messages.join(" "));
   } catch (error) {
     if (error instanceof SurveyError) console.error(error.message);
@@ -132,10 +133,10 @@ if (survey.canAnswer) {
 }
 
 // A choice (course module 40): pick the option whose text is "while".
-const choice = await getChoice(context, site, 40);
+const choice = await moodle.getChoice(40);
 const option = choice.options.find((o) => o.text === "while" && !o.full);
 if (choice.canAnswer && option) {
-  const after = await answerChoice(context, site, 40, [option.id]);
+  const after = await moodle.answerChoice(40, [option.id]);
   console.log(`Answer: ${after.answer.join(", ")}`);
 }
 ```

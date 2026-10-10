@@ -7,13 +7,13 @@ Errors a program can act on have their own class, and their messages speak Moodl
 Every class extends `Error` and sets `name` to its class name, so both `instanceof` and `error.name` work (the latter across bundles).
 
 ```ts
-import { NotLoggedInError, MoodleServiceError, FormError, gradeSubmission } from "@falkenslab/moodle-driver";
+import { NotLoggedInError, MoodleServiceError, FormError } from "@falkenslab/moodle-driver";
 
 try {
-  await gradeSubmission(context, site, 35, 7, { grade: "150" });
+  await moodle.gradeSubmission(35, 7, { grade: "150" });
 } catch (error) {
   if (error instanceof NotLoggedInError) {
-    // The session ended: logIn() again (a window opens), then retry.
+    // The session ended: moodle.logIn() again (a window opens), then retry.
   } else if (error instanceof FormError) {
     for (const { field, message } of error.fields) console.error(`${field}: ${message}`);
   } else if (error instanceof MoodleServiceError) {

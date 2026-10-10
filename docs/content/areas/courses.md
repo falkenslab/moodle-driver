@@ -2,6 +2,8 @@
 
 The courses the person is enrolled in, a course's sections and activities, its assignments, what the person still has to do in it, and changing a course's settings. Reading works for anyone enrolled (student or teacher); `updateCourse` needs the right to edit the course's settings, which teachers with editing rights and managers have. Everything here is read through the services the course page itself uses (`core_course_get_enrolled_courses_by_timeline_classification`, `core_courseformat_get_state`), so it doesn't depend on the interface's language, except the activity details (dates and restrictions), which are read from the course page as it shows them.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 ## listCourses
 
 The courses the person is enrolled in, as teacher or student, sorted by full name.
@@ -122,16 +124,14 @@ Errors:
 ## Example
 
 ```ts
-import { courseStructure, listCourses, pendingActivities, updateCourse } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-for (const course of await listCourses(context, site, "inprogress")) {
+for (const course of await moodle.listCourses("inprogress")) {
   console.log(`${course.id} ${course.fullname}${course.progress !== undefined ? ` (${course.progress}%)` : ""}`);
 }
 
-const { sections } = await courseStructure(context, site, 3, { details: true });
+const { sections } = await moodle.courseStructure(3, { details: true });
 for (const section of sections) {
   console.log(`${section.number}. ${section.title}`);
   for (const activity of section.activities) {
@@ -140,10 +140,10 @@ for (const section of sections) {
   }
 }
 
-const { completionTracked, pending } = await pendingActivities(context, site, 3);
+const { completionTracked, pending } = await moodle.pendingActivities(3);
 console.log(completionTracked ? "Completion is tracked" : "Completion isn't tracked", pending.map((p) => p.name));
 
-const { course } = await updateCourse(context, site, 3, { fullName: "Programming 101 (2026)", summary: "<p>Loops, functions and recursion.</p>" });
+const { course } = await moodle.updateCourse(3, { fullName: "Programming 101 (2026)", summary: "<p>Loops, functions and recursion.</p>" });
 console.log(course?.fullname);
 ```
 

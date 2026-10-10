@@ -2,6 +2,8 @@
 
 Who the logged-in person is, other users by id, a user's roles and the person's abilities in a course, and what the site tells about itself, before and after logging in. Anyone logged in can use them; what Moodle shows of another user depends on the person's rights. Three functions need no browser or session at all (`parseSiteUrl`, `findMoodleSite`, `publicSiteInfo`): a program can use them to check the site the person gives before [logging in](../getting-started/logging-in.md).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 ## whoAmI
 
 Who the logged-in person is; with a course, also their roles and abilities there.
@@ -123,7 +125,7 @@ function findMoodleSite(url: string, fetchImpl?: typeof fetch): Promise<string>;
 ## Example
 
 ```ts
-import { MoodleUrlError, findMoodleSite, publicSiteInfo, whoAmI } from "@falkenslab/moodle-driver";
+import { MoodleUrlError, createMoodle, findMoodleSite, publicSiteInfo } from "@falkenslab/moodle-driver";
 
 // Before logging in: from what the person pasted to the site's base URL.
 let site: string;
@@ -136,9 +138,10 @@ try {
 const info = await publicSiteInfo(site);
 if (info.maintenance) console.log(`${info.name} is in maintenance: ${info.maintenance}`);
 
-// After logging in. `browser` is a BrowserManager, as in the getting-started pages.
-const context = await browser.context();
-const me = await whoAmI(context, site, 3);
+// Then the site goes into the object every call uses; after logging in:
+const moodle = createMoodle({ site, profileDir: "/home/ada/.moodle-profile", headless: true, downloadBrowser: true });
+await moodle.logIn({ timeoutMs: 5 * 60_000 });
+const me = await moodle.whoAmI(3);
 console.log(`${me.fullName} (${me.userId}), ${me.timeZone}`);
 console.log(me.course?.roles.map((r) => r.name), me.course?.canEdit ? "can edit" : "can't edit");
 ```

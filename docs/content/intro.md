@@ -40,18 +40,22 @@ Programs that work Moodle for a person: an assistant that grades or answers foru
 ## A first look
 
 ```ts
-import { createBrowserManager, listCourses, logIn } from "@falkenslab/moodle-driver";
+import { createMoodle } from "@falkenslab/moodle-driver";
 
-const site = "https://campus.example.org/";
-const browser = createBrowserManager({ profileDir: "/home/me/.moodle-profile", headless: true, downloadBrowser: true });
+const moodle = createMoodle({
+  site: "https://campus.example.org/",
+  profileDir: "/home/me/.moodle-profile",
+  headless: true,
+  downloadBrowser: true,
+});
 
 // The first time, a window opens at the login page and waits for the person to log in there.
-await logIn(browser, site, { timeoutMs: 300_000 });
+await moodle.logIn({ timeoutMs: 300_000 });
 
-const courses = await listCourses(await browser.context(), site);
+const courses = await moodle.listCourses();
 for (const course of courses) console.log(course.id, course.fullname);
 
-await browser.close();
+await moodle.close();
 ```
 
 ## Where to go next

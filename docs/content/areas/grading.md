@@ -2,6 +2,8 @@
 
 The teacher's side of an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 ## assignmentSubmissions
 
 Every participant's submission to an assignment.
@@ -116,22 +118,20 @@ Errors:
 ## Example
 
 ```ts
-import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-const { submissions } = await assignmentSubmissions(context, site, 45);
+const { submissions } = await moodle.assignmentSubmissions(45);
 for (const s of submissions.filter((s) => s.needsGrading)) {
   const text = s.content?.find((c) => c.plugin === "onlinetext")?.text ?? "";
   console.log(`${s.fullName} (${s.userId}): ${text.slice(0, 80)}`);
 }
 
-const definition = await rubric(context, site, 45);
+const definition = await moodle.rubric(45);
 if (definition.method === "rubric") {
   // Choose the highest level of every criterion for user 7.
   const levels = Object.fromEntries(definition.criteria.map((c) => [c.id, c.levels!.at(-1)!.id]));
-  const result = await gradeSubmission(context, site, 45, 7, {
+  const result = await moodle.gradeSubmission(45, 7, {
     rubric: levels,
     remarks: { [definition.criteria[0]!.id]: "Clear base case." },
     feedback: "<p>Well done, Ada.</p>",
@@ -139,10 +139,10 @@ if (definition.method === "rubric") {
   });
   console.log(result.changed, result.gradebookGrade);
 } else {
-  await gradeSubmission(context, site, 45, 7, { grade: "9", feedback: "<p>Well done, Ada.</p>" });
+  await moodle.gradeSubmission(45, 7, { grade: "9", feedback: "<p>Well done, Ada.</p>" });
 }
 
-await grantExtension(context, site, 45, [4, 7], new Date("2026-11-06T22:59:00Z"));
+await moodle.grantExtension(45, [4, 7], new Date("2026-11-06T22:59:00Z"));
 ```
 
 ## Data categories

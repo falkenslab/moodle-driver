@@ -2,6 +2,8 @@
 
 Reading the activities teachers fill with content: a page's or label's text, a book's chapters, a URL resource's target, and the files of a file resource or a folder. It's the student's side (a teacher can read them too): `activityContent` views the activity as a person would, so Moodle logs the view, and with the realistic trail it reads at a person's pace so views and completion look as they would for a person (see [student pace](../concepts/student-pace.md)). The driver doesn't watch, play or transcribe media: it gives a video's URL, and saves files with [downloadFile](files.md).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 ## activityContent
 
 ```ts
@@ -59,16 +61,14 @@ Each `MediaItem` is `{ kind, url, title? }`, with `kind` one of `"video"`, `"aud
 ## Example
 
 ```ts
-import { activityContent, courseStructure, downloadFile } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-const { sections } = await courseStructure(context, site, 3);
+const { sections } = await moodle.courseStructure(3);
 const book = sections.flatMap((s) => s.activities).find((a) => a.type === "book" && a.availableToMe);
 
 if (book) {
-  const content = await activityContent(context, site, book.id, "book", {
+  const content = await moodle.activityContent(book.id, "book", {
     trail: "realistic",
     onProgress: (seconds) => console.log(`Reading... ${seconds} s`),
   });
@@ -78,9 +78,9 @@ if (book) {
 }
 
 // A folder's files, fetched without pauses and saved with the session.
-const folder = await activityContent(context, site, 57, "folder", { trail: "fast" });
+const folder = await moodle.activityContent(57, "folder", { trail: "fast" });
 for (const file of folder.files ?? []) {
-  const saved = await downloadFile(context, site, file.url, "/home/ada/course-3");
+  const saved = await moodle.downloadFile(file.url, "/home/ada/course-3");
   console.log(`${saved.name}: ${saved.size} bytes`);
 }
 ```

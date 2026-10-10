@@ -2,6 +2,8 @@
 
 Work a Moodle site with the person's own session, through a real browser (Playwright): no web services, no tokens. Read courses, content, assignments, quizzes, forums, grades, surveys, choices, lessons and H5P activities; create and edit activities, sections, course settings, calendar events and questions; grade (rubrics and marking guides too), grant extensions and quiz overrides, set up the gradebook and completion; list participants and groups; read notifications and send messages; answer as a student at a person's pace. Every function returns plain data.
 
+Documentation: https://falkenslab.github.io/moodle-driver/ (guides for every Moodle area and the API reference).
+
 Extracted from moodle-mcp, its first consumer. The design is in `.minispec/` (start with `core/project.md` and the decisions).
 
 ## Why a browser
@@ -11,16 +13,16 @@ Every other Moodle client found uses Moodle's web services with a token, which m
 ## Use
 
 ```ts
-import { createBrowserManager, listCourses, logIn } from "@falkenslab/moodle-driver";
+import { createMoodle } from "@falkenslab/moodle-driver";
 
-const site = "https://campus.example.org/";
-const browser = createBrowserManager({ profileDir: "/home/me/.moodle-profile", headless: true, downloadBrowser: true });
-await logIn(browser, site, { timeoutMs: 300_000 }); // a window opens the first time; the person logs in there
-const courses = await listCourses(await browser.context(), site);
-await browser.close();
+const moodle = createMoodle({ site: "https://campus.example.org/", profileDir: "/home/me/.moodle-profile", headless: true, downloadBrowser: true });
+await moodle.logIn({ timeoutMs: 300_000 }); // a window opens the first time; the person logs in there
+const courses = await moodle.listCourses();
+await moodle.gradeSubmission(35, 7, { grade: "8", feedback: "<p>Good work.</p>" });
+await moodle.close();
 ```
 
-Functions take the browser context and the site first, then ids and an options object. Errors a program can act on have their own classes (`NotLoggedInError`, `NoDisplayError`, `BrowserDownloadingError`…). Test helpers (a fake Moodle served inside a browser context) are in `@falkenslab/moodle-driver/testing`. Every function declares the data it touches in `DATA_CATEGORIES` (own, course content, others' personal data, grading others, communication…), so a program can allow only some kinds.
+Every operation is a method of the `Moodle` object, and also an exported function that takes the browser context and the site first (`listCourses(context, site)`), for programs that manage the browser themselves. Errors a program can act on have their own classes (`NotLoggedInError`, `NoDisplayError`, `BrowserDownloadingError`…). Test helpers (a fake Moodle served inside a browser context) are in `@falkenslab/moodle-driver/testing`. Every function declares the data it touches in `DATA_CATEGORIES` (own, course content, others' personal data, grading others, communication…), so a program can allow only some kinds.
 
 ## Development
 

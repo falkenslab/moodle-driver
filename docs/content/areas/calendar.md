@@ -2,6 +2,8 @@
 
 This area works the Moodle calendar: the person's upcoming events (`upcomingEvents`), creating a course event (`createEvent`) and deleting an event (`deleteEvent`). Anyone can read their upcoming events; creating and deleting course events needs the right to manage the course's calendar, which teachers have by default. What the person has to do by a date (submit, attempt, grade) is better read with `deadlines` (see [Overview and deadlines](overview-and-deadlines.md)).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 ## CalendarEvent
 
 The events every function here returns:
@@ -81,13 +83,12 @@ It goes through `core_calendar_delete_calendar_events`, one event (not the rest 
 A teacher adds a 45-minute tutorial to course 3, lists the course's upcoming events, and removes it again.
 
 ```ts
-import { CalendarError, createEvent, deleteEvent, upcomingEvents } from "@falkenslab/moodle-driver";
+import { CalendarError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 try {
-  const { event } = await createEvent(context, site, {
+  const { event } = await moodle.createEvent({
     courseId: 3,
     name: "Tutorial: recursion",
     start: new Date("2026-11-04T16:00:00Z"),
@@ -96,11 +97,11 @@ try {
   });
   console.log(`Created ${event.id} at ${event.start}`);
 
-  for (const upcoming of await upcomingEvents(context, site, { courseId: 3 })) {
+  for (const upcoming of await moodle.upcomingEvents({ courseId: 3 })) {
     console.log(upcoming.start, upcoming.type, upcoming.name);
   }
 
-  await deleteEvent(context, site, event.id);
+  await moodle.deleteEvent(event.id);
 } catch (error) {
   if (error instanceof CalendarError) console.log(error.message);
   else throw error;

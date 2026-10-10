@@ -7,9 +7,10 @@ The driver never handles a password. The person logs in by hand, in a browser wi
 A profile is a folder where the browser keeps its cookies and storage, the same as a browser's user profile. Choose one per person and per site, outside your program's folder and outside any repository: it holds a live session, as sensitive as a password.
 
 ```ts
-import { createBrowserManager } from "@falkenslab/moodle-driver";
+import { createMoodle } from "@falkenslab/moodle-driver";
 
-const browser = createBrowserManager({
+const moodle = createMoodle({
+  site: "https://campus.example.org/",
   profileDir: "/home/ada/.config/my-program/moodle-profile",
   headless: true,
   downloadBrowser: true,
@@ -19,6 +20,8 @@ const browser = createBrowserManager({
 Chromium forgets session cookies when a persistent profile closes, and Moodle's `MoodleSession` cookie is one. The driver saves them in a file inside the profile (`SESSION_COOKIES_FILE`) when it closes or after logging in, and puts them back when it opens the browser again, so the login survives restarts until Moodle ends the session itself.
 
 ## logIn
+
+`moodle.logIn({ timeoutMs, onWait? })` is the function `logIn(browser, siteUrl, options)` with the object's browser and site.
 
 ```ts
 function logIn(
@@ -41,12 +44,11 @@ interface LoginResult {
 It throws `LoginTimeoutError` when nobody logs in within `timeoutMs` (the window is closed), `LoginWindowClosedError` when the person closes the window first, and `NoDisplayError` where there's no screen to show a window (a server, a container without a display).
 
 ```ts
-import { createBrowserManager, logIn, LoginTimeoutError } from "@falkenslab/moodle-driver";
+import { createMoodle, LoginTimeoutError } from "@falkenslab/moodle-driver";
 
-const site = "https://campus.example.org/";
-const browser = createBrowserManager({ profileDir: "/home/ada/.moodle-profile", headless: true, downloadBrowser: true });
+const moodle = createMoodle({ site: "https://campus.example.org/", profileDir: "/home/ada/.moodle-profile", headless: true, downloadBrowser: true });
 try {
-  const me = await logIn(browser, site, {
+  const me = await moodle.logIn({
     timeoutMs: 5 * 60_000,
     onWait: (ms) => process.stderr.write(`\rWaiting for you to log in... ${Math.round(ms / 1000)}s`),
   });
@@ -72,11 +74,11 @@ const site = await findMoodleSite("https://campus.example.org/course/view.php?id
 
 ## When the session ends
 
-Moodle ends sessions after inactivity, on logout, or when the person logs in elsewhere and the site allows one session. Any function that needs the session then throws `NotLoggedInError`: call `logIn` again (a window opens) and retry. See [Errors](../concepts/errors.md).
+Moodle ends sessions after inactivity, on logout, or when the person logs in elsewhere and the site allows one session. Any operation that needs the session then throws `NotLoggedInError`: call `logIn` again (a window opens) and retry. See [Errors](../concepts/errors.md).
 
 ## Logging out
 
-`logOut(context, siteUrl)` ends Moodle's session through the user menu's logout link, and answers `false` when nobody was logged in. A single sign-on provider may keep its own session: the next login may then go through without a password.
+`moodle.logOut()` ends Moodle's session through the user menu's logout link, and answers `false` when nobody was logged in. A single sign-on provider may keep its own session: the next login may then go through without a password.
 
 ## Where there's no screen
 

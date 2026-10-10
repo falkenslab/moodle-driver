@@ -2,6 +2,8 @@
 
 This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). It's mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 People come as a user id and a full name, with their roles and groups by id. Emails, phone numbers, profile fields, pictures and last access dates are deliberately left out: telling participants apart, filtering them and acting on them (grading, overriding, messaging) needs nothing else. A single user is read by id with `userById` (see [Users and site](users-and-site.md)).
 
 ## How it reads Moodle
@@ -71,17 +73,16 @@ The driver returns real names: it's a library for any program, and what a progra
 Find the students in group "Group A" who haven't opened course 3 in two weeks.
 
 ```ts
-import { NoParticipantsError, participantFilters, participants } from "@falkenslab/moodle-driver";
+import { NoParticipantsError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 try {
-  const { roles, groups } = await participantFilters(context, site, 3);
+  const { roles, groups } = await moodle.participantFilters(3);
   const student = roles.find((r) => r.name === "Student");
   const groupA = groups.find((g) => g.name === "Group A");
   const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-  const inactive = await participants(context, site, 3, { role: student?.id, group: groupA?.id, inactiveSince: twoWeeksAgo });
+  const inactive = await moodle.participants(3, { role: student?.id, group: groupA?.id, inactiveSince: twoWeeksAgo });
   for (const person of inactive) console.log(person.userId, person.fullName);
 } catch (error) {
   if (error instanceof NoParticipantsError) console.log(error.message);

@@ -24,9 +24,7 @@ type Trail = "realistic" | "fast";
 Waiting can take minutes. These functions take an `onProgress` callback, called every few seconds while they wait, so a program can tell the person, or keep a connection alive (a protocol that times out without activity).
 
 ```ts
-import { activityContent } from "@falkenslab/moodle-driver";
-
-const book = await activityContent(context, site, 6, "book", {
+const book = await moodle.activityContent(6, "book", {
   trail: "realistic",
   onProgress: (secondsRead) => process.stderr.write(`\rReading... ${secondsRead}s`),
 });

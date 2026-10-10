@@ -2,6 +2,8 @@
 
 Quizzes from both sides. A student reads a quiz's page, starts or continues an attempt, answers its questions page by page (at a person's pace by default) and finishes it, then reads the review. A teacher reads every attempt with its grade and marks per question (and the answers given), reads which questions a quiz holds, adds questions from a bank (chosen or random), and gives a student other dates, a time limit or more attempts with a user override. Quizzes are identified by their course module id (the `id` in `mod/quiz/view.php?id=`), attempts by Moodle's attempt id.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 Everything is read from Moodle's own pages by their structure (body ids, form names, classes, links), so it works in any interface language; texts such as dates, states and grades come as the site shows them, in its language. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)); the others are `QuizError`, and `FormError` where a form is involved.
 
 ## quizInfo
@@ -152,16 +154,15 @@ A teacher can read a student's attempt this way too. Throws `QuizError` when the
 ## A student's attempt from start to finish
 
 ```ts
-import { finishQuizAttempt, quizInfo, startQuizAttempt, answerQuizQuestions, QuizError } from "@falkenslab/moodle-driver";
+import { QuizError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 const quizId = 26;
 
-const info = await quizInfo(context, site, quizId);
+const info = await moodle.quizInfo(quizId);
 if (!info.canStart) throw new Error(`Can't attempt: ${info.messages.join(" ")}`);
 
-const { attemptId, questions } = await startQuizAttempt(context, site, quizId);
+const { attemptId, questions } = await moodle.startQuizAttempt(quizId);
 
 // Choose an answer for each question: here, the first option of every choice and select field,
 // skipping "clear my choice" (-1) and a drop-down's "Choose..." (0).
@@ -177,12 +178,12 @@ const answers = questions.map((question) => {
 });
 
 try {
-  const answered = await answerQuizQuestions(context, site, attemptId, answers, {
+  const answered = await moodle.answerQuizQuestions(attemptId, answers, {
     onProgress: (elapsed, total) => console.log(`Reading... ${elapsed}/${total} s`),
   });
   console.log(answered.questions.map((q) => `${q.number}: ${q.state}`).join(", "));
 
-  const done = await finishQuizAttempt(context, site, attemptId);
+  const done = await moodle.finishQuizAttempt(attemptId);
   for (const row of done.review?.summary ?? []) console.log(`${row.label}: ${row.value}`);
 } catch (error) {
   if (error instanceof QuizError) console.error(error.message);
@@ -289,22 +290,19 @@ function setQuizOverride(
 The form only offers users who can get an override: a user who isn't a participant, or who already has an override in this quiz, gets a `QuizError` (change an existing override in Moodle). `QuizError` also comes when the form can't be opened (not a quiz, or not allowed). `FormError` comes when Moodle refuses the values (a close date before the open date) or when the person's time zone isn't one the driver knows.
 
 ```ts
-import { addQuestionsToQuiz, quizResults, setQuizOverride } from "@falkenslab/moodle-driver";
-
-const context = await browser.context();
 
 // Who did what, with their answers.
-const { attempts } = await quizResults(context, site, 27, { responses: true });
+const { attempts } = await moodle.quizResults(27, { responses: true });
 for (const attempt of attempts) {
   console.log(`${attempt.fullName}: ${attempt.grade ?? "not graded"}`);
   for (const q of attempt.questions) console.log(`  Q${q.slot} ${q.result ?? ""} ${q.response ?? ""}`);
 }
 
 // One more week and an extra attempt for user 7.
-await setQuizOverride(context, site, 27, 7, { close: new Date("2026-11-30T18:00:00Z"), attempts: 3 });
+await moodle.setQuizOverride(27, 7, { close: new Date("2026-11-30T18:00:00Z"), attempts: 3 });
 
 // Two questions from the bank and three random ones, in a quiz nobody has attempted yet.
-const { changed, slots } = await addQuestionsToQuiz(context, site, 41, { questionIds: [22, 23], random: { categoryId: 14, count: 3 } });
+const { changed, slots } = await moodle.addQuestionsToQuiz(41, { questionIds: [22, 23], random: { categoryId: 14, count: 3 } });
 console.log(changed, slots.length);
 ```
 

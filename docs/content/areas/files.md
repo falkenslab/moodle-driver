@@ -2,6 +2,8 @@
 
 Files in both directions: saving a site's files (a resource, a folder's files, a submission, a post's attachment) to a local folder with the person's session, and uploading local files in the forms that take them (a file resource or folder, a submission, a forum post, a question import). Anyone can download what their session can reach; uploading depends on the form, so on who can use it (a teacher creating a resource, a student submitting). The driver never opens or interprets the files: a program gets their paths.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 ## downloadFile
 
 Saves a file of the site into a local folder with the person's session.
@@ -63,21 +65,20 @@ What can go wrong, besides `checkLocalFiles`' errors:
 ## Example
 
 ```ts
-import { checkLocalFiles, createActivity, downloadFile, studentAssignment } from "@falkenslab/moodle-driver";
+import { checkLocalFiles } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 // Upload the unit's notes as a folder, hidden until the teacher checks it.
 const files = ["/home/ada/unit-4/recursion.pdf", "/home/ada/unit-4/exercises.pdf"];
 await checkLocalFiles(files);
-const created = await createActivity(context, site, { courseId: 3, sectionId: 21, type: "folder", name: "Unit 4 notes", files });
+const created = await moodle.createActivity({ courseId: 3, sectionId: 21, type: "folder", name: "Unit 4 notes", files });
 console.log(created.changed);
 
 // Save the files attached to an assignment's description.
-const assignment = await studentAssignment(context, site, 45);
+const assignment = await moodle.studentAssignment(45);
 for (const file of assignment.descriptionFiles) {
-  const saved = await downloadFile(context, site, file.url, "/home/ada/downloads");
+  const saved = await moodle.downloadFile(file.url, "/home/ada/downloads");
   console.log(`${saved.path} (${saved.size} bytes, ${saved.contentType ?? "unknown type"})`);
 }
 ```

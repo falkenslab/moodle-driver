@@ -78,6 +78,20 @@ To test a program's own logic around the browser manager (logging in, showing th
 const manager = fakeBrowserManager({ context: async () => context, visible: () => true });
 ```
 
+It's also how a program built on the Moodle object meets the fake site: give `createMoodle` a fake browser manager whose context is the one the fake Moodle serves.
+
+```ts
+import { createMoodle } from "@falkenslab/moodle-driver";
+import { SITE, fakeBrowserManager, launchTestBrowser, serveFakeMoodle } from "@falkenslab/moodle-driver/testing";
+
+const browser = await launchTestBrowser();
+const context = await browser!.newContext();
+await serveFakeMoodle(context, { user: { id: 4, fullName: "Ada Lovelace" }, services: { /* ... */ } });
+
+const moodle = createMoodle({ site: SITE, browser: fakeBrowserManager({ context: async () => context }) });
+const courses = await moodle.listCourses();
+```
+
 ## Grading panels
 
 `PANEL` is a made-up grader panel (a submission with online text, a file and comments) as `gradingPanelHtml` would return it, for tests of programs that read submissions.

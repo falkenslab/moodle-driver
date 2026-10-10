@@ -2,6 +2,8 @@
 
 A forum's discussions and their posts as plain data, posting as the person (replies and new discussions, with attachments), and a teacher's moderation (pinning and locking discussions). Students and teachers read and post alike, within what the forum allows them; pinning and locking need the moderation rights a teacher has.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 A forum is identified by its course module id (`forumCmid`, the `id` in `mod/forum/view.php?id=`), discussions and posts by Moodle's ids. Discussions are read from the forum's pages (by data attributes, links and timestamps, so in any language), posts through Moodle's `mod_forum_get_discussion_posts` service, and posting goes through Moodle's own post form (`mod/forum/post.php`), which takes attachments and fills in a reply's subject. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)).
 
 ## forumDiscussions
@@ -128,32 +130,31 @@ The class every forum function throws when the id isn't a forum's course module,
 ## Example
 
 ```ts
-import { discussion, forumDiscussions, NotAForumError, replyToPost, setDiscussionState, startDiscussion } from "@falkenslab/moodle-driver";
+import { NotAForumError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 const forumCmid = 37;
 
 try {
-  const discussions = await forumDiscussions(context, site, forumCmid);
+  const discussions = await moodle.forumDiscussions(forumCmid);
   for (const d of discussions) console.log(`${d.pinned ? "[pinned] " : ""}${d.subject} by ${d.author}, ${d.replies} replies`);
 
   const first = discussions[0];
   if (first) {
-    const { posts } = await discussion(context, site, first.id);
+    const { posts } = await moodle.discussion(first.id);
     const opening = posts[0]!;
     console.log(`${opening.author.fullName}: ${opening.text}`);
-    await replyToPost(context, site, opening.id, { message: "<p>Thanks, Ada. The loop ends at 2.</p>", subscribe: false });
+    await moodle.replyToPost(opening.id, { message: "<p>Thanks, Ada. The loop ends at 2.</p>", subscribe: false });
   }
 
-  const started = await startDiscussion(context, site, forumCmid, {
+  const started = await moodle.startDiscussion(forumCmid, {
     subject: "Exercise 3 solutions",
     message: "<p>Post your solution to exercise 3 here.</p>",
     files: ["/home/me/exercise3.pdf"],
   });
 
   // As a teacher: keep it on top and closed to replies.
-  if (started.discussionId) await setDiscussionState(context, site, forumCmid, started.discussionId, { pinned: true, locked: true });
+  if (started.discussionId) await moodle.setDiscussionState(forumCmid, started.discussionId, { pinned: true, locked: true });
 } catch (error) {
   if (error instanceof NotAForumError) console.error(error.message);
   else throw error;

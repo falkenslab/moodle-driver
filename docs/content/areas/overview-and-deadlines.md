@@ -2,6 +2,8 @@
 
 This area answers "what is there to do, and what changed": Moodle 5's activities overview of a course (`activitiesOverview`), the person's deadlines from the calendar (`deadlines`), and what changed in a course's activities since a date (`courseUpdates`). All three work for students and teachers; each shows what Moodle shows the person (a student sees their own submission and grade, a teacher how many submitted and what needs grading).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 What the person still has to do in one course, by completion or missing grades, is `pendingActivities`, documented in [Courses](courses.md#pendingactivities).
 
 ## activitiesOverview
@@ -104,23 +106,21 @@ It goes through `core_course_get_updates_since`, the service Moodle's mobile app
 A student's week: what's due across courses, and what changed in course 3 since yesterday.
 
 ```ts
-import { activitiesOverview, courseUpdates, deadlines } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-for (const deadline of await deadlines(context, site, { days: 7, pastDays: 0 })) {
+for (const deadline of await moodle.deadlines({ days: 7, pastDays: 0 })) {
   const where = deadline.course?.shortname ?? "";
   console.log(`${deadline.date} ${where} ${deadline.activity}: ${deadline.action?.name ?? deadline.event}`);
 }
 
 const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-for (const update of await courseUpdates(context, site, 3, yesterday)) {
+for (const update of await moodle.courseUpdates(3, yesterday)) {
   console.log(update.name ?? update.id, update.changes.map((c) => c.what).join(", "));
 }
 
 // As a teacher: the assignments with submissions waiting for a grade.
-for (const activity of await activitiesOverview(context, site, 3, "assign")) {
+for (const activity of await moodle.activitiesOverview(3, "assign")) {
   const alert = activity.fields.find((f) => f.alert)?.alert;
   if (alert && alert.count > 0) console.log(`${activity.name}: ${alert.count} (${alert.label})`);
 }

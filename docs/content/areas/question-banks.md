@@ -2,6 +2,8 @@
 
 A course's question banks as Moodle 5 organizes them: shared banks are activities of their own (module `qbank`), and every quiz keeps a private bank. A teacher (anyone who can manage the course's questions) lists the banks, reads a bank's categories and questions, imports questions from GIFT or Moodle XML (a file or text), and creates single questions through their type's form. Students have no access to banks. Questions in a bank are what [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) puts in a quiz.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 A bank is identified by its course module id (`bankCmid`): a qbank activity's, or the quiz's whose bank it is. Everything is read from Moodle's bank pages by field names, data attributes and icons, so it works in any interface language. Every function throws `NotLoggedInError` when there's no session; the others are `QuestionBankError` and, for forms, `FormError` (see [Errors](../concepts/errors.md)).
 
 ## The bank's module is checked first
@@ -111,27 +113,25 @@ A multichoice question with more than one answer whose fraction is above 0 is cr
 ## Example
 
 ```ts
-import { createQuestion, importQuestions, questionBanks, questions } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-const banks = await questionBanks(context, site, 3);
+const banks = await moodle.questionBanks(3);
 const bank = banks.find((b) => b.shared);
 if (!bank) throw new Error("Course 3 has no shared question bank.");
 
-const { categories } = await questions(context, site, bank.cmid);
+const { categories } = await moodle.questions(bank.cmid);
 // The first category is the bank's "Top", which holds no questions: its default one comes next.
 const target = categories[1];
 
-const imported = await importQuestions(context, site, bank.cmid, {
+const imported = await moodle.importQuestions(bank.cmid, {
   format: "gift",
   text: "::Range:: range(3) ends at 2. {T}\n\n::Indent:: Python uses indentation for blocks. {T}",
   categoryId: target?.id,
 });
 console.log(imported.changed, imported.questions.map((q) => q.id));
 
-const created = await createQuestion(context, site, bank.cmid, {
+const created = await moodle.createQuestion(bank.cmid, {
   type: "multichoice",
   name: "Infinite loop",
   text: "<p>Which loop never ends?</p>",

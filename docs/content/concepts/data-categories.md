@@ -31,7 +31,7 @@ DATA_CATEGORIES.gradeSubmission; // ["others-personal", "others-write"]
 DATA_CATEGORIES["BrowserManager.tab"]; // ["any"]
 ```
 
-It has an entry for every function exported from the package and for every method of the browser manager (`BrowserManager.<method>`). The driver's tests fail when a new export has none, so the manifest can't fall behind the code.
+It has an entry for every function exported from the package, for every method of the browser manager (`BrowserManager.<method>`) and for the Moodle object's own methods (`Moodle.<method>`: `logIn`, `close`, `callService`, `tab`…). The object's other methods are the functions of the same name, under their names: `moodle.gradeSubmission` is `DATA_CATEGORIES.gradeSubmission`. The driver's tests fail when a new export has none, so the manifest can't fall behind the code.
 
 ## moduleCategories
 

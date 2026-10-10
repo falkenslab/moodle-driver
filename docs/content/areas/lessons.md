@@ -2,6 +2,8 @@
 
 Going through a lesson activity page by page, as a student does: reading the page the person is on (content with its buttons, or a question with its form), answering it, and getting Moodle's feedback and the page that follows, until the end of the lesson. Moodle keeps where the person is, so a program reads and answers one page at a time with the lesson's course module id alone, across calls and runs. Teachers' editing of lessons and their reports aren't covered.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 Pages are read from the lesson's forms and blocks (form actions, input names, classes), so it works in any interface language; texts come in the site's language. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)), and `LessonError` when the id isn't a lesson the person can open.
 
 ## The lesson page
@@ -76,13 +78,12 @@ Moodle decides what follows each answer from the lesson's settings: a wrong answ
 ## Example
 
 ```ts
-import { answerLessonPage, lessonPage, LessonError } from "@falkenslab/moodle-driver";
+import { LessonError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 const lessonId = 39;
 
-let page = await lessonPage(context, site, lessonId);
+let page = await moodle.lessonPage(lessonId);
 try {
   // Through the lesson: the first button on content pages, the first option on questions.
   for (let step = 0; step < 50 && page.kind !== "end"; step++) {
@@ -95,7 +96,7 @@ try {
       for (const field of page.fields ?? []) responses[field.name] = field.options?.[0]?.value ?? "loop";
       answer = { responses };
     }
-    const result = await answerLessonPage(context, site, lessonId, answer, {
+    const result = await moodle.answerLessonPage(lessonId, answer, {
       onProgress: (elapsed, total) => console.log(`  reading ${elapsed}/${total} s`),
     });
     if (result.feedback) console.log(`  ${result.feedback.feedback?.correct ? "right" : "not right"}: ${result.feedback.feedback?.response ?? ""}`);

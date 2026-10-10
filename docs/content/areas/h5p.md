@@ -2,6 +2,8 @@
 
 H5P activities (module `h5pactivity`): what an activity holds (its H5P content type and version), whether Moodle tracks attempts, and the person's own attempts with their scores. Students read their attempts; a teacher reads the same activity facts, with no attempts (their report lists participants instead). The driver doesn't play H5P content: playing happens in the content's iframes, which a program drives itself in the browser's working tab.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 Everything is read from Moodle's pages (body ids, data attributes, the player's settings, the report table by position and icon), so it works in any interface language. `h5pActivity` throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)).
 
 ## h5pActivity
@@ -46,13 +48,12 @@ H5P content runs as JavaScript inside iframes of the activity's page, with as ma
 ## Example
 
 ```ts
-import { h5pActivity, NotAnH5PActivityError } from "@falkenslab/moodle-driver";
+import { NotAnH5PActivityError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 try {
-  const activity = await h5pActivity(context, site, 38);
+  const activity = await moodle.h5pActivity(38);
   console.log(`${activity.name}: ${activity.contentType?.library ?? "unknown type"} ${activity.contentType?.version ?? ""}`);
   if (!activity.tracked) console.log("Moodle doesn't record attempts here.");
   for (const attempt of activity.attempts) {
@@ -60,8 +61,8 @@ try {
   }
 
   // Playing it is the program's: open the activity in the working tab and drive its iframe.
-  const tab = await browser.tab();
-  await tab.goto(new URL(`mod/h5pactivity/view.php?id=${activity.id}`, site).href);
+  const tab = await moodle.tab();
+  await tab.goto(new URL(`mod/h5pactivity/view.php?id=${activity.id}`, moodle.site).href);
   await tab.locator("iframe.h5p-player").waitFor();
   const player = tab.frameLocator("iframe.h5p-player");
   // ...click and type in `player` as the content type needs.

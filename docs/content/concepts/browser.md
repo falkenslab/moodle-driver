@@ -1,6 +1,6 @@
 # The browser
 
-`createBrowserManager(options)` gives a `BrowserManager`: the one persistent browser your program works Moodle with. It launches nothing until it's needed, keeps the browser open between calls, and closes it on `close()`.
+`createMoodle()` makes a `BrowserManager` from its options (it's `moodle.browser`), or takes yours; `createBrowserManager(options)` makes one on its own. It's the one persistent browser your program works Moodle with. It launches nothing until it's needed, keeps the browser open between calls, and closes it on `close()`.
 
 ## Options
 
@@ -50,8 +50,8 @@ On Linux a window needs `DISPLAY` or `WAYLAND_DISPLAY`; without them (a server, 
 Some things can't be done through a function: playing an H5P activity, a page the driver doesn't cover, something a person should see. `tab()` gives the browser's working tab, a Playwright `Page` the program drives as it likes, logged in. It's the same tab following uses while the browser is shown, so the person sees it.
 
 ```ts
-const tab = await browser.tab();
-await tab.goto(`${site}mod/h5pactivity/view.php?id=38`);
+const tab = await moodle.tab();
+await tab.goto(`${moodle.site}mod/h5pactivity/view.php?id=38`);
 // ...drive the H5P content in its iframes with Playwright...
 ```
 

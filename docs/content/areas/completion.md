@@ -2,6 +2,8 @@
 
 Activity completion is how Moodle tracks what each participant has done in a course. This area covers the three sides of it: a student marking their own manual completion (`setCompletion`), a teacher overriding someone's completion (`overrideCompletion`), and a teacher reading the course's progress report, everyone's completion of every activity (`completionReport`). The person's own completion of each activity also comes with the course's structure (`courseStructure`).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 Completion has to be enabled in the course and set in each activity (manual, or automatic on view, grade, submission…): the driver doesn't change that. Setting an activity's completion rules is part of its settings (see [Activities](activities.md)).
 
 ## Completion states
@@ -109,17 +111,16 @@ completion?: { state: CompletionState; complete: boolean };
 A student marks a page done; a teacher reads the report and marks done a book a student has read on paper.
 
 ```ts
-import { completionReport, CompletionError, courseStructure, overrideCompletion, setCompletion } from "@falkenslab/moodle-driver";
+import { CompletionError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 // As a student: mark every incomplete manual page in course 3 done.
-const { sections } = await courseStructure(context, site, 3);
+const { sections } = await moodle.courseStructure(3);
 for (const activity of sections.flatMap((s) => s.activities)) {
   if (activity.type !== "page" || activity.completion?.state !== "incomplete") continue;
   try {
-    await setCompletion(context, site, activity.id, true);
+    await moodle.setCompletion(activity.id, true);
   } catch (error) {
     if (error instanceof CompletionError) console.log(`${activity.name}: ${error.message}`);
     else throw error;
@@ -127,12 +128,12 @@ for (const activity of sections.flatMap((s) => s.activities)) {
 }
 
 // As a teacher: who hasn't completed the book (course module 6)?
-const report = await completionReport(context, site, 3);
+const report = await moodle.completionReport(3);
 for (const participant of report.participants) {
   const cell = participant.completion.find((c) => c.activityId === 6);
   if (cell?.state === "incomplete") console.log(participant.userId, participant.fullName);
 }
-const result = await overrideCompletion(context, site, 6, 7, "complete");
+const result = await moodle.overrideCompletion(6, 7, "complete");
 console.log(result.changed, result.overridden);
 ```
 

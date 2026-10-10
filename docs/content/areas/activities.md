@@ -2,6 +2,8 @@
 
 Building a course: creating activities and resources of any type through Moodle's own activity form, reading and changing their settings, and renaming, showing, hiding, moving, duplicating and deleting activities and sections as the course page's editor does. It's for teachers with editing rights (Moodle's `moodle/course:manageactivities`); for anyone else Moodle refuses. Every change returns the course's structure afterwards, so a program can check what happened without another call.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 ## What a change returns
 
 Every function here except `activitySettings` and `courseActivityTypes` returns a `CourseChange`:
@@ -162,15 +164,13 @@ function courseActivityTypes(context: BrowserContext, siteUrl: string, courseId:
 ## Example
 
 ```ts
-import { activitySettings, addSection, createActivity, editActivity, updateActivity } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-const unit = await addSection(context, site, 3, { name: "Unit 4: Recursion" });
+const unit = await moodle.addSection(3, { name: "Unit 4: Recursion" });
 const sectionId = unit.newId!;
 
-const page = await createActivity(context, site, {
+const page = await moodle.createActivity({
   courseId: 3,
   sectionId,
   type: "page",
@@ -178,7 +178,7 @@ const page = await createActivity(context, site, {
   content: "<p>A function that calls itself, with a base case.</p>",
 });
 
-const assignment = await createActivity(context, site, {
+const assignment = await moodle.createActivity({
   courseId: 3,
   sectionId,
   type: "assign",
@@ -188,11 +188,11 @@ const assignment = await createActivity(context, site, {
 });
 
 // Check the settings by name before changing them.
-const settings = await activitySettings(context, site, assignment.activityId!);
+const settings = await moodle.activitySettings(assignment.activityId!);
 console.log(settings.fields.filter((f) => f.disabled).map((f) => f.name));
 
-await updateActivity(context, site, assignment.activityId!, { settings: { "grade[modgrade_point]": 10 } });
-const after = await editActivity(context, site, 3, page.activityId!, { visibility: "shown" });
+await moodle.updateActivity(assignment.activityId!, { settings: { "grade[modgrade_point]": 10 } });
+const after = await moodle.editActivity(3, page.activityId!, { visibility: "shown" });
 console.log(after.changed);
 ```
 

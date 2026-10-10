@@ -2,6 +2,8 @@
 
 The student's side of an assignment: reading it as the student's page shows it, saving a submission (online text, files or both) and submitting it for grading. Everything goes through the assignment's own pages and forms (`mod/assign/view.php`), as the person would, so Moodle logs it and applies its own rules (dates, cut-off, attempts, the submission statement). The teacher's side (everyone's submissions, grading, extensions) is in [grading](grading.md); an assignment's id comes from the [course structure](courses.md) or `listAssignments`.
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 ## studentAssignment
 
 The assignment as the student's page shows it.
@@ -74,17 +76,16 @@ It throws `SubmissionError` when there's nothing to submit now: no draft, submit
 ## Example
 
 ```ts
-import { SubmissionError, studentAssignment, saveSubmission, submitForGrading } from "@falkenslab/moodle-driver";
+import { SubmissionError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-const assignment = await studentAssignment(context, site, 45);
+const assignment = await moodle.studentAssignment(45);
 console.log(assignment.description);
 for (const date of assignment.dates) console.log(`${date.label}: ${date.value}`);
 
 if (assignment.canEdit) {
-  const saved = await saveSubmission(context, site, 45, {
+  const saved = await moodle.saveSubmission(45, {
     onlineText: "<p>My factorial is recursive, with 0 as the base case.</p>",
     files: ["/home/ada/work/factorial.py"],
   });
@@ -92,7 +93,7 @@ if (assignment.canEdit) {
 
   if (saved.canSubmit) {
     try {
-      await submitForGrading(context, site, 45, false);
+      await moodle.submitForGrading(45, false);
     } catch (error) {
       if (!(error instanceof SubmissionError)) throw error;
       // The site asks to accept a statement: show it and ask the person before calling again.

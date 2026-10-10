@@ -2,6 +2,8 @@
 
 This area covers the person's Moodle messaging: their notifications (`notifications`, `markNotificationsRead`), their conversations (`conversations`, `conversation`) and sending a private message (`sendMessage`). It works the same for students and teachers, always as the logged-in person: there's no reading someone else's messages. Forum posts are in [Forums](forums.md).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 Everything goes through the services Moodle's own notification popover and messaging drawer call. People come as a user id and a full name; messages come as plain text (paragraphs and lists kept, markup removed), dates as ISO strings in UTC.
 
 ## notifications
@@ -107,21 +109,20 @@ It goes through `core_message_send_instant_messages`.
 Read the unread notifications, then answer a student's latest message.
 
 ```ts
-import { conversations, MessageError, markNotificationsRead, notifications, sendMessage } from "@falkenslab/moodle-driver";
+import { MessageError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-for (const notification of await notifications(context, site, { unreadOnly: true })) {
+for (const notification of await moodle.notifications({ unreadOnly: true })) {
   console.log(`[${notification.component ?? "site"}] ${notification.subject}`);
 }
-await markNotificationsRead(context, site);
+await moodle.markNotificationsRead();
 
-const [latest] = await conversations(context, site);
+const [latest] = await moodle.conversations();
 const other = latest?.members.find((m) => m.userId === 7);
 if (latest?.type === "private" && other && latest.unread > 0) {
   try {
-    const sent = await sendMessage(context, site, other.userId, "<p>Thanks, Ada. I'll check it tomorrow.</p>");
+    const sent = await moodle.sendMessage(other.userId, "<p>Thanks, Ada. I'll check it tomorrow.</p>");
     console.log(sent.changed);
   } catch (error) {
     if (error instanceof MessageError) console.log(error.message);

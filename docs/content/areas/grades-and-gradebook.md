@@ -2,6 +2,8 @@
 
 This area covers grades from both sides. A student (or anyone graded in a course) reads their own grade report with `myGrades`. A teacher reads everyone's grades with `graderReport`, reads how the gradebook is built with `gradebookSetup`, and changes it with `updateGradeItem` and `addGradeCategory`. Grading a single submission is in [Grading](grading.md); a quiz's attempts and marks are in [Quizzes](quizzes.md).
 
+The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+
 Everything here is read from Moodle's own pages by their structure (cell classes, data attributes, links and field names), never by header texts, so it works on a site in any language. Grades come as the text Moodle shows ("8.00", "80.00 %", "B+"), not as numbers: the site's grade display settings decide their format.
 
 ## myGrades
@@ -149,24 +151,23 @@ Moodle recalculates a course's grades after some changes (a deleted activity, ch
 A teacher moves the labs into a new category, weights the first one, and reads the course totals; a student reads their own grades.
 
 ```ts
-import { addGradeCategory, gradebookSetup, GradebookError, graderReport, myGrades, updateGradeItem } from "@falkenslab/moodle-driver";
+import { GradebookError } from "@falkenslab/moodle-driver";
 
-// `browser` is a BrowserManager and `site` the site's URL, as in the getting-started pages.
-const context = await browser.context();
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-const setup = await gradebookSetup(context, site, 3);
-const { category } = await addGradeCategory(context, site, 3, { name: "Labs", aggregation: "natural" });
+const setup = await moodle.gradebookSetup(3);
+const { category } = await moodle.addGradeCategory(3, { name: "Labs", aggregation: "natural" });
 if (category) {
   const labs = setup.items.filter((i) => i.type === "assign" && i.name.startsWith("Lab"));
   for (const item of labs) {
-    await updateGradeItem(context, site, 3, item.id, { category: category.id });
+    await moodle.updateGradeItem(3, item.id, { category: category.id });
   }
   // Inside the Natural "Labs" category, the first lab counts for 40%.
-  if (labs[0]) await updateGradeItem(context, site, 3, labs[0].id, { weight: 40 });
+  if (labs[0]) await moodle.updateGradeItem(3, labs[0].id, { weight: 40 });
 }
 
 try {
-  const report = await graderReport(context, site, 3);
+  const report = await moodle.graderReport(3);
   const total = report.columns.find((c) => c.kind === "course");
   for (const row of report.rows) {
     console.log(row.userId, row.grades.find((g) => g.itemId === total?.itemId)?.grade ?? "no grade");
@@ -177,7 +178,7 @@ try {
 }
 
 // As a student: the course total of the person's own report.
-const mine = await myGrades(context, site, 3);
+const mine = await moodle.myGrades(3);
 console.log(mine.find((row) => row.kind === "courseTotal")?.grade);
 ```
 

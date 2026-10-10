@@ -8,12 +8,10 @@ The areas cover what programs ask most, but Moodle has far more. The pieces the 
 function callService<T>(context: BrowserContext, siteUrl: string, methodname: string, args: Record<string, unknown>): Promise<T>;
 ```
 
-Calls one of Moodle's AJAX services from the kept logged-in tab, with its `sesskey`, as Moodle's pages do. It throws `NotLoggedInError` when there's no session and `MoodleServiceError` (with `errorcode`) when the service fails. Only services Moodle opens to AJAX work (`'ajax' => true` in their `db/services.php`); others answer `servicenotavailable`, even if the mobile app can use them.
+As a method, `moodle.callService<T>(methodname, args)`. Calls one of Moodle's AJAX services from the kept logged-in tab, with its `sesskey`, as Moodle's pages do. It throws `NotLoggedInError` when there's no session and `MoodleServiceError` (with `errorcode`) when the service fails. Only services Moodle opens to AJAX work (`'ajax' => true` in their `db/services.php`); others answer `servicenotavailable`, even if the mobile app can use them.
 
 ```ts
-import { callService } from "@falkenslab/moodle-driver";
-
-const groups = await callService<{ id: number; name: string }[]>(context, site, "core_group_get_course_groups", { courseid: 3 });
+const groups = await moodle.callService<{ id: number; name: string }[]>("core_group_get_course_groups", { courseid: 3 });
 ```
 
 `readPageConfig(context, siteUrl)` reads the person's id, interface language and time zone from the same tab.
@@ -45,9 +43,9 @@ dateSelectorDate(page, name); // the date a selector holds
 - `submitForm` waits for the next page and reads Moodle's validation messages by field.
 
 ```ts
-import { openForm, setFields, submitForm, dateSelectorValues } from "@falkenslab/moodle-driver";
+import { setFields, submitForm, dateSelectorValues } from "@falkenslab/moodle-driver";
 
-const page = await openForm(context, site, "course/modedit.php?update=35&return=0");
+const page = await moodle.openForm("course/modedit.php?update=35&return=0");
 try {
   await setFields(page, { "duedate[enabled]": true, ...(await dateSelectorValues(page, "duedate", new Date("2026-11-02T22:59:00Z"))) });
   await submitForm(page, "submitbutton2");
@@ -66,4 +64,4 @@ Playwright's `page.evaluate` sends a function's source to the page. Under some T
 
 ## Driving the browser yourself
 
-`browser.tab()` gives the working tab, logged in, for anything better done by hand with Playwright (see [The browser](browser.md)).
+`moodle.tab()` gives the working tab, logged in, for anything better done by hand with Playwright (see [The browser](browser.md)).
