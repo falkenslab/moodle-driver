@@ -63,7 +63,7 @@ const { changed } = await moodle.createActivity({ courseId: 3, sectionId: 7, typ
 console.log(changed); // Created page 42 "Loops" in section 2.
 ```
 
-More, complete and commented: [📖 use-case examples](https://falkenslab.github.io/moodle-driver/docs/examples).
+More, complete and commented: [📖 use-case examples](https://falkenslab.github.io/moodle-driver/examples).
 
 ## 💡 Why it's different
 
@@ -88,18 +88,18 @@ cd moodle-driver && npm install && npm run build
 { "dependencies": { "@falkenslab/moodle-driver": "file:../moodle-driver", "playwright-core": "^1.64.0" } }
 ```
 
-You need Node.js 20+, a Moodle 4.x or 5.x site, and Edge or Chrome (or let it download Chromium). See [installation](https://falkenslab.github.io/moodle-driver/docs/getting-started/installation).
+You need Node.js 20+, a Moodle 4.x or 5.x site, and Edge or Chrome (or let it download Chromium). See [installation](https://falkenslab.github.io/moodle-driver/getting-started/installation).
 
 ## 📚 Documentation
 
 | | |
 | --- | --- |
-| 🏁 [Getting started](https://falkenslab.github.io/moodle-driver/docs/getting-started/installation) | Install, log in, your first program |
-| 💡 [Concepts](https://falkenslab.github.io/moodle-driver/docs/concepts/how-it-works) | How it works, the browser, errors, pace, data categories |
-| 🗺️ [Moodle areas](https://falkenslab.github.io/moodle-driver/docs/areas/courses) | Every function, by area: courses, quizzes, grading, forums… |
-| 📖 [Examples](https://falkenslab.github.io/moodle-driver/docs/examples) | Complete programs for real tasks, commented |
-| 📘 [Glossary](https://falkenslab.github.io/moodle-driver/docs/reference/glossary) | Moodle's terms, explained for programmers |
-| 🔎 [API reference](https://falkenslab.github.io/moodle-driver/docs/api) | Generated from the code |
+| 🏁 [Getting started](https://falkenslab.github.io/moodle-driver/getting-started/installation) | Install, log in, your first program |
+| 💡 [Concepts](https://falkenslab.github.io/moodle-driver/concepts/how-it-works) | How it works, the browser, errors, pace, data categories |
+| 🗺️ [Moodle areas](https://falkenslab.github.io/moodle-driver/areas/courses) | Every function, by area: courses, quizzes, grading, forums… |
+| 📖 [Examples](https://falkenslab.github.io/moodle-driver/examples) | Complete programs for real tasks, commented |
+| 📘 [Glossary](https://falkenslab.github.io/moodle-driver/reference/glossary) | Moodle's terms, explained for programmers |
+| 🔎 [API reference](https://falkenslab.github.io/moodle-driver/api) | Generated from the code |
 
 ## 🛠️ Development
 

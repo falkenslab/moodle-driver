@@ -31,7 +31,7 @@ const config: Config = {
       {
         docs: {
           path: "content",
-          routeBasePath: "docs",
+          routeBasePath: "/",
           sidebarPath: "./sidebars.ts",
           editUrl: "https://github.com/falkenslab/moodle-driver/edit/main/docs/",
         },
@@ -71,7 +71,7 @@ const config: Config = {
     "@docusaurus/theme-mermaid",
     [
       "@easyops-cn/docusaurus-search-local",
-      { hashed: true, docsDir: "content", docsRouteBasePath: "docs", indexBlog: false, highlightSearchTermsOnTargetPage: true },
+      { hashed: true, docsDir: "content", docsRouteBasePath: "/", indexBlog: false, highlightSearchTermsOnTargetPage: true },
     ],
   ],
 
@@ -93,9 +93,9 @@ const config: Config = {
         {
           title: "Documentation",
           items: [
-            { label: "Getting started", to: "/docs/getting-started/installation" },
-            { label: "Moodle areas", to: "/docs/areas/courses" },
-            { label: "API reference", to: "/docs/api" },
+            { label: "Getting started", to: "/getting-started/installation" },
+            { label: "Moodle areas", to: "/areas/courses" },
+            { label: "API reference", to: "/api" },
           ],
         },
         {

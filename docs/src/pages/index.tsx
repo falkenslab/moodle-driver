@@ -54,13 +54,13 @@ export default function Home(): ReactNode {
           </h1>
           <p className={styles.tagline}>Full control of Moodle as any user, through a browser: no API, no web services, no tokens.</p>
           <div className={styles.buttons}>
-            <Link className="button button--primary button--lg" to="/docs/getting-started/installation">
+            <Link className="button button--primary button--lg" to="/getting-started/installation">
               Get started
             </Link>
-            <Link className="button button--secondary button--lg" to="/docs/areas/courses">
+            <Link className="button button--secondary button--lg" to="/areas/courses">
               Moodle areas
             </Link>
-            <Link className="button button--secondary button--lg" to="/docs/api">
+            <Link className="button button--secondary button--lg" to="/api">
               API reference
             </Link>
           </div>

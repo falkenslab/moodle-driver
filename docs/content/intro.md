@@ -1,5 +1,5 @@
 ---
-slug: /
+slug: /intro
 sidebar_label: Introduction
 ---
 

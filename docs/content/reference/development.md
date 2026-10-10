@@ -40,7 +40,7 @@ The fake Moodle stands for what the driver reads, but only a real site confirms 
 - Errors a program can act on get their own class, with messages in Moodle's terms.
 - The library never prints, reads no environment variables, and knows nothing of its consumers.
 - Every public function declares its data categories in `src/categories.ts`; a test enforces it.
-- Every function gets a doc comment: the [API reference](https://falkenslab.github.io/moodle-driver/docs/api) is generated from them.
+- Every function gets a doc comment: the [API reference](https://falkenslab.github.io/moodle-driver/api) is generated from them.
 
 ## Documentation
 
