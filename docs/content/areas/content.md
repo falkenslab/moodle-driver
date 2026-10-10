@@ -2,7 +2,7 @@
 
 Reading the activities teachers fill with content: a page's or label's text, a book's chapters, a URL resource's target, and the files of a file resource or a folder. It's the student's side (a teacher can read them too): `activityContent` views the activity as a person would, so Moodle logs the view, and with the realistic trail it reads at a person's pace so views and completion look as they would for a person (see [student pace](../concepts/student-pace.md)). The driver doesn't watch, play or transcribe media: it gives a video's URL, and saves files with [downloadFile](files.md).
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 ## activityContent
 

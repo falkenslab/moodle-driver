@@ -2,7 +2,7 @@
 
 The teacher's side of an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 ## assignmentSubmissions
 
@@ -147,4 +147,4 @@ await moodle.grantExtension(45, [4, 7], new Date("2026-11-06T22:59:00Z"));
 
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension` is `others-write`. The lower-level pieces: `listParticipants`, `participantDates` and `gradingPanelHtml` are `others-personal`, `submitGradingForm` is `others-write`, `assignmentIds` is `course-content`, and the parsers (`readSubmissionContent`, `readGradingDefinition`, `panelGrade`, `fillGradingForm`, `readAssignmentIds`) are `none`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension` is `others-write`. See [data categories](../concepts/data-categories.md).

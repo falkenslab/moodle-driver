@@ -2,7 +2,7 @@
 
 The student's side of an assignment: reading it as the student's page shows it, saving a submission (online text, files or both) and submitting it for grading. Everything goes through the assignment's own pages and forms (`mod/assign/view.php`), as the person would, so Moodle logs it and applies its own rules (dates, cut-off, attempts, the submission statement). The teacher's side (everyone's submissions, grading, extensions) is in [grading](grading.md); an assignment's id comes from the [course structure](courses.md) or `listAssignments`.
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 ## studentAssignment
 
@@ -105,4 +105,4 @@ if (assignment.canEdit) {
 
 ## Data categories
 
-`studentAssignment` is `course-content` and `own`; `saveSubmission` and `submitForGrading` are `own`. `readStudentAssignment`, which parses an assignment page already open, is `none`. See [data categories](../concepts/data-categories.md).
+`studentAssignment` is `course-content` and `own`; `saveSubmission` and `submitForGrading` are `own`. See [data categories](../concepts/data-categories.md).

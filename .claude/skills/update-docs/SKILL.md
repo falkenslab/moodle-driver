@@ -12,7 +12,7 @@ A program's developer learns the driver from the documentation site (`docs/`, pu
 ```
 git status --short
 git diff --stat
-git diff -- src/index.ts src/testing/index.ts
+git diff -- src/index.ts src/internals.ts src/testing/index.ts
 ```
 
 For each change, ask: would a program using the driver, or a future session working on it, notice it? Count as yes:
@@ -29,7 +29,7 @@ Internal refactors, tests and comments with no visible effect need no change bey
 ## 2. Update what owns it
 
 - **The site's guides** (`docs/content/`, map in `docs/sidebars.ts`): the area page under `docs/content/areas/` for a Moodle function (its signature, options and defaults, what it returns, its errors, Moodle's behaviors, an example, its data categories); a new area gets a new page in the sidebar; `concepts/` for the browser, conventions, errors, the trail, data categories and the low-level pieces; `getting-started/` for installation and logging in; `reference/` for troubleshooting and compatibility. `grep -rn "<the function>" docs/content` finds every page that mentions it.
-- **Doc comments**: every export of `src/index.ts` and `src/testing/index.ts` has one that says what it's for, what it returns and which errors it throws, not how it's built: the API reference is generated from them. Check new exports: `git diff -- src/index.ts` lists them, and each must have a `/** … */` at its declaration.
+- **Doc comments**: every export of `src/index.ts`, `src/internals.ts` and `src/testing/index.ts` has one that says what it's for, what it returns and which errors it throws, not how it's built: the API reference is generated from them. Check new exports: `git diff -- src/index.ts` lists them, and each must have a `/** … */` at its declaration.
 - **`README.md`** (English, for a program's developer): the areas covered in its first paragraph, the "Use" example (it must still compile), the "Development" commands. Touch it only when the change shows at that level.
 - **`.minispec/core/project.md`**: "What it does" when a Moodle area is added. `architecture.md`: when a file or piece is added, moved or changes role. `stack.md`: dependencies, Docker image, distribution. `conventions.md`: a new rule. `glossary.md`: a new term. A decision that's hard to reverse: a new ADR (`minispec-adr`), or update the ADR whose rule changed.
 - **`CLAUDE.md`**: only commands and things easy to get wrong; don't duplicate `.minispec/`.

@@ -4,22 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import {
-  ActivitySettingsError,
-  FormError,
-  MoodleServiceError,
-  activitySettings,
-  addSection,
-  createActivity,
-  deleteActivity,
-  deleteSection,
-  duplicateActivity,
-  editActivity,
-  editSection,
-  updateActivity,
-  type CourseChange,
-  type CourseState,
-} from "../../../src/index.js";
+import { ActivitySettingsError, FormError, MoodleServiceError, activitySettings, addSection, createActivity, deleteActivity, deleteSection, duplicateActivity, editActivity, editSection, updateActivity, type CourseChange } from "../../../src/index.js";
+import { type CourseState } from "../../../src/areas/courses/state.js";
 import { SITE, ServiceFailure, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();

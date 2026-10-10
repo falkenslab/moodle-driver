@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { CourseState, MoodleServiceError, NotLoggedInError, courseStructure, listAssignments, pendingActivities, readActivityDetails, structureOf } from "../../../src/index.js";
+import { MoodleServiceError, NotLoggedInError, courseStructure, listAssignments, pendingActivities } from "../../../src/index.js";
+import { CourseState, readActivityDetails } from "../../../src/areas/courses/state.js";
+import { structureOf } from "../../../src/areas/courses/structure.js";
 import { SITE, ServiceFailure, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());

@@ -5,7 +5,8 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
-import { NotLoggedInError, downloadFile, fileNameFor } from "../../src/index.js";
+import { NotLoggedInError, downloadFile } from "../../src/index.js";
+import { fileNameFor } from "../../src/core/files.js";
 import { launchTestBrowser } from "../../src/testing/index.js";
 
 describe("fileNameFor", () => {

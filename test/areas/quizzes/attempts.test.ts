@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { FormError, QuizError, answerQuizQuestions, finishQuizAttempt, quizInfo, readQuestions, quizResults, readReview, setQuizOverride, startQuizAttempt } from "../../../src/index.js";
+import { FormError, QuizError, answerQuizQuestions, finishQuizAttempt, quizInfo, quizResults, readReview, setQuizOverride, startQuizAttempt } from "../../../src/index.js";
+import { readQuestions } from "../../../src/areas/quizzes/attempts.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();

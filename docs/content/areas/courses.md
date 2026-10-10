@@ -2,7 +2,7 @@
 
 The courses the person is enrolled in, a course's sections and activities, its assignments, what the person still has to do in it, and changing a course's settings. Reading works for anyone enrolled (student or teacher); `updateCourse` needs the right to edit the course's settings, which teachers with editing rights and managers have. Everything here is read through the services the course page itself uses (`core_course_get_enrolled_courses_by_timeline_classification`, `core_courseformat_get_state`), so it doesn't depend on the interface's language, except the activity details (dates and restrictions), which are read from the course page as it shows them.
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 ## listCourses
 
@@ -57,18 +57,16 @@ Each `CourseSection` has `id`, `number` (0 is the general section), `title`, `vi
 
 A course the person can't see comes back as Moodle's `MoodleServiceError` (its `errorcode` says why); no session is `NotLoggedInError`.
 
-## courseState, structureOf and activityDetails
+## courseState and activityDetails
 
-The pieces `courseStructure` is made of, for a program that wants to call the service once and use it several ways.
+The pieces `courseStructure` is made of, in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 ```ts
 function courseState(context: BrowserContext, siteUrl: string, courseId: number): Promise<CourseState>;
-function structureOf(state: CourseState, details?: Map<number, ActivityDetails>): CourseSection[];
 function activityDetails(context: BrowserContext, siteUrl: string, courseId: number, state: CourseState): Promise<Map<number, ActivityDetails>>;
 ```
 
 - `courseState` returns `core_courseformat_get_state` parsed, with Moodle's own field names (`section`, `cm`, `cmlist`, `uservisible`, `completionstate`…); the type lists the fields the driver reads, as Moodle 4.0 to 5.2 return them.
-- `structureOf` turns that state into the `CourseSection[]` described above, merging details when given. It fetches nothing.
 - `activityDetails` reads the course page (and the section pages it needs) and returns, by course module id, `{ id, dates: { label, value }[], restriction? }`.
 
 ## pendingActivities
@@ -95,7 +93,7 @@ The course's assignments, in the course's order, from the same course state.
 function listAssignments(context: BrowserContext, siteUrl: string, courseId: number): Promise<CourseAssignment[]>;
 ```
 
-Each `CourseAssignment` has `id` (the course module id, for [assignments](assignments.md) and [grading](grading.md)), `name`, `url`, `visible` and `section` (`{ number, title }`). `assignmentsOf(state)` does the same on a `CourseState` already read.
+Each `CourseAssignment` has `id` (the course module id, for [assignments](assignments.md) and [grading](grading.md)), `name`, `url`, `visible` and `section` (`{ number, title }`).
 
 ## updateCourse
 
@@ -149,4 +147,4 @@ console.log(course?.fullname);
 
 ## Data categories
 
-`listCourses` is `own`. `courseState` and `courseStructure` are `course-content` and `own` (the state carries the person's completion), and so is `pendingActivities` (`own`). `activityDetails` and `listAssignments` are `course-content`; `structureOf` and `assignmentsOf` are `none` (they only parse what was fetched). `updateCourse` is `course-content`. See [data categories](../concepts/data-categories.md).
+`listCourses` is `own`. `courseState` and `courseStructure` are `course-content` and `own` (the state carries the person's completion), and so is `pendingActivities` (`own`). `activityDetails` and `listAssignments` are `course-content`. `updateCourse` is `course-content`. See [data categories](../concepts/data-categories.md).

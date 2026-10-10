@@ -2,7 +2,7 @@
 
 H5P activities (module `h5pactivity`): what an activity holds (its H5P content type and version), whether Moodle tracks attempts, and the person's own attempts with their scores. Students read their attempts; a teacher reads the same activity facts, with no attempts (their report lists participants instead). The driver doesn't play H5P content: playing happens in the content's iframes, which a program drives itself in the browser's working tab.
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 Everything is read from Moodle's pages (body ids, data attributes, the player's settings, the report table by position and icon), so it works in any interface language. `h5pActivity` throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)).
 
@@ -77,7 +77,6 @@ The selectors inside the player depend on the content type and its version: read
 ## Data categories
 
 - `h5pActivity`: `course-content` and `own` (the content and the person's attempts).
-- `readH5PAttempts`, the reader for a report page a program opened itself: `none`.
 - `BrowserManager.tab`: `any`, since a program can open anything in it.
 
 See [Data categories](../concepts/data-categories.md).

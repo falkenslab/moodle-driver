@@ -1,6 +1,12 @@
 # Going lower level
 
-The areas cover what programs ask most, but Moodle has far more. The pieces the driver is built with are exported too, so a program can reach what isn't covered yet the same way, with the person's session and Moodle's own checks. They're all in the `any` [data category](data-categories.md): they reach whatever they're pointed at.
+The areas cover what programs ask most, but Moodle has far more. The primitives the driver is built with have their own entry point, `@falkenslab/moodle-driver/internals`, so a program can reach what isn't covered yet the same way, with the person's session and Moodle's own checks. Most are in the `any` [data category](data-categories.md): they reach whatever they're pointed at.
+
+```ts
+import { callService, openSitePage, setFields, submitForm } from "@falkenslab/moodle-driver/internals";
+```
+
+They follow the same versioning as the main entry, but they're closer to Moodle: they take pages, form names and service names, so a change in Moodle shows through them sooner. The areas' own parsers and single steps (a quiz attempt's pages, an assignment's grading panel) aren't exported at all: they change with the pages they read.
 
 ## Calling a service
 
@@ -8,13 +14,13 @@ The areas cover what programs ask most, but Moodle has far more. The pieces the 
 function callService<T>(context: BrowserContext, siteUrl: string, methodname: string, args: Record<string, unknown>): Promise<T>;
 ```
 
-As a method, `moodle.callService<T>(methodname, args)`. Calls one of Moodle's AJAX services from the kept logged-in tab, with its `sesskey`, as Moodle's pages do. It throws `NotLoggedInError` when there's no session and `MoodleServiceError` (with `errorcode`) when the service fails. Only services Moodle opens to AJAX work (`'ajax' => true` in their `db/services.php`); others answer `servicenotavailable`, even if the mobile app can use them.
+Also a method of the object: `moodle.callService<T>(methodname, args)`. Calls one of Moodle's AJAX services from the kept logged-in tab, with its `sesskey`, as Moodle's pages do. It throws `NotLoggedInError` when there's no session and `MoodleServiceError` (with `errorcode`) when the service fails. Only services Moodle opens to AJAX work (`'ajax' => true` in their `db/services.php`); others answer `servicenotavailable`, even if the mobile app can use them.
 
 ```ts
 const groups = await moodle.callService<{ id: number; name: string }[]>("core_group_get_course_groups", { courseid: 3 });
 ```
 
-`readPageConfig(context, siteUrl)` reads the person's id, interface language and time zone from the same tab.
+`readPageConfig(context, siteUrl)` reads the person's id, interface language and time zone from the same tab; `readOwnProfile(context, siteUrl)` the person's id and name from their profile page.
 
 ## Opening a page
 
@@ -22,9 +28,9 @@ const groups = await moodle.callService<{ id: number; name: string }[]>("core_gr
 function openSitePage(context: BrowserContext, siteUrl: string, path: string, options?: { follow?: boolean }): Promise<Page>;
 ```
 
-Opens a page of the site (a path relative to it) in a new tab and checks there's a session, throwing `NotLoggedInError` when Moodle answers with its login page. Close the page when done. While the browser is shown on demand, the page is shown afterwards in the working tab (`follow: false` skips it).
+Opens a page of the site (a path relative to it) in a new tab and checks there's a session, throwing `NotLoggedInError` when Moodle answers with its login page. Close the page when done. It's also a method, `moodle.openSitePage(path)`, like `moodle.openForm(path)`. While the browser is shown on demand, the page is shown afterwards in the working tab (`follow: false` skips it).
 
-Read pages by structure, not by text (see [How it works](how-it-works.md)): the body id names the page (`page-mod-quiz-view`), ids and data attributes name things. `moodleErrorMessage(page)` gives Moodle's message on an error page. `readTexts(page, selector)` gives elements' text with paragraphs and lists, and `readMedia(page, selector)` the media in them.
+Read pages by structure, not by text (see [How it works](how-it-works.md)): the body id names the page (`page-mod-quiz-view`), ids and data attributes name things. `moodleErrorMessage(page)` gives Moodle's message on an error page; `readSessionFacts(page)` and `pageIsLoggedIn(page, siteUrl)` tell whether a page has a user logged in. `readTexts(page, selector)` gives elements' text with paragraphs and lists, and `readMedia(page, selector)` the media in them.
 
 ## Forms
 
@@ -43,7 +49,7 @@ dateSelectorDate(page, name); // the date a selector holds
 - `submitForm` waits for the next page and reads Moodle's validation messages by field.
 
 ```ts
-import { setFields, submitForm, dateSelectorValues } from "@falkenslab/moodle-driver";
+import { setFields, submitForm, dateSelectorValues } from "@falkenslab/moodle-driver/internals";
 
 const page = await moodle.openForm("course/modedit.php?update=35&return=0");
 try {
@@ -58,9 +64,15 @@ try {
 
 `editCourse(context, siteUrl, courseId, action, ids, target?)` runs one of the course page's editing actions (`cm_hide`, `cm_move`, `section_add`…) through its service, as the editor does; `renameActivity` and `renameSection` use the in-place editors. The [activities](../areas/activities.md) functions are built on them.
 
+`courseState(context, siteUrl, courseId)` gives `core_courseformat_get_state` parsed, with Moodle's own field names, and `activityDetails(context, siteUrl, courseId, state)` the dates and restrictions the course page shows, by activity: what `courseStructure` is made of (see [Courses](../areas/courses.md)).
+
 ## Running code in a page
 
 Playwright's `page.evaluate` sends a function's source to the page. Under some TypeScript runners (tsx, esbuild's `keepNames`) named functions inside it get wrapped in a `__name` helper the page doesn't have, and fail. `inPage(page, fn, arg)` defines that helper first: use it for page code with helper functions, or keep to anonymous callbacks.
+
+## Text and pace
+
+`decodeEntities(text)` decodes the entities Moodle's `format_string` writes; `readingSeconds(text)` is the time a person needs to read a text, and `pause(seconds, onProgress?)` waits it (see [Student pace](student-pace.md)). `readWwwroot(html)` finds a site's base URL in one of its pages, and `fileNameFor(url, disposition)` is the name `downloadFile` saves a file with.
 
 ## Driving the browser yourself
 

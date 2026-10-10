@@ -2,7 +2,7 @@
 
 Activity completion is how Moodle tracks what each participant has done in a course. This area covers the three sides of it: a student marking their own manual completion (`setCompletion`), a teacher overriding someone's completion (`overrideCompletion`), and a teacher reading the course's progress report, everyone's completion of every activity (`completionReport`). The person's own completion of each activity also comes with the course's structure (`courseStructure`).
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 Completion has to be enabled in the course and set in each activity (manual, or automatic on view, grade, submission…): the driver doesn't change that. Setting an activity's completion rules is part of its settings (see [Activities](activities.md)).
 
@@ -145,4 +145,3 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 - `overrideCompletion`: `others-write` (deciding about someone else).
 - `completionReport`: `others-personal`.
 - `courseStructure`: `course-content` and `own` (the person's own completion).
-- `readCompletionReport`: `none` (it parses a page the caller already opened).

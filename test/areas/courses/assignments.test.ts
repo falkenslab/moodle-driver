@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { CourseState, assignmentsOf } from "../../../src/index.js";
+import { CourseState } from "../../../src/areas/courses/state.js";
+import { assignmentsOf } from "../../../src/areas/courses/structure.js";
 import { SITE, launchTestBrowser } from "../../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());

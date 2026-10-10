@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { FormError, dateSelectorDate, dateSelectorValues, setFields } from "../../src/index.js";
+import { FormError } from "../../src/index.js";
+import { dateSelectorDate, dateSelectorValues, setFields } from "../../src/core/forms.js";
 import { launchTestBrowser } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();

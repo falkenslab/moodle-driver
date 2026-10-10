@@ -23,7 +23,7 @@ import { conversation, conversations, markNotificationsRead, notifications, send
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
 import { groups, participantFilters, participants } from "./areas/participants/participants.js";
 import { createQuestion, importQuestions, questionBanks, questions } from "./areas/questions/banks.js";
-import { answerQuizQuestions, finishQuizAttempt, quizInfo, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
+import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
 import { addQuestionsToQuiz, quizStructure } from "./areas/quizzes/structure.js";
 import { logOut, openSitePage } from "./core/session.js";
@@ -96,6 +96,7 @@ const SITE_FUNCTIONS = {
   quizInfo,
   quizResults,
   quizStructure,
+  readAttempt,
   readReview,
   replyToPost,
   rubric,

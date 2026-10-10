@@ -54,7 +54,7 @@ const slow = await moodle.activityContent(6, "book", { trail: "realistic" }); //
 
 ## The object's methods
 
-Every operation whose first parameters are the browser context and the site is a method of the same name without them: `gradeSubmission(context, site, 35, 7, input)` is `moodle.gradeSubmission(35, 7, input)`, with the same options, result and errors. The area pages show the functions' signatures; drop the first two for the method. The lower-level pieces the operations are built from (an assignment's ids and grading panel, a quiz attempt's single steps, the course's raw state, the editor's actions) are functions only, to keep the object to what programs call; see [Going lower level](low-level.md).
+Every operation whose first parameters are the browser context and the site is a method of the same name without them: `gradeSubmission(context, site, 35, 7, input)` is `moodle.gradeSubmission(35, 7, input)`, with the same options, result and errors. The area pages show the functions' signatures; drop the first two for the method. The primitives the operations are built from (Moodle's services, pages and forms, the course's raw state, the editor's actions) are functions in `@falkenslab/moodle-driver/internals`, to keep the main entry and the object to what programs call; see [Going lower level](low-level.md). The areas' own parsers and single steps aren't exported.
 
 The object also has its own:
 

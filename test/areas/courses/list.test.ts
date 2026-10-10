@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { CourseError, FormError, MoodleCourse, NotLoggedInError, listCourses, toCourse, updateCourse } from "../../../src/index.js";
+import { CourseError, FormError, NotLoggedInError, listCourses, updateCourse } from "../../../src/index.js";
+import { MoodleCourse, toCourse } from "../../../src/areas/courses/list.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());

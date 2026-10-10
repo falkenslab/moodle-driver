@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
-import { LoginTimeoutError, LoginWindowClosedError, logIn, waitForLogin, type ContextOptions } from "../../src/index.js";
+import { LoginTimeoutError, LoginWindowClosedError, logIn, type ContextOptions } from "../../src/index.js";
+import { waitForLogin } from "../../src/core/login.js";
 import { SITE, fakeBrowserManager, launchTestBrowser, serveFakeMoodle } from "../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());

@@ -2,7 +2,7 @@
 
 This area covers grades from both sides. A student (or anyone graded in a course) reads their own grade report with `myGrades`. A teacher reads everyone's grades with `graderReport`, reads how the gradebook is built with `gradebookSetup`, and changes it with `updateGradeItem` and `addGradeCategory`. Grading a single submission is in [Grading](grading.md); a quiz's attempts and marks are in [Quizzes](quizzes.md).
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 Everything here is read from Moodle's own pages by their structure (cell classes, data attributes, links and field names), never by header texts, so it works on a site in any language. Grades come as the text Moodle shows ("8.00", "80.00 %", "B+"), not as numbers: the site's grade display settings decide their format.
 
@@ -189,4 +189,3 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 - `myGrades`: `own`.
 - `graderReport`: `others-personal` (everyone's grades).
 - `gradebookSetup`, `updateGradeItem`, `addGradeCategory`: `course-content` (the gradebook's structure, nobody's grades).
-- `readGradeRows`, `readGraderReport`, `readGradebookSetup`: `none` (they parse a page the caller already opened).

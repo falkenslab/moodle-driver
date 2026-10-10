@@ -2,7 +2,7 @@
 
 This area works the Moodle calendar: the person's upcoming events (`upcomingEvents`), creating a course event (`createEvent`) and deleting an event (`deleteEvent`). Anyone can read their upcoming events; creating and deleting course events needs the right to manage the course's calendar, which teachers have by default. What the person has to do by a date (submit, attempt, grade) is better read with `deadlines` (see [Overview and deadlines](overview-and-deadlines.md)).
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 ## CalendarEvent
 

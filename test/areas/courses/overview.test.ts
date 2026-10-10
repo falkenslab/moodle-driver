@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
-import { MoodleServiceError, NotLoggedInError, activitiesOverview, courseUpdates, deadlines, overviewField } from "../../../src/index.js";
+import { MoodleServiceError, NotLoggedInError, activitiesOverview, courseUpdates, deadlines } from "../../../src/index.js";
+import { overviewField } from "../../../src/areas/courses/overview.js";
 import { SITE, ServiceFailure, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());

@@ -61,11 +61,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   siteName: NONE,
   logIn: NONE,
   logOut: NONE,
-  waitForLogin: NONE,
   readSessionFacts: NONE,
   isLoggedIn: NONE,
   pageIsLoggedIn: NONE,
-  followPages: NONE,
   dateSelectorValues: NONE,
   dateSelectorDate: NONE,
   moodleErrorMessage: NONE,
@@ -73,8 +71,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
 
   // Generic primitives.
   callService: ANY,
-  parseServiceResponse: NONE,
   openSitePage: ANY,
+  inPage: ANY,
   openForm: ANY,
   formValue: ANY,
   setFields: ANY,
@@ -84,30 +82,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
 
   // Parsing and pacing helpers: nothing fetched.
   decodeEntities: NONE,
-  isoDate: NONE,
   readTexts: NONE,
   readMedia: NONE,
-  htmlToTexts: NONE,
   readingSeconds: NONE,
   pause: NONE,
   checkLocalFiles: NONE,
   fileNameFor: NONE,
-  toCourse: NONE,
-  structureOf: NONE,
-  assignmentsOf: NONE,
-  overviewField: NONE,
-  readActivityDetails: NONE,
-  readAssignmentIds: NONE,
-  readDiscussionRows: NONE,
-  readGradeRows: NONE,
-  readQuizView: NONE,
-  readQuestions: NONE,
-  readNavigation: NONE,
-  readStudentAssignment: NONE,
-  readSubmissionContent: NONE,
-  readSurveyPage: NONE,
-  panelGrade: NONE,
-  fillGradingForm: NONE,
 
   // The person.
   readOwnProfile: OWN,
@@ -126,15 +106,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   courseState: ["course-content", "own"],
   courseStructure: ["course-content", "own"],
   activityDetails: CONTENT,
-  courseFormat: CONTENT,
   courseActivityTypes: CONTENT,
   listAssignments: CONTENT,
-  assignmentIds: CONTENT,
-  forumInstanceId: CONTENT,
   activityContent: CONTENT,
   createActivity: CONTENT,
   activitySettings: CONTENT,
-  readFormFields: NONE,
   updateActivity: CONTENT,
   editActivity: CONTENT,
   duplicateActivity: CONTENT,
@@ -153,37 +129,25 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   studentAssignment: ["course-content", "own"],
   saveSubmission: OWN,
   submitForGrading: OWN,
-  listParticipants: PERSONAL,
-  participantDates: PERSONAL,
-  gradingPanelHtml: PERSONAL,
   assignmentSubmissions: PERSONAL,
-  submitGradingForm: ["others-write"],
   gradeSubmission: ["others-personal", "others-write"],
   rubric: CONTENT,
   grantExtension: ["others-write"],
-  readGradingDefinition: NONE,
 
   // Quizzes: a teacher may review someone else's attempt.
   quizInfo: ["course-content", "own"],
-  startAttempt: OWN,
   startQuizAttempt: OWN,
   readAttempt: OWN,
-  saveAnswers: OWN,
   answerQuizQuestions: OWN,
-  finishAttempt: OWN,
   finishQuizAttempt: OWN,
   readReview: ["own", "others-personal"],
   setQuizOverride: ["others-write"],
   quizResults: PERSONAL,
-  readQuizReport: NONE,
   quizStructure: CONTENT,
   addQuestionsToQuiz: CONTENT,
-  readQuizSlots: NONE,
 
   // Forums.
-  listDiscussions: PERSONAL,
   forumDiscussions: PERSONAL,
-  discussionPosts: PERSONAL,
   discussion: PERSONAL,
   replyToPost: ["communication"],
   startDiscussion: ["communication"],
@@ -192,32 +156,26 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Surveys.
   getSurvey: ["course-content", "own"],
   submitSurvey: OWN,
-  surveyType: CONTENT,
 
   // Participants and groups.
   participants: PERSONAL,
   groups: PERSONAL,
   participantFilters: ["course-content"],
-  readParticipantRows: NONE,
 
   // Completion: the person's own, deciding someone else's, everyone's report.
   setCompletion: OWN,
   overrideCompletion: ["others-write"],
   completionReport: PERSONAL,
-  readCompletionReport: NONE,
 
   // The gradebook: everyone's grades, and its setup (course content).
   graderReport: PERSONAL,
-  readGraderReport: NONE,
   gradebookSetup: CONTENT,
-  readGradebookSetup: NONE,
   updateGradeItem: CONTENT,
   addGradeCategory: CONTENT,
 
   // Question banks: what teachers write.
   questionBanks: CONTENT,
   questions: CONTENT,
-  readBankQuestions: NONE,
   importQuestions: CONTENT,
   createQuestion: CONTENT,
 
@@ -235,17 +193,14 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
 
   // H5P: the content (course content) and the person's own attempts.
   h5pActivity: ["course-content", "own"],
-  readH5PAttempts: NONE,
 
   // Lessons: the person going through one.
   lessonPage: ["course-content", "own"],
   answerLessonPage: OWN,
-  readLessonPage: NONE,
 
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],
   answerChoice: OWN,
-  readChoice: NONE,
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.

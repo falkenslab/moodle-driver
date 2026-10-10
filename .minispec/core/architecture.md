@@ -3,13 +3,14 @@
 ## Flow
 
 ```
-program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts, ADR-009) or the functions
+program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts, ADR-009) or the functions; internals.ts: the primitives (ADR-010)
   createBrowserManager(options) --> browser/manager.ts (persistent context on the profile, system channel or Chromium)
   area functions (context, siteUrl, ids, options) --> core/ajax.ts (AJAX from a kept tab) | core/session.ts (openSitePage) | core/forms.ts --> Moodle
 ```
 
 ## Key pieces (`src/`)
 
+- `index.ts` — the main entry, curated: the object, the operations, their types and errors. `internals.ts` — `@falkenslab/moodle-driver/internals`: the generic primitives (services, pages, forms, text, pace, the editor, the course's raw state) (ADR-010).
 - `client.ts` — `createMoodle()`: one site and its browser as an object whose methods are the site functions, bound (ADR-009).
 - `options.ts` — what a program chooses: `BrowserOptions` (profile, channel, headless, download), channels, trails, `parseSiteUrl()`.
 - `categories.ts` — what data each public function reads or writes (`DATA_CATEGORIES`, `moduleCategories()`), for programs that restrict what an agent may do; a test fails on an undeclared export.

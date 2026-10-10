@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
-import { NotViewableError, activityContent, readMedia, readTexts, readingSeconds } from "../../../src/index.js";
+import { NotViewableError, activityContent } from "../../../src/index.js";
+import { readMedia, readTexts } from "../../../src/core/text.js";
+import { readingSeconds } from "../../../src/core/pace.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());

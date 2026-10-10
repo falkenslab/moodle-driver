@@ -2,7 +2,7 @@
 
 A forum's discussions and their posts as plain data, posting as the person (replies and new discussions, with attachments), and a teacher's moderation (pinning and locking discussions). Students and teachers read and post alike, within what the forum allows them; pinning and locking need the moderation rights a teacher has.
 
-The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
 A forum is identified by its activity id (`activityId`, the `id` in `mod/forum/view.php?id=`), discussions and posts by Moodle's ids. Discussions are read from the forum's pages (by data attributes, links and timestamps, so in any language), posts through Moodle's `mod_forum_get_discussion_posts` service, and posting goes through Moodle's own post form (`mod/forum/post.php`), which takes attachments and fills in a reply's subject. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)).
 
@@ -167,4 +167,4 @@ try {
 - `replyToPost`, `startDiscussion`: `communication` (writing before others).
 - `setDiscussionState`: `others-personal` and `communication`.
 
-The lower-level `listDiscussions`, `discussionPosts` (the raw service answer) and `forumInstanceId` are `others-personal`, `others-personal` and `course-content`. See [Data categories](../concepts/data-categories.md).
+See [Data categories](../concepts/data-categories.md).

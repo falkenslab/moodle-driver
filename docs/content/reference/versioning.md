@@ -10,7 +10,7 @@ Each release is a `vX.Y.Z` tag with release notes on [GitHub](https://github.com
 
 ## What counts as the API
 
-Everything exported from `@falkenslab/moodle-driver` and `@falkenslab/moodle-driver/testing`, as described in the API reference: functions, their parameters and options, returned shapes, error classes with their names and codes, `DATA_CATEGORIES`. Error messages may change wording in any release; match errors by class, `name` or `code`, not by message.
+Everything exported from `@falkenslab/moodle-driver`, `@falkenslab/moodle-driver/internals` and `@falkenslab/moodle-driver/testing`, as described in the API reference: functions, their parameters and options, returned shapes, error classes with their names and codes, `DATA_CATEGORIES`. Error messages may change wording in any release; match errors by class, `name` or `code`, not by message.
 
 ## Moodle changes
 

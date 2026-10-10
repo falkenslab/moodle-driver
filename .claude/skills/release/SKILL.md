@@ -53,7 +53,7 @@ gh release create vX.Y.Z --verify-tag --title "vX.Y.Z" --notes "<notes>"
 npm publish
 ```
 
-`npm publish` runs `prepare` (the build) first; check with `npm pack --dry-run` beforehand that the tarball holds only `dist/`, `README.md`, `LICENSE` and `package.json`, with `dist/index.d.ts` and `dist/testing/index.d.ts`. If the account has two-factor authentication, it asks for a one-time code: ask the user for it and run `npm publish --otp=<code>`. A published version can't be reused; if something is wrong after publishing, fix it with a new patch release.
+`npm publish` runs `prepare` (the build) first; check with `npm pack --dry-run` beforehand that the tarball holds only `dist/`, `README.md`, `LICENSE` and `package.json`, with `dist/index.d.ts`, `dist/internals.d.ts` and `dist/testing/index.d.ts`. If the account has two-factor authentication, it asks for a one-time code: ask the user for it and run `npm publish --otp=<code>`. A published version can't be reused; if something is wrong after publishing, fix it with a new patch release.
 
 Tags are lightweight (`git tag vX.Y.Z`). Never move or delete an existing tag, and never force-push. If a step fails half-way, report the exact state (what is pushed, what is not) instead of retrying blindly.
 

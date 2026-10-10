@@ -94,7 +94,7 @@ const courses = await moodle.listCourses();
 
 ## Grading panels
 
-`PANEL` is a made-up grader panel (a submission with online text, a file and comments) as `gradingPanelHtml` would return it, for tests of programs that read submissions.
+`PANEL` is a made-up grader panel (a submission with online text, a file and comments) as Moodle's grader serves it, for tests of programs that read submissions.
 
 ## Running browser tests
 

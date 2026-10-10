@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import * as api from "../src/index.js";
+import * as main from "../src/index.js";
+import * as internals from "../src/internals.js";
 import { ALL_DATA_CATEGORIES, DATA_CATEGORIES, MOODLE_METHODS, createMoodle, moduleCategories } from "../src/index.js";
 import { fakeBrowserManager } from "../src/testing/index.js";
 
-// Exported functions, not error classes: those are thrown, never called for data.
+// Exported functions of both entries, not error classes: those are thrown, never called for data.
+const api = { ...main, ...internals };
 const functions = Object.entries(api)
   .filter(([, value]) => typeof value === "function" && !/^class\b/.test(Function.prototype.toString.call(value)))
   .map(([name]) => name);
