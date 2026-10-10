@@ -8,7 +8,7 @@ import type { BrowserContext, Cookie } from "playwright-core";
  * profile alone would forget the login on every restart. They are kept in this file inside the
  * profile, as sensitive as the profile itself (ADR-003).
  */
-export const SESSION_COOKIES_FILE = "moodle-driver-session.json";
+export const SESSION_COOKIES_FILE = "moodle-session.json";
 
 export async function saveSessionCookies(context: BrowserContext, profileDir: string): Promise<void> {
   const sessionCookies = (await context.cookies()).filter((cookie) => cookie.expires === -1);

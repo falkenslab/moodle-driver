@@ -2,7 +2,7 @@
 
 ## Decision
 
-The driver saves the browser's session cookies (those with no expiry) to `moodle-driver-session.json` inside the profile folder after a login and whenever it closes the browser, and puts them back when it opens the profile again, unless the browser kept a newer one. The file was named `moodle-mcp-session-cookies.json` until 0.2.0, when it took the driver's name; profiles from before log in again once (decided with the owner, 10 October 2026). Moved from moodle-mcp's ADR-007 when the driver was extracted (9 October 2026).
+The driver saves the browser's session cookies (those with no expiry) to `moodle-session.json` inside the profile folder after a login and whenever it closes the browser, and puts them back when it opens the profile again, unless the browser kept a newer one. The file was named `moodle-mcp-session-cookies.json` until 0.2.0, when it took a name of its own; profiles from before log in again once (decided with the owner, 10 October 2026). Moved from moodle-mcp's ADR-007 when the driver was extracted (9 October 2026).
 
 ## Motivation
 
