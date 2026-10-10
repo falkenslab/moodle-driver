@@ -2,7 +2,7 @@
 
 ## What
 
-`@falkenslab/moodle-driver` is a Node.js library that works a Moodle site with the person's own session, through a real browser (Playwright): no web services, no tokens. It drives Moodle as the person would, and returns plain data.
+`@falkenslab/moodle-driver` is a Node.js library that works a Moodle site as any user, with their own login: no web services, no tokens, no admin. The person logs in once in a browser window (Playwright, ADR-001, ADR-002); the driver then works the site with that session as the person would, and returns plain data.
 
 ## What it does
 

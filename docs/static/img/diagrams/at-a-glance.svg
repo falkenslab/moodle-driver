@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360" width="980" height="360" font-family="Segoe UI, system-ui, -apple-system, Helvetica, Arial, sans-serif">
-  <title>moodle-driver at a glance: your program calls the driver, which works Moodle through a real browser with the person's own session, and gives plain data back.</title>
+  <title>moodle-driver at a glance: your program calls the driver, which works Moodle with the person's own login, and gives plain data back.</title>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#fff7ed"/>
@@ -39,10 +39,10 @@
   <g filter="url(#shadow)">
     <rect x="530" y="70" width="200" height="150" rx="18" fill="#ffffff" stroke="#7c3aed" stroke-width="3"/>
   </g>
-  <text x="630" y="118" font-size="40" text-anchor="middle">🌐</text>
-  <text x="630" y="152" font-size="19" font-weight="700" text-anchor="middle" fill="#5b21b6">A real browser</text>
-  <text x="630" y="178" font-size="13" text-anchor="middle" fill="#334155">Edge, Chrome or Chromium</text>
-  <text x="630" y="198" font-size="13" text-anchor="middle" fill="#334155">🔑 with the person's login</text>
+  <text x="630" y="118" font-size="40" text-anchor="middle">🔑</text>
+  <text x="630" y="152" font-size="19" font-weight="700" text-anchor="middle" fill="#5b21b6">Their own login</text>
+  <text x="630" y="178" font-size="13" text-anchor="middle" fill="#334155">once, in a window;</text>
+  <text x="630" y="198" font-size="13" text-anchor="middle" fill="#334155">SSO and two-factor too</text>
 
   <!-- Moodle -->
   <g filter="url(#shadow)">

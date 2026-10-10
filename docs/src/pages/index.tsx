@@ -7,8 +7,8 @@ import styles from "./index.module.css";
 
 const FEATURES: { title: string; text: string }[] = [
   {
-    title: "No API, no tokens",
-    text: "Works where web services are off or tokens aren't allowed: a real browser with the person's own login, single sign-on included. It never handles a password.",
+    title: "No web services, no tokens",
+    text: "Works where web services are off or tokens aren't allowed: the person logs in once, single sign-on and two-factor included, and the driver works with that session. It never handles a password.",
   },
   {
     title: "Full control as any user",
@@ -16,7 +16,7 @@ const FEATURES: { title: string; text: string }[] = [
   },
   {
     title: "Moodle's own services",
-    text: "Calls the AJAX services Moodle's pages call, from a logged-in tab, and fills Moodle's own forms where no service helps, with Moodle's validation.",
+    text: "Calls the AJAX services Moodle's pages call, with the person's session, and fills Moodle's own forms where no service helps, with Moodle's validation.",
   },
   {
     title: "Any language, any theme",
@@ -46,13 +46,13 @@ await moodle.close();`;
 
 export default function Home(): ReactNode {
   return (
-    <Layout title="Full control of Moodle through a browser" description="moodle-driver: a Node.js library to work Moodle as any user, through a browser, with no API or tokens">
+    <Layout title="Full control of Moodle with your own login" description="moodle-driver: a Node.js library to work Moodle as any user, with their own login: no web services, no tokens, no admin">
       <header className={styles.hero}>
         <div className="container">
           <h1 className={styles.title}>
             <img className={styles.logo} src={useBaseUrl("/img/logo.svg")} alt="" /> moodle-driver
           </h1>
-          <p className={styles.tagline}>Full control of Moodle as any user, through a browser: no API, no web services, no tokens.</p>
+          <p className={styles.tagline}>Full control of Moodle as any user, with their own login: no web services, no tokens, no admin.</p>
           <div className={styles.buttons}>
             <Link className="button button--primary button--lg" to="/getting-started/installation">
               Get started

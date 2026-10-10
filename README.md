@@ -5,7 +5,7 @@
 # moodle-driver
 
 **Everything a person does in Moodle, from your Node.js code.**<br/>
-Through a real browser, with their own login: no web services, no tokens, no admin.
+With their own login: no web services, no tokens, no admin.
 
 [![Documentation](https://img.shields.io/badge/docs-falkenslab.github.io-f97316?logo=docusaurus&logoColor=white)](https://falkenslab.github.io/moodle-driver/)
 [![Release](https://img.shields.io/github/v/release/falkenslab/moodle-driver?color=2563eb)](https://github.com/falkenslab/moodle-driver/releases)
@@ -14,7 +14,7 @@ Through a real browser, with their own login: no web services, no tokens, no adm
 ![Moodle 4.x and 5.x](https://img.shields.io/badge/Moodle-4.x%20%7C%205.x-f98012?logo=moodle&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-16a34a)](LICENSE)
 
-<img src="docs/static/img/diagrams/at-a-glance.svg" alt="Your program calls moodle-driver, which works Moodle through a real browser with the person's own login, and gets plain data back" width="900"/>
+<img src="docs/static/img/diagrams/at-a-glance.svg" alt="Your program calls moodle-driver, which works Moodle with the person's own login, and gets plain data back" width="900"/>
 
 </div>
 

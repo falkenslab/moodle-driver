@@ -4,7 +4,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 
 const config: Config = {
   title: "moodle-driver",
-  tagline: "Full control of Moodle as any user, through a browser: no API, no web services, no tokens.",
+  tagline: "Full control of Moodle as any user, with their own login: no web services, no tokens, no admin.",
   favicon: "img/logo.svg",
 
   url: "https://falkenslab.github.io",

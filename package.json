@@ -1,7 +1,7 @@
 {
   "name": "@falkenslab/moodle-driver",
   "version": "0.2.0",
-  "description": "Work a Moodle site with the person's own session, through a real browser (Playwright): no web services, no tokens",
+  "description": "Full control of Moodle as any user, with their own login: no web services, no tokens, no admin.",
   "author": "Falkenslab",
   "license": "MIT",
   "keywords": [

@@ -5,17 +5,17 @@ sidebar_label: Introduction
 
 # moodle-driver
 
-`@falkenslab/moodle-driver` is a Node.js library that gives a program full control of a Moodle site as any user, through a real browser: no API, no web services, no tokens. It opens the site in the system's Edge or Chrome (or Chromium) with [Playwright](https://playwright.dev), on a persistent profile where the person logs in by hand, and from then on works the site with that session, as the person would: it reads courses, content, assignments, quizzes and grades, posts in forums, grades submissions, builds activities and sections, and answers as a student. Every function returns plain data.
+`@falkenslab/moodle-driver` is a Node.js library that gives a program full control of a Moodle site as any user, with their own login: no web services, no tokens, no admin. The person logs in once, by hand, in a window the driver opens (Edge, Chrome or Chromium, through [Playwright](https://playwright.dev)) on a profile of its own; from then on the driver works the site with that session, as the person would: it reads courses, content, assignments, quizzes and grades, posts in forums, grades submissions, builds activities and sections, and answers as a student. Every function returns plain data.
 
-![moodle-driver at a glance: your program calls the driver, which works Moodle through a real browser with the person's session, and gets plain data back](/img/diagrams/at-a-glance.svg)
+![moodle-driver at a glance: your program calls the driver, which works Moodle with the person's own login, and gets plain data back](/img/diagrams/at-a-glance.svg)
 
 ![What it can do as a student, as a teacher, and for your program](/img/diagrams/what-it-can-do.svg)
 
-## Why a browser
+## Why the person's own login
 
 ![Two ways to automate Moodle: web services need an administrator and a token; moodle-driver needs the person to log in once](/img/diagrams/no-web-services.svg)
 
-Moodle has a web services API, but using it needs a token, and many institutions don't enable web services for students or teachers, or don't let them create tokens. Single sign-on (SAML, OAuth, CAS) makes it harder still. A browser, on the other hand, is something every Moodle user already has.
+Moodle has a web services API, but using it needs a token, and many institutions don't enable web services for students or teachers, or don't let them create tokens. Single sign-on (SAML, OAuth, CAS) makes it harder still. Logging in, on the other hand, is something every Moodle user already does.
 
 moodle-driver logs in the way the person does, in a browser window, once; it keeps the session in a profile on disk, and then calls the same AJAX services Moodle's own pages call from a logged-in tab, or reads and fills the pages and forms themselves where no service helps. It never types, stores or asks for a password.
 
