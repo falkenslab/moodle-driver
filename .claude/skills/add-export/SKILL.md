@@ -9,8 +9,8 @@ Read `.minispec/core/architecture.md` first if you don't know where the area liv
 
 ## 1. Decide where the code lives
 
-- `src/moodle/<area>.ts`: one file per Moodle area (quiz, forum, assign…). Each area keeps its selectors to itself; shared helpers go in `ajax.ts`, `session.ts`, `forms.ts`, `text.ts`, `inPage.ts` only when two areas really need them.
-- `src/browser.ts`, `src/options.ts`, `src/sessionCookies.ts`: the browser and what a program chooses. A new option is a plain value in `BrowserOptions` or the function's options object; the driver never reads environment variables or arguments.
+- `src/areas/<area>/`: one folder per Moodle area (quizzes, forums, assignments…), a file per part of it. Each area keeps its selectors to itself; shared helpers go in `src/core/` (`ajax.ts`, `session.ts`, `forms.ts`, `text.ts`, `inPage.ts`) only when two areas really need them.
+- `src/browser/manager.ts`, `src/options.ts`, `src/browser/cookies.ts`: the browser and what a program chooses. A new option is a plain value in `BrowserOptions` or the function's options object; the driver never reads environment variables or arguments.
 - `src/testing/`: the fake Moodle and helpers other programs' tests use (`@falkenslab/moodle-driver/testing`).
 - Stay generic: nothing of MCP, agents, moodle-mcp's tools or `MOODLE_MCP_*` settings, in code, comments or messages (ADR-006). If a consumer needs a behavior, it's an option or a return value, not knowledge of that consumer.
 
@@ -33,7 +33,7 @@ Add the symbol to `src/index.ts` (the public API), or to `src/testing/index.ts` 
 
 ## 4. Test
 
-Add or extend a test under `test/` mirroring the `src/` path (`test/moodle/<area>.test.ts`), with `node:test` + `node:assert/strict`, against the fake Moodle in `src/testing/` (extend it with the pages or services the area needs). A bug fixed gets a regression test. Run it in Docker only: `MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/moodle/<area>.test.ts`. What the fake can't reproduce (Moodle versions, real HTML), say so rather than claiming it works.
+Add or extend a test under `test/` mirroring the `src/` path (`test/areas/<area>/<file>.test.ts`), with `node:test` + `node:assert/strict`, against the fake Moodle in `src/testing/` (extend it with the pages or services the area needs). A bug fixed gets a regression test. Run it in Docker only: `MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/areas/<area>/<file>.test.ts`. What the fake can't reproduce (Moodle versions, real HTML), say so rather than claiming it works.
 
 ## 5. Docs
 

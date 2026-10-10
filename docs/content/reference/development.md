@@ -20,7 +20,7 @@ npm run docs:build    # the site, as published
 The tests launch real browsers against the fake Moodle, one file at a time. They run only in Docker (`scripts/in-docker.mjs`, Playwright's image), never on the developer's desktop, where they'd open windows. One file:
 
 ```bash
-MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/moodle/quiz.test.ts
+MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/areas/quizzes/attempts.test.ts
 ```
 
 (`MSYS_NO_PATHCONV=1` is for Git Bash on Windows.) The container keeps its own `node_modules` in a volume, reinstalled when the lock file changes.

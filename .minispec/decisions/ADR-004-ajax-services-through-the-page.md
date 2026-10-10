@@ -11,5 +11,5 @@ The services return structured data, independent of the interface's language and
 ## Consequences
 
 - The driver acts only as the person logged in, with their permissions: a service the page can't call, it can't either.
-- One tab with a session is kept open and reused for service calls (`src/moodle/ajax.ts`); a `servicerequireslogin` or `invalidsesskey` answer means a new tab, and if the site shows its login page, `NotLoggedInError`.
+- One tab with a session is kept open and reused for service calls (`src/core/ajax.ts`); a `servicerequireslogin` or `invalidsesskey` answer means a new tab, and if the site shows its login page, `NotLoggedInError`.
 - Which service a function uses is an internal detail: a service missing in an older Moodle is a bug to fix in that function, with the Moodle version noted.

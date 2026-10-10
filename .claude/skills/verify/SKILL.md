@@ -18,7 +18,7 @@ npm run docs:build
 
 Notes:
 - The tests open real browsers: run them **only** through `npm run test:docker` (`scripts/in-docker.mjs`), never `npm test` on the developer's desktop. Docker must be running; if it isn't, stop and say so instead of falling back to `npm test`.
-- One file at a time while iterating: `MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/moodle/quiz.test.ts` (Git Bash on Windows needs `MSYS_NO_PATHCONV=1`). The gate always runs the whole suite.
+- One file at a time while iterating: `MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/areas/quizzes/attempts.test.ts` (Git Bash on Windows needs `MSYS_NO_PATHCONV=1`). The gate always runs the whole suite.
 - The tests run against the fake Moodle in `src/testing/`, so the Moodle sandbox isn't needed; when it's running, the container joins its network, which only checks against a real Moodle use.
 - The test run must report `fail 0`. Quote the pass/fail counts in your report.
 - `dist/` is gitignored and `tsc` never deletes stale output. If files were moved or removed under `src/`, run `rm -rf dist` before `npm run build`, otherwise orphaned `.js`/`.d.ts` files linger and hide broken imports.

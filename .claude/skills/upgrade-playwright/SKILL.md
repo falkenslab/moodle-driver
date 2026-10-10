@@ -29,11 +29,11 @@ Run the `verify` skill. Type errors and failing tests are the first signs of a c
 
 Check each against the new version and, where possible, by running it (in Docker, never on the desktop). Do not claim one still holds without evidence.
 
-- The persistent context opens on the system's Edge or Chrome by `channel`, and falls back to downloading Chromium through Playwright's CLI when there's none (ADR-001, `src/chromiumInstaller.ts`: the CLI's path and arguments, its process tree ending with the program).
-- Session cookies (no expiry) are lost when the persistent context closes, and are saved and restored by `src/sessionCookies.ts` (ADR-003): `context.cookies()` and `addCookies()` keep their shape.
+- The persistent context opens on the system's Edge or Chrome by `channel`, and falls back to downloading Chromium through Playwright's CLI when there's none (ADR-001, `src/browser/chromium.ts`: the CLI's path and arguments, its process tree ending with the program).
+- Session cookies (no expiry) are lost when the persistent context closes, and are saved and restored by `src/browser/cookies.ts` (ADR-003): `context.cookies()` and `addCookies()` keep their shape.
 - Relaunching headed from headless on the same profile, and showing or hiding the window on demand (ADR-007).
-- Under tsx, named functions inside `page.evaluate` still get wrapped in `__name`, so `inPage()` is still needed (`src/moodle/inPage.ts`). If that changed, keep `inPage()` anyway and note the version in its comment.
-- Draft-area uploads and downloads with the session (`src/moodle/forms.ts`, `src/moodle/files.ts`).
+- Under tsx, named functions inside `page.evaluate` still get wrapped in `__name`, so `inPage()` is still needed (`src/core/inPage.ts`). If that changed, keep `inPage()` anyway and note the version in its comment.
+- Draft-area uploads and downloads with the session (`src/core/forms.ts`, `src/core/files.ts`).
 
 If a behavior changed, adapt the code and its comment (update the "confirmed empirically" note with the version it was re-confirmed on, or remove it if no longer true), and add a test when the fake Moodle can reproduce it.
 

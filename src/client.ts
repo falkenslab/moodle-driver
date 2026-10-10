@@ -1,37 +1,37 @@
 // The object a program works one Moodle site with: the browser, the site and every function that
 // takes them, as methods. The functions stay exported on their own; this only binds them.
 import type { BrowserContext, Page } from "playwright-core";
-import { createBrowserManager, type BrowserManager } from "./browser.js";
+import { createBrowserManager, type BrowserManager } from "./browser/manager.js";
 import { parseSiteUrl, type BrowserOptions, type Trail } from "./options.js";
-import { activitySettings, addSection, createActivity, deleteActivity, deleteSection, duplicateActivity, editActivity, editSection, updateActivity } from "./moodle/activities.js";
-import { callService } from "./moodle/ajax.js";
-import { createEvent, deleteEvent, upcomingEvents } from "./moodle/calendar.js";
-import { answerChoice, getChoice } from "./moodle/choice.js";
-import { completionReport, overrideCompletion, setCompletion } from "./moodle/completion.js";
-import { activityContent, type ActivityContent, type ContentType } from "./moodle/content.js";
-import { listCourses, updateCourse } from "./moodle/courses.js";
-import { downloadFile, type DownloadedFile } from "./moodle/files.js";
-import { openForm } from "./moodle/forms.js";
-import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./moodle/forumPosts.js";
-import { addGradeCategory, gradebookSetup, graderReport, updateGradeItem } from "./moodle/gradebook.js";
-import { myGrades } from "./moodle/grades.js";
-import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./moodle/grading.js";
-import { h5pActivity } from "./moodle/h5p.js";
-import { answerLessonPage, lessonPage, type LessonPage } from "./moodle/lesson.js";
-import { logIn, type LoginResult } from "./moodle/login.js";
-import { conversation, conversations, markNotificationsRead, notifications, sendMessage } from "./moodle/messages.js";
-import { activitiesOverview, courseUpdates, deadlines } from "./moodle/overview.js";
-import { groups, participantFilters, participants } from "./moodle/participants.js";
-import { createQuestion, importQuestions, questionBanks, questions } from "./moodle/questionBank.js";
-import { answerQuizQuestions, finishQuizAttempt, quizInfo, readReview, setQuizOverride, startQuizAttempt, type Question } from "./moodle/quiz.js";
-import { quizResults } from "./moodle/quizResults.js";
-import { addQuestionsToQuiz, quizStructure } from "./moodle/quizStructure.js";
-import { logOut, openSitePage } from "./moodle/session.js";
-import { courseActivityTypes, publicSiteInfo } from "./moodle/siteInfo.js";
-import { courseStructure, listAssignments, pendingActivities } from "./moodle/structure.js";
-import { saveSubmission, studentAssignment, submitForGrading } from "./moodle/submission.js";
-import { getSurvey, submitSurvey } from "./moodle/survey.js";
-import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./moodle/user.js";
+import { activitySettings, addSection, createActivity, deleteActivity, deleteSection, duplicateActivity, editActivity, editSection, updateActivity } from "./areas/activities/build.js";
+import { callService } from "./core/ajax.js";
+import { createEvent, deleteEvent, upcomingEvents } from "./areas/calendar/calendar.js";
+import { answerChoice, getChoice } from "./areas/surveys/choice.js";
+import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
+import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
+import { listCourses, updateCourse } from "./areas/courses/list.js";
+import { downloadFile, type DownloadedFile } from "./core/files.js";
+import { openForm } from "./core/forms.js";
+import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
+import { addGradeCategory, gradebookSetup, graderReport, updateGradeItem } from "./areas/grades/gradebook.js";
+import { myGrades } from "./areas/grades/user-report.js";
+import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./areas/assignments/grading.js";
+import { h5pActivity } from "./areas/h5p/h5p.js";
+import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
+import { logIn, type LoginResult } from "./core/login.js";
+import { conversation, conversations, markNotificationsRead, notifications, sendMessage } from "./areas/messages/messages.js";
+import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
+import { groups, participantFilters, participants } from "./areas/participants/participants.js";
+import { createQuestion, importQuestions, questionBanks, questions } from "./areas/questions/banks.js";
+import { answerQuizQuestions, finishQuizAttempt, quizInfo, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
+import { quizResults } from "./areas/quizzes/results.js";
+import { addQuestionsToQuiz, quizStructure } from "./areas/quizzes/structure.js";
+import { logOut, openSitePage } from "./core/session.js";
+import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
+import { courseStructure, listAssignments, pendingActivities } from "./areas/courses/structure.js";
+import { saveSubmission, studentAssignment, submitForGrading } from "./areas/assignments/student.js";
+import { getSurvey, submitSurvey } from "./areas/surveys/surveys.js";
+import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
 
 /**
  * The functions that take the browser context and the site first, of the high-level API: each becomes

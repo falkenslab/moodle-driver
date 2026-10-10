@@ -68,7 +68,7 @@ await context.route(`${SITE}mod/choice/view.php**`, (route) => {
 });
 ```
 
-The driver's own tests (`test/moodle/*.test.ts` in the repository) have fakes for every area: forms with their posts, grading panels, quiz attempts, lessons, the gradebook.
+The driver's own tests (`test/areas/` in the repository) have fakes for every area: forms with their posts, grading panels, quiz attempts, lessons, the gradebook.
 
 ## A browser manager that launches nothing
 
