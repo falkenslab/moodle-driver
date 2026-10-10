@@ -92,7 +92,7 @@ interface PostInput {
 - `subscribe`: subscribe to the discussion or not; without it, Moodle's default.
 - `fields`: other fields of the post form by name, set after the others (a teacher's `{ pinned: true }` on a new discussion, or `{ mailnow: true }`).
 
-Errors before anything is posted: a plain `Error` when the message is empty (Moodle would post `<p></p>` as a blank message; a message with only an image, video, audio or iframe counts as content), when a file path isn't absolute or doesn't exist, or when the forum takes no attachments. `FormError` when Moodle shows no post form (the person can't reply there: a locked discussion, no permission), when the form has no field by a given name, or when Moodle refuses the values, with its messages by field.
+Errors before anything is posted: a `MoodleDriverError` when the message is empty (`invalid-input`) (Moodle would post `<p></p>` as a blank message; a message with only an image, video, audio or iframe counts as content), when a file path isn't absolute or doesn't exist, or when the forum takes no attachments (`not-available`). `FormError` when Moodle shows no post form (the person can't reply there: a locked discussion, no permission), when the form has no field by a given name, or when Moodle refuses the values, with its messages by field.
 
 ## startDiscussion
 

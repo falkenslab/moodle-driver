@@ -45,7 +45,8 @@ describe("choices", { skip: !browser && "no system browser" }, () => {
       { id: 3, text: "do-while", selected: false, full: true },
     ]);
     assert.deepEqual([before.name, before.intro, before.multiple, before.canAnswer, before.canChange, before.answer], ["Favourite loop", "Which loop?", false, true, false, []]);
-    const after = await answerChoice(context, SITE, 40, [2]);
+    const { changed, choice: after } = await answerChoice(context, SITE, 40, [2]);
+    assert.equal(changed, "Answered choice 40: while.");
     assert.deepEqual([after.answer, after.canChange], [["while"], true]);
     await context.close();
   });

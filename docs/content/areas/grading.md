@@ -73,7 +73,7 @@ Errors:
 
 - `NotAnAssignmentError` when the id isn't an assignment the person can grade.
 - `FormError` when a field isn't in the panel's form, such as a criterion or level id that doesn't exist (`advancedgrading[criteria][9][levelid]`), or `grade` on an assignment graded by rubric.
-- An `Error` when `feedback` is given and the assignment has no feedback comments; nothing is saved.
+- A `MoodleDriverError` (`not-available`) when `feedback` is given and the assignment has no feedback comments; nothing is saved.
 - `GradingError` when Moodle doesn't save the grade. Moodle's service only answers that it couldn't save, without the reason: usually a grade out of the assignment's range or scale, or a field's name.
 
 ## rubric

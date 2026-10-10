@@ -22,7 +22,7 @@ interface H5PActivity {
 }
 
 interface H5PAttempt {
-  attemptId?: number;
+  id?: number;
   number: number;
   score?: number;
   maxScore?: number;
@@ -35,7 +35,7 @@ interface H5PAttempt {
 - `contentType`: the H5P library and its version (`{ library: "H5P.MultiChoice", version: "1.14" }`), read from the player page's H5P settings before any of its scripts run. Missing when the activity has no player (no content uploaded) or the player page can't be read.
 - `tracked`: Moodle records attempts and scores for this activity (its "enable attempt tracking" setting); the page links to the attempts report only then.
 - `attempts`: the person's own attempts, oldest first; empty when attempts aren't tracked, when the person has none, and for a teacher, whose report lists participants rather than attempts.
-- `attemptId`: Moodle's id for the attempt, from its report link; `number`: its number for the person (1, 2...).
+- `id`: Moodle's id for the attempt, from its report link; `number`: its number for the person (1, 2...).
 - `score` and `maxScore`: the raw score and the maximum, as numbers.
 - `completed` and `passed`: from the report's completion and success icons; missing when the row shows no icon.
 

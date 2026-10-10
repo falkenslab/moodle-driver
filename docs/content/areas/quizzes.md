@@ -18,7 +18,7 @@ interface QuizInfo {
   info: string[];
   dates: Detail[];
   feedback?: string;
-  attempts: { attemptId: number; inProgress: boolean; details: Detail[] }[];
+  attempts: { id: number; inProgress: boolean; details: Detail[] }[];
   canStart: boolean;
   messages: string[];
 }
@@ -44,7 +44,7 @@ Throws `QuizError` when the id isn't a quiz the person can open. Leaves no more 
 Starts an attempt, or continues the one in progress, exactly as the quiz page's button does, and gives its questions.
 
 ```ts
-function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ attemptId: number; questions: Question[] }>;
+function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string; attemptId: number; questions: Question[] }>;
 ```
 
 A quiz with a time limit first asks for confirmation on a form of its own: the driver confirms it, which starts the clock. A quiz with a password isn't started: `QuizError` says it asks for one. `QuizError` also comes when the page has no start button (the person used all attempts, the quiz is closed), carrying the page's messages, and when the id isn't a quiz.
@@ -116,7 +116,7 @@ function answerQuizQuestions(
   attemptId: number,
   answers: { slot: number; responses: Record<string, string> }[],
   options?: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void },
-): Promise<{ attemptId: number; questions: Question[] }>;
+): Promise<{ changed: string; attemptId: number; questions: Question[] }>;
 ```
 
 - `answers`: per slot, the values by field name (see [Questions and their fields](#questions-and-their-fields)).
@@ -133,6 +133,7 @@ Submits the attempt for grading, as "Submit all and finish" does (without its co
 
 ```ts
 function finishQuizAttempt(context: BrowserContext, siteUrl: string, attemptId: number): Promise<{
+  changed: string;
   attemptId: number;
   finished: true;
   review?: { summary: Detail[]; questions: Question[] };
@@ -202,7 +203,7 @@ function quizResults(context: BrowserContext, siteUrl: string, activityId: numbe
 }>;
 
 interface QuizAttemptResult {
-  attemptId: number;
+  id: number;
   userId: number;
   fullName: string;
   state?: string;
@@ -228,7 +229,7 @@ A quiz's questions as its edit page lists them: slots in order, each with its pa
 function quizStructure(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ quiz: { id: number }; slots: QuizSlot[] }>;
 
 interface QuizSlot {
-  slotId: number;
+  id: number;
   number?: number;
   page: number;
   questionId?: number;
@@ -238,7 +239,7 @@ interface QuizSlot {
 }
 ```
 
-- `slotId`: Moodle's id for the slot; `number`: the question's number in the quiz.
+- `id`: Moodle's id for the slot; `number`: the question's number in the quiz.
 - `page`: the page it's on, as the edit page numbers them (from 1).
 - `questionId`: the bank question's id; missing for a random question.
 - `type`: the question type, or `"random"` for a random question drawn from a category.

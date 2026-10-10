@@ -103,11 +103,12 @@ Results are plain data you can serialize as JSON:
 
 - dates as ISO 8601 strings in UTC (`2026-10-23T12:30:00.000Z`), except where Moodle only shows a date as text (then it comes as shown, in the site's language);
 - names and texts decoded, HTML turned into plain text with paragraphs and lists kept where an operation reads content;
+- a thing's own id is `id`, and the ids of others it refers to are `<thing>Id` (`courseId`, `userId`, `activityId`): an attempt is `{ id, userId, … }`, a grade `{ itemId, grade }`;
 - no Playwright objects, nothing to close.
 
 ## Writes answer with the state afterwards
 
-Operations that change something return a short `changed` sentence saying what they did, and the state afterwards where it's cheap to read: the course's structure after creating an activity, the grade saved after grading, the choice after answering it, the discussion after pinning it. Check it instead of reading again.
+Every operation that changes something returns an object with a short `changed` sentence saying what it did, beside the state afterwards where it's cheap to read: the course's structure after creating an activity, the assignment after submitting, the choice after answering it, the discussion after pinning it, the ids of what it created. Check it instead of reading again.
 
 ```ts
 const result = await moodle.createActivity({ courseId: 3, sectionId: 7, type: "page", name: "Loops", content: "<p>...</p>" });

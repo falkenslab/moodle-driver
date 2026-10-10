@@ -35,7 +35,7 @@ export interface ActivityFields {
 export interface CourseChange {
   changed: string;
   activityId?: number;
-  newId?: number;
+  sectionId?: number;
   url?: string;
   sections: CourseSection[];
 }
@@ -144,7 +144,7 @@ export async function duplicateActivity(context: BrowserContext, siteUrl: string
   const before = new Set((await courseState(context, siteUrl, courseId)).cm.map((cm) => cm.id));
   await editCourse(context, siteUrl, courseId, "cm_duplicate", [activityId]);
   const copy = (await courseState(context, siteUrl, courseId)).cm.find((cm) => !before.has(cm.id));
-  return afterChange(context, siteUrl, courseId, `Activity ${activityId} duplicated${copy ? ` as ${copy.id}` : ""}.`, { newId: copy ? Number(copy.id) : undefined });
+  return afterChange(context, siteUrl, courseId, `Activity ${activityId} duplicated${copy ? ` as ${copy.id}` : ""}.`, { activityId: copy ? Number(copy.id) : undefined });
 }
 
 export async function deleteActivity(context: BrowserContext, siteUrl: string, courseId: number, activityId: number): Promise<CourseChange> {
@@ -158,7 +158,7 @@ export async function addSection(context: BrowserContext, siteUrl: string, cours
   await editCourse(context, siteUrl, courseId, "section_add", [], { sectionId: afterSectionId });
   const added = (await courseState(context, siteUrl, courseId)).section.find((s) => !before.has(s.id));
   if (added && name !== undefined) await renameSection(context, siteUrl, courseId, Number(added.id), name);
-  return afterChange(context, siteUrl, courseId, `Section ${added?.id ?? "?"} added${name !== undefined ? ` as "${name}"` : ""}.`, { newId: added ? Number(added.id) : undefined });
+  return afterChange(context, siteUrl, courseId, `Section ${added?.id ?? "?"} added${name !== undefined ? ` as "${name}"` : ""}.`, { sectionId: added ? Number(added.id) : undefined });
 }
 
 /** Renames, shows or hides, or moves a section after another one. */

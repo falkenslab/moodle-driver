@@ -3,9 +3,10 @@ import { MoodleServiceError, callService, readPageConfig } from "../../core/ajax
 import { courseState } from "../courses/state.js";
 import { isoDate } from "../courses/list.js";
 import { openSitePage } from "../../core/session.js";
+import { decodeEntities } from "../../core/text.js";
 
-/** A user as `core_user_get_users_by_field` returns it (Moodle 5.2), the fields read. */
-export interface MoodleUser {
+// A user as `core_user_get_users_by_field` returns it (Moodle 5.2), the fields read.
+interface MoodleUser {
   id: number;
   username?: string;
   fullname: string;
@@ -14,9 +15,29 @@ export interface MoodleUser {
   lastaccess?: number;
 }
 
-export async function userById(context: BrowserContext, siteUrl: string, userId: number): Promise<MoodleUser | undefined> {
-  const users = await callService<MoodleUser[]>(context, siteUrl, "core_user_get_users_by_field", { field: "id", values: [String(userId)] });
-  return users[0];
+/** A user, with what Moodle lets the person see of them. */
+export interface User {
+  id: number;
+  username?: string;
+  fullName: string;
+  email?: string;
+  /** ISO 8601; none when they never came. */
+  firstAccess?: string;
+  lastAccess?: string;
+}
+
+/** A user by id, or `undefined` when Moodle gives nobody (no such user, or not one the person may see). */
+export async function userById(context: BrowserContext, siteUrl: string, userId: number): Promise<User | undefined> {
+  const [user] = await callService<MoodleUser[]>(context, siteUrl, "core_user_get_users_by_field", { field: "id", values: [String(userId)] });
+  if (!user) return undefined;
+  return {
+    id: user.id,
+    ...(user.username !== undefined ? { username: user.username } : {}),
+    fullName: decodeEntities(user.fullname),
+    ...(user.email !== undefined ? { email: user.email } : {}),
+    ...(user.firstaccess ? { firstAccess: isoDate(user.firstaccess) } : {}),
+    ...(user.lastaccess ? { lastAccess: isoDate(user.lastaccess) } : {}),
+  };
 }
 
 /** The site's name, from its public settings; `undefined` where the mobile app support is off. */
@@ -87,12 +108,12 @@ export async function whoAmI(context: BrowserContext, siteUrl: string, courseId?
   const me: Me = {
     userId: cfg.userId,
     username: user?.username,
-    fullName: user?.fullname ?? "",
+    fullName: user?.fullName ?? "",
     email: user?.email,
     language: cfg.language,
     timeZone: cfg.timeZone,
-    firstAccess: isoDate(user?.firstaccess),
-    lastAccess: isoDate(user?.lastaccess),
+    firstAccess: user?.firstAccess,
+    lastAccess: user?.lastAccess,
     site: { name: await siteName(context, siteUrl), url: siteUrl },
   };
   if (courseId !== undefined) {

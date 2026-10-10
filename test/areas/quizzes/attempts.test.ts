@@ -117,7 +117,7 @@ describe("quiz attempts", { skip: !browser && "no system browser" }, () => {
     const info = await quizInfo(context, SITE, 26);
     assert.equal(info.intro, "Practice quiz.");
     assert.deepEqual(info.info, ["Attempts allowed: 3", "Grading method: Highest grade"]);
-    assert.deepEqual(info.attempts, [{ attemptId: 8, inProgress: false, details: [{ label: "Status", value: "Finished" }, { label: "Grade", value: "5.00 out of 10.00" }] }]);
+    assert.deepEqual(info.attempts, [{ id: 8, inProgress: false, details: [{ label: "Status", value: "Finished" }, { label: "Grade", value: "5.00 out of 10.00" }] }]);
     assert.equal(info.canStart, true);
     await context.close();
   });
@@ -241,7 +241,7 @@ describe("quizResults", { skip: !browser && "no system browser" }, () => {
       quiz: { id: 27 },
       attempts: [
         {
-          attemptId: 9,
+          id: 9,
           userId: 4,
           fullName: "Ana Student",
           state: "Finished",

@@ -49,7 +49,7 @@ The first time, this opens the lesson's first page, which starts the person's at
 
 ## answerLessonPage
 
-Answers the page the person is on, and returns Moodle's feedback when it gives one and the page that follows.
+Answers the page the person is on, and returns what it did (`changed`), Moodle's feedback when it gives one and the page that follows.
 
 ```ts
 function answerLessonPage(
@@ -58,7 +58,7 @@ function answerLessonPage(
   activityId: number,
   answer: { button?: string | number; responses?: Record<string, string> },
   options?: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void },
-): Promise<{ feedback?: LessonPage; page: LessonPage }>;
+): Promise<{ changed: string; feedback?: LessonPage; page: LessonPage }>;
 ```
 
 - `answer.button`: on a content page, the button to press, by its label (exactly as in `buttons[].label`) or its position (from 0).

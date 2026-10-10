@@ -16,7 +16,7 @@ export class NotAnH5PActivityError extends MoodleDriverError {
 
 export interface H5PAttempt {
   /** Moodle's id for the attempt (its report's), and its number for the person. */
-  attemptId?: number;
+  id?: number;
   number: number;
   score?: number;
   maxScore?: number;
@@ -72,7 +72,7 @@ export function readH5PAttempts(page: Page): Promise<H5PAttempt[]> {
       };
       const link = row.querySelector('a[href*="attemptid="]')?.getAttribute("href") ?? "";
       return {
-        ...(/attemptid=(\d+)/.test(link) ? { attemptId: Number(/attemptid=(\d+)/.exec(link)![1]) } : {}),
+        ...(/attemptid=(\d+)/.test(link) ? { id: Number(/attemptid=(\d+)/.exec(link)![1]) } : {}),
         number: Number((row.querySelector("th")?.textContent ?? "").trim()),
         ...(raw !== "" && !Number.isNaN(Number(raw)) ? { score: Number(raw) } : {}),
         ...(max !== "" && !Number.isNaN(Number(max)) ? { maxScore: Number(max) } : {}),

@@ -173,7 +173,7 @@ export interface Moodle extends MoodleMethods {
   /** `answerQuizQuestions`, at the object's `trail` unless given. */
   answerQuizQuestions(attemptId: number, answers: Parameters<typeof answerQuizQuestions>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ attemptId: number; questions: Question[] }>;
   /** `answerLessonPage`, at the object's `trail` unless given. */
-  answerLessonPage(activityId: number, answer: Parameters<typeof answerLessonPage>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ feedback?: LessonPage; page: LessonPage }>;
+  answerLessonPage(activityId: number, answer: Parameters<typeof answerLessonPage>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ changed: string; feedback?: LessonPage; page: LessonPage }>;
   /** `downloadFile`, into the object's `downloadDir` unless given a folder. */
   downloadFile(url: string, destDir?: string): Promise<DownloadedFile>;
   /** The working tab a program drives itself (ADR-007). */

@@ -34,22 +34,22 @@ It throws `NotLoggedInError` without a session, and `MoodleServiceError` for a c
 
 ## userById
 
-A user by id, as `core_user_get_users_by_field` returns them, or `undefined` when Moodle gives nobody.
+A user by id, through `core_user_get_users_by_field`, or `undefined` when Moodle gives nobody.
 
 ```ts
-function userById(context: BrowserContext, siteUrl: string, userId: number): Promise<MoodleUser | undefined>;
+function userById(context: BrowserContext, siteUrl: string, userId: number): Promise<User | undefined>;
 
-interface MoodleUser {
+interface User {
   id: number;
   username?: string;
-  fullname: string;
+  fullName: string;
   email?: string;
-  firstaccess?: number;
-  lastaccess?: number;
+  firstAccess?: string;
+  lastAccess?: string;
 }
 ```
 
-The fields keep Moodle's names, and `firstaccess` and `lastaccess` are Unix seconds (0 for never), not ISO dates. Moodle decides what it returns: the optional fields come only when the person may see them (a student usually doesn't get other users' usernames or emails), and a user the person isn't allowed to see may come back as `undefined`.
+`firstAccess` and `lastAccess` are ISO 8601 dates, left out when the user never came. Moodle decides what it returns: the optional fields come only when the person may see them (a student usually doesn't get other users' usernames or emails), and a user the person isn't allowed to see may come back as `undefined`.
 
 ## courseRoles
 

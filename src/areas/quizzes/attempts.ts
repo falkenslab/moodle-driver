@@ -26,7 +26,7 @@ export interface QuizInfo {
   info: string[];
   dates: Detail[];
   feedback?: string;
-  attempts: { attemptId: number; inProgress: boolean; details: Detail[] }[];
+  attempts: { id: number; inProgress: boolean; details: Detail[] }[];
   canStart: boolean;
   messages: string[];
 }
@@ -73,7 +73,7 @@ export function readQuizView(page: Page): Promise<QuizInfo> {
       const href = link?.getAttribute("href") ?? "";
       const id = Number(/attempt=(\d+)/.exec(href)?.[1]);
       const details = Array.from(card.querySelectorAll("table.quizreviewsummary tr")).map((row) => ({ label: text(row.querySelector("th")), value: text(row.querySelector("td")) }));
-      return id ? [{ attemptId: id, inProgress: /\/attempt\.php/.test(href), details }] : [];
+      return id ? [{ id, inProgress: /\/attempt\.php/.test(href), details }] : [];
     });
     return {
       intro: text(doc.querySelector("#intro")),
@@ -297,9 +297,9 @@ export async function readReview(context: BrowserContext, siteUrl: string, attem
 }
 
 /** Starts an attempt, or continues the one in progress, and gives its questions. */
-export async function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ attemptId: number; questions: Question[] }> {
+export async function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string; attemptId: number; questions: Question[] }> {
   const attemptId = await startAttempt(context, siteUrl, activityId);
-  return { attemptId, questions: await readAttempt(context, siteUrl, attemptId) };
+  return { changed: `Attempt ${attemptId} of quiz ${activityId} is open.`, attemptId, questions: await readAttempt(context, siteUrl, attemptId) };
 }
 
 /**
@@ -313,7 +313,7 @@ export async function answerQuizQuestions(
   attemptId: number,
   answers: { slot: number; responses: Record<string, string> }[],
   { trail = "realistic", onProgress }: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void } = {},
-): Promise<{ attemptId: number; questions: Question[] }> {
+): Promise<{ changed: string; attemptId: number; questions: Question[] }> {
   const beforeSave =
     trail === "realistic"
       ? async (questions: Question[]) => {
@@ -322,14 +322,18 @@ export async function answerQuizQuestions(
         }
       : undefined;
   await saveAnswers(context, siteUrl, attemptId, answers, beforeSave);
-  return { attemptId, questions: await readAttempt(context, siteUrl, attemptId) };
+  return {
+    changed: `Saved answers to ${answers.length} question${answers.length === 1 ? "" : "s"} in attempt ${attemptId}.`,
+    attemptId,
+    questions: await readAttempt(context, siteUrl, attemptId),
+  };
 }
 
 /** Submits an attempt for grading, and gives its review when the quiz shows it. */
 export async function finishQuizAttempt(context: BrowserContext, siteUrl: string, attemptId: number) {
   await finishAttempt(context, siteUrl, attemptId);
   const review = await readReview(context, siteUrl, attemptId).catch(() => undefined);
-  return { attemptId, finished: true as const, review };
+  return { changed: `Finished attempt ${attemptId}.`, attemptId, finished: true as const, review };
 }
 
 /**

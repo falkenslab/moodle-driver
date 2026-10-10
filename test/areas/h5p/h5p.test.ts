@@ -25,8 +25,8 @@ describe("h5pActivity", { skip: !browser && "no system browser" }, () => {
       tracked: true,
       contentType: { library: "H5P.MultiChoice", version: "1.14" },
       attempts: [
-        { attemptId: 6, number: 1, score: 0, maxScore: 1, completed: true, passed: false },
-        { attemptId: 7, number: 2, score: 1, maxScore: 1, completed: true, passed: true },
+        { id: 6, number: 1, score: 0, maxScore: 1, completed: true, passed: false },
+        { id: 7, number: 2, score: 1, maxScore: 1, completed: true, passed: true },
       ],
     });
     await context.close();

@@ -31,7 +31,7 @@ export type GradeAggregation = keyof typeof AGGREGATION_CODES;
 export const GRADE_AGGREGATIONS = Object.keys(AGGREGATION_CODES) as GradeAggregation[];
 
 export interface GradeColumn {
-  itemId: number;
+  id: number;
   name: string;
   kind: "item" | "category" | "course";
   activityId?: number;
@@ -63,7 +63,7 @@ export function readGraderReport(page: Page): Promise<GraderReport> {
       const match = /\/mod\/([a-z0-9_]+)\/view\.php\?(?:.*&)?id=(\d+)/.exec(header?.getAttribute("href") ?? "");
       const kind = /\bcourseitem\b/.test(th.className) ? "course" : /\bcategoryitem\b/.test(th.className) ? "category" : "item";
       return {
-        itemId: Number(th.getAttribute("data-itemid")),
+        id: Number(th.getAttribute("data-itemid")),
         name: (copy?.textContent ?? "").replace(/\s+/g, " ").trim(),
         kind,
         ...(match ? { activityId: Number(match[2]), activityType: match[1] } : {}),

@@ -45,7 +45,7 @@ describe("quiz structure", { skip: !browser && "no system browser" }, () => {
     const context = await open(fakeQuizEditor());
     assert.deepEqual(await quizStructure(context, SITE, 41), {
       quiz: { id: 41 },
-      slots: [{ slotId: 20, number: 1, page: 1, questionId: 21, type: "truefalse", name: "Range", mark: "1.00" }],
+      slots: [{ id: 20, number: 1, page: 1, questionId: 21, type: "truefalse", name: "Range", mark: "1.00" }],
     });
     await context.close();
   });

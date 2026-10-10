@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { MoodleServiceError, NotLoggedInError, whoAmI } from "../../../src/index.js";
+import { MoodleServiceError, NotLoggedInError, userById, whoAmI } from "../../../src/index.js";
 import { SITE, ServiceFailure, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -28,6 +28,21 @@ function moodle(teacher: boolean): FakeMoodleState {
     },
   };
 }
+
+describe("userById", { skip: !browser && "no system browser" }, () => {
+  it("gives the user in the driver's terms: fullName, ISO dates, no date for never", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, moodle(true));
+    assert.deepEqual(await userById(context, SITE, 9), {
+      id: 9,
+      username: "grace",
+      fullName: "Grace Hopper",
+      email: "grace@example.org",
+      firstAccess: new Date(1_790_000_000_000).toISOString(),
+    });
+    await context.close();
+  });
+});
 
 describe("whoAmI", { skip: !browser && "no system browser" }, () => {
   it("tells who the person is, without a course", async () => {

@@ -82,7 +82,12 @@ export async function studentAssignment(context: BrowserContext, siteUrl: string
 }
 
 /** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */
-export async function saveSubmission(context: BrowserContext, siteUrl: string, activityId: number, input: { onlineText?: string; files?: string[] }): Promise<StudentAssignment> {
+export async function saveSubmission(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  input: { onlineText?: string; files?: string[] },
+): Promise<{ changed: string; assignment: StudentAssignment }> {
   if (input.onlineText === undefined && (!input.files || input.files.length === 0)) throw new SubmissionError("Give online text, files or both.");
   if (input.files) await checkLocalFiles(input.files);
   const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=editsubmission`).catch((error: unknown) => {
@@ -105,7 +110,8 @@ export async function saveSubmission(context: BrowserContext, siteUrl: string, a
   } finally {
     await page.close().catch(() => undefined);
   }
-  return studentAssignment(context, siteUrl, activityId);
+  const saved = [input.onlineText !== undefined ? "online text" : "", input.files?.length ? `${input.files.length} file${input.files.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
+  return { changed: `Saved ${saved} in assignment ${activityId}'s submission.`, assignment: await studentAssignment(context, siteUrl, activityId) };
 }
 
 /**
@@ -113,7 +119,12 @@ export async function saveSubmission(context: BrowserContext, siteUrl: string, a
  * (`acceptStatement`, once the person agrees; a bare boolean as before 0.2 too); gives the
  * assignment afterwards.
  */
-export async function submitForGrading(context: BrowserContext, siteUrl: string, activityId: number, options: { acceptStatement?: boolean } | boolean = {}): Promise<StudentAssignment> {
+export async function submitForGrading(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  options: { acceptStatement?: boolean } | boolean = {},
+): Promise<{ changed: string; assignment: StudentAssignment }> {
   const acceptStatement = typeof options === "boolean" ? options : (options.acceptStatement ?? false);
   const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=submit`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
@@ -132,5 +143,5 @@ export async function submitForGrading(context: BrowserContext, siteUrl: string,
   } finally {
     await page.close().catch(() => undefined);
   }
-  return studentAssignment(context, siteUrl, activityId);
+  return { changed: `Submitted assignment ${activityId} for grading.`, assignment: await studentAssignment(context, siteUrl, activityId) };
 }

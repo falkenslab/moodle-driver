@@ -238,7 +238,7 @@ describe("course layout", { skip: !browser && "no system browser" }, () => {
   it("duplicates an activity and gives the copy's id", async () => {
     const context = await site(fakeCourse().state);
     const result = await duplicateActivity(context, SITE, 5, 21);
-    assert.equal(result.newId, 30);
+    assert.equal(result.activityId, 30);
     assert.equal(layout(result), "General:News | Unit 1:Notes,Notes (copy),Task");
     await context.close();
   });
@@ -247,7 +247,7 @@ describe("course layout", { skip: !browser && "no system browser" }, () => {
     const { state, renames } = fakeCourse();
     const context = await site(state);
     const result = await addSection(context, SITE, 5, { name: "Unit 0", afterSectionId: 10 });
-    assert.equal(result.newId, 30);
+    assert.equal(result.sectionId, 30);
     assert.equal(layout(result), "General:News | Unit 0: | Unit 1:Notes,Task");
     assert.deepEqual(renames, [{ component: "format_topics", itemtype: "sectionname", itemid: 30, value: "Unit 0" }]);
     await context.close();

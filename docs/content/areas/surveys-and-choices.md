@@ -56,13 +56,13 @@ A field is one input of the form, by its form name: that name is what `submitSur
 Fills the survey page by page with the given responses and submits it on the last page, as the person would with its "Next page" and submit buttons.
 
 ```ts
-function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ messages: string[] }>;
+function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ changed: string; messages: string[] }>;
 // As before 0.2, still accepted:
-function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }>;
+function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, type: SurveyType, responses: Record<string, string>): Promise<{ changed: string; messages: string[] }>;
 ```
 
 - `responses`: values by field name, for any page: each page gets the ones its form has.
-- Returns the activity page's messages afterwards (usually that the person has submitted).
+- Returns `changed` and the activity page's messages afterwards (usually that the person has submitted).
 
 Without a `type`, the module is found as `getSurvey` finds it. Every name is checked against the whole form before anything is sent, so a wrong name sends nothing: `SurveyError` names the unknown fields. `SurveyError` also comes when the person can't answer now (with the page's messages), when Moodle sends a page back because something's missing or wrong (a required question unanswered: Moodle's messages are in the error, by field where it gives one), and when the site answers with a server error (5xx), in which case Moodle may or may not have recorded the answers: read the survey again before trying again. `submitSurvey` takes no `trail` option: the form is filled and sent at once, page after page.
 
@@ -98,10 +98,10 @@ Throws `ChoiceError` when the id isn't a choice the person can open.
 
 ## answerChoice
 
-Answers a choice with one option, or several where it allows them, by id, as "Save my choice" does; returns the choice afterwards.
+Answers a choice with one option, or several where it allows them, by id, as "Save my choice" does; returns `changed` and the choice afterwards.
 
 ```ts
-function answerChoice(context: BrowserContext, siteUrl: string, activityId: number, optionIds: number[]): Promise<Choice>;
+function answerChoice(context: BrowserContext, siteUrl: string, activityId: number, optionIds: number[]): Promise<{ changed: string; choice: Choice }>;
 ```
 
 In a multiple choice, the options not given are unticked, so `optionIds` is the whole answer. Throws `ChoiceError`, before saving anything, when no option is given, when the choice can't be answered now (closed, not open yet, or answered and not allowing changes; the error repeats the person's answer and Moodle's message), when several are given to a single choice, when an option id isn't the choice's (the error lists its options), and when an option is full.
@@ -138,7 +138,7 @@ if (survey.canAnswer) {
 const choice = await moodle.getChoice(40);
 const option = choice.options.find((o) => o.text === "while" && !o.full);
 if (choice.canAnswer && option) {
-  const after = await moodle.answerChoice(40, [option.id]);
+  const { choice: after } = await moodle.answerChoice(40, [option.id]);
   console.log(`Answer: ${after.answer.join(", ")}`);
 }
 ```

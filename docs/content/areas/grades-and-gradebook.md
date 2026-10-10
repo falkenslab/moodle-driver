@@ -54,7 +54,7 @@ interface GraderReport {
 }
 
 interface GradeColumn {
-  itemId: number;
+  id: number;
   name: string;
   kind: "item" | "category" | "course";
   activityId?: number;
@@ -63,7 +63,7 @@ interface GradeColumn {
 ```
 
 - `group`: a group id (see `groups` in [Participants](participants.md)); without it, the report as it opens for the person.
-- `columns`: one per grade item in the report's order, by its grade item id. `kind` is `"item"` for an activity or manual item, `"category"` for a category's total and `"course"` for the course total. An activity's column carries its course module id and module.
+- `columns`: one per grade item in the report's order, its `id` the grade item's id. `kind` is `"item"` for an activity or manual item, `"category"` for a category's total and `"course"` for the course total. An activity's column carries its course module id and module.
 - `rows`: one per participant, by user id and full name only (no emails or other identity fields). Each grade refers to a column by `itemId`; a cell with no grade ("-") has no `grade` field.
 
 It throws `GradebookError` when Moodle refuses the page (the message carries Moodle's reason, such as "no permission (View grader report)") or the course doesn't exist, and also when the report table isn't there because Moodle is recalculating the course's grades: see [Recalculation](#recalculation).
@@ -170,7 +170,7 @@ try {
   const report = await moodle.graderReport(3);
   const total = report.columns.find((c) => c.kind === "course");
   for (const row of report.rows) {
-    console.log(row.userId, row.grades.find((g) => g.itemId === total?.itemId)?.grade ?? "no grade");
+    console.log(row.userId, row.grades.find((g) => g.itemId === total?.id)?.grade ?? "no grade");
   }
 } catch (error) {
   if (error instanceof GradebookError) console.log(error.message);

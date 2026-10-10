@@ -7,7 +7,7 @@ import { QuizError } from "./attempts.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 
 export interface QuizAttemptResult {
-  attemptId: number;
+  id: number;
   userId: number;
   fullName: string;
   /** As the report shows them, in the site's language. */
@@ -67,7 +67,7 @@ export function readQuizReport(page: Page, mode: "overview" | "responses"): Prom
         const [state, started, completed, duration] = before.map((n) => at(gradeAt - n));
         return [
           {
-            attemptId,
+            id: attemptId,
             userId: Number(new URL(user.getAttribute("href") ?? "", "http://x/").searchParams.get("id")),
             fullName: clean(user.textContent),
             ...(state ? { state } : {}),
@@ -95,9 +95,9 @@ async function readReport(context: BrowserContext, siteUrl: string, activityId: 
         throw new QuizError(`You can't see quiz ${activityId}'s results: ${(await moodleErrorMessage(page)) ?? "it isn't a quiz, or you aren't allowed"}`);
       }
       const rows = await readQuizReport(page, mode);
-      const fresh = rows.filter((row) => !all.has(row.attemptId));
+      const fresh = rows.filter((row) => !all.has(row.id));
       if (fresh.length === 0) break;
-      for (const row of fresh) all.set(row.attemptId, row);
+      for (const row of fresh) all.set(row.id, row);
     } finally {
       await page.close().catch(() => undefined);
     }
@@ -113,9 +113,9 @@ async function readReport(context: BrowserContext, siteUrl: string, activityId: 
 export async function quizResults(context: BrowserContext, siteUrl: string, activityId: number, { responses = false }: { responses?: boolean } = {}) {
   const attempts = await readReport(context, siteUrl, activityId, "overview");
   if (responses) {
-    const answered = new Map((await readReport(context, siteUrl, activityId, "responses")).map((row) => [row.attemptId, row]));
+    const answered = new Map((await readReport(context, siteUrl, activityId, "responses")).map((row) => [row.id, row]));
     for (const attempt of attempts) {
-      const other = answered.get(attempt.attemptId);
+      const other = answered.get(attempt.id);
       for (const question of attempt.questions) {
         const response = other?.questions.find((q) => q.slot === question.slot)?.response;
         if (response !== undefined) question.response = response;

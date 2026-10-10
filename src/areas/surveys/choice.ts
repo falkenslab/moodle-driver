@@ -102,7 +102,7 @@ export async function getChoice(context: BrowserContext, siteUrl: string, activi
 }
 
 /** Answers a choice with one option (several where it allows them) by id, as "Save my choice" does; returns the choice afterwards. */
-export async function answerChoice(context: BrowserContext, siteUrl: string, activityId: number, optionIds: number[]): Promise<Choice> {
+export async function answerChoice(context: BrowserContext, siteUrl: string, activityId: number, optionIds: number[]): Promise<{ changed: string; choice: Choice }> {
   if (optionIds.length === 0) throw new ChoiceError("Give the id of the option to choose.");
   const page = await openChoice(context, siteUrl, activityId);
   try {
@@ -129,5 +129,6 @@ export async function answerChoice(context: BrowserContext, siteUrl: string, act
   } finally {
     await page.close().catch(() => undefined);
   }
-  return getChoice(context, siteUrl, activityId);
+  const after = await getChoice(context, siteUrl, activityId);
+  return { changed: `Answered choice ${activityId}: ${after.answer.join(", ") || optionIds.join(", ")}.`, choice: after };
 }

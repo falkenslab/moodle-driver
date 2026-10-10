@@ -6,7 +6,7 @@ import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 
 export interface QuizSlot {
   /** Moodle's id for the slot, and its question number. */
-  slotId: number;
+  id: number;
   number?: number;
   page: number;
   /** The question's id; none for a random slot. */
@@ -46,7 +46,7 @@ export function readQuizSlots(page: Page): Promise<QuizSlot[]> {
       const number = Number(((item.querySelector(".slotnumber.unshuffled") ?? item.querySelector(".slotnumber"))?.textContent ?? "").replace(/\D+/g, "")) || undefined;
       const mark = (item.querySelector(".instancemaxmark")?.textContent ?? "").replace(/\s+/g, " ").trim() || undefined;
       slots.push({
-        slotId,
+        id: slotId,
         ...(number ? { number } : {}),
         page: current,
         ...(questionId && type !== "random" ? { questionId } : {}),

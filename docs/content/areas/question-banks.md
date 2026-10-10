@@ -79,7 +79,7 @@ function importQuestions(
 - `file` or `text`, exactly one: an absolute path to a local file, or the questions as text. Text is uploaded as a file (`questions.txt` or `questions.xml`), as a person would upload one, from a temporary folder removed afterwards.
 - `categoryId`: the bank category to import into; without it, Moodle's default for the form. When given, the file's own categories and contexts are ignored, so everything lands in that category.
 
-The questions created are found by comparing the bank's questions before and after the import. When Moodle can't parse the file it imports nothing and shows its messages: they come back as a `QuestionBankError` ("Moodle didn't import the questions: There are no questions in the import file"). Other errors: `QuestionBankError` when both or neither of `file` and `text` are given, when the bank can't be imported into, or when the category isn't in the bank; a plain `Error` when the file path isn't absolute or there's no file there; `FormError` when Moodle refuses the form.
+The questions created are found by comparing the bank's questions before and after the import. When Moodle can't parse the file it imports nothing and shows its messages: they come back as a `QuestionBankError` ("Moodle didn't import the questions: There are no questions in the import file"). Other errors: `QuestionBankError` when both or neither of `file` and `text` are given, when the bank can't be imported into, or when the category isn't in the bank; a `MoodleDriverError` when the file path isn't absolute or there's no file there; `FormError` when Moodle refuses the form.
 
 ## createQuestion
 

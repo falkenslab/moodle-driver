@@ -9,8 +9,8 @@ The signatures below are the functions'. Each operation is also a method of the 
 Every function here except `activitySettings` and `courseActivityTypes` returns a `CourseChange`:
 
 - `changed`: a sentence saying what was done (`Created page 812 "Loops" in section 2.`).
-- `activityId`: the activity created or updated, when there is one.
-- `newId`: the id of a duplicated activity or an added section.
+- `activityId`: the activity created, updated or duplicated (the copy), when there is one.
+- `sectionId`: the section added, by `addSection`.
 - `url`: the activity's page, after creating or updating it.
 - `sections`: the course's `CourseSection[]` after the change, as [courseStructure](courses.md) gives them (without details).
 
@@ -48,7 +48,7 @@ interface ActivityFields {
 
 Errors:
 
-- An `Error` when a file path isn't absolute or doesn't exist, when the course has no section with that id, when `content` is given for a type other than a page or label, or when the type's form takes no files.
+- A `MoodleDriverError` when a file path isn't absolute or doesn't exist (`invalid-input`, `not-found`), when the course has no section with that id (`not-found`), when `content` is given for a type other than a page or label (`invalid-input`), or when the type's form takes no files (`not-available`).
 - `FormError` when a field isn't in the form or is disabled (see below), when uploading fails, or when Moodle refuses the form; its `fields` hold Moodle's message per field (`{ field: "name", message: "You must supply a value here." }`).
 - `NotLoggedInError` without a session.
 
@@ -60,7 +60,7 @@ Changes an existing activity through its form: only what's given changes, and th
 function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields): Promise<CourseChange>;
 ```
 
-It takes the same `ActivityFields` as `createActivity`, reading the activity's module and course from the form. Errors are the same `FormError` cases, and an `Error` for `content` on a type other than a page or label.
+It takes the same `ActivityFields` as `createActivity`, reading the activity's module and course from the form. Errors are the same `FormError` cases, and a `MoodleDriverError` (`invalid-input`) for `content` on a type other than a page or label.
 
 ## activitySettings
 
@@ -125,7 +125,7 @@ function duplicateActivity(context: BrowserContext, siteUrl: string, courseId: n
 function deleteActivity(context: BrowserContext, siteUrl: string, courseId: number, activityId: number): Promise<CourseChange>;
 ```
 
-`duplicateActivity` makes a copy as the course page's "Duplicate" does (Moodle places it right after the original and names it with "(copy)"); `newId` is the copy's id. `deleteActivity` deletes the activity, with its participants' data (submissions, posts, attempts).
+`duplicateActivity` makes a copy as the course page's "Duplicate" does (Moodle places it right after the original and names it with "(copy)"); `activityId` is the copy's id. `deleteActivity` deletes the activity, with its participants' data (submissions, posts, attempts).
 
 ## addSection, editSection and deleteSection
 
@@ -141,7 +141,7 @@ function editSection(
 function deleteSection(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number): Promise<CourseChange>;
 ```
 
-- `addSection` adds a section after `afterSectionId`, or at the end without it; with `name` it renames it afterwards. `newId` is the new section's id.
+- `addSection` adds a section after `afterSectionId`, or at the end without it; with `name` it renames it afterwards. `sectionId` is the new section's id.
 - `editSection` renames, shows (`visible: true`) or hides it, or moves it after another section.
 - `deleteSection` deletes the section and every activity in it, with their participants' data.
 
@@ -168,7 +168,7 @@ function courseActivityTypes(context: BrowserContext, siteUrl: string, courseId:
 // `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 const unit = await moodle.addSection(3, { name: "Unit 4: Recursion" });
-const sectionId = unit.newId!;
+const sectionId = unit.sectionId!;
 
 const page = await moodle.createActivity({
   courseId: 3,

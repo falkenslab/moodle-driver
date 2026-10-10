@@ -189,15 +189,15 @@ export async function getSurvey(context: BrowserContext, siteUrl: string, activi
  * Fills the survey page by page with `responses` (field name → value) and submits it on the last
  * page. Every name is checked against the form first, so nothing is sent with a wrong one.
  */
-export function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }>;
-export function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ messages: string[] }>;
+export function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, type: SurveyType, responses: Record<string, string>): Promise<{ changed: string; messages: string[] }>;
+export function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ changed: string; messages: string[] }>;
 export async function submitSurvey(
   context: BrowserContext,
   siteUrl: string,
   activityId: number,
   typeOrResponses: SurveyType | Record<string, string>,
   responsesOrOptions?: Record<string, string> | { type?: SurveyType },
-): Promise<{ messages: string[] }> {
+): Promise<{ changed: string; messages: string[] }> {
   // (activityId, type, responses), as before 0.2, or (activityId, responses, { type }), the module found when not given.
   const responses = (typeof typeOrResponses === "string" ? responsesOrOptions : typeOrResponses) as Record<string, string>;
   const type = typeof typeOrResponses === "string" ? typeOrResponses : ((responsesOrOptions as { type?: SurveyType } | undefined)?.type ?? (await surveyType(context, siteUrl, activityId)));
@@ -243,5 +243,5 @@ export async function submitSurvey(
   } finally {
     await page.close().catch(() => undefined);
   }
-  return { messages: (await surveyStatus(context, siteUrl, activityId, type)).messages };
+  return { changed: `Submitted ${type} ${activityId}.`, messages: (await surveyStatus(context, siteUrl, activityId, type)).messages };
 }

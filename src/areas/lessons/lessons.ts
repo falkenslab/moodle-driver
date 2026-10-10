@@ -150,7 +150,7 @@ export async function answerLessonPage(
   activityId: number,
   answer: { button?: string | number; responses?: Record<string, string> },
   { trail = "realistic", onProgress }: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void } = {},
-): Promise<{ feedback?: LessonPage; page: LessonPage }> {
+): Promise<{ changed: string; feedback?: LessonPage; page: LessonPage }> {
   const page = await openLesson(context, siteUrl, activityId);
   try {
     const current = await readLessonPage(page);
@@ -184,7 +184,8 @@ export async function answerLessonPage(
       await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click('#region-main form[action*="/mod/lesson/view.php"] [type=submit], #region-main form[action*="/mod/lesson/view.php"] button')]);
       next = await readLessonPage(page);
     }
-    return { ...(feedback ? { feedback } : {}), page: next };
+    const changed = current.kind === "content" ? `Went on from lesson ${activityId}'s page with "${buttons[index]!.label}".` : `Answered lesson ${activityId}'s question.`;
+    return { changed, ...(feedback ? { feedback } : {}), page: next };
   } finally {
     await page.close().catch(() => undefined);
   }

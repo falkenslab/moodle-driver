@@ -25,9 +25,9 @@ describe("graderReport", { skip: !browser && "no system browser" }, () => {
     await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, bodies: { "/grade/report/grader/index.php": GRADER } });
     const report = await graderReport(context, SITE, 3);
     assert.deepEqual(report.columns, [
-      { itemId: 12, name: "Quiz one", kind: "item", activityId: 27, activityType: "quiz" },
-      { itemId: 18, name: "Labs total", kind: "category" },
-      { itemId: 4, name: "Course total", kind: "course" },
+      { id: 12, name: "Quiz one", kind: "item", activityId: 27, activityType: "quiz" },
+      { id: 18, name: "Labs total", kind: "category" },
+      { id: 4, name: "Course total", kind: "course" },
     ]);
     assert.deepEqual(report.rows, [
       { userId: 4, fullName: "Ana Student", grades: [{ itemId: 12, grade: "10.00" }, { itemId: 18, grade: "10.00" }, { itemId: 4, grade: "10.00" }] },
