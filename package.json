@@ -1,6 +1,6 @@
 {
   "name": "@falkenslab/moodle-driver",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Work a Moodle site with the person's own session, through a real browser (Playwright): no web services, no tokens",
   "author": "Falkenslab",
   "license": "MIT",
