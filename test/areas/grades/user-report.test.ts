@@ -6,9 +6,9 @@ const browser = await launchTestBrowser();
 after(() => browser?.close());
 
 /** A grade report row as Moodle 5.2 renders it, reduced; the data is made up. */
-function item(cmid: number, type: string, name: string, grade: string, range: string, feedback = ""): string {
+function item(activityId: number, type: string, name: string, grade: string, range: string, feedback = ""): string {
   const menu = `<div class="action-menu moodle-actionmenu"><a aria-label="Actions"><span class="visually-hidden">Actions</span></a><div class="dropdown-menu"><a>Grade analysis</a></div></div>`;
-  return `<tr class="cat_1"><th class="level2 item column-itemname" scope="row"><span class="d-block">${type.toUpperCase()}</span><div class="rowtitle"><a class="gradeitemheader" href="${SITE}mod/${type}/view.php?id=${cmid}">${name}</a></div></th>
+  return `<tr class="cat_1"><th class="level2 item column-itemname" scope="row"><span class="d-block">${type.toUpperCase()}</span><div class="rowtitle"><a class="gradeitemheader" href="${SITE}mod/${type}/view.php?id=${activityId}">${name}</a></div></th>
 <td class="level2 item column-weight">-</td><td class="level2 item column-grade"><div><div>${grade}</div>${menu}</div></td><td class="level2 item column-range">${range}</td>
 <td class="level2 item column-percentage">${grade === "-" ? "-" : "80.00 %"}</td><td class="level2 item column-feedback">${feedback}</td></tr>`;
 }

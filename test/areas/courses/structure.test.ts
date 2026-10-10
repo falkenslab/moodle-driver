@@ -98,8 +98,8 @@ describe("listAssignments", { skip: !browser && "no system browser" }, () => {
 });
 
 /** A grade report row as Moodle 5.2 renders it, reduced; the data is made up. */
-function gradeRow(cmid: number, type: string, name: string, grade: string): string {
-  return `<tr><th class="level2 item column-itemname" scope="row"><div class="rowtitle"><a class="gradeitemheader" href="${SITE}mod/${type}/view.php?id=${cmid}">${name}</a></div></th>
+function gradeRow(activityId: number, type: string, name: string, grade: string): string {
+  return `<tr><th class="level2 item column-itemname" scope="row"><div class="rowtitle"><a class="gradeitemheader" href="${SITE}mod/${type}/view.php?id=${activityId}">${name}</a></div></th>
 <td class="level2 item column-grade"><div>${grade}</div></td><td class="level2 item column-range">0–10</td></tr>`;
 }
 const REPORT = `<table class="user-grade"><tbody>${gradeRow(21, "quiz", "Quiz 1", "8.00")}${gradeRow(22, "assign", "Task 1", "-")}${gradeRow(23, "assign", "Task 2", "-")}</tbody></table>`;

@@ -84,12 +84,12 @@ export function readH5PAttempts(page: Page): Promise<H5PAttempt[]> {
 }
 
 /** An H5P activity: its content type, whether attempts are tracked, and the person's attempts with their scores. */
-export async function h5pActivity(context: BrowserContext, siteUrl: string, cmid: number): Promise<H5PActivity> {
-  const page = await openSitePage(context, siteUrl, `mod/h5pactivity/view.php?id=${cmid}`);
+export async function h5pActivity(context: BrowserContext, siteUrl: string, activityId: number): Promise<H5PActivity> {
+  const page = await openSitePage(context, siteUrl, `mod/h5pactivity/view.php?id=${activityId}`);
   let facts: { name: string; player?: string; tracked: boolean };
   try {
     if ((await page.locator("body#page-mod-h5pactivity-view").count()) === 0) {
-      throw new NotAnH5PActivityError(`Activity ${cmid} isn't an H5P activity you can open. Take the id of an H5P activity (module "h5pactivity") from the course structure.`);
+      throw new NotAnH5PActivityError(`Activity ${activityId} isn't an H5P activity you can open. Take the id of an H5P activity (module "h5pactivity") from the course structure.`);
     }
     facts = await page.evaluate(() => {
       const doc = (globalThis as unknown as { document: { querySelector(s: string): { getAttribute(n: string): string | null } | null } }).document;
@@ -104,7 +104,7 @@ export async function h5pActivity(context: BrowserContext, siteUrl: string, cmid
     await page.close().catch(() => undefined);
   }
 
-  const activity: H5PActivity = { id: cmid, name: decodeEntities(facts.name), tracked: facts.tracked, attempts: [] };
+  const activity: H5PActivity = { id: activityId, name: decodeEntities(facts.name), tracked: facts.tracked, attempts: [] };
   if (facts.player) {
     // The player page names the content's main library in its H5P settings, before any script runs.
     const player = await context.newPage();
@@ -121,7 +121,7 @@ export async function h5pActivity(context: BrowserContext, siteUrl: string, cmid
     if (library) activity.contentType = { library: library[1]!, version: library[2]! };
   }
   if (facts.tracked) {
-    const report = await openSitePage(context, siteUrl, `mod/h5pactivity/report.php?id=${cmid}`);
+    const report = await openSitePage(context, siteUrl, `mod/h5pactivity/report.php?id=${activityId}`);
     try {
       activity.attempts = (await readH5PAttempts(report)).sort((a, b) => a.number - b.number);
     } finally {

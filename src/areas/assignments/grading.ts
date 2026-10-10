@@ -30,8 +30,8 @@ export interface Submission {
 }
 
 /** An extension's date, as its form holds it (no service open to AJAX gives it). */
-async function extensionDate(context: BrowserContext, siteUrl: string, cmid: number, userId: number): Promise<string | undefined> {
-  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grantextension&userid=${userId}`).catch((error: unknown) => {
+async function extensionDate(context: BrowserContext, siteUrl: string, activityId: number, userId: number): Promise<string | undefined> {
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=grantextension&userid=${userId}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
     return undefined;
   });
@@ -44,8 +44,8 @@ async function extensionDate(context: BrowserContext, siteUrl: string, cmid: num
 }
 
 /** Every participant's submission to an assignment, with its content unless `includeContent` is false. */
-export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, cmid: number, { includeContent = true } = {}) {
-  const ids = await assignmentIds(context, siteUrl, cmid);
+export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, { includeContent = true } = {}) {
+  const ids = await assignmentIds(context, siteUrl, activityId);
   const participants = await listParticipants(context, siteUrl, ids.instanceId);
   // A blank tab parses the panels' HTML: nothing of Moodle's loads there.
   const parser = includeContent ? await context.newPage() : undefined;
@@ -63,7 +63,7 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
         submitted: participant.submitted,
         needsGrading: participant.requiregrading,
         extensionGranted: participant.grantedextension,
-        extensionDueDate: participant.grantedextension ? await extensionDate(context, siteUrl, cmid, participant.id) : undefined,
+        extensionDueDate: participant.grantedextension ? await extensionDate(context, siteUrl, activityId, participant.id) : undefined,
         allowSubmissionsFrom: isoDate(dates.allowsubmissionsfromdate),
         dueDate: isoDate(dates.duedate),
         cutoffDate: isoDate(dates.cutoffdate),
@@ -73,7 +73,7 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
   } finally {
     await parser?.close().catch(() => undefined);
   }
-  return { assignment: { id: cmid, instanceId: ids.instanceId }, submissions };
+  return { assignment: { id: activityId, instanceId: ids.instanceId }, submissions };
 }
 
 /**
@@ -85,7 +85,7 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
 export async function gradeSubmission(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   userId: number,
   {
     grade,
@@ -108,7 +108,7 @@ export async function gradeSubmission(
     fields?: Record<string, FieldValue>;
   },
 ) {
-  const ids = await assignmentIds(context, siteUrl, cmid);
+  const ids = await assignmentIds(context, siteUrl, activityId);
   const values: Record<string, FieldValue> = { ...fields };
   if (grade !== undefined) values.grade = grade;
   for (const [criterion, level] of Object.entries(rubric ?? {})) values[`advancedgrading[criteria][${criterion}][levelid]`] = String(level);
@@ -127,7 +127,7 @@ export async function gradeSubmission(
     });
     await submitGradingForm(context, siteUrl, ids.instanceId, userId, serialized);
     const saved = await panelGrade(page, await gradingPanelHtml(context, siteUrl, ids.contextId, userId));
-    return { changed: `Graded user ${userId} in assignment ${cmid}${feedback !== undefined ? ", with feedback" : ""}.`, ...saved };
+    return { changed: `Graded user ${userId} in assignment ${activityId}${feedback !== undefined ? ", with feedback" : ""}.`, ...saved };
   } finally {
     await page.close().catch(() => undefined);
   }
@@ -192,13 +192,13 @@ export async function readGradingDefinition(page: Page, panelHtml: string): Prom
  * An assignment's grading method and, for a rubric or a marking guide, its criteria with the ids
  * `gradeSubmission` takes: read from the grader's panel for its first participant.
  */
-export async function rubric(context: BrowserContext, siteUrl: string, cmid: number): Promise<{ assignment: { id: number } } & GradingDefinition> {
-  const ids = await assignmentIds(context, siteUrl, cmid);
+export async function rubric(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ assignment: { id: number } } & GradingDefinition> {
+  const ids = await assignmentIds(context, siteUrl, activityId);
   const [first] = await listParticipants(context, siteUrl, ids.instanceId);
-  if (!first) throw new GradingError(`Assignment ${cmid} has no participants: its grading form can't be read without one.`);
+  if (!first) throw new GradingError(`Assignment ${activityId} has no participants: its grading form can't be read without one.`);
   const page = await context.newPage();
   try {
-    return { assignment: { id: cmid }, ...(await readGradingDefinition(page, await gradingPanelHtml(context, siteUrl, ids.contextId, first.id))) };
+    return { assignment: { id: activityId }, ...(await readGradingDefinition(page, await gradingPanelHtml(context, siteUrl, ids.contextId, first.id))) };
   } finally {
     await page.close().catch(() => undefined);
   }
@@ -208,11 +208,11 @@ export async function rubric(context: BrowserContext, siteUrl: string, cmid: num
  * Grants participants an extension until a date, through the assignment's extension form (several at
  * once as its bulk action does). Moodle refuses a date before the assignment's due date.
  */
-export async function grantExtension(context: BrowserContext, siteUrl: string, cmid: number, userIds: number[], until: Date): Promise<{ changed: string }> {
+export async function grantExtension(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], until: Date): Promise<{ changed: string }> {
   if (userIds.length === 0) throw new GradingError("Give the participants to grant the extension to.");
-  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grantextension&userid=${userIds[0]}`).catch((error: unknown) => {
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=grantextension&userid=${userIds[0]}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
-    throw new NotAnAssignmentError(`You can't grant extensions in activity ${cmid}: it isn't an assignment, or you aren't allowed.`);
+    throw new NotAnAssignmentError(`You can't grant extensions in activity ${activityId}: it isn't an assignment, or you aren't allowed.`);
   });
   try {
     await setFields(page, { selectedusers: userIds.join(","), "extensionduedate[enabled]": true, ...(await dateSelectorValues(page, "extensionduedate", until)) });
@@ -220,5 +220,5 @@ export async function grantExtension(context: BrowserContext, siteUrl: string, c
   } finally {
     await page.close().catch(() => undefined);
   }
-  return { changed: `Extension until ${until.toISOString()} granted to user${userIds.length > 1 ? "s" : ""} ${userIds.join(", ")} in assignment ${cmid}.` };
+  return { changed: `Extension until ${until.toISOString()} granted to user${userIds.length > 1 ? "s" : ""} ${userIds.join(", ")} in assignment ${activityId}.` };
 }

@@ -11,7 +11,7 @@ Everything is read from Moodle's own pages by their structure (body ids, form na
 What the quiz's page says: its description, its information lines, its dates, the person's attempts and whether they can start one.
 
 ```ts
-function quizInfo(context: BrowserContext, siteUrl: string, quizId: number): Promise<QuizInfo>;
+function quizInfo(context: BrowserContext, siteUrl: string, activityId: number): Promise<QuizInfo>;
 
 interface QuizInfo {
   intro: string;
@@ -44,7 +44,7 @@ Throws `QuizError` when the id isn't a quiz the person can open. Leaves no more 
 Starts an attempt, or continues the one in progress, exactly as the quiz page's button does, and gives its questions.
 
 ```ts
-function startQuizAttempt(context: BrowserContext, siteUrl: string, quizId: number): Promise<{ attemptId: number; questions: Question[] }>;
+function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ attemptId: number; questions: Question[] }>;
 ```
 
 A quiz with a time limit first asks for confirmation on a form of its own: the driver confirms it, which starts the clock. A quiz with a password isn't started: `QuizError` says it asks for one. `QuizError` also comes when the page has no start button (the person used all attempts, the quiz is closed), carrying the page's messages, and when the id isn't a quiz.
@@ -196,7 +196,7 @@ try {
 A quiz's attempts as its results report (the overview) shows them to a teacher: per attempt the user, state, dates, grade and the mark per question; with `responses`, also the answer per question from the responses report. Every page of the report is read.
 
 ```ts
-function quizResults(context: BrowserContext, siteUrl: string, quizId: number, options?: { responses?: boolean }): Promise<{
+function quizResults(context: BrowserContext, siteUrl: string, activityId: number, options?: { responses?: boolean }): Promise<{
   quiz: { id: number };
   attempts: QuizAttemptResult[];
 }>;
@@ -225,7 +225,7 @@ People come as user id and full name: hiding who they are is the calling program
 A quiz's questions as its edit page lists them: slots in order, each with its page, question, type, name and mark.
 
 ```ts
-function quizStructure(context: BrowserContext, siteUrl: string, quizId: number): Promise<{ quiz: { id: number }; slots: QuizSlot[] }>;
+function quizStructure(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ quiz: { id: number }; slots: QuizSlot[] }>;
 
 interface QuizSlot {
   slotId: number;
@@ -254,7 +254,7 @@ Adds questions from a bank by id, and random questions from a bank category, as 
 function addQuestionsToQuiz(
   context: BrowserContext,
   siteUrl: string,
-  quizId: number,
+  activityId: number,
   options: {
     questionIds?: number[];
     random?: { categoryId: number; count: number; includeSubcategories?: boolean };
@@ -277,7 +277,7 @@ Sets a user override on a quiz through its override form: other opening and clos
 function setQuizOverride(
   context: BrowserContext,
   siteUrl: string,
-  quizId: number,
+  activityId: number,
   userId: number,
   options: { open?: Date; close?: Date; timeLimitMinutes?: number; attempts?: number },
 ): Promise<{ changed: string }>;

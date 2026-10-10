@@ -89,7 +89,7 @@ describe("discussion", { skip: !browser && "no system browser" }, () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { user: { id: 3, fullName: "T" }, services });
     const result = await discussion(context, SITE, 2);
-    assert.deepEqual(result.discussion, { id: 2, forumId: 1, courseId: 5 });
+    assert.deepEqual(result.discussion, { id: 2, forumInstanceId: 1, courseId: 5 });
     const [first, reply] = result.posts;
     assert.deepEqual([first?.text, first?.parentId, first?.modified, first?.unread], ["If I set x = 1…\n\ncan I change it?", undefined, undefined, undefined]);
     assert.deepEqual(reply, {

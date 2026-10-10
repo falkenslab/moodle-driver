@@ -69,11 +69,11 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
   );
 }
 
-export async function studentAssignment(context: BrowserContext, siteUrl: string, cmid: number): Promise<StudentAssignment> {
-  const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${cmid}`);
+export async function studentAssignment(context: BrowserContext, siteUrl: string, activityId: number): Promise<StudentAssignment> {
+  const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${activityId}`);
   try {
     if ((await page.locator("body#page-mod-assign-view").count()) === 0) {
-      throw new SubmissionError(`Activity ${cmid} isn't an assignment you can open. Take the id of an assignment (module "assign") from the course structure.`);
+      throw new SubmissionError(`Activity ${activityId} isn't an assignment you can open. Take the id of an assignment (module "assign") from the course structure.`);
     }
     return await readStudentAssignment(page);
   } finally {
@@ -82,22 +82,22 @@ export async function studentAssignment(context: BrowserContext, siteUrl: string
 }
 
 /** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */
-export async function saveSubmission(context: BrowserContext, siteUrl: string, cmid: number, input: { onlineText?: string; files?: string[] }): Promise<StudentAssignment> {
+export async function saveSubmission(context: BrowserContext, siteUrl: string, activityId: number, input: { onlineText?: string; files?: string[] }): Promise<StudentAssignment> {
   if (input.onlineText === undefined && (!input.files || input.files.length === 0)) throw new SubmissionError("Give online text, files or both.");
   if (input.files) await checkLocalFiles(input.files);
-  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=editsubmission`).catch((error: unknown) => {
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=editsubmission`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
-    throw new SubmissionError(`You can't edit a submission to assignment ${cmid} now (submitted already, past its cut-off date, or not yours to submit).`);
+    throw new SubmissionError(`You can't edit a submission to assignment ${activityId} now (submitted already, past its cut-off date, or not yours to submit).`);
   });
   try {
     if (input.files && input.files.length > 0) {
       const draft = await formValue(page, "files_filemanager");
-      if (!draft) throw new SubmissionError(`Assignment ${cmid} doesn't take file submissions.`);
+      if (!draft) throw new SubmissionError(`Assignment ${activityId} doesn't take file submissions.`);
       await uploadToDraft(page, draft, input.files);
     }
     const values: Record<string, FieldValue> = {};
     if (input.onlineText !== undefined) {
-      if ((await formValue(page, "onlinetext_editor[format]")) === undefined) throw new SubmissionError(`Assignment ${cmid} doesn't take online text.`);
+      if ((await formValue(page, "onlinetext_editor[format]")) === undefined) throw new SubmissionError(`Assignment ${activityId} doesn't take online text.`);
       values["onlinetext_editor[text]"] = input.onlineText;
     }
     await setFields(page, values);
@@ -105,7 +105,7 @@ export async function saveSubmission(context: BrowserContext, siteUrl: string, c
   } finally {
     await page.close().catch(() => undefined);
   }
-  return studentAssignment(context, siteUrl, cmid);
+  return studentAssignment(context, siteUrl, activityId);
 }
 
 /**
@@ -113,11 +113,11 @@ export async function saveSubmission(context: BrowserContext, siteUrl: string, c
  * (`acceptStatement`, once the person agrees; a bare boolean as before 0.2 too); gives the
  * assignment afterwards.
  */
-export async function submitForGrading(context: BrowserContext, siteUrl: string, cmid: number, options: { acceptStatement?: boolean } | boolean = {}): Promise<StudentAssignment> {
+export async function submitForGrading(context: BrowserContext, siteUrl: string, activityId: number, options: { acceptStatement?: boolean } | boolean = {}): Promise<StudentAssignment> {
   const acceptStatement = typeof options === "boolean" ? options : (options.acceptStatement ?? false);
-  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=submit`).catch((error: unknown) => {
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=submit`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
-    throw new SubmissionError(`Assignment ${cmid} has nothing to submit now (no draft, submitted already, or it doesn't ask students to click submit).`);
+    throw new SubmissionError(`Assignment ${activityId} has nothing to submit now (no draft, submitted already, or it doesn't ask students to click submit).`);
   });
   try {
     const statement = page.locator('form.mform [name="submissionstatement"][type="checkbox"]');
@@ -132,5 +132,5 @@ export async function submitForGrading(context: BrowserContext, siteUrl: string,
   } finally {
     await page.close().catch(() => undefined);
   }
-  return studentAssignment(context, siteUrl, cmid);
+  return studentAssignment(context, siteUrl, activityId);
 }

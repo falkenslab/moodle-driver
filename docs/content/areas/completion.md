@@ -25,10 +25,10 @@ type CompletionState = (typeof COMPLETION_STATES)[number];
 Marks the person's own completion of an activity with manual completion, done or not done, as its "Mark as done" button does. Marking it twice changes nothing.
 
 ```ts
-function setCompletion(context: BrowserContext, siteUrl: string, cmid: number, done: boolean): Promise<{ changed: string }>;
+function setCompletion(context: BrowserContext, siteUrl: string, activityId: number, done: boolean): Promise<{ changed: string }>;
 ```
 
-- `cmid`: the activity's course module id (the `id` in `courseStructure`).
+- `activityId`: the activity's id (course module id) (the `id` in `courseStructure`).
 - `done`: `true` for done, `false` to undo it.
 
 It returns a sentence ("Activity 5 marked done."). It goes through the service the button uses (`core_completion_update_activity_completion_status_manually`).
@@ -51,7 +51,7 @@ Sets someone else's completion of an activity as a teacher does from the progres
 function overrideCompletion(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   userId: number,
   state: CompletionState,
 ): Promise<{ changed: string; state: CompletionState; overridden: boolean }>;

@@ -4,7 +4,7 @@ A course's question banks as Moodle 5 organizes them: shared banks are activitie
 
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
-A bank is identified by its course module id (`bankCmid`): a qbank activity's, or the quiz's whose bank it is. Everything is read from Moodle's bank pages by field names, data attributes and icons, so it works in any interface language. Every function throws `NotLoggedInError` when there's no session; the others are `QuestionBankError` and, for forms, `FormError` (see [Errors](../concepts/errors.md)).
+A bank is identified by its activity id (`activityId`, a course module id): a qbank activity's, or the quiz's whose bank it is. Everything is read from Moodle's bank pages by field names, data attributes and icons, so it works in any interface language. Every function throws `NotLoggedInError` when there's no session; the others are `QuestionBankError` and, for forms, `FormError` (see [Errors](../concepts/errors.md)).
 
 ## The bank's module is checked first
 
@@ -18,14 +18,14 @@ A course's question banks, as its question banks page lists them: the shared one
 function questionBanks(context: BrowserContext, siteUrl: string, courseId: number): Promise<QuestionBank[]>;
 
 interface QuestionBank {
-  cmid: number;
+  id: number;
   name: string;
   type: string;
   shared: boolean;
 }
 ```
 
-- `cmid`: the bank's course module id, which the other functions take.
+- `id`: the bank's activity id (course module id), which the other functions take as `activityId`.
 - `name`: the activity's name.
 - `type`: the module, `"qbank"` for a shared bank, `"quiz"` for a quiz's own.
 - `shared`: a shared bank's questions can be used anywhere in the course; an activity's only in that activity.
@@ -37,7 +37,7 @@ Throws `QuestionBankError` when the course doesn't exist or the person can't see
 A bank's categories and every question in them, category by category.
 
 ```ts
-function questions(context: BrowserContext, siteUrl: string, bankCmid: number): Promise<{ categories: BankCategory[]; questions: BankQuestion[] }>;
+function questions(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ categories: BankCategory[]; questions: BankQuestion[] }>;
 
 interface BankCategory {
   id: number;
@@ -70,7 +70,7 @@ Imports questions into a bank from a GIFT or Moodle XML file, or from text, thro
 function importQuestions(
   context: BrowserContext,
   siteUrl: string,
-  bankCmid: number,
+  activityId: number,
   options: { format: "gift" | "xml"; file?: string; text?: string; categoryId?: number },
 ): Promise<{ changed: string; questions: BankQuestion[] }>;
 ```
@@ -86,7 +86,7 @@ The questions created are found by comparing the bank's questions before and aft
 Creates one question in a bank through its type's edit form and returns its id. Imports are the way for several questions; this is for one-offs.
 
 ```ts
-function createQuestion(context: BrowserContext, siteUrl: string, bankCmid: number, input: QuestionInput): Promise<{ changed: string; questionId?: number }>;
+function createQuestion(context: BrowserContext, siteUrl: string, activityId: number, input: QuestionInput): Promise<{ changed: string; questionId?: number }>;
 
 interface QuestionInput {
   type: QuestionType; // "multichoice" | "truefalse" | "shortanswer" | "numerical" | "essay"
@@ -120,18 +120,18 @@ const banks = await moodle.questionBanks(3);
 const bank = banks.find((b) => b.shared);
 if (!bank) throw new Error("Course 3 has no shared question bank.");
 
-const { categories } = await moodle.questions(bank.cmid);
+const { categories } = await moodle.questions(bank.id);
 // The first category is the bank's "Top", which holds no questions: its default one comes next.
 const target = categories[1];
 
-const imported = await moodle.importQuestions(bank.cmid, {
+const imported = await moodle.importQuestions(bank.id, {
   format: "gift",
   text: "::Range:: range(3) ends at 2. {T}\n\n::Indent:: Python uses indentation for blocks. {T}",
   categoryId: target?.id,
 });
 console.log(imported.changed, imported.questions.map((q) => q.id));
 
-const created = await moodle.createQuestion(bank.cmid, {
+const created = await moodle.createQuestion(bank.id, {
   type: "multichoice",
   name: "Infinite loop",
   text: "<p>Which loop never ends?</p>",

@@ -23,7 +23,7 @@ export interface DiscussionRow {
   locked: boolean;
   pinned: boolean;
   /** The forum's instance id, which the forum's services take. */
-  forumId?: number;
+  forumInstanceId?: number;
 }
 
 // The page size asked for; the forum pages until a page brings no new discussions.
@@ -65,21 +65,21 @@ export function readDiscussionRows(page: Page): Promise<DiscussionRow[]> {
         replies: Number((repliesCell?.textContent ?? "0").trim()),
         locked: locked !== null && !locked.hasAttribute("hidden"),
         pinned: /\bpinned\b/.test(row.className),
-        forumId: Number(row.getAttribute("data-forumid")) || undefined,
+        forumInstanceId: Number(row.getAttribute("data-forumid")) || undefined,
       };
     });
   });
 }
 
 /** Every discussion of a forum (its course module id), through all its pages. */
-export async function listDiscussions(context: BrowserContext, siteUrl: string, forumCmid: number): Promise<DiscussionRow[]> {
+export async function listDiscussions(context: BrowserContext, siteUrl: string, activityId: number): Promise<DiscussionRow[]> {
   const all = new Map<number, DiscussionRow>();
   for (let p = 0; p < MAX_PAGES; p++) {
-    const page = await openSitePage(context, siteUrl, `mod/forum/view.php?id=${forumCmid}&s=${PAGE_SIZE}&p=${p}`);
+    const page = await openSitePage(context, siteUrl, `mod/forum/view.php?id=${activityId}&s=${PAGE_SIZE}&p=${p}`);
     try {
       // The body id names the page in any language.
       if ((await page.locator("body#page-mod-forum-view").count()) === 0) {
-        throw new NotAForumError(`Activity ${forumCmid} isn't a forum you can view. Take the id of a forum (module "forum") from the course structure.`);
+        throw new NotAForumError(`Activity ${activityId} isn't a forum you can view. Take the id of a forum (module "forum") from the course structure.`);
       }
       const rows = await readDiscussionRows(page);
       const before = all.size;
@@ -132,11 +132,11 @@ export async function htmlToTexts(context: BrowserContext, fragments: string[]):
 
 
 /** A forum's instance id (what `post.php?forum=` takes), from its page. */
-export async function forumInstanceId(context: BrowserContext, siteUrl: string, forumCmid: number): Promise<number> {
-  const page = await openSitePage(context, siteUrl, `mod/forum/view.php?id=${forumCmid}`);
+export async function forumInstanceId(context: BrowserContext, siteUrl: string, activityId: number): Promise<number> {
+  const page = await openSitePage(context, siteUrl, `mod/forum/view.php?id=${activityId}`);
   try {
     if ((await page.locator("body#page-mod-forum-view").count()) === 0) {
-      throw new NotAForumError(`Activity ${forumCmid} isn't a forum you can view. Take the id of a forum (module "forum") from the course structure.`);
+      throw new NotAForumError(`Activity ${activityId} isn't a forum you can view. Take the id of a forum (module "forum") from the course structure.`);
     }
     // The page's quick "new discussion" form carries it (also on an empty forum); discussion rows too.
     const id = await page.evaluate(() => {
@@ -149,7 +149,7 @@ export async function forumInstanceId(context: BrowserContext, siteUrl: string, 
         .map((element) => Number(element.getAttribute("data-forumid")))
         .find((value) => value > 0);
     });
-    if (!id) throw new NotAForumError(`Forum ${forumCmid}'s page doesn't say its id; you may not be allowed to post there.`);
+    if (!id) throw new NotAForumError(`Forum ${activityId}'s page doesn't say its id; you may not be allowed to post there.`);
     return id;
   } finally {
     await page.close().catch(() => undefined);

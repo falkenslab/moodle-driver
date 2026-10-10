@@ -57,7 +57,7 @@ Errors:
 Changes an existing activity through its form: only what's given changes, and the files already there stay.
 
 ```ts
-function updateActivity(context: BrowserContext, siteUrl: string, cmid: number, input: ActivityFields): Promise<CourseChange>;
+function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields): Promise<CourseChange>;
 ```
 
 It takes the same `ActivityFields` as `createActivity`, reading the activity's module and course from the form. Errors are the same `FormError` cases, and an `Error` for `content` on a type other than a page or label.
@@ -70,7 +70,7 @@ An activity's settings as its form holds them, without submitting it: what a pro
 function activitySettings(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
 ): Promise<{ id: number; module: string; courseId: number; name: string; description: string; fields: FormField[] }>;
 
 interface FormField {
@@ -111,7 +111,7 @@ function editActivity(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
-  cmid: number,
+  activityId: number,
   changes: { name?: string; visibility?: ActivityVisibility; sectionId?: number; beforeActivityId?: number },
 ): Promise<CourseChange>;
 ```
@@ -121,8 +121,8 @@ function editActivity(
 ## duplicateActivity and deleteActivity
 
 ```ts
-function duplicateActivity(context: BrowserContext, siteUrl: string, courseId: number, cmid: number): Promise<CourseChange>;
-function deleteActivity(context: BrowserContext, siteUrl: string, courseId: number, cmid: number): Promise<CourseChange>;
+function duplicateActivity(context: BrowserContext, siteUrl: string, courseId: number, activityId: number): Promise<CourseChange>;
+function deleteActivity(context: BrowserContext, siteUrl: string, courseId: number, activityId: number): Promise<CourseChange>;
 ```
 
 `duplicateActivity` makes a copy as the course page's "Duplicate" does (Moodle places it right after the original and names it with "(copy)"); `newId` is the copy's id. `deleteActivity` deletes the activity, with its participants' data (submissions, posts, attempts).

@@ -86,13 +86,13 @@ export function readQuizReport(page: Page, mode: "overview" | "responses"): Prom
 
 const MAX_PAGES = 100;
 
-async function readReport(context: BrowserContext, siteUrl: string, quizId: number, mode: "overview" | "responses"): Promise<QuizAttemptResult[]> {
+async function readReport(context: BrowserContext, siteUrl: string, activityId: number, mode: "overview" | "responses"): Promise<QuizAttemptResult[]> {
   const all = new Map<number, QuizAttemptResult>();
   for (let p = 0; p < MAX_PAGES; p++) {
-    const page = await openSitePage(context, siteUrl, `mod/quiz/report.php?id=${quizId}&mode=${mode}&attempts=enrolled_with&page=${p}`);
+    const page = await openSitePage(context, siteUrl, `mod/quiz/report.php?id=${activityId}&mode=${mode}&attempts=enrolled_with&page=${p}`);
     try {
       if ((await page.locator("body#page-mod-quiz-report").count()) === 0 || (await moodleErrorMessage(page)) !== undefined) {
-        throw new QuizError(`You can't see quiz ${quizId}'s results: ${(await moodleErrorMessage(page)) ?? "it isn't a quiz, or you aren't allowed"}`);
+        throw new QuizError(`You can't see quiz ${activityId}'s results: ${(await moodleErrorMessage(page)) ?? "it isn't a quiz, or you aren't allowed"}`);
       }
       const rows = await readQuizReport(page, mode);
       const fresh = rows.filter((row) => !all.has(row.attemptId));
@@ -110,10 +110,10 @@ async function readReport(context: BrowserContext, siteUrl: string, quizId: numb
  * the mark per question; with `responses`, also the answer per question from the responses report.
  * Every page of the report.
  */
-export async function quizResults(context: BrowserContext, siteUrl: string, quizId: number, { responses = false }: { responses?: boolean } = {}) {
-  const attempts = await readReport(context, siteUrl, quizId, "overview");
+export async function quizResults(context: BrowserContext, siteUrl: string, activityId: number, { responses = false }: { responses?: boolean } = {}) {
+  const attempts = await readReport(context, siteUrl, activityId, "overview");
   if (responses) {
-    const answered = new Map((await readReport(context, siteUrl, quizId, "responses")).map((row) => [row.attemptId, row]));
+    const answered = new Map((await readReport(context, siteUrl, activityId, "responses")).map((row) => [row.attemptId, row]));
     for (const attempt of attempts) {
       const other = answered.get(attempt.attemptId);
       for (const question of attempt.questions) {
@@ -122,5 +122,5 @@ export async function quizResults(context: BrowserContext, siteUrl: string, quiz
       }
     }
   }
-  return { quiz: { id: quizId }, attempts };
+  return { quiz: { id: activityId }, attempts };
 }

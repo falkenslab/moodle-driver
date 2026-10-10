@@ -12,12 +12,12 @@ Every participant's submission to an assignment.
 function assignmentSubmissions(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   options?: { includeContent?: boolean },
 ): Promise<{ assignment: { id: number; instanceId: number }; submissions: Submission[] }>;
 ```
 
-`cmid` is the assignment's course module id; `instanceId` is the assignment's own id, read once from its grader page. Each `Submission` has:
+`activityId` is the assignment's activity id (course module id); `instanceId` is the assignment's own id, read once from its grader page. Each `Submission` has:
 
 - `userId`, `fullName`: the participant.
 - `status`: Moodle's submission status, `"submitted"`, `"draft"`, `"new"`, `"reopened"`, or `"none"` without a submission.
@@ -40,7 +40,7 @@ Grades one participant as the grader does, and reads the grade back.
 function gradeSubmission(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   userId: number,
   input: {
     grade?: string;
@@ -81,7 +81,7 @@ Errors:
 An assignment's grading method and, for a rubric or a marking guide, its criteria with the ids `gradeSubmission` takes.
 
 ```ts
-function rubric(context: BrowserContext, siteUrl: string, cmid: number): Promise<{ assignment: { id: number }; method: "simple" | "rubric" | "guide"; criteria: GradingCriterion[] }>;
+function rubric(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ assignment: { id: number }; method: "simple" | "rubric" | "guide"; criteria: GradingCriterion[] }>;
 
 interface GradingCriterion {
   id: number;
@@ -102,7 +102,7 @@ It's read from the grading panel of the assignment's first participant, so it th
 Grants one or more participants an extension until a date, through the assignment's extension form (several at once, as its bulk action does).
 
 ```ts
-function grantExtension(context: BrowserContext, siteUrl: string, cmid: number, userIds: number[], until: Date): Promise<{ changed: string }>;
+function grantExtension(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], until: Date): Promise<{ changed: string }>;
 ```
 
 The date is written into the form's date selector in the person's time zone in Moodle (`M.cfg.usertimezone`), which is how Moodle reads it, so `until` is the exact moment whatever the program's time zone. Moodle's date selector has minutes, so seconds are dropped. Granting again replaces the extension.

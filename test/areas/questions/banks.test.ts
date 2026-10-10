@@ -35,7 +35,7 @@ function fakeBanks() {
   const routes = async (context: BrowserContext) => {
     await context.route(`${SITE}**`, async (route) => {
       const url = new URL(route.request().url());
-      const cmid = url.searchParams.get("cmid") ?? url.searchParams.get("update");
+      const activityId = url.searchParams.get("cmid") ?? url.searchParams.get("update");
       switch (url.pathname) {
         case "/question/banks.php":
           return html(
@@ -47,7 +47,7 @@ function fakeBanks() {
             ),
           );
         case "/course/modedit.php":
-          return html(route, page("page-mod-x-mod", `<form class="mform"><input type="hidden" name="modulename" value="${cmid === "5" ? "page" : cmid === "27" ? "quiz" : "qbank"}"></form>`));
+          return html(route, page("page-mod-x-mod", `<form class="mform"><input type="hidden" name="modulename" value="${activityId === "5" ? "page" : activityId === "27" ? "quiz" : "qbank"}"></form>`));
         case "/question/edit.php": {
           const cat = Number((url.searchParams.get("cat") ?? "14,70").split(",")[0]);
           const filter = `<div data-filterregion="filtertypedata"><select data-field-name="category"><option value="" disabled>Bank</option><option value="13">Top for Course bank</option><option value="14">&nbsp;&nbsp;&nbsp;Default for Course bank (${bank.get(14)!.length})</option></select></div>`;
@@ -70,7 +70,7 @@ function fakeBanks() {
             page(
               "page-question-bank-importquestions-import",
               `<script>var fp = {"repositories":{"5":{"id":"5","name":"Upload a file","type":"upload"}}};</script>
-<form class="mform" method="post" action="${SITE}question/bank/importquestions/import.php?cmid=${cmid}"><input type="hidden" name="newfile" value="777">
+<form class="mform" method="post" action="${SITE}question/bank/importquestions/import.php?cmid=${activityId}"><input type="hidden" name="newfile" value="777">
 <input type="radio" name="format" value="gift"><input type="radio" name="format" value="xml">
 <select name="category"><option value="14,70">Default</option><option value="13,70">Top</option></select>
 <input type="hidden" name="catfromfile" value="0"><input type="checkbox" name="catfromfile" value="1" checked><input type="hidden" name="contextfromfile" value="0"><input type="checkbox" name="contextfromfile" value="1" checked>
@@ -122,8 +122,8 @@ describe("questionBanks and questions", { skip: !browser && "no system browser" 
   it("lists the shared banks and the activities' own, and a bank's questions by category", async () => {
     const context = await open(fakeBanks());
     assert.deepEqual(await questionBanks(context, SITE, 3), [
-      { cmid: 36, name: "Course bank", type: "qbank", shared: true },
-      { cmid: 27, name: "Quiz one", type: "quiz", shared: false },
+      { id: 36, name: "Course bank", type: "qbank", shared: true },
+      { id: 27, name: "Quiz one", type: "quiz", shared: false },
     ]);
     assert.deepEqual(await questions(context, SITE, 36), {
       categories: [

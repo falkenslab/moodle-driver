@@ -186,10 +186,10 @@ export function readNavigation(page: Page): Promise<Record<number, number>> {
   });
 }
 
-export async function quizInfo(context: BrowserContext, siteUrl: string, quizId: number): Promise<QuizInfo> {
-  const page = await openSitePage(context, siteUrl, `mod/quiz/view.php?id=${quizId}`);
+export async function quizInfo(context: BrowserContext, siteUrl: string, activityId: number): Promise<QuizInfo> {
+  const page = await openSitePage(context, siteUrl, `mod/quiz/view.php?id=${activityId}`);
   try {
-    if ((await page.locator("body#page-mod-quiz-view").count()) === 0) throw NOT_A_QUIZ(quizId);
+    if ((await page.locator("body#page-mod-quiz-view").count()) === 0) throw NOT_A_QUIZ(activityId);
     return await readQuizView(page);
   } finally {
     await page.close().catch(() => undefined);
@@ -197,20 +197,20 @@ export async function quizInfo(context: BrowserContext, siteUrl: string, quizId:
 }
 
 /** Starts an attempt, or continues the one in progress, as the quiz page's button does; returns its id. */
-export async function startAttempt(context: BrowserContext, siteUrl: string, quizId: number): Promise<number> {
-  const page = await openSitePage(context, siteUrl, `mod/quiz/view.php?id=${quizId}`);
+export async function startAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<number> {
+  const page = await openSitePage(context, siteUrl, `mod/quiz/view.php?id=${activityId}`);
   try {
-    if ((await page.locator("body#page-mod-quiz-view").count()) === 0) throw NOT_A_QUIZ(quizId);
+    if ((await page.locator("body#page-mod-quiz-view").count()) === 0) throw NOT_A_QUIZ(activityId);
     const start = page.locator('form[action*="startattempt.php"] [type="submit"]').first();
-    if ((await start.count()) === 0) throw new QuizError(`You can't start an attempt at quiz ${quizId} now: ${(await readQuizView(page)).messages.join(" ") || "see the quiz's information"}.`);
+    if ((await start.count()) === 0) throw new QuizError(`You can't start an attempt at quiz ${activityId} now: ${(await readQuizView(page)).messages.join(" ") || "see the quiz's information"}.`);
     await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), start.click()]);
     // A time limit or a password first asks for confirmation on a form of its own.
     if ((await page.locator("#mod_quiz_preflight_form, form[action*='startattempt.php'] [name='submitbutton']").count()) > 0) {
-      if ((await page.locator("#mod_quiz_preflight_form [name='quizpassword']").count()) > 0) throw new QuizError(`Quiz ${quizId} asks for a password, which this server doesn't type.`);
+      if ((await page.locator("#mod_quiz_preflight_form [name='quizpassword']").count()) > 0) throw new QuizError(`Quiz ${activityId} asks for a password, which this server doesn't type.`);
       await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click("[name='submitbutton']")]);
     }
     const id = Number(new URL(page.url()).searchParams.get("attempt"));
-    if (!id) throw new QuizError(`Quiz ${quizId} didn't open an attempt (it landed on ${new URL(page.url()).pathname}).`);
+    if (!id) throw new QuizError(`Quiz ${activityId} didn't open an attempt (it landed on ${new URL(page.url()).pathname}).`);
     return id;
   } finally {
     await page.close().catch(() => undefined);
@@ -297,8 +297,8 @@ export async function readReview(context: BrowserContext, siteUrl: string, attem
 }
 
 /** Starts an attempt, or continues the one in progress, and gives its questions. */
-export async function startQuizAttempt(context: BrowserContext, siteUrl: string, quizId: number): Promise<{ attemptId: number; questions: Question[] }> {
-  const attemptId = await startAttempt(context, siteUrl, quizId);
+export async function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ attemptId: number; questions: Question[] }> {
+  const attemptId = await startAttempt(context, siteUrl, activityId);
   return { attemptId, questions: await readAttempt(context, siteUrl, attemptId) };
 }
 
@@ -339,13 +339,13 @@ export async function finishQuizAttempt(context: BrowserContext, siteUrl: string
 export async function setQuizOverride(
   context: BrowserContext,
   siteUrl: string,
-  quizId: number,
+  activityId: number,
   userId: number,
   { open, close, timeLimitMinutes, attempts }: { open?: Date; close?: Date; timeLimitMinutes?: number; attempts?: number },
 ): Promise<{ changed: string }> {
-  const page = await openForm(context, siteUrl, `mod/quiz/overrideedit.php?action=adduser&cmid=${quizId}`).catch((error: unknown) => {
+  const page = await openForm(context, siteUrl, `mod/quiz/overrideedit.php?action=adduser&cmid=${activityId}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
-    throw new QuizError(`You can't add overrides to activity ${quizId}: it isn't a quiz, or you aren't allowed.`);
+    throw new QuizError(`You can't add overrides to activity ${activityId}: it isn't a quiz, or you aren't allowed.`);
   });
   try {
     const values: Record<string, FieldValue> = { userid: String(userId) };
@@ -357,12 +357,12 @@ export async function setQuizOverride(
       (user) => (globalThis as unknown as { document: { querySelector(s: string): unknown } }).document.querySelector(`form.mform select[name="userid"] option[value="${user}"]`) !== null,
       userId,
     );
-    if (!offered) throw new QuizError(`User ${userId} can't get an override in quiz ${quizId}: not a participant, or already overridden (change that override in Moodle).`);
+    if (!offered) throw new QuizError(`User ${userId} can't get an override in quiz ${activityId}: not a participant, or already overridden (change that override in Moodle).`);
     await setFields(page, values);
     await submitForm(page, "submitbutton");
   } finally {
     await page.close().catch(() => undefined);
   }
   const what = [open && `opens ${open.toISOString()}`, close && `closes ${close.toISOString()}`, timeLimitMinutes !== undefined && `${timeLimitMinutes} minutes`, attempts !== undefined && `${attempts || "unlimited"} attempts`].filter(Boolean);
-  return { changed: `Override for user ${userId} in quiz ${quizId}: ${what.join(", ") || "the quiz's settings"}.` };
+  return { changed: `Override for user ${userId} in quiz ${activityId}: ${what.join(", ") || "the quiz's settings"}.` };
 }

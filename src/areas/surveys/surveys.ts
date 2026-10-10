@@ -114,10 +114,10 @@ export function readSurveyPage(page: Page, type: SurveyType, pageNumber: number)
 }
 
 /** Whether the person can answer now, and the survey's page message (completed, closed…). */
-async function surveyStatus(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType): Promise<{ canAnswer: boolean; intro: string; messages: string[] }> {
-  const page = await openSitePage(context, siteUrl, `mod/${type}/view.php?id=${cmid}`);
+async function surveyStatus(context: BrowserContext, siteUrl: string, activityId: number, type: SurveyType): Promise<{ canAnswer: boolean; intro: string; messages: string[] }> {
+  const page = await openSitePage(context, siteUrl, `mod/${type}/view.php?id=${activityId}`);
   try {
-    if ((await page.locator(`body#page-mod-${type}-view`).count()) === 0) throw new SurveyError(`Activity ${cmid} isn't a ${type} you can open. Take its id and module from the course structure.`);
+    if ((await page.locator(`body#page-mod-${type}-view`).count()) === 0) throw new SurveyError(`Activity ${activityId} isn't a ${type} you can open. Take its id and module from the course structure.`);
     return await page.evaluate(() => {
       const doc = (globalThis as unknown as { document: { querySelector(s: string): { innerText: string } | null; querySelectorAll(s: string): ArrayLike<{ innerText: string }> } }).document;
       return {
@@ -135,14 +135,14 @@ async function surveyStatus(context: BrowserContext, siteUrl: string, cmid: numb
 }
 
 /** Every page of the survey's form: feedback pages through `gopage`, questionnaire sections through `sec`. */
-async function readAllPages(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType): Promise<SurveyQuestion[]> {
+async function readAllPages(context: BrowserContext, siteUrl: string, activityId: number, type: SurveyType): Promise<SurveyQuestion[]> {
   const layout = LAYOUT[type];
   const questions: SurveyQuestion[] = [];
-  const page = await openSitePage(context, siteUrl, `mod/${type}/complete.php?id=${cmid}`);
+  const page = await openSitePage(context, siteUrl, `mod/${type}/complete.php?id=${activityId}`);
   try {
     for (let p = 0; p < 50; p++) {
       if (p > 0) {
-        const next = type === "feedback" ? `mod/feedback/complete.php?id=${cmid}&gopage=${p}` : `mod/questionnaire/complete.php?id=${cmid}&sec=${p + 1}`;
+        const next = type === "feedback" ? `mod/feedback/complete.php?id=${activityId}&gopage=${p}` : `mod/questionnaire/complete.php?id=${activityId}&sec=${p + 1}`;
         await page.goto(new URL(next, siteUrl).href, { waitUntil: "domcontentloaded" });
       }
       const found = await readSurveyPage(page, type, p);
@@ -160,12 +160,12 @@ async function readAllPages(context: BrowserContext, siteUrl: string, cmid: numb
 const surveyTypes = new Map<string, SurveyType>();
 
 /** Which survey module an activity is, from the page each module answers with its own view (body id). */
-export async function surveyType(context: BrowserContext, siteUrl: string, cmid: number): Promise<SurveyType> {
-  const key = `${siteUrl}|${cmid}`;
+export async function surveyType(context: BrowserContext, siteUrl: string, activityId: number): Promise<SurveyType> {
+  const key = `${siteUrl}|${activityId}`;
   const known = surveyTypes.get(key);
   if (known) return known;
   for (const type of ["questionnaire", "feedback"] as const) {
-    const page = await openSitePage(context, siteUrl, `mod/${type}/view.php?id=${cmid}`, { follow: false });
+    const page = await openSitePage(context, siteUrl, `mod/${type}/view.php?id=${activityId}`, { follow: false });
     try {
       if ((await page.locator(`body#page-mod-${type}-view`).count()) > 0) {
         surveyTypes.set(key, type);
@@ -175,40 +175,40 @@ export async function surveyType(context: BrowserContext, siteUrl: string, cmid:
       await page.close().catch(() => undefined);
     }
   }
-  throw new SurveyError(`Activity ${cmid} isn't a questionnaire or a feedback activity you can open. Take its id and module from the course structure.`);
+  throw new SurveyError(`Activity ${activityId} isn't a questionnaire or a feedback activity you can open. Take its id and module from the course structure.`);
 }
 
 /** A survey (questionnaire or feedback): whether it can be answered, its intro and messages, and its questions page by page. Its module is found when not given. */
-export async function getSurvey(context: BrowserContext, siteUrl: string, cmid: number, type?: SurveyType) {
-  type ??= await surveyType(context, siteUrl, cmid);
-  const status = await surveyStatus(context, siteUrl, cmid, type);
-  return { ...status, questions: status.canAnswer ? await readAllPages(context, siteUrl, cmid, type) : [] };
+export async function getSurvey(context: BrowserContext, siteUrl: string, activityId: number, type?: SurveyType) {
+  type ??= await surveyType(context, siteUrl, activityId);
+  const status = await surveyStatus(context, siteUrl, activityId, type);
+  return { ...status, questions: status.canAnswer ? await readAllPages(context, siteUrl, activityId, type) : [] };
 }
 
 /**
  * Fills the survey page by page with `responses` (field name → value) and submits it on the last
  * page. Every name is checked against the form first, so nothing is sent with a wrong one.
  */
-export function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }>;
-export function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ messages: string[] }>;
+export function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }>;
+export function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ messages: string[] }>;
 export async function submitSurvey(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   typeOrResponses: SurveyType | Record<string, string>,
   responsesOrOptions?: Record<string, string> | { type?: SurveyType },
 ): Promise<{ messages: string[] }> {
-  // (cmid, type, responses), as before 0.2, or (cmid, responses, { type }), the module found when not given.
+  // (activityId, type, responses), as before 0.2, or (activityId, responses, { type }), the module found when not given.
   const responses = (typeof typeOrResponses === "string" ? responsesOrOptions : typeOrResponses) as Record<string, string>;
-  const type = typeof typeOrResponses === "string" ? typeOrResponses : ((responsesOrOptions as { type?: SurveyType } | undefined)?.type ?? (await surveyType(context, siteUrl, cmid)));
+  const type = typeof typeOrResponses === "string" ? typeOrResponses : ((responsesOrOptions as { type?: SurveyType } | undefined)?.type ?? (await surveyType(context, siteUrl, activityId)));
   const layout = LAYOUT[type];
-  const status = await surveyStatus(context, siteUrl, cmid, type);
-  if (!status.canAnswer) throw new SurveyError(`You can't answer ${type} ${cmid} now: ${status.messages.join(" ") || "it's completed, closed or not open yet"}.`);
-  const known = new Set((await readAllPages(context, siteUrl, cmid, type)).flatMap((q) => q.fields.map((f) => f.name)));
+  const status = await surveyStatus(context, siteUrl, activityId, type);
+  if (!status.canAnswer) throw new SurveyError(`You can't answer ${type} ${activityId} now: ${status.messages.join(" ") || "it's completed, closed or not open yet"}.`);
+  const known = new Set((await readAllPages(context, siteUrl, activityId, type)).flatMap((q) => q.fields.map((f) => f.name)));
   const unknown = Object.keys(responses).filter((name) => !known.has(name));
   if (unknown.length > 0) throw new SurveyError(`The survey has no field ${unknown.join(", ")}: take the names from the survey's questions.`);
 
-  const page = await openSitePage(context, siteUrl, `mod/${type}/complete.php?id=${cmid}`);
+  const page = await openSitePage(context, siteUrl, `mod/${type}/complete.php?id=${activityId}`);
   try {
     for (let p = 0; p < 50; p++) {
       const here = new Set((await readSurveyPage(page, type, p)).flatMap((q) => q.fields.map((f) => f.name)));
@@ -243,5 +243,5 @@ export async function submitSurvey(
   } finally {
     await page.close().catch(() => undefined);
   }
-  return { messages: (await surveyStatus(context, siteUrl, cmid, type)).messages };
+  return { messages: (await surveyStatus(context, siteUrl, activityId, type)).messages };
 }

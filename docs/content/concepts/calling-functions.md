@@ -95,7 +95,7 @@ Moodle has several kinds of ids, and the driver takes the ones its pages show:
 | Question, category and bank ids | The question bank's | `questionBanks()`, `questions()` |
 | Grade item and category ids | The gradebook's | `gradebookSetup()`, `graderReport()` |
 
-Operations on an activity always take its course module id (the `id` in its URL), never its instance id: the driver finds the instance itself when Moodle needs it.
+Operations on an activity always take its course module id (the `id` in its URL), as a parameter named `activityId` whatever the module (a quiz, a forum, a question bank), never its instance id: the driver finds the instance itself when Moodle needs it.
 
 ## Results
 

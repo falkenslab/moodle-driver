@@ -15,11 +15,11 @@ export class CompletionError extends MoodleDriverError {
 }
 
 /** Moodle's refusals, in its terms. */
-function completionError(error: unknown, cmid: number): unknown {
+function completionError(error: unknown, activityId: number): unknown {
   if (!(error instanceof MoodleServiceError)) return error;
-  if (error.errorcode === "cannotmanualctrack") return new CompletionError(`Activity ${cmid} completes automatically (on view, grade, submission…): it can't be marked by hand.`);
-  if (error.errorcode === "completionnotenabled") return new CompletionError(`Completion isn't enabled in activity ${cmid}'s course.`);
-  if (error.errorcode === "nopermissions" || error.errorcode === "nopermission") return new CompletionError(`You aren't allowed to change completion in activity ${cmid}.`);
+  if (error.errorcode === "cannotmanualctrack") return new CompletionError(`Activity ${activityId} completes automatically (on view, grade, submission…): it can't be marked by hand.`);
+  if (error.errorcode === "completionnotenabled") return new CompletionError(`Completion isn't enabled in activity ${activityId}'s course.`);
+  if (error.errorcode === "nopermissions" || error.errorcode === "nopermission") return new CompletionError(`You aren't allowed to change completion in activity ${activityId}.`);
   return error;
 }
 
@@ -28,31 +28,31 @@ function completionError(error: unknown, cmid: number): unknown {
  * "Mark as done" button does; doing it twice changes nothing. An activity that completes on its own
  * gives a `CompletionError`.
  */
-export async function setCompletion(context: BrowserContext, siteUrl: string, cmid: number, done: boolean): Promise<{ changed: string }> {
+export async function setCompletion(context: BrowserContext, siteUrl: string, activityId: number, done: boolean): Promise<{ changed: string }> {
   try {
-    await callService(context, siteUrl, "core_completion_update_activity_completion_status_manually", { cmid, completed: done });
+    await callService(context, siteUrl, "core_completion_update_activity_completion_status_manually", { cmid: activityId, completed: done });
   } catch (error) {
-    throw completionError(error, cmid);
+    throw completionError(error, activityId);
   }
-  return { changed: `Activity ${cmid} marked ${done ? "done" : "not done"}.` };
+  return { changed: `Activity ${activityId} marked ${done ? "done" : "not done"}.` };
 }
 
 /** Sets someone's completion of an activity as a teacher does from the progress report; returns the state saved. */
 export async function overrideCompletion(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   userId: number,
   state: CompletionState,
 ): Promise<{ changed: string; state: CompletionState; overridden: boolean }> {
   let saved: { state: number; overrideby: number | null };
   try {
-    saved = await callService(context, siteUrl, "core_completion_override_activity_completion_status", { userid: userId, cmid, newstate: COMPLETION_STATES.indexOf(state) });
+    saved = await callService(context, siteUrl, "core_completion_override_activity_completion_status", { userid: userId, cmid: activityId, newstate: COMPLETION_STATES.indexOf(state) });
   } catch (error) {
-    throw completionError(error, cmid);
+    throw completionError(error, activityId);
   }
   const now = COMPLETION_STATES[saved.state] ?? "incomplete";
-  return { changed: `User ${userId}'s completion of activity ${cmid} set to ${now}.`, state: now, overridden: Boolean(saved.overrideby) };
+  return { changed: `User ${userId}'s completion of activity ${activityId} set to ${now}.`, state: now, overridden: Boolean(saved.overrideby) };
 }
 
 export interface CompletionCell {

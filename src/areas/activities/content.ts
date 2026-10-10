@@ -59,12 +59,12 @@ function chapter(title: string, body: string): { title: string; text: string } {
 export async function activityContent(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   type: ContentType,
   { trail = "realistic", onProgress }: { trail?: Trail; onProgress?: (secondsRead: number) => void } = {},
 ): Promise<ActivityContent> {
   const realistic = trail === "realistic";
-  const output: ActivityContent = { activity: { id: cmid, type }, trail };
+  const output: ActivityContent = { activity: { id: activityId, type }, trail };
   let secondsRead = 0;
   const readAsAPerson = async (text: string) => {
     if (!realistic) return;
@@ -78,14 +78,14 @@ export async function activityContent(
     const page = await openSitePage(context, siteUrl, path);
     if ((await page.locator(ready).count()) === 0) {
       await page.close().catch(() => undefined);
-      throw new NotViewableError(`Activity ${cmid} isn't a ${type} you can view. Take its id and module from the course structure.`);
+      throw new NotViewableError(`Activity ${activityId} isn't a ${type} you can view. Take its id and module from the course structure.`);
     }
     return page;
   };
 
   if (type === "page" || type === "label") {
-    const path = type === "page" ? `mod/page/view.php?id=${cmid}` : `mod/label/view.php?id=${cmid}`;
-    const selector = type === "page" ? "#region-main .generalbox" : `[data-for="cmitem"][data-id="${cmid}"] .activity-altcontent`;
+    const path = type === "page" ? `mod/page/view.php?id=${activityId}` : `mod/label/view.php?id=${activityId}`;
+    const selector = type === "page" ? "#region-main .generalbox" : `[data-for="cmitem"][data-id="${activityId}"] .activity-altcontent`;
     const page = await view(path, selector);
     output.text = (await readTexts(page, selector))[0] ?? "";
     output.media = await readMedia(page, selector);
@@ -96,7 +96,7 @@ export async function activityContent(
     const media: MediaItem[] = [];
     if (realistic) {
       // Chapter by chapter, following "next", as a reader does.
-      const page = await view(`mod/book/view.php?id=${cmid}`, "#region-main .book_content");
+      const page = await view(`mod/book/view.php?id=${activityId}`, "#region-main .book_content");
       try {
         for (let i = 0; i < MAX_CHAPTERS; i++) {
           const title = (await readTexts(page, "#region-main .book_content h3, #region-main .book_content h2"))[0] ?? "";
@@ -112,7 +112,7 @@ export async function activityContent(
         await page.close().catch(() => undefined);
       }
     } else {
-      const page = await view(`mod/book/tool/print/index.php?id=${cmid}`, ".book_chapter");
+      const page = await view(`mod/book/tool/print/index.php?id=${activityId}`, ".book_chapter");
       const titles = await readTexts(page, ".book_chapter h2, .book_chapter h3");
       const bodies = await readTexts(page, ".book_chapter");
       output.chapters = bodies.map((body, i) => chapter(titles[i] ?? "", body));
@@ -123,12 +123,12 @@ export async function activityContent(
     output.media = [...new Map(media.map((item) => [item.url, item])).values()];
   } else if (type === "url") {
     // forceview logs the view and shows the link instead of leaving the site.
-    const page = await view(`mod/url/view.php?id=${cmid}&forceview=1`, ".urlworkaround a");
+    const page = await view(`mod/url/view.php?id=${activityId}&forceview=1`, ".urlworkaround a");
     output.url = (await links(page, ".urlworkaround a"))[0]?.url;
     await page.close();
   } else {
     const [path, selector] =
-      type === "resource" ? [`mod/resource/view.php?id=${cmid}&forceview=1`, ".resourceworkaround a"] : [`mod/folder/view.php?id=${cmid}`, '.foldertree a[href*="pluginfile.php"]'];
+      type === "resource" ? [`mod/resource/view.php?id=${activityId}&forceview=1`, ".resourceworkaround a"] : [`mod/folder/view.php?id=${activityId}`, '.foldertree a[href*="pluginfile.php"]'];
     const page = await view(path, selector);
     output.files = await links(page, selector);
     await page.close();

@@ -24,8 +24,8 @@ describe("readDiscussionRows", { skip: !browser && "no system browser" }, () => 
     const page = await browser!.newPage();
     await page.setContent(FORUM_PAGE);
     assert.deepEqual(await readDiscussionRows(page), [
-      { id: 2, subject: "Can a variable change?", author: "Ada Lovelace", started: 1_790_000_000, lastPost: { author: "Alan Turing", time: 1_790_000_600, postId: 3 }, replies: 1, locked: false, pinned: true, forumId: 1 },
-      { id: 1, subject: "Bool question", author: "Grace Hopper", started: 1_789_000_000, lastPost: { author: "Grace Hopper", time: 1_789_000_000, postId: 1 }, replies: 0, locked: true, pinned: false, forumId: 1 },
+      { id: 2, subject: "Can a variable change?", author: "Ada Lovelace", started: 1_790_000_000, lastPost: { author: "Alan Turing", time: 1_790_000_600, postId: 3 }, replies: 1, locked: false, pinned: true, forumInstanceId: 1 },
+      { id: 1, subject: "Bool question", author: "Grace Hopper", started: 1_789_000_000, lastPost: { author: "Grace Hopper", time: 1_789_000_000, postId: 1 }, replies: 0, locked: true, pinned: false, forumInstanceId: 1 },
     ]);
     await page.close();
   });

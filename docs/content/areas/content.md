@@ -10,7 +10,7 @@ The signatures below are the functions'. Each operation is also a method of the 
 function activityContent(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   type: ContentType,
   options?: { trail?: Trail; onProgress?: (secondsRead: number) => void },
 ): Promise<ActivityContent>;
@@ -19,7 +19,7 @@ type ContentType = "page" | "book" | "label" | "url" | "resource" | "folder"; //
 type Trail = "realistic" | "fast"; // TRAILS
 ```
 
-`cmid` is the activity's course module id and `type` its module, both from the [course structure](courses.md) (`activity.id` and `activity.type`). Options:
+`activityId` is the activity's id (course module id) and `type` its module, both from the [course structure](courses.md) (`activity.id` and `activity.type`). Options:
 
 - `trail`: `"realistic"` (the default) or `"fast"`.
 - `onProgress`: called every few seconds while the realistic trail pauses to read, with the seconds read so far in the whole call; useful to keep a caller waiting or show progress.

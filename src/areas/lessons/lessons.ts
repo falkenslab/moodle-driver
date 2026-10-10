@@ -113,11 +113,11 @@ export function readLessonPage(page: Page): Promise<LessonPage> {
 }
 
 /** Opens the lesson where the person is: Moodle asks whether to go on from the last page seen, and they do. */
-async function openLesson(context: BrowserContext, siteUrl: string, cmid: number): Promise<Page> {
-  const page = await openSitePage(context, siteUrl, `mod/lesson/view.php?id=${cmid}`);
+async function openLesson(context: BrowserContext, siteUrl: string, activityId: number): Promise<Page> {
+  const page = await openSitePage(context, siteUrl, `mod/lesson/view.php?id=${activityId}`);
   try {
     if ((await page.locator("body#page-mod-lesson-view").count()) === 0) {
-      throw new LessonError(`Activity ${cmid} isn't a lesson you can open. Take the id of a lesson (module "lesson") from the course structure.`);
+      throw new LessonError(`Activity ${activityId} isn't a lesson you can open. Take the id of a lesson (module "lesson") from the course structure.`);
     }
     const resume = page.locator('#region-main a[href*="startlastseen=yes"]');
     if ((await resume.count()) > 0) await page.goto((await resume.first().getAttribute("href"))!, { waitUntil: "domcontentloaded" });
@@ -129,8 +129,8 @@ async function openLesson(context: BrowserContext, siteUrl: string, cmid: number
 }
 
 /** The lesson page the person is on (starting the lesson the first time). */
-export async function lessonPage(context: BrowserContext, siteUrl: string, cmid: number): Promise<LessonPage> {
-  const page = await openLesson(context, siteUrl, cmid);
+export async function lessonPage(context: BrowserContext, siteUrl: string, activityId: number): Promise<LessonPage> {
+  const page = await openLesson(context, siteUrl, activityId);
   try {
     return await readLessonPage(page);
   } finally {
@@ -147,11 +147,11 @@ export async function lessonPage(context: BrowserContext, siteUrl: string, cmid:
 export async function answerLessonPage(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   answer: { button?: string | number; responses?: Record<string, string> },
   { trail = "realistic", onProgress }: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void } = {},
 ): Promise<{ feedback?: LessonPage; page: LessonPage }> {
-  const page = await openLesson(context, siteUrl, cmid);
+  const page = await openLesson(context, siteUrl, activityId);
   try {
     const current = await readLessonPage(page);
     // What the answer can't be is told before the reading pause, not after it.

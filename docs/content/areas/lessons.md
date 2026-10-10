@@ -42,7 +42,7 @@ interface LessonField {
 The page the person is on, without answering anything.
 
 ```ts
-function lessonPage(context: BrowserContext, siteUrl: string, cmid: number): Promise<LessonPage>;
+function lessonPage(context: BrowserContext, siteUrl: string, activityId: number): Promise<LessonPage>;
 ```
 
 The first time, this opens the lesson's first page, which starts the person's attempt as opening it in Moodle does. When the person has been through the lesson before, Moodle asks whether to go on from the last page they saw: the driver accepts, so it reads where the person was. A lesson that has ended for the person shows its end page (`kind: "end"`). A page that is none of content, question or feedback comes as `end` with Moodle's text (a lesson not open yet, for instance): check `text` before taking `end` as the lesson's real end.
@@ -55,7 +55,7 @@ Answers the page the person is on, and returns Moodle's feedback when it gives o
 function answerLessonPage(
   context: BrowserContext,
   siteUrl: string,
-  cmid: number,
+  activityId: number,
   answer: { button?: string | number; responses?: Record<string, string> },
   options?: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void },
 ): Promise<{ feedback?: LessonPage; page: LessonPage }>;

@@ -32,14 +32,14 @@ export function readAssignmentIds(page: Page): Promise<AssignmentIds | undefined
   });
 }
 
-export async function assignmentIds(context: BrowserContext, siteUrl: string, cmid: number): Promise<AssignmentIds> {
-  const key = `${siteUrl}|${cmid}`;
+export async function assignmentIds(context: BrowserContext, siteUrl: string, activityId: number): Promise<AssignmentIds> {
+  const key = `${siteUrl}|${activityId}`;
   const cached = idCache.get(key);
   if (cached) return cached;
-  const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grader`);
+  const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=grader`);
   try {
     const ids = await readAssignmentIds(page);
-    if (!ids) throw new NotAnAssignmentError(`Activity ${cmid} isn't an assignment you can grade (its grader page has no assignment). Take the id of an assignment (module "assign").`);
+    if (!ids) throw new NotAnAssignmentError(`Activity ${activityId} isn't an assignment you can grade (its grader page has no assignment). Take the id of an assignment (module "assign").`);
     idCache.set(key, ids);
     return ids;
   } finally {

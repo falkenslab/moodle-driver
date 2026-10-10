@@ -82,41 +82,41 @@ export function readChoice(page: Page): Promise<Omit<Choice, "id">> {
   }, null);
 }
 
-async function openChoice(context: BrowserContext, siteUrl: string, cmid: number): Promise<Page> {
-  const page = await openSitePage(context, siteUrl, `mod/choice/view.php?id=${cmid}`);
+async function openChoice(context: BrowserContext, siteUrl: string, activityId: number): Promise<Page> {
+  const page = await openSitePage(context, siteUrl, `mod/choice/view.php?id=${activityId}`);
   if ((await page.locator("body#page-mod-choice-view").count()) === 0) {
     await page.close().catch(() => undefined);
-    throw new ChoiceError(`Activity ${cmid} isn't a choice you can open. Take the id of a choice (module "choice") from the course structure.`);
+    throw new ChoiceError(`Activity ${activityId} isn't a choice you can open. Take the id of a choice (module "choice") from the course structure.`);
   }
   return page;
 }
 
 /** A choice: its options, whether it can be answered or changed, and the person's answer. */
-export async function getChoice(context: BrowserContext, siteUrl: string, cmid: number): Promise<Choice> {
-  const page = await openChoice(context, siteUrl, cmid);
+export async function getChoice(context: BrowserContext, siteUrl: string, activityId: number): Promise<Choice> {
+  const page = await openChoice(context, siteUrl, activityId);
   try {
-    return { id: cmid, ...(await readChoice(page)) };
+    return { id: activityId, ...(await readChoice(page)) };
   } finally {
     await page.close().catch(() => undefined);
   }
 }
 
 /** Answers a choice with one option (several where it allows them) by id, as "Save my choice" does; returns the choice afterwards. */
-export async function answerChoice(context: BrowserContext, siteUrl: string, cmid: number, optionIds: number[]): Promise<Choice> {
+export async function answerChoice(context: BrowserContext, siteUrl: string, activityId: number, optionIds: number[]): Promise<Choice> {
   if (optionIds.length === 0) throw new ChoiceError("Give the id of the option to choose.");
-  const page = await openChoice(context, siteUrl, cmid);
+  const page = await openChoice(context, siteUrl, activityId);
   try {
     const choice = await readChoice(page);
     if (!choice.canAnswer) {
       // Moodle explains only some cases (closed before answering); an answered, closed choice just shows the answer.
       const answered = choice.answer.length > 0 ? ` Your answer stays: ${choice.answer.join(", ")}.` : "";
       const said = choice.messages.length > 0 ? ` Moodle says: ${choice.messages.join(" ")}` : "";
-      throw new ChoiceError(`You can't answer choice ${cmid} now: it's closed, not open yet, or doesn't let answers change.${answered}${said}`);
+      throw new ChoiceError(`You can't answer choice ${activityId} now: it's closed, not open yet, or doesn't let answers change.${answered}${said}`);
     }
-    if (!choice.multiple && optionIds.length > 1) throw new ChoiceError(`Choice ${cmid} takes one option only.`);
+    if (!choice.multiple && optionIds.length > 1) throw new ChoiceError(`Choice ${activityId} takes one option only.`);
     for (const id of optionIds) {
       const option = choice.options.find((o) => o.id === id);
-      if (!option) throw new ChoiceError(`Choice ${cmid} has no option ${id}; its options are: ${choice.options.map((o) => `${o.id} "${o.text}"`).join(", ")}.`);
+      if (!option) throw new ChoiceError(`Choice ${activityId} has no option ${id}; its options are: ${choice.options.map((o) => `${o.id} "${o.text}"`).join(", ")}.`);
       if (option.full) throw new ChoiceError(`Option ${id} "${option.text}" is full.`);
     }
     const form = '#region-main form[action*="/mod/choice/view.php"]';
@@ -129,5 +129,5 @@ export async function answerChoice(context: BrowserContext, siteUrl: string, cmi
   } finally {
     await page.close().catch(() => undefined);
   }
-  return getChoice(context, siteUrl, cmid);
+  return getChoice(context, siteUrl, activityId);
 }

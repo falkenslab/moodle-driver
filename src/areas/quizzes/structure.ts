@@ -59,21 +59,21 @@ export function readQuizSlots(page: Page): Promise<QuizSlot[]> {
   });
 }
 
-async function openEditPage(context: BrowserContext, siteUrl: string, quizId: number): Promise<Page> {
-  const page = await openSitePage(context, siteUrl, `mod/quiz/edit.php?cmid=${quizId}`);
+async function openEditPage(context: BrowserContext, siteUrl: string, activityId: number): Promise<Page> {
+  const page = await openSitePage(context, siteUrl, `mod/quiz/edit.php?cmid=${activityId}`);
   if ((await page.locator("body#page-mod-quiz-edit").count()) === 0) {
     const reason = await moodleErrorMessage(page);
     await page.close().catch(() => undefined);
-    throw new QuizError(`You can't edit quiz ${quizId}: ${reason ?? "it isn't a quiz, or you aren't allowed"}.`);
+    throw new QuizError(`You can't edit quiz ${activityId}: ${reason ?? "it isn't a quiz, or you aren't allowed"}.`);
   }
   return page;
 }
 
 /** A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark. */
-export async function quizStructure(context: BrowserContext, siteUrl: string, quizId: number): Promise<{ quiz: { id: number }; slots: QuizSlot[] }> {
-  const page = await openEditPage(context, siteUrl, quizId);
+export async function quizStructure(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ quiz: { id: number }; slots: QuizSlot[] }> {
+  const page = await openEditPage(context, siteUrl, activityId);
   try {
-    return { quiz: { id: quizId }, slots: await readQuizSlots(page) };
+    return { quiz: { id: activityId }, slots: await readQuizSlots(page) };
   } finally {
     await page.close().catch(() => undefined);
   }
@@ -87,15 +87,15 @@ export async function quizStructure(context: BrowserContext, siteUrl: string, qu
 export async function addQuestionsToQuiz(
   context: BrowserContext,
   siteUrl: string,
-  quizId: number,
+  activityId: number,
   { questionIds = [], random, page: onPage }: { questionIds?: number[]; random?: { categoryId: number; count: number; includeSubcategories?: boolean }; page?: number },
 ): Promise<{ changed: string; quiz: { id: number }; slots: QuizSlot[] }> {
   if (questionIds.length === 0 && !random) throw new QuizError("Give the questions to add: their ids, or a category to draw random ones from.");
-  const page = await openEditPage(context, siteUrl, quizId);
+  const page = await openEditPage(context, siteUrl, activityId);
   try {
     // The page's add menus are empty when the quiz can't change (it has attempts).
     if ((await page.locator(".add-menu-outer *").count()) === 0) {
-      throw new QuizError(`Quiz ${quizId} can't change its questions now: it has attempts already. Make a new quiz, or delete its attempts in Moodle.`);
+      throw new QuizError(`Quiz ${activityId} can't change its questions now: it has attempts already. Make a new quiz, or delete its attempts in Moodle.`);
     }
     const before = (await readQuizSlots(page)).length;
     const posts: Record<string, string>[] = [];
@@ -116,15 +116,15 @@ export async function addQuestionsToQuiz(
           });
           return response.status;
         },
-        { fields, quizId },
+        { fields, quizId: activityId },
       );
-      if (status >= 400) throw new QuizError(`Moodle answered ${status} adding questions to quiz ${quizId}: check the questions' ids and the category.`);
+      if (status >= 400) throw new QuizError(`Moodle answered ${status} adding questions to quiz ${activityId}: check the questions' ids and the category.`);
     }
     await page.reload({ waitUntil: "domcontentloaded" });
     const slots = await readQuizSlots(page);
     const added = slots.length - before;
-    if (added <= 0) throw new QuizError(`Moodle added no question to quiz ${quizId}: check the questions' ids (from the bank) and the category.`);
-    return { changed: `Added ${added} question${added === 1 ? "" : "s"} to quiz ${quizId}.`, quiz: { id: quizId }, slots };
+    if (added <= 0) throw new QuizError(`Moodle added no question to quiz ${activityId}: check the questions' ids (from the bank) and the category.`);
+    return { changed: `Added ${added} question${added === 1 ? "" : "s"} to quiz ${activityId}.`, quiz: { id: activityId }, slots };
   } finally {
     await page.close().catch(() => undefined);
   }

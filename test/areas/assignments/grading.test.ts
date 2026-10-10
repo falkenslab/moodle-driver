@@ -9,12 +9,12 @@ after(() => browser?.close());
 const DUE = 1_800_000_000;
 
 // A made-up assignment: instance cmid*10 in context cmid*100, two participants, one of them submitted.
-function submissionsSite(cmid: number): FakeMoodleState {
+function submissionsSite(activityId: number): FakeMoodleState {
   return {
     user: { id: 3, fullName: "Teacher" },
     serviceCalls: [],
     // Each course module gets its own grader page: the driver caches the ids per process.
-    bodies: { "/mod/assign/view.php": `<div data-assignmentid="${cmid * 10}" data-contextid="${cmid * 100}"></div>` },
+    bodies: { "/mod/assign/view.php": `<div data-assignmentid="${activityId * 10}" data-contextid="${activityId * 100}"></div>` },
     services: {
       mod_assign_list_participants: () => [
         { id: 7, fullname: "Ada Lovelace", submitted: true, requiregrading: true, grantedextension: false, submissionstatus: "submitted" },
@@ -134,11 +134,11 @@ const rubricPanel = (graded: boolean) => `<form class="gradeform mform"><input t
 <input type="hidden" name="sendstudentnotifications" value="1"></form>`;
 
 describe("rubric", { skip: !browser && "no system browser" }, () => {
-  function rubricSite(cmid: number) {
+  function rubricSite(activityId: number) {
     const submitted: Record<string, unknown>[] = [];
     const state: FakeMoodleState = {
       user: { id: 3, fullName: "Teacher" },
-      bodies: { "/mod/assign/view.php": `<div data-assignmentid="${cmid * 10}" data-contextid="${cmid * 100}"></div>` },
+      bodies: { "/mod/assign/view.php": `<div data-assignmentid="${activityId * 10}" data-contextid="${activityId * 100}"></div>` },
       services: {
         mod_assign_list_participants: () => [{ id: 7, fullname: "Ada Lovelace", submitted: true, requiregrading: true, grantedextension: false, submissionstatus: "submitted" }],
         core_get_fragment: () => ({ html: rubricPanel(submitted.length > 0), javascript: "" }),

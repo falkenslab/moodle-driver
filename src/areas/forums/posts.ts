@@ -22,8 +22,8 @@ export interface ForumDiscussion {
 }
 
 /** A forum's discussions, as its page lists them: who started each, replies, last post. */
-export async function forumDiscussions(context: BrowserContext, siteUrl: string, forumCmid: number): Promise<ForumDiscussion[]> {
-  const rows = await listDiscussions(context, siteUrl, forumCmid);
+export async function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number): Promise<ForumDiscussion[]> {
+  const rows = await listDiscussions(context, siteUrl, activityId);
   return rows.map((row) => ({
     id: row.id,
     subject: row.subject,
@@ -59,7 +59,7 @@ export async function discussion(context: BrowserContext, siteUrl: string, discu
     posts.map((post) => post.message),
   );
   return {
-    discussion: { id: discussionId, forumId: forumid, courseId: courseid },
+    discussion: { id: discussionId, forumInstanceId: forumid, courseId: courseid },
     posts: posts.map(
       (post, i): ForumPost => ({
         id: post.id,
@@ -126,12 +126,12 @@ export async function replyToPost(context: BrowserContext, siteUrl: string, post
 }
 
 /** Starts a discussion in a forum; returns its id. */
-export async function startDiscussion(context: BrowserContext, siteUrl: string, forumCmid: number, input: PostInput & { subject: string }) {
-  const instance = await forumInstanceId(context, siteUrl, forumCmid);
-  const before = new Set((await listDiscussions(context, siteUrl, forumCmid)).map((d) => d.id));
+export async function startDiscussion(context: BrowserContext, siteUrl: string, activityId: number, input: PostInput & { subject: string }) {
+  const instance = await forumInstanceId(context, siteUrl, activityId);
+  const before = new Set((await listDiscussions(context, siteUrl, activityId)).map((d) => d.id));
   await post(context, siteUrl, `mod/forum/post.php?forum=${instance}`, input);
-  const created = (await listDiscussions(context, siteUrl, forumCmid)).find((d) => !before.has(d.id));
-  return { changed: `Started discussion ${created?.id ?? "?"} "${input.subject}" in forum ${forumCmid}.`, discussionId: created?.id };
+  const created = (await listDiscussions(context, siteUrl, activityId)).find((d) => !before.has(d.id));
+  return { changed: `Started discussion ${created?.id ?? "?"} "${input.subject}" in forum ${activityId}.`, discussionId: created?.id };
 }
 
 /**
@@ -141,13 +141,13 @@ export async function startDiscussion(context: BrowserContext, siteUrl: string, 
 export async function setDiscussionState(
   context: BrowserContext,
   siteUrl: string,
-  forumCmid: number,
+  activityId: number,
   discussionId: number,
   { pinned, locked }: { pinned?: boolean; locked?: boolean },
 ): Promise<{ changed: string; discussion?: ForumDiscussion }> {
-  const find = async () => (await forumDiscussions(context, siteUrl, forumCmid)).find((d) => d.id === discussionId);
-  const row = (await listDiscussions(context, siteUrl, forumCmid)).find((d) => d.id === discussionId);
-  if (!row) throw new NotAForumError(`Forum ${forumCmid} has no discussion ${discussionId}. Take its id from the forum's discussions.`);
+  const find = async () => (await forumDiscussions(context, siteUrl, activityId)).find((d) => d.id === discussionId);
+  const row = (await listDiscussions(context, siteUrl, activityId)).find((d) => d.id === discussionId);
+  if (!row) throw new NotAForumError(`Forum ${activityId} has no discussion ${discussionId}. Take its id from the forum's discussions.`);
   const done: string[] = [];
   if (pinned !== undefined && pinned !== row.pinned) {
     await callService(context, siteUrl, "mod_forum_set_pin_state", { discussionid: discussionId, targetstate: pinned ? 1 : 0 });
@@ -155,9 +155,9 @@ export async function setDiscussionState(
   }
   if (locked !== undefined && locked !== row.locked) {
     // Rows don't always carry the forum's id (confirmed empirically, 5.2): its page does.
-    const forumId = row.forumId ?? (await forumInstanceId(context, siteUrl, forumCmid));
+    const instance = row.forumInstanceId ?? (await forumInstanceId(context, siteUrl, activityId));
     // The service takes the current lock and switches it: 0 locks now, anything else unlocks.
-    await callService(context, siteUrl, "mod_forum_set_lock_state", { forumid: forumId, discussionid: discussionId, targetstate: locked ? 0 : 1 });
+    await callService(context, siteUrl, "mod_forum_set_lock_state", { forumid: instance, discussionid: discussionId, targetstate: locked ? 0 : 1 });
     done.push(locked ? "locked" : "unlocked");
   }
   return { changed: done.length > 0 ? `Discussion ${discussionId} ${done.join(" and ")}.` : "Nothing to change.", discussion: await find() };

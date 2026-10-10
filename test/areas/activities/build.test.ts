@@ -140,7 +140,7 @@ function fakeCourse(): { state: FakeMoodleState; renames: unknown[] } {
   };
   let nextId = 30;
   const renames: unknown[] = [];
-  const sectionOf = (cmid: string) => course.section.find((s) => s.cmlist!.includes(cmid))!;
+  const sectionOf = (activityId: string) => course.section.find((s) => s.cmlist!.includes(activityId))!;
   const renumber = () => course.section.forEach((s, i) => (s.number = i));
   const state: FakeMoodleState = {
     user: { id: 3, fullName: "Teacher" },

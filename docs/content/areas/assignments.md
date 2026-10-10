@@ -9,7 +9,7 @@ The signatures below are the functions'. Each operation is also a method of the 
 The assignment as the student's page shows it.
 
 ```ts
-function studentAssignment(context: BrowserContext, siteUrl: string, cmid: number): Promise<StudentAssignment>;
+function studentAssignment(context: BrowserContext, siteUrl: string, activityId: number): Promise<StudentAssignment>;
 
 interface StudentAssignment {
   description: string;
@@ -45,7 +45,7 @@ It throws `SubmissionError` when the id isn't an assignment the person can open 
 Saves the submission's online text and adds files, as "Save changes" on the edit page does, and returns the assignment afterwards.
 
 ```ts
-function saveSubmission(context: BrowserContext, siteUrl: string, cmid: number, input: { onlineText?: string; files?: string[] }): Promise<StudentAssignment>;
+function saveSubmission(context: BrowserContext, siteUrl: string, activityId: number, input: { onlineText?: string; files?: string[] }): Promise<StudentAssignment>;
 ```
 
 - `onlineText`: HTML, which replaces the online text through its editor.
@@ -66,7 +66,7 @@ Errors (`SubmissionError` unless said otherwise):
 Submits the saved submission for grading and returns the assignment afterwards.
 
 ```ts
-function submitForGrading(context: BrowserContext, siteUrl: string, cmid: number, options?: { acceptStatement?: boolean } | boolean): Promise<StudentAssignment>;
+function submitForGrading(context: BrowserContext, siteUrl: string, activityId: number, options?: { acceptStatement?: boolean } | boolean): Promise<StudentAssignment>;
 ```
 
 Some sites ask students to accept a statement before submitting ("This submission is my own work…"). When the confirmation form has that statement and `acceptStatement` isn't `true` (it's `false` by default; a bare boolean, as before 0.2, is accepted too), nothing is submitted and it throws `SubmissionError` with the statement's text, so the program can show it to the person and call again with `{ acceptStatement: true }` once they agree. Without a statement, `acceptStatement` is ignored.

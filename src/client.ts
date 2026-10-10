@@ -169,11 +169,11 @@ export interface Moodle extends MoodleMethods {
   /** Calls one of Moodle's AJAX services as the logged-in person. */
   callService<T>(methodname: string, args: Record<string, unknown>): Promise<T>;
   /** `activityContent`, at the object's `trail` unless given. */
-  activityContent(cmid: number, type: ContentType, options?: PaceOptions<(secondsRead: number) => void>): Promise<ActivityContent>;
+  activityContent(activityId: number, type: ContentType, options?: PaceOptions<(secondsRead: number) => void>): Promise<ActivityContent>;
   /** `answerQuizQuestions`, at the object's `trail` unless given. */
   answerQuizQuestions(attemptId: number, answers: Parameters<typeof answerQuizQuestions>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ attemptId: number; questions: Question[] }>;
   /** `answerLessonPage`, at the object's `trail` unless given. */
-  answerLessonPage(cmid: number, answer: Parameters<typeof answerLessonPage>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ feedback?: LessonPage; page: LessonPage }>;
+  answerLessonPage(activityId: number, answer: Parameters<typeof answerLessonPage>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ feedback?: LessonPage; page: LessonPage }>;
   /** `downloadFile`, into the object's `downloadDir` unless given a folder. */
   downloadFile(url: string, destDir?: string): Promise<DownloadedFile>;
   /** The working tab a program drives itself (ADR-007). */
@@ -228,9 +228,9 @@ export function createMoodle(options: MoodleOptions): Moodle {
     logIn: (loginOptions = {}) => logIn(browser, site, { ...loginOptions, timeoutMs: loginOptions.timeoutMs ?? defaults.loginTimeoutMs ?? LOGIN_TIMEOUT_MS }),
     publicSiteInfo: () => publicSiteInfo(site),
     callService: async <T>(methodname: string, args: Record<string, unknown>) => callService<T>(await browser.context(), site, methodname, args),
-    activityContent: async (cmid, type, given) => activityContent(await browser.context(), site, cmid, type, pace(given, onProgress && ((read: number) => onProgress(read)))),
+    activityContent: async (activityId, type, given) => activityContent(await browser.context(), site, activityId, type, pace(given, onProgress && ((read: number) => onProgress(read)))),
     answerQuizQuestions: async (attemptId, answers, given) => answerQuizQuestions(await browser.context(), site, attemptId, answers, pace(given, onProgress)),
-    answerLessonPage: async (cmid, answer, given) => answerLessonPage(await browser.context(), site, cmid, answer, pace(given, onProgress)),
+    answerLessonPage: async (activityId, answer, given) => answerLessonPage(await browser.context(), site, activityId, answer, pace(given, onProgress)),
     downloadFile: async (url, destDir) => {
       const folder = destDir ?? defaults.downloadDir;
       if (!folder) throw new MoodleDriverError("Give downloadFile a folder, or createMoodle a downloadDir.", "invalid-input");

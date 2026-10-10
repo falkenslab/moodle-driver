@@ -20,7 +20,7 @@ export class QuestionBankError extends MoodleDriverError {
 
 export interface QuestionBank {
   /** The bank's course module id: a qbank activity's, or the quiz's whose private bank it is. */
-  cmid: number;
+  id: number;
   name: string;
   /** The module: "qbank" for a shared bank, "quiz"… for an activity's own. */
   type: string;
@@ -48,7 +48,7 @@ export async function questionBanks(context: BrowserContext, siteUrl: string, co
         const link = item.querySelector('a[href*="/mod/"][href*="view.php"]');
         const match = /\/mod\/([a-z0-9_]+)\/view\.php\?(?:.*&)?id=(\d+)/.exec(link?.getAttribute("href") ?? "");
         if (!match) return [];
-        return [{ cmid: Number(match[2]), name: (link?.textContent ?? "").replace(/\s+/g, " ").trim(), type: match[1]!, shared: item.closest(".shared-banks") !== null }];
+        return [{ id: Number(match[2]), name: (link?.textContent ?? "").replace(/\s+/g, " ").trim(), type: match[1]!, shared: item.closest(".shared-banks") !== null }];
       });
     });
   } finally {
@@ -118,11 +118,11 @@ const bankModules = new Map<string, string>();
  * categories for any activity whose bank page is opened (confirmed empirically, 5.2). The module
  * comes from its settings form, which changes nothing.
  */
-async function checkBank(context: BrowserContext, siteUrl: string, bankCmid: number): Promise<void> {
-  const key = `${siteUrl}|${bankCmid}`;
+async function checkBank(context: BrowserContext, siteUrl: string, activityId: number): Promise<void> {
+  const key = `${siteUrl}|${activityId}`;
   let module = bankModules.get(key);
   if (!module) {
-    const page = await openSitePage(context, siteUrl, `course/modedit.php?update=${bankCmid}`);
+    const page = await openSitePage(context, siteUrl, `course/modedit.php?update=${activityId}`);
     try {
       module = (await formValue(page, "modulename")) ?? "";
     } finally {
@@ -131,7 +131,7 @@ async function checkBank(context: BrowserContext, siteUrl: string, bankCmid: num
     if (module) bankModules.set(key, module);
   }
   if (!BANK_MODULES.has(module)) {
-    throw new QuestionBankError(`Activity ${bankCmid} ${module ? `is a ${module}, which` : "doesn't exist, or you can't edit it, so it"} has no question bank. Take a bank's id from the course's question banks.`);
+    throw new QuestionBankError(`Activity ${activityId} ${module ? `is a ${module}, which` : "doesn't exist, or you can't edit it, so it"} has no question bank. Take a bank's id from the course's question banks.`);
   }
 }
 
@@ -139,17 +139,17 @@ async function checkBank(context: BrowserContext, siteUrl: string, bankCmid: num
 const PER_PAGE = 1000;
 
 /** A bank's categories and every question in them, category by category. */
-export async function questions(context: BrowserContext, siteUrl: string, bankCmid: number): Promise<{ categories: BankCategory[]; questions: BankQuestion[] }> {
-  await checkBank(context, siteUrl, bankCmid);
-  const page = await openSitePage(context, siteUrl, `question/edit.php?cmid=${bankCmid}`);
+export async function questions(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ categories: BankCategory[]; questions: BankQuestion[] }> {
+  await checkBank(context, siteUrl, activityId);
+  const page = await openSitePage(context, siteUrl, `question/edit.php?cmid=${activityId}`);
   try {
     if ((await page.locator("body#page-question-edit .questionbankwindow").count()) === 0) {
-      throw new QuestionBankError(`Activity ${bankCmid} has no question bank you can see. Take a bank's id from the course's question banks.`);
+      throw new QuestionBankError(`Activity ${activityId} has no question bank you can see. Take a bank's id from the course's question banks.`);
     }
     const { contextId, categories } = await bankCategories(page);
     const found: BankQuestion[] = [];
     for (const category of categories) {
-      await page.goto(new URL(`question/edit.php?cmid=${bankCmid}&cat=${category.id},${contextId}&qperpage=${PER_PAGE}`, siteUrl).href, { waitUntil: "domcontentloaded" });
+      await page.goto(new URL(`question/edit.php?cmid=${activityId}&cat=${category.id},${contextId}&qperpage=${PER_PAGE}`, siteUrl).href, { waitUntil: "domcontentloaded" });
       found.push(...(await readBankQuestions(page, category.id)));
     }
     return { categories, questions: found };
@@ -197,19 +197,19 @@ async function pageProblems(page: Page): Promise<string[]> {
 export async function importQuestions(
   context: BrowserContext,
   siteUrl: string,
-  bankCmid: number,
+  activityId: number,
   { format, file, text, categoryId }: { format: "gift" | "xml"; file?: string; text?: string; categoryId?: number },
 ): Promise<{ changed: string; questions: BankQuestion[] }> {
   if ((file === undefined) === (text === undefined)) throw new QuestionBankError("Give the questions as a file or as text, one of the two.");
   if (file) await checkLocalFiles([file]);
-  const before = new Set((await questions(context, siteUrl, bankCmid)).questions.map((q) => q.id));
+  const before = new Set((await questions(context, siteUrl, activityId)).questions.map((q) => q.id));
   // Text goes up as a file, as a person would upload one.
   const dir = text !== undefined ? await mkdtemp(path.join(tmpdir(), "moodle-import-")) : undefined;
   const upload = dir ? path.join(dir, format === "gift" ? "questions.txt" : "questions.xml") : file!;
   if (dir) await writeFile(upload, text!, "utf8");
-  const page = await openForm(context, siteUrl, `question/bank/importquestions/import.php?cmid=${bankCmid}`).catch((error: unknown) => {
+  const page = await openForm(context, siteUrl, `question/bank/importquestions/import.php?cmid=${activityId}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
-    throw new QuestionBankError(`Activity ${bankCmid} has no question bank you can import into.`);
+    throw new QuestionBankError(`Activity ${activityId} has no question bank you can import into.`);
   });
   try {
     await uploadToDraft(page, (await formValue(page, "newfile"))!, [upload]);
@@ -225,8 +225,8 @@ export async function importQuestions(
     await page.close().catch(() => undefined);
     if (dir) await rm(dir, { recursive: true, force: true });
   }
-  const created = (await questions(context, siteUrl, bankCmid)).questions.filter((q) => !before.has(q.id));
-  return { changed: `Imported ${created.length} question${created.length === 1 ? "" : "s"} into bank ${bankCmid}.`, questions: created };
+  const created = (await questions(context, siteUrl, activityId)).questions.filter((q) => !before.has(q.id));
+  return { changed: `Imported ${created.length} question${created.length === 1 ? "" : "s"} into bank ${activityId}.`, questions: created };
 }
 
 export const QUESTION_TYPES = ["multichoice", "truefalse", "shortanswer", "numerical", "essay"] as const;
@@ -260,17 +260,17 @@ async function nearestFraction(page: Page, field: string, fraction: number): Pro
  * Creates one question in a bank through its type's edit form; returns its id. Imports are the way
  * for several; this is for one-offs.
  */
-export async function createQuestion(context: BrowserContext, siteUrl: string, bankCmid: number, input: QuestionInput): Promise<{ changed: string; questionId?: number }> {
+export async function createQuestion(context: BrowserContext, siteUrl: string, activityId: number, input: QuestionInput): Promise<{ changed: string; questionId?: number }> {
   if (!QUESTION_TYPES.includes(input.type)) throw new QuestionBankError(`Question type ${input.type} isn't one this creates (${QUESTION_TYPES.join(", ")}); import it as GIFT or Moodle XML instead.`);
   const answers = input.answers ?? [];
   if (["multichoice", "shortanswer", "numerical"].includes(input.type) && answers.length === 0) throw new QuestionBankError(`A ${input.type} question needs answers.`);
   if (input.type === "truefalse" && input.correct === undefined) throw new QuestionBankError("A true/false question needs its right answer (correct).");
-  const { categories } = await questions(context, siteUrl, bankCmid);
+  const { categories } = await questions(context, siteUrl, activityId);
   // The bank lists its "Top" category first, which holds no questions: its default one comes next.
   const category = input.categoryId ?? (categories[1] ?? categories[0])?.id;
-  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${bankCmid}&category=${category}&qtype=${input.type}`).catch((error: unknown) => {
+  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${activityId}&category=${category}&qtype=${input.type}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
-    throw new QuestionBankError(`Activity ${bankCmid} has no question bank you can add to, or category ${category} isn't in it.`);
+    throw new QuestionBankError(`Activity ${activityId} has no question bank you can add to, or category ${category} isn't in it.`);
   });
   try {
     // The form comes with a few blank answers; "Blanks for more" adds three at a time.
@@ -292,7 +292,7 @@ export async function createQuestion(context: BrowserContext, siteUrl: string, b
     await submitForm(page, "submitbutton");
     // Moodle lands on the bank, naming the question it changed last.
     const id = Number(new URL(page.url()).searchParams.get("lastchanged")) || undefined;
-    return { changed: `Created ${input.type} question${id ? ` ${id}` : ""} "${input.name}" in bank ${bankCmid}.`, questionId: id };
+    return { changed: `Created ${input.type} question${id ? ` ${id}` : ""} "${input.name}" in bank ${activityId}.`, questionId: id };
   } finally {
     await page.close().catch(() => undefined);
   }

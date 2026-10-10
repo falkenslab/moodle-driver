@@ -4,14 +4,14 @@ A forum's discussions and their posts as plain data, posting as the person (repl
 
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
-A forum is identified by its course module id (`forumCmid`, the `id` in `mod/forum/view.php?id=`), discussions and posts by Moodle's ids. Discussions are read from the forum's pages (by data attributes, links and timestamps, so in any language), posts through Moodle's `mod_forum_get_discussion_posts` service, and posting goes through Moodle's own post form (`mod/forum/post.php`), which takes attachments and fills in a reply's subject. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)).
+A forum is identified by its activity id (`activityId`, the `id` in `mod/forum/view.php?id=`), discussions and posts by Moodle's ids. Discussions are read from the forum's pages (by data attributes, links and timestamps, so in any language), posts through Moodle's `mod_forum_get_discussion_posts` service, and posting goes through Moodle's own post form (`mod/forum/post.php`), which takes attachments and fills in a reply's subject. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)).
 
 ## forumDiscussions
 
 A forum's discussions as its page lists them, through all its pages: who started each, how many replies, the last post, and whether it's pinned or locked.
 
 ```ts
-function forumDiscussions(context: BrowserContext, siteUrl: string, forumCmid: number): Promise<ForumDiscussion[]>;
+function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number): Promise<ForumDiscussion[]>;
 
 interface ForumDiscussion {
   id: number;
@@ -39,7 +39,7 @@ A discussion's posts, oldest first, with their messages as plain text.
 
 ```ts
 function discussion(context: BrowserContext, siteUrl: string, discussionId: number): Promise<{
-  discussion: { id: number; forumId: number; courseId: number };
+  discussion: { id: number; forumInstanceId: number; courseId: number };
   posts: ForumPost[];
 }>;
 
@@ -57,7 +57,7 @@ interface ForumPost {
 }
 ```
 
-- `discussion.forumId`: the forum's instance id (not its course module id); `courseId`: its course.
+- `discussion.forumInstanceId`: the forum's instance id (not its activity id, which the forum functions take); `courseId`: its course.
 - `parentId`: the post it replies to; missing for the discussion's first post.
 - `created`, `modified`: ISO dates; `modified` only when the post was edited more than a minute after posting.
 - `text`: the message as text, with its paragraphs and lists kept.
@@ -99,7 +99,7 @@ Errors before anything is posted: a plain `Error` when the message is empty (Moo
 Starts a discussion in a forum, through the same form, and returns its id.
 
 ```ts
-function startDiscussion(context: BrowserContext, siteUrl: string, forumCmid: number, input: PostInput & { subject: string }): Promise<{
+function startDiscussion(context: BrowserContext, siteUrl: string, activityId: number, input: PostInput & { subject: string }): Promise<{
   changed: string;
   discussionId?: number;
 }>;
@@ -115,7 +115,7 @@ Pins or unpins, locks or unlocks a discussion, as the discussion list's menu doe
 function setDiscussionState(
   context: BrowserContext,
   siteUrl: string,
-  forumCmid: number,
+  activityId: number,
   discussionId: number,
   state: { pinned?: boolean; locked?: boolean },
 ): Promise<{ changed: string; discussion?: ForumDiscussion }>;
@@ -133,10 +133,10 @@ The class every forum function throws when the id isn't a forum's course module,
 import { NotAForumError } from "@falkenslab/moodle-driver";
 
 // `moodle` is the object from createMoodle(), as in the getting-started pages.
-const forumCmid = 37;
+const forumId = 37;
 
 try {
-  const discussions = await moodle.forumDiscussions(forumCmid);
+  const discussions = await moodle.forumDiscussions(forumId);
   for (const d of discussions) console.log(`${d.pinned ? "[pinned] " : ""}${d.subject} by ${d.author}, ${d.replies} replies`);
 
   const first = discussions[0];
@@ -147,14 +147,14 @@ try {
     await moodle.replyToPost(opening.id, { message: "<p>Thanks, Ada. The loop ends at 2.</p>", subscribe: false });
   }
 
-  const started = await moodle.startDiscussion(forumCmid, {
+  const started = await moodle.startDiscussion(forumId, {
     subject: "Exercise 3 solutions",
     message: "<p>Post your solution to exercise 3 here.</p>",
     files: ["/home/me/exercise3.pdf"],
   });
 
   // As a teacher: keep it on top and closed to replies.
-  if (started.discussionId) await moodle.setDiscussionState(forumCmid, started.discussionId, { pinned: true, locked: true });
+  if (started.discussionId) await moodle.setDiscussionState(forumId, started.discussionId, { pinned: true, locked: true });
 } catch (error) {
   if (error instanceof NotAForumError) console.error(error.message);
   else throw error;

@@ -100,8 +100,8 @@ export async function createActivity(
 }
 
 /** Changes an existing activity through its form: only what's given changes; files stay as they are. */
-export async function updateActivity(context: BrowserContext, siteUrl: string, cmid: number, input: ActivityFields): Promise<CourseChange> {
-  const page = await openForm(context, siteUrl, `course/modedit.php?update=${cmid}&return=0`);
+export async function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields): Promise<CourseChange> {
+  const page = await openForm(context, siteUrl, `course/modedit.php?update=${activityId}&return=0`);
   let courseId: number;
   try {
     courseId = Number(await formValue(page, "course"));
@@ -112,8 +112,8 @@ export async function updateActivity(context: BrowserContext, siteUrl: string, c
     await page.close().catch(() => undefined);
   }
   const after = await courseState(context, siteUrl, courseId);
-  const cm = after.cm.find((c) => Number(c.id) === cmid);
-  return { changed: `Updated activity ${cmid}${cm ? ` "${cm.name}"` : ""}.`, activityId: cmid, url: cm?.url, sections: structureOf(after) };
+  const cm = after.cm.find((c) => Number(c.id) === activityId);
+  return { changed: `Updated activity ${activityId}${cm ? ` "${cm.name}"` : ""}.`, activityId: activityId, url: cm?.url, sections: structureOf(after) };
 }
 
 /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
@@ -121,35 +121,35 @@ export async function editActivity(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
-  cmid: number,
+  activityId: number,
   { name, visibility, sectionId, beforeActivityId }: { name?: string; visibility?: ActivityVisibility; sectionId?: number; beforeActivityId?: number },
 ): Promise<CourseChange> {
   const done: string[] = [];
   if (name !== undefined) {
-    await renameActivity(context, siteUrl, cmid, name);
+    await renameActivity(context, siteUrl, activityId, name);
     done.push(`renamed to "${name}"`);
   }
   if (visibility !== undefined) {
-    await editCourse(context, siteUrl, courseId, VISIBILITY_ACTIONS[visibility], [cmid]);
+    await editCourse(context, siteUrl, courseId, VISIBILITY_ACTIONS[visibility], [activityId]);
     done.push(`made ${visibility}`);
   }
   if (sectionId !== undefined || beforeActivityId !== undefined) {
-    await editCourse(context, siteUrl, courseId, "cm_move", [cmid], { sectionId, activityId: beforeActivityId });
+    await editCourse(context, siteUrl, courseId, "cm_move", [activityId], { sectionId, activityId: beforeActivityId });
     done.push(beforeActivityId !== undefined ? `moved before activity ${beforeActivityId}` : `moved to the end of section ${sectionId}`);
   }
-  return afterChange(context, siteUrl, courseId, done.length > 0 ? `Activity ${cmid} ${done.join(", ")}.` : "Nothing to change.");
+  return afterChange(context, siteUrl, courseId, done.length > 0 ? `Activity ${activityId} ${done.join(", ")}.` : "Nothing to change.");
 }
 
-export async function duplicateActivity(context: BrowserContext, siteUrl: string, courseId: number, cmid: number): Promise<CourseChange> {
+export async function duplicateActivity(context: BrowserContext, siteUrl: string, courseId: number, activityId: number): Promise<CourseChange> {
   const before = new Set((await courseState(context, siteUrl, courseId)).cm.map((cm) => cm.id));
-  await editCourse(context, siteUrl, courseId, "cm_duplicate", [cmid]);
+  await editCourse(context, siteUrl, courseId, "cm_duplicate", [activityId]);
   const copy = (await courseState(context, siteUrl, courseId)).cm.find((cm) => !before.has(cm.id));
-  return afterChange(context, siteUrl, courseId, `Activity ${cmid} duplicated${copy ? ` as ${copy.id}` : ""}.`, { newId: copy ? Number(copy.id) : undefined });
+  return afterChange(context, siteUrl, courseId, `Activity ${activityId} duplicated${copy ? ` as ${copy.id}` : ""}.`, { newId: copy ? Number(copy.id) : undefined });
 }
 
-export async function deleteActivity(context: BrowserContext, siteUrl: string, courseId: number, cmid: number): Promise<CourseChange> {
-  await editCourse(context, siteUrl, courseId, "cm_delete", [cmid]);
-  return afterChange(context, siteUrl, courseId, `Activity ${cmid} deleted.`);
+export async function deleteActivity(context: BrowserContext, siteUrl: string, courseId: number, activityId: number): Promise<CourseChange> {
+  await editCourse(context, siteUrl, courseId, "cm_delete", [activityId]);
+  return afterChange(context, siteUrl, courseId, `Activity ${activityId} deleted.`);
 }
 
 /** Adds a section after another one (at the end without it), named when a name is given. */
@@ -289,17 +289,17 @@ export class ActivitySettingsError extends MoodleDriverError {
  * An activity's settings as its form holds them, without submitting it: its module, name and
  * description, and every field by the name `updateActivity` takes in `settings`. Teachers only.
  */
-export async function activitySettings(context: BrowserContext, siteUrl: string, cmid: number) {
-  const page = await openSitePage(context, siteUrl, `course/modedit.php?update=${cmid}&return=0`);
+export async function activitySettings(context: BrowserContext, siteUrl: string, activityId: number) {
+  const page = await openSitePage(context, siteUrl, `course/modedit.php?update=${activityId}&return=0`);
   try {
     if ((await page.locator("form.mform").count()) === 0) {
-      throw new ActivitySettingsError(`You can't see activity ${cmid}'s settings: ${(await moodleErrorMessage(page)) ?? "it doesn't exist, or you can't edit it"}`);
+      throw new ActivitySettingsError(`You can't see activity ${activityId}'s settings: ${(await moodleErrorMessage(page)) ?? "it doesn't exist, or you can't edit it"}`);
     }
     await page.waitForLoadState("load");
     const fields = await readFormFields(page);
     const value = (name: string) => fields.find((f) => f.name === name)?.value as string | undefined;
     return {
-      id: cmid,
+      id: activityId,
       module: (await formValue(page, "modulename")) ?? "",
       courseId: Number(await formValue(page, "course")),
       name: value("name") ?? "",

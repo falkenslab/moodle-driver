@@ -11,7 +11,7 @@ Everything is read from Moodle's pages (body ids, data attributes, the player's 
 An H5P activity: its content type, whether attempts are tracked, and the person's attempts with their scores.
 
 ```ts
-function h5pActivity(context: BrowserContext, siteUrl: string, cmid: number): Promise<H5PActivity>;
+function h5pActivity(context: BrowserContext, siteUrl: string, activityId: number): Promise<H5PActivity>;
 
 interface H5PActivity {
   id: number;

@@ -11,7 +11,7 @@ Everything is read from the activities' pages and forms (body ids, form names, l
 Whether the person can answer a survey now, its description and messages, and, when they can, every question on every page of its form.
 
 ```ts
-function getSurvey(context: BrowserContext, siteUrl: string, cmid: number, type?: SurveyType): Promise<{
+function getSurvey(context: BrowserContext, siteUrl: string, activityId: number, type?: SurveyType): Promise<{
   canAnswer: boolean;
   intro: string;
   messages: string[];
@@ -37,7 +37,7 @@ interface SurveyField {
 }
 ```
 
-- `cmid`: the activity's course module id. `type`: its module, from the course structure; without it, the driver finds it from the page each module answers with (once per activity), at the cost of a page or two.
+- `activityId`: the activity's id (course module id). `type`: its module, from the course structure; without it, the driver finds it from the page each module answers with (once per activity), at the cost of a page or two.
 - `canAnswer`: the activity's page links to its form: it's open and the person hasn't answered yet (or may answer again).
 - `intro`: the activity's description; `messages`: the page's notices ("You have already submitted", closed, not open yet).
 - `questions`: empty when the person can't answer. Each question has the `page` it's on (from 0), its `number` and `text` as shown, whether it's `required`, and its `fields`.
@@ -56,9 +56,9 @@ A field is one input of the form, by its form name: that name is what `submitSur
 Fills the survey page by page with the given responses and submits it on the last page, as the person would with its "Next page" and submit buttons.
 
 ```ts
-function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ messages: string[] }>;
+function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ messages: string[] }>;
 // As before 0.2, still accepted:
-function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }>;
+function submitSurvey(context: BrowserContext, siteUrl: string, activityId: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }>;
 ```
 
 - `responses`: values by field name, for any page: each page gets the ones its form has.
@@ -71,7 +71,7 @@ Without a `type`, the module is found as `getSurvey` finds it. Every name is che
 A choice activity, read on its page: its options with the ids answers take, whether it can be answered or changed, and the person's answer. Moodle's choice services aren't open to AJAX calls, so the page is the source.
 
 ```ts
-function getChoice(context: BrowserContext, siteUrl: string, cmid: number): Promise<Choice>;
+function getChoice(context: BrowserContext, siteUrl: string, activityId: number): Promise<Choice>;
 
 interface Choice {
   id: number;
@@ -101,7 +101,7 @@ Throws `ChoiceError` when the id isn't a choice the person can open.
 Answers a choice with one option, or several where it allows them, by id, as "Save my choice" does; returns the choice afterwards.
 
 ```ts
-function answerChoice(context: BrowserContext, siteUrl: string, cmid: number, optionIds: number[]): Promise<Choice>;
+function answerChoice(context: BrowserContext, siteUrl: string, activityId: number, optionIds: number[]): Promise<Choice>;
 ```
 
 In a multiple choice, the options not given are unticked, so `optionIds` is the whole answer. Throws `ChoiceError`, before saving anything, when no option is given, when the choice can't be answered now (closed, not open yet, or answered and not allowing changes; the error repeats the person's answer and Moodle's message), when several are given to a single choice, when an option id isn't the choice's (the error lists its options), and when an option is full.
