@@ -2,10 +2,11 @@
 // (mod/forum/post.php), which takes attachments and prefills a reply's subject (ADR-004: no AJAX
 // service opens a discussion).
 import type { BrowserContext } from "playwright-core";
+import { callService } from "./ajax.js";
 import { isoDate } from "./courses.js";
 import { checkLocalFiles } from "./files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "./forms.js";
-import { discussionPosts, forumInstanceId, htmlToTexts, listDiscussions } from "./forum.js";
+import { NotAForumError, discussionPosts, forumInstanceId, htmlToTexts, listDiscussions } from "./forum.js";
 import { decodeEntities } from "./text.js";
 
 export interface ForumDiscussion {
@@ -16,6 +17,7 @@ export interface ForumDiscussion {
   lastPost: { author: string; time?: string; postId?: number };
   replies: number;
   locked: boolean;
+  pinned: boolean;
 }
 
 /** A forum's discussions, as its page lists them: who started each, replies, last post. */
@@ -29,6 +31,7 @@ export async function forumDiscussions(context: BrowserContext, siteUrl: string,
     lastPost: { author: row.lastPost.author, time: isoDate(row.lastPost.time), postId: row.lastPost.postId },
     replies: row.replies,
     locked: row.locked,
+    pinned: row.pinned,
   }));
 }
 
@@ -128,4 +131,33 @@ export async function startDiscussion(context: BrowserContext, siteUrl: string, 
   await post(context, siteUrl, `mod/forum/post.php?forum=${instance}`, input);
   const created = (await listDiscussions(context, siteUrl, forumCmid)).find((d) => !before.has(d.id));
   return { changed: `Started discussion ${created?.id ?? "?"} "${input.subject}" in forum ${forumCmid}.`, discussionId: created?.id };
+}
+
+/**
+ * Pins or unpins, locks or unlocks a discussion, as the discussion list's menu does; what's already
+ * so is left alone. Returns the discussion as the forum lists it afterwards.
+ */
+export async function setDiscussionState(
+  context: BrowserContext,
+  siteUrl: string,
+  forumCmid: number,
+  discussionId: number,
+  { pinned, locked }: { pinned?: boolean; locked?: boolean },
+): Promise<{ changed: string; discussion?: ForumDiscussion }> {
+  const find = async () => (await forumDiscussions(context, siteUrl, forumCmid)).find((d) => d.id === discussionId);
+  const row = (await listDiscussions(context, siteUrl, forumCmid)).find((d) => d.id === discussionId);
+  if (!row) throw new NotAForumError(`Forum ${forumCmid} has no discussion ${discussionId}. Take its id from the forum's discussions.`);
+  const done: string[] = [];
+  if (pinned !== undefined && pinned !== row.pinned) {
+    await callService(context, siteUrl, "mod_forum_set_pin_state", { discussionid: discussionId, targetstate: pinned ? 1 : 0 });
+    done.push(pinned ? "pinned" : "unpinned");
+  }
+  if (locked !== undefined && locked !== row.locked) {
+    // Rows don't always carry the forum's id (confirmed empirically, 5.2): its page does.
+    const forumId = row.forumId ?? (await forumInstanceId(context, siteUrl, forumCmid));
+    // The service takes the current lock and switches it: 0 locks now, anything else unlocks.
+    await callService(context, siteUrl, "mod_forum_set_lock_state", { forumid: forumId, discussionid: discussionId, targetstate: locked ? 0 : 1 });
+    done.push(locked ? "locked" : "unlocked");
+  }
+  return { changed: done.length > 0 ? `Discussion ${discussionId} ${done.join(" and ")}.` : "Nothing to change.", discussion: await find() };
 }

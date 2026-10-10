@@ -35,7 +35,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `moodle/editor.ts`, `moodle/activities.ts` — the course editor's actions and renames; creating, updating, moving, duplicating and deleting activities and sections, each answering with the structure afterwards. `activitySettings()` reads an activity's form as fields (name, label, value, options, disabled) without submitting it.
 - `moodle/assign.ts`, `moodle/grading.ts`, `moodle/submission.ts` — an assignment's ids, participants and panels; everyone's submissions and grading; the student's side (save, submit).
 - `moodle/quiz.ts` — a quiz's page, attempts (questions by form name, answers page by page, finish), reviews.
-- `moodle/forum.ts`, `moodle/forumPosts.ts` — discussions from the forum's pages, posts through the service; replying and starting discussions through the post form.
+- `moodle/forum.ts`, `moodle/forumPosts.ts` — discussions from the forum's pages (pinned and locked included), posts through the service; replying and starting discussions through the post form; pinning and locking through their services.
 - `moodle/grades.ts`, `moodle/overview.ts`, `moodle/survey.ts` — the user grade report; the activities overview, deadlines and course updates; questionnaire and feedback surveys.
 - `testing/` — the fake Moodle served inside a browser context, grading panel HTML, a browser manager that launches nothing.
 

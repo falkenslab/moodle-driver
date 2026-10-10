@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { NotAForumError, discussion, forumDiscussions, replyToPost, startDiscussion } from "../../src/index.js";
+import { NotAForumError, discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "../../src/index.js";
 import { SITE, ServiceFailure, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -43,6 +43,7 @@ describe("forumDiscussions", { skip: !browser && "no system browser" }, () => {
         lastPost: { author: "Alan Turing", time: new Date(1_790_000_600_000).toISOString(), postId: 3 },
         replies: 1,
         locked: false,
+        pinned: false,
       },
       {
         id: 1,
@@ -52,6 +53,7 @@ describe("forumDiscussions", { skip: !browser && "no system browser" }, () => {
         lastPost: { author: "Grace Hopper", time: new Date(1_789_000_000_000).toISOString(), postId: 1 },
         replies: 0,
         locked: true,
+        pinned: false,
       },
     ]);
     await context.close();
@@ -188,6 +190,53 @@ describe("replyToPost and startDiscussion", { skip: !browser && "no system brows
     await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" } });
     await context.route(`${SITE}mod/forum/view.php**`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 4, bodyId: "page-mod-page-view" }) }));
     await assert.rejects(startDiscussion(context, SITE, 9, { subject: "Help", message: "<p>x</p>" }), NotAForumError);
+    await context.close();
+  });
+});
+
+describe("setDiscussionState", { skip: !browser && "no system browser" }, () => {
+  /** A forum page with one discussion whose pin and lock follow the services, as Moodle 5.2's do; made up. */
+  function fakeModeration() {
+    const state = { pinned: false, locked: 0 };
+    const calls: { methodname: string; args: Record<string, unknown> }[] = [];
+    const page = () =>
+      `<form action="${SITE}mod/forum/post.php"><input type="hidden" name="forum" value="7"></form><table><tr class="discussion${state.pinned ? " pinned" : ""}" data-region="discussion-list-item" data-discussionid="4">
+<th><a href="${SITE}mod/forum/discuss.php?d=4">Loops</a><span data-region="locked-label"${state.locked ? "" : " hidden"}>Locked</span></th><td><span>0</span></td></tr></table>`;
+    return {
+      state,
+      calls,
+      moodle: {
+        user: { id: 3, fullName: "Teacher" },
+        serviceCalls: calls,
+        bodies: new Proxy({} as Record<string, string>, { get: (_, path) => (path === "/mod/forum/view.php" ? page() : undefined) }),
+        services: {
+          mod_forum_set_pin_state: ({ targetstate }: Record<string, unknown>) => {
+            state.pinned = targetstate === 1;
+            return {};
+          },
+          // Moodle's lock service switches the current state it's given.
+          mod_forum_set_lock_state: ({ targetstate }: Record<string, unknown>) => {
+            state.locked = targetstate ? 0 : 1_790_000_000;
+            return { locked: state.locked };
+          },
+        },
+      },
+    };
+  }
+
+  it("pins and locks a discussion, leaves alone what's already so, and unlocks it", async () => {
+    const fake = fakeModeration();
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, fake.moodle);
+    const done = await setDiscussionState(context, SITE, 37, 4, { pinned: true, locked: true });
+    assert.equal(done.changed, "Discussion 4 pinned and locked.");
+    assert.deepEqual([done.discussion?.pinned, done.discussion?.locked], [true, true]);
+    assert.deepEqual(fake.calls.find((c) => c.methodname === "mod_forum_set_lock_state")?.args, { forumid: 7, discussionid: 4, targetstate: 0 });
+    const calls = fake.calls.length;
+    assert.equal((await setDiscussionState(context, SITE, 37, 4, { pinned: true, locked: true })).changed, "Nothing to change.");
+    assert.equal(fake.calls.length, calls);
+    assert.equal((await setDiscussionState(context, SITE, 37, 4, { locked: false })).discussion?.locked, false);
+    await assert.rejects(setDiscussionState(context, SITE, 37, 99, { pinned: true }), NotAForumError);
     await context.close();
   });
 });

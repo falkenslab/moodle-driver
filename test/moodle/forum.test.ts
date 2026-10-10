@@ -6,8 +6,8 @@ const browser = await launchTestBrowser();
 after(() => browser?.close());
 
 /** A discussion row as Moodle 5.2's forum page renders it, reduced; the data is made up. */
-function row(id: number, subject: string, author: string, started: number, last: { author: string; time: number; post: number }, replies: number, locked = false): string {
-  return `<tr data-region="discussion-list-item" data-discussionid="${id}" data-forumid="1">
+function row(id: number, subject: string, author: string, started: number, last: { author: string; time: number; post: number }, replies: number, locked = false, pinned = false): string {
+  return `<tr class="discussion${pinned ? " pinned" : ""}" data-region="discussion-list-item" data-discussionid="${id}" data-forumid="1">
 <td><a data-type="favorite-toggle" data-discussionid="${id}" href=""></a></td>
 <th scope="row"><a href="${SITE}mod/forum/discuss.php?d=${id}"> ${subject} </a><span data-region="locked-label"${locked ? "" : " hidden"}>Locked</span></th>
 <td><div><img alt="Picture of ${author}"></div><div><div>${author}</div><div><time data-timestamp="${started}">2 Oct</time></div></div></td>
@@ -17,15 +17,15 @@ function row(id: number, subject: string, author: string, started: number, last:
 </tr>`;
 }
 
-const FORUM_PAGE = `<table>${row(2, "Can a variable change?", "Ada Lovelace", 1_790_000_000, { author: "Alan Turing", time: 1_790_000_600, post: 3 }, 1)}${row(1, "Bool question", "Grace Hopper", 1_789_000_000, { author: "Grace Hopper", time: 1_789_000_000, post: 1 }, 0, true)}</table>`;
+const FORUM_PAGE = `<table>${row(2, "Can a variable change?", "Ada Lovelace", 1_790_000_000, { author: "Alan Turing", time: 1_790_000_600, post: 3 }, 1, false, true)}${row(1, "Bool question", "Grace Hopper", 1_789_000_000, { author: "Grace Hopper", time: 1_789_000_000, post: 1 }, 0, true)}</table>`;
 
 describe("readDiscussionRows", { skip: !browser && "no system browser" }, () => {
-  it("reads subject, people, times, replies and lock without the page's texts", async () => {
+  it("reads subject, people, times, replies, lock and pin without the page's texts", async () => {
     const page = await browser!.newPage();
     await page.setContent(FORUM_PAGE);
     assert.deepEqual(await readDiscussionRows(page), [
-      { id: 2, subject: "Can a variable change?", author: "Ada Lovelace", started: 1_790_000_000, lastPost: { author: "Alan Turing", time: 1_790_000_600, postId: 3 }, replies: 1, locked: false },
-      { id: 1, subject: "Bool question", author: "Grace Hopper", started: 1_789_000_000, lastPost: { author: "Grace Hopper", time: 1_789_000_000, postId: 1 }, replies: 0, locked: true },
+      { id: 2, subject: "Can a variable change?", author: "Ada Lovelace", started: 1_790_000_000, lastPost: { author: "Alan Turing", time: 1_790_000_600, postId: 3 }, replies: 1, locked: false, pinned: true, forumId: 1 },
+      { id: 1, subject: "Bool question", author: "Grace Hopper", started: 1_789_000_000, lastPost: { author: "Grace Hopper", time: 1_789_000_000, postId: 1 }, replies: 0, locked: true, pinned: false, forumId: 1 },
     ]);
     await page.close();
   });

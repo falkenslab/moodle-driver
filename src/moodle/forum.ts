@@ -17,6 +17,9 @@ export interface DiscussionRow {
   lastPost: { author: string; time?: number; postId?: number };
   replies: number;
   locked: boolean;
+  pinned: boolean;
+  /** The forum's instance id, which the forum's services take. */
+  forumId?: number;
 }
 
 // The page size asked for; the forum pages until a page brings no new discussions.
@@ -27,6 +30,7 @@ const MAX_PAGES = 50;
 export function readDiscussionRows(page: Page): Promise<DiscussionRow[]> {
   return page.evaluate(() => {
     interface Element {
+      className: string;
       getAttribute(name: string): string | null;
       hasAttribute(name: string): boolean;
       querySelector(selector: string): Element | null;
@@ -56,6 +60,8 @@ export function readDiscussionRows(page: Page): Promise<DiscussionRow[]> {
         lastPost: { author: lastBy ?? "", time: times[1] ? Number(times[1].getAttribute("data-timestamp")) : undefined, postId: parent ? Number(parent) : undefined },
         replies: Number((repliesCell?.textContent ?? "0").trim()),
         locked: locked !== null && !locked.hasAttribute("hidden"),
+        pinned: /\bpinned\b/.test(row.className),
+        forumId: Number(row.getAttribute("data-forumid")) || undefined,
       };
     });
   });

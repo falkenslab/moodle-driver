@@ -164,6 +164,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   discussion: PERSONAL,
   replyToPost: ["communication"],
   startDiscussion: ["communication"],
+  setDiscussionState: ["others-personal", "communication"],
 
   // Surveys.
   getSurvey: ["course-content", "own"],
