@@ -5,8 +5,10 @@ import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
 import {
+  ActivitySettingsError,
   FormError,
   MoodleServiceError,
+  activitySettings,
   addSection,
   createActivity,
   deleteActivity,
@@ -267,6 +269,49 @@ describe("course layout", { skip: !browser && "no system browser" }, () => {
     await assert.rejects(duplicateActivity(context, SITE, 5, 99), invalid);
     await assert.rejects(editSection(context, SITE, 5, 99, { visible: false }), invalid);
     await assert.rejects(deleteSection(context, SITE, 5, 99), invalid);
+    await context.close();
+  });
+});
+
+/**
+ * An assignment's settings form, reduced and made up, as Moodle 5.2 renders it: a name, a description,
+ * a date selector, submission types, a completion radio group, and a maximum grade that stays
+ * disabled until rescaling is chosen (grades exist), as Moodle's form dependencies do.
+ */
+const SETTINGS = `<form class="mform" id="mform1" action="modedit.php" method="post">
+<input type="hidden" name="course" value="3"><input type="hidden" name="modulename" value="assign"><input type="hidden" name="sesskey" value="s1"><input type="hidden" name="_qf__mod_assign_mod_form" value="1">
+<div class="fitem"><label for="id_name">Assignment name</label><input type="text" name="name" id="id_name" value="Loops"></div>
+<div class="fitem"><label for="id_introeditor">Description</label><textarea name="introeditor[text]" id="id_introeditor">&lt;p&gt;Explain a loop.&lt;/p&gt;</textarea></div>
+<div class="fitem fdate_time_selector"><p id="id_duedate_label">Due date</p>
+<div class="fitem"><label class="visually-hidden" for="id_duedate_day">Day</label><select name="duedate[day]" id="id_duedate_day"><option value="15">15</option><option value="16" selected>16</option></select></div>
+<input type="hidden" name="duedate[enabled]" value="0"><input type="checkbox" name="duedate[enabled]" id="id_duedate_enabled" value="1" checked><label for="id_duedate_enabled">Enable</label></div>
+<div class="fitem"><input type="hidden" name="assignsubmission_onlinetext_enabled" value="0"><input type="checkbox" name="assignsubmission_onlinetext_enabled" id="id_ot" value="1" checked><label for="id_ot">Online text</label></div>
+<div class="fitem"><label class="form-check-label"><input type="radio" name="completion" value="0" checked> None</label></div>
+<div class="fitem"><label class="form-check-label"><input type="radio" name="completion" value="1"> Students mark it done</label></div>
+<div class="fitem"><label for="id_rescale">Rescale existing grades</label><select name="grade[modgrade_rescalegrades]" id="id_rescale"><option value="">Choose</option><option value="no">No</option><option value="yes">Yes</option></select></div>
+<div class="fitem"><label for="id_point">Maximum grade</label><input type="text" name="grade[modgrade_point]" id="id_point" value="100" disabled></div>
+<input type="submit" name="submitbutton2" value="Save and return"></form>
+<script>document.getElementById("id_rescale").addEventListener("change", (e) => { document.getElementById("id_point").disabled = e.target.value === ""; });</script>`;
+
+describe("activitySettings", { skip: !browser && "no system browser" }, () => {
+  it("reads every field by the name updateActivity takes, with labels, values, options and what's disabled", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, bodies: { "/course/modedit.php": SETTINGS } });
+    const settings = await activitySettings(context, SITE, 35);
+    assert.deepEqual([settings.id, settings.module, settings.courseId, settings.name, settings.description], [35, "assign", 3, "Loops", "<p>Explain a loop.</p>"]);
+    const byName = new Map(settings.fields.map((f) => [f.name, f]));
+    assert.deepEqual(byName.get("duedate[day]"), { name: "duedate[day]", type: "date", label: "Due date (day)", value: "16" });
+    assert.deepEqual(byName.get("duedate[enabled]"), { name: "duedate[enabled]", type: "checkbox", label: "Enable", value: "1", checked: true });
+    assert.deepEqual(byName.get("completion"), { name: "completion", type: "radio", options: [{ value: "0", label: "None" }, { value: "1", label: "Students mark it done" }], value: "0" });
+    assert.deepEqual(byName.get("grade[modgrade_point]"), { name: "grade[modgrade_point]", type: "text", label: "Maximum grade", value: "100", disabled: true });
+    assert.ok(!byName.has("sesskey") && !byName.has("course") && !byName.has("_qf__mod_assign_mod_form"));
+    await context.close();
+  });
+
+  it("gives Moodle's reason when there's no form to read", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" }, bodies: { "/course/modedit.php": `<div data-rel="fatalerror"><p class="errormessage">Sorry, no permission (Manage activities).</p></div>` } });
+    await assert.rejects(activitySettings(context, SITE, 35), (error: Error) => error instanceof ActivitySettingsError && /no permission \(Manage activities\)/.test(error.message));
     await context.close();
   });
 });

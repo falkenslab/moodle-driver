@@ -54,6 +54,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   isLoggedIn: NONE,
   pageIsLoggedIn: NONE,
   followPages: NONE,
+  moodleErrorMessage: NONE,
   moduleCategories: NONE,
 
   // Generic primitives.
@@ -117,6 +118,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   forumInstanceId: CONTENT,
   activityContent: CONTENT,
   createActivity: CONTENT,
+  activitySettings: CONTENT,
+  readFormFields: NONE,
   updateActivity: CONTENT,
   editActivity: CONTENT,
   duplicateActivity: CONTENT,

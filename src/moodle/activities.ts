@@ -1,11 +1,13 @@
 // Building a course: activities through Moodle's own activity form, and the course page's editing
 // (rename, show, move, duplicate, delete) through its services. Every change answers with the
 // course's structure afterwards, to check it.
-import type { BrowserContext } from "playwright-core";
+import type { BrowserContext, Page } from "playwright-core";
 import { courseState } from "./course.js";
 import { editCourse, renameActivity, renameSection } from "./editor.js";
 import { checkLocalFiles } from "./files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "./forms.js";
+import { inPage } from "./inPage.js";
+import { moodleErrorMessage, openSitePage } from "./session.js";
 import { structureOf, type CourseSection } from "./structure.js";
 
 /** "stealth": hidden from the course page but available by link, where the site allows it. */
@@ -186,4 +188,121 @@ export async function editSection(
 export async function deleteSection(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number): Promise<CourseChange> {
   await editCourse(context, siteUrl, courseId, "section_delete", [sectionId]);
   return afterChange(context, siteUrl, courseId, `Section ${sectionId} deleted, with its activities.`);
+}
+
+/** One field of a Moodle form, as it is now: its name (what `settings` takes), label, value and options. */
+export interface FormField {
+  name: string;
+  type: "text" | "textarea" | "select" | "checkbox" | "radio" | "number" | "date" | "other";
+  label?: string;
+  /** Text, the selected option (several for a multiple select), the checked radio's value. */
+  value?: string | string[];
+  checked?: boolean;
+  options?: { value: string; label: string }[];
+  /** Disabled until another field enables it; Moodle doesn't save it as it is. */
+  disabled?: boolean;
+}
+
+/** The fields of a Moodle form in `page`, internal ones (sesskey, ids, buttons) left out, editors' HTML included. */
+export function readFormFields(page: Page): Promise<FormField[]> {
+  return inPage(
+    page,
+    () => {
+      interface El {
+        id: string;
+        name: string;
+        type: string;
+        value: string;
+        checked: boolean;
+        disabled: boolean;
+        multiple: boolean;
+        tagName: string;
+        textContent: string | null;
+        options: ArrayLike<{ value: string; text: string; selected: boolean }>;
+        closest(s: string): El | null;
+        querySelector(s: string): El | null;
+        querySelectorAll(s: string): ArrayLike<El>;
+      }
+      const doc = (globalThis as unknown as { document: El }).document;
+      const clean = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, " ").trim();
+      // A field's label: its own <label for>, or its row's (a date selector's parts, a radio group).
+      const labelOf = (field: El) => {
+        const own = field.id ? doc.querySelector(`label[for="${field.id}"]`) : null;
+        const row = field.closest(".fitem")?.querySelector(".col-form-label label, .col-form-label p, legend");
+        return clean(own?.textContent) || clean(row?.textContent) || undefined;
+      };
+      const fields: FormField[] = [];
+      const internal = /^(sesskey|_qf__|mform_isexpanded_|mform_showmore_|course$|coursemodule$|section$|module$|modulename$|instance$|add$|update$|return$|sr$|beforemod$)/;
+      for (const field of Array.from(doc.querySelectorAll("form.mform [name]"))) {
+        const name = field.name;
+        if (!name || internal.test(name) || ["hidden", "submit", "button", "fieldset"].includes(field.type) || field.tagName === "FIELDSET") continue;
+        if (field.type === "radio") {
+          let group = fields.find((f) => f.name === name);
+          if (!group) {
+            group = { name, type: "radio", label: clean(field.closest(".fitem")?.querySelector(".col-form-label, legend")?.textContent) || undefined, options: [] };
+            fields.push(group);
+          }
+          group.options!.push({ value: field.value, label: clean((doc.querySelector(`label[for="${field.id}"]`) ?? field.closest("label"))?.textContent) || field.value });
+          if (field.checked) group.value = field.value;
+        } else if (field.type === "checkbox") {
+          fields.push({ name, type: "checkbox", label: labelOf(field), value: field.value, checked: field.checked });
+        } else if (field.tagName === "SELECT") {
+          const options = Array.from(field.options);
+          const selected = options.filter((o) => o.selected).map((o) => o.value);
+          // A date selector's parts (duedate[day]…) are numbers, named by their row ("Due date (day)").
+          const part = /\[(day|month|year|hour|minute)\]$/.exec(name)?.[1];
+          if (part) {
+            // The group's label is id_<group>_label (id_duedate_label for duedate[day]).
+            const row = clean(doc.querySelector(`#id_${name.slice(0, name.indexOf("["))}_label`)?.textContent);
+            fields.push({ name, type: "date", label: row ? `${row} (${part})` : part, value: selected[0] });
+          } else {
+            fields.push({ name, type: "select", label: labelOf(field), value: field.multiple ? selected : selected[0], options: options.map((o) => ({ value: o.value, label: clean(o.text) })) });
+          }
+        } else {
+          const type = field.tagName === "TEXTAREA" ? "textarea" : field.type === "number" ? "number" : field.type === "text" || field.type === "url" || field.type === "email" ? "text" : "other";
+          fields.push({ name, type, label: labelOf(field), value: field.value });
+        }
+      }
+      // Moodle disables fields until another enables them (a date until its "enable", a maximum grade until rescaling is chosen).
+      for (const f of fields) {
+        const elements = Array.from(doc.querySelectorAll(`form.mform [name="${f.name}"]`)).filter((e) => e.type !== "hidden");
+        if (elements.length > 0 && elements.every((e) => e.disabled)) f.disabled = true;
+        // No label, no key: plain data for the program.
+        for (const key of Object.keys(f) as (keyof FormField)[]) if (f[key] === undefined) delete f[key];
+      }
+      return fields;
+    },
+    null,
+  );
+}
+
+/** Nobody can see that activity's settings: not an activity, or not the person's to edit. */
+export class ActivitySettingsError extends Error {
+  override name = "ActivitySettingsError";
+}
+
+/**
+ * An activity's settings as its form holds them, without submitting it: its module, name and
+ * description, and every field by the name `updateActivity` takes in `settings`. Teachers only.
+ */
+export async function activitySettings(context: BrowserContext, siteUrl: string, cmid: number) {
+  const page = await openSitePage(context, siteUrl, `course/modedit.php?update=${cmid}&return=0`);
+  try {
+    if ((await page.locator("form.mform").count()) === 0) {
+      throw new ActivitySettingsError(`You can't see activity ${cmid}'s settings: ${(await moodleErrorMessage(page)) ?? "it doesn't exist, or you can't edit it"}`);
+    }
+    await page.waitForLoadState("load");
+    const fields = await readFormFields(page);
+    const value = (name: string) => fields.find((f) => f.name === name)?.value as string | undefined;
+    return {
+      id: cmid,
+      module: (await formValue(page, "modulename")) ?? "",
+      courseId: Number(await formValue(page, "course")),
+      name: value("name") ?? "",
+      description: value("introeditor[text]") ?? "",
+      fields,
+    };
+  } finally {
+    await page.close().catch(() => undefined);
+  }
 }

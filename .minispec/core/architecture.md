@@ -32,7 +32,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `moodle/choice.ts` — a choice read and answered on its page (its services aren't open to AJAX): options by id, whether answers can change, the answer.
 - `moodle/courses.ts`, `moodle/course.ts`, `moodle/structure.ts` — the person's courses; a course's state and activity details; its structure, assignments and what's pending.
 - `moodle/content.ts` — a page, book, label, URL, file or folder viewed as a person would. `moodle/files.ts` — local files checked, site files downloaded with the session.
-- `moodle/editor.ts`, `moodle/activities.ts` — the course editor's actions and renames; creating, updating, moving, duplicating and deleting activities and sections, each answering with the structure afterwards.
+- `moodle/editor.ts`, `moodle/activities.ts` — the course editor's actions and renames; creating, updating, moving, duplicating and deleting activities and sections, each answering with the structure afterwards. `activitySettings()` reads an activity's form as fields (name, label, value, options, disabled) without submitting it.
 - `moodle/assign.ts`, `moodle/grading.ts`, `moodle/submission.ts` — an assignment's ids, participants and panels; everyone's submissions and grading; the student's side (save, submit).
 - `moodle/quiz.ts` — a quiz's page, attempts (questions by form name, answers page by page, finish), reviews.
 - `moodle/forum.ts`, `moodle/forumPosts.ts` — discussions from the forum's pages, posts through the service; replying and starting discussions through the post form.

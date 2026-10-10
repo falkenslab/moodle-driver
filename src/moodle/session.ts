@@ -105,3 +105,9 @@ export async function logOut(context: BrowserContext, siteUrl: string): Promise<
     await page.close().catch(() => undefined);
   }
 }
+
+/** Moodle's message on an error page (its fatal error box: no permission, no such record), which keeps the page's body id. */
+export async function moodleErrorMessage(page: Page): Promise<string | undefined> {
+  const box = page.locator('[data-rel="fatalerror"] .errormessage');
+  return (await box.count()) > 0 ? ((await box.first().textContent()) ?? "").replace(/\s+/g, " ").trim() : undefined;
+}

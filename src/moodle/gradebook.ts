@@ -4,7 +4,7 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { callService } from "./ajax.js";
 import { setFields, type FieldValue } from "./forms.js";
-import { openSitePage } from "./session.js";
+import { moodleErrorMessage, openSitePage } from "./session.js";
 
 /** The gradebook can't be read or changed: not allowed, recalculating, or a value Moodle refuses. */
 export class GradebookError extends Error {
@@ -80,12 +80,6 @@ export function readGraderReport(page: Page): Promise<GraderReport> {
 
 const MAX_PAGES = 100;
 
-/** Moodle's message on an error page (its fatal error box), which keeps the page's body id. */
-async function fatalError(page: Page): Promise<string | undefined> {
-  const box = page.locator('[data-rel="fatalerror"] .errormessage');
-  return (await box.count()) > 0 ? ((await box.first().textContent()) ?? "").replace(/\s+/g, " ").trim() : undefined;
-}
-
 /**
  * Everyone's grades in a course as the grader report shows them, page by page, in one group when
  * given. People come as user id and full name only.
@@ -96,7 +90,7 @@ export async function graderReport(context: BrowserContext, siteUrl: string, cou
   for (let p = 0; p < MAX_PAGES; p++) {
     const page = await openSitePage(context, siteUrl, `grade/report/grader/index.php?id=${courseId}&page=${p}${group ? `&group=${group}` : ""}`);
     try {
-      const refused = await fatalError(page);
+      const refused = await moodleErrorMessage(page);
       if (refused !== undefined || (await page.locator("body#page-grade-report-grader-index").count()) === 0) {
         throw new GradebookError(`You can't see course ${courseId}'s grader report: ${refused ?? "the course doesn't exist, or you aren't allowed"}`);
       }
@@ -199,7 +193,7 @@ export async function gradebookSetup(context: BrowserContext, siteUrl: string, c
   const page = await openSitePage(context, siteUrl, `grade/edit/tree/index.php?id=${courseId}`);
   try {
     if ((await page.locator("body#page-grade-edit-tree-index #grade_edit_tree_table").count()) === 0) {
-      throw new GradebookError(`You can't see course ${courseId}'s gradebook setup: ${(await fatalError(page)) ?? "the course doesn't exist, or you aren't allowed to manage its grades"}`);
+      throw new GradebookError(`You can't see course ${courseId}'s gradebook setup: ${(await moodleErrorMessage(page)) ?? "the course doesn't exist, or you aren't allowed to manage its grades"}`);
     }
     const setup = await readGradebookSetup(page);
     // Category and course totals are their categories' own items, not items of their own.
