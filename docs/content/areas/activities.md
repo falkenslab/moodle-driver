@@ -2,7 +2,7 @@
 
 Building a course: creating activities and resources of any type through Moodle's own activity form, reading and changing their settings, and renaming, showing, hiding, moving, duplicating and deleting activities and sections as the course page's editor does. It's for teachers with editing rights (Moodle's `moodle/course:manageactivities`); for anyone else Moodle refuses. Every change returns the course's structure afterwards, so a program can check what happened without another call.
 
-The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
 ## What a change returns
 

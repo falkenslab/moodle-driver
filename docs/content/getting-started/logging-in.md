@@ -21,7 +21,7 @@ Chromium forgets session cookies when a persistent profile closes, and Moodle's 
 
 ## logIn
 
-`moodle.logIn({ timeoutMs, onWait? })` is the function `logIn(browser, siteUrl, options)` with the object's browser and site.
+`moodle.logIn({ timeoutMs?, onWait? })` is the function `logIn(browser, siteUrl, options)` with the object's browser and site; without `timeoutMs` it waits the object's `loginTimeoutMs`, five minutes unless given.
 
 ```ts
 function logIn(

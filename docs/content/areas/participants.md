@@ -2,7 +2,7 @@
 
 This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). It's mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
 
-The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
 People come as a user id and a full name, with their roles and groups by id. Emails, phone numbers, profile fields, pictures and last access dates are deliberately left out: telling participants apart, filtering them and acting on them (grading, overriding, messaging) needs nothing else. A single user is read by id with `userById` (see [Users and site](users-and-site.md)).
 

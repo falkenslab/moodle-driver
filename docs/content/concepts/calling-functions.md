@@ -18,14 +18,43 @@ const b = await listCourses(await moodle.context(), moodle.site, "inprogress");
 ## createMoodle
 
 ```ts
-function createMoodle(options: ({ site: string } & BrowserOptions) | { site: string; browser: BrowserManager }): Moodle;
+function createMoodle(options: MoodleDefaults & (({ site: string } & BrowserOptions) | { site: string; browser: BrowserManager })): Moodle;
 ```
 
 Give it the site and the [browser's options](browser.md) (a new browser manager is made for it), or a browser manager you already have. The site is normalized (`parseSiteUrl`): a trailing slash, no query; something that isn't an http(s) URL throws `MoodleUrlError`. Nothing launches until the first call that needs the browser.
 
+## Defaults
+
+Settings a program would otherwise repeat on every call go to the object once; any call can still give its own.
+
+| Option | Default | Used by |
+| --- | --- | --- |
+| `trail` | `"realistic"` | `activityContent`, `answerQuizQuestions`, `answerLessonPage`: the [student's pace](student-pace.md) |
+| `onProgress(elapsed, total?)` | none | The same three, while they wait at a reader's pace |
+| `loginTimeoutMs` | 5 minutes | `logIn()`, how long it waits for the person |
+| `downloadDir` | none | `downloadFile(url)` without a folder |
+
+```ts
+import { createMoodle } from "@falkenslab/moodle-driver";
+
+const moodle = createMoodle({
+  site: "https://campus.example.org/",
+  profileDir: "/home/ada/.moodle-profile",
+  headless: true,
+  downloadBrowser: true,
+  trail: "fast",
+  downloadDir: "/home/ada/moodle-files",
+});
+await moodle.logIn();
+const book = await moodle.activityContent(6, "book"); // fast
+const slow = await moodle.activityContent(6, "book", { trail: "realistic" }); // this call only
+```
+
+`moodle.defaults` gives them back.
+
 ## The object's methods
 
-Every function whose first parameters are the browser context and the site is a method of the same name without them: `gradeSubmission(context, site, 35, 7, input)` is `moodle.gradeSubmission(35, 7, input)`, with the same options, result and errors. The area pages show the functions' signatures; drop the first two for the method.
+Every operation whose first parameters are the browser context and the site is a method of the same name without them: `gradeSubmission(context, site, 35, 7, input)` is `moodle.gradeSubmission(35, 7, input)`, with the same options, result and errors. The area pages show the functions' signatures; drop the first two for the method. The lower-level pieces the operations are built from (an assignment's ids and grading panel, a quiz attempt's single steps, the course's raw state, the editor's actions) are functions only, to keep the object to what programs call; see [Going lower level](low-level.md).
 
 The object also has its own:
 
@@ -34,12 +63,13 @@ The object also has its own:
 | `site` | The site's base URL, normalized |
 | `browser` | The browser manager underneath |
 | `context()` | The browser's context, launching it if needed: what the functions take |
-| `logIn({ timeoutMs, onWait? })` | Makes sure there's a session; see [Logging in](../getting-started/logging-in.md) |
+| `logIn({ timeoutMs?, onWait? })` | Makes sure there's a session, waiting `loginTimeoutMs` by default; see [Logging in](../getting-started/logging-in.md) |
 | `logOut()` | Ends Moodle's session |
 | `publicSiteInfo()` | What the site tells anyone before logging in |
 | `callService<T>(methodname, args)` | One of Moodle's AJAX services, typed; see [Going lower level](low-level.md) |
 | `tab()`, `visible()`, `setVisible(visible)` | The working tab and showing the browser; see [The browser](browser.md) |
 | `saveSession()`, `close()` | Saving the session and closing the browser |
+| `defaults` | The defaults it was made with |
 
 ## Arguments
 

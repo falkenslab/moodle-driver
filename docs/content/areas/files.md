@@ -2,7 +2,7 @@
 
 Files in both directions: saving a site's files (a resource, a folder's files, a submission, a post's attachment) to a local folder with the person's session, and uploading local files in the forms that take them (a file resource or folder, a submission, a forum post, a question import). Anyone can download what their session can reach; uploading depends on the form, so on who can use it (a teacher creating a resource, a student submitting). The driver never opens or interprets the files: a program gets their paths.
 
-The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
 ## downloadFile
 
@@ -20,7 +20,7 @@ interface DownloadedFile {
 ```
 
 - `url`: an absolute URL of the site, usually a `pluginfile.php` link from another function ([activityContent](content.md)'s `files`, a submission's `files` in [grading](grading.md), `submittedFiles` and `descriptionFiles` in [assignments](assignments.md), a post's attachments in [forums](forums.md)). Media the site serves outside Moodle's path is fine, as long as it's on the same origin.
-- `destDir`: an absolute folder, created when it doesn't exist.
+- `destDir`: an absolute folder, created when it doesn't exist. As a method, `moodle.downloadFile(url, destDir?)` uses the object's `downloadDir` when not given one, and throws without either.
 
 It fetches the file through the browser context's request API, which carries the session's cookies without opening a tab, following up to 5 redirects. The file's name comes from the response's `Content-Disposition` (UTF-8 names included), else from the URL's last segment, reduced to a plain name: never a path, and without characters a file name can't have. It never overwrites: when the name is taken it saves `name (2).ext`, `name (3).ext`… The result has the saved file's `path`, its `name` (as saved), its `size` in bytes and the response's `contentType` (`"application/pdf"`), without parameters.
 

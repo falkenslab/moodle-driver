@@ -19,6 +19,10 @@ type Trail = "realistic" | "fast";
 | `answerQuizQuestions()` | Each page of questions read before saving it | Saved at once |
 | `answerLessonPage()` | The page read before answering | Answered at once |
 
+## Choosing it once
+
+A program usually wants one pace everywhere: give it to the object, `createMoodle({ …, trail: "fast" })`, and every student action uses it unless a call says otherwise (see [Defaults](calling-functions.md#defaults)). An `onProgress` given to the object reports the waits of every call.
+
 ## Progress
 
 Waiting can take minutes. These functions take an `onProgress` callback, called every few seconds while they wait, so a program can tell the person, or keep a connection alive (a protocol that times out without activity).

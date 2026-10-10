@@ -2,7 +2,7 @@
 
 The student's side of an assignment: reading it as the student's page shows it, saving a submission (online text, files or both) and submitting it for grading. Everything goes through the assignment's own pages and forms (`mod/assign/view.php`), as the person would, so Moodle logs it and applies its own rules (dates, cut-off, attempts, the submission statement). The teacher's side (everyone's submissions, grading, extensions) is in [grading](grading.md); an assignment's id comes from the [course structure](courses.md) or `listAssignments`.
 
-The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
 ## studentAssignment
 
@@ -66,10 +66,10 @@ Errors (`SubmissionError` unless said otherwise):
 Submits the saved submission for grading and returns the assignment afterwards.
 
 ```ts
-function submitForGrading(context: BrowserContext, siteUrl: string, cmid: number, acceptStatement: boolean): Promise<StudentAssignment>;
+function submitForGrading(context: BrowserContext, siteUrl: string, cmid: number, options?: { acceptStatement?: boolean } | boolean): Promise<StudentAssignment>;
 ```
 
-Some sites ask students to accept a statement before submitting ("This submission is my own work…"). When the confirmation form has that statement and `acceptStatement` is `false`, nothing is submitted and it throws `SubmissionError` with the statement's text, so the program can show it to the person and call again with `true` once they agree. Without a statement, `acceptStatement` is ignored.
+Some sites ask students to accept a statement before submitting ("This submission is my own work…"). When the confirmation form has that statement and `acceptStatement` isn't `true` (it's `false` by default; a bare boolean, as before 0.2, is accepted too), nothing is submitted and it throws `SubmissionError` with the statement's text, so the program can show it to the person and call again with `{ acceptStatement: true }` once they agree. Without a statement, `acceptStatement` is ignored.
 
 It throws `SubmissionError` when there's nothing to submit now: no draft, submitted already, or the assignment doesn't ask students to click submit. A submitted assignment can't be edited again unless the teacher reverts it to draft or reopens it.
 
@@ -93,7 +93,7 @@ if (assignment.canEdit) {
 
   if (saved.canSubmit) {
     try {
-      await moodle.submitForGrading(45, false);
+      await moodle.submitForGrading(45);
     } catch (error) {
       if (!(error instanceof SubmissionError)) throw error;
       // The site asks to accept a statement: show it and ask the person before calling again.

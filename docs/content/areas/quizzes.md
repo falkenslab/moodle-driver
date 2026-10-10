@@ -2,7 +2,7 @@
 
 Quizzes from both sides. A student reads a quiz's page, starts or continues an attempt, answers its questions page by page (at a person's pace by default) and finishes it, then reads the review. A teacher reads every attempt with its grade and marks per question (and the answers given), reads which questions a quiz holds, adds questions from a bank (chosen or random), and gives a student other dates, a time limit or more attempts with a user override. Quizzes are identified by their course module id (the `id` in `mod/quiz/view.php?id=`), attempts by Moodle's attempt id.
 
-The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
 Everything is read from Moodle's own pages by their structure (body ids, form names, classes, links), so it works in any interface language; texts such as dates, states and grades come as the site shows them, in its language. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)); the others are `QuizError`, and `FormError` where a form is involved.
 

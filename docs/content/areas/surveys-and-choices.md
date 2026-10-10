@@ -2,7 +2,7 @@
 
 Answering surveys and choices as a student does: reading a survey's questions with their fields and filling it in page by page, and reading a choice's options and choosing one or several. Two survey modules are supported: Moodle's feedback (`feedback`) and the questionnaire plugin (`questionnaire`, mod_questionnaire). Moodle's older "survey" module (fixed instruments such as COLLES and ATTLS) isn't. These functions act as the person, on their own answers; teachers' views of the responses aren't covered.
 
-The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
 Everything is read from the activities' pages and forms (body ids, form names, labels), so it works in any interface language; the texts come in the site's language. Every function throws `NotLoggedInError` when there's no session (see [Errors](../concepts/errors.md)).
 
@@ -11,7 +11,7 @@ Everything is read from the activities' pages and forms (body ids, form names, l
 Whether the person can answer a survey now, its description and messages, and, when they can, every question on every page of its form.
 
 ```ts
-function getSurvey(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType): Promise<{
+function getSurvey(context: BrowserContext, siteUrl: string, cmid: number, type?: SurveyType): Promise<{
   canAnswer: boolean;
   intro: string;
   messages: string[];
@@ -37,7 +37,7 @@ interface SurveyField {
 }
 ```
 
-- `cmid` and `type`: the activity's course module id and its module, both from the course structure.
+- `cmid`: the activity's course module id. `type`: its module, from the course structure; without it, the driver finds it from the page each module answers with (once per activity), at the cost of a page or two.
 - `canAnswer`: the activity's page links to its form: it's open and the person hasn't answered yet (or may answer again).
 - `intro`: the activity's description; `messages`: the page's notices ("You have already submitted", closed, not open yet).
 - `questions`: empty when the person can't answer. Each question has the `page` it's on (from 0), its `number` and `text` as shown, whether it's `required`, and its `fields`.
@@ -56,13 +56,15 @@ A field is one input of the form, by its form name: that name is what `submitSur
 Fills the survey page by page with the given responses and submits it on the last page, as the person would with its "Next page" and submit buttons.
 
 ```ts
+function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ messages: string[] }>;
+// As before 0.2, still accepted:
 function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }>;
 ```
 
 - `responses`: values by field name, for any page: each page gets the ones its form has.
 - Returns the activity page's messages afterwards (usually that the person has submitted).
 
-Every name is checked against the whole form before anything is sent, so a wrong name sends nothing: `SurveyError` names the unknown fields. `SurveyError` also comes when the person can't answer now (with the page's messages), when Moodle sends a page back because something's missing or wrong (a required question unanswered: Moodle's messages are in the error, by field where it gives one), and when the site answers with a server error (5xx), in which case Moodle may or may not have recorded the answers: read the survey again before trying again. `submitSurvey` takes no `trail` option: the form is filled and sent at once, page after page.
+Without a `type`, the module is found as `getSurvey` finds it. Every name is checked against the whole form before anything is sent, so a wrong name sends nothing: `SurveyError` names the unknown fields. `SurveyError` also comes when the person can't answer now (with the page's messages), when Moodle sends a page back because something's missing or wrong (a required question unanswered: Moodle's messages are in the error, by field where it gives one), and when the site answers with a server error (5xx), in which case Moodle may or may not have recorded the answers: read the survey again before trying again. `submitSurvey` takes no `trail` option: the form is filled and sent at once, page after page.
 
 ## getChoice
 
@@ -112,7 +114,7 @@ import { SurveyError } from "@falkenslab/moodle-driver";
 // `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 // A feedback activity (course module 34): answer every required question.
-const survey = await moodle.getSurvey(34, "feedback");
+const survey = await moodle.getSurvey(34);
 if (survey.canAnswer) {
   const responses: Record<string, string> = {};
   for (const question of survey.questions) {
@@ -122,7 +124,7 @@ if (survey.canAnswer) {
     else if (field.options?.length) responses[field.name] = field.options[0]!.value;
   }
   try {
-    const { messages } = await moodle.submitSurvey(34, "feedback", responses);
+    const { messages } = await moodle.submitSurvey(34, responses);
     console.log(messages.join(" "));
   } catch (error) {
     if (error instanceof SurveyError) console.error(error.message);

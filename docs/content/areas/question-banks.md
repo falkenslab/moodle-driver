@@ -2,7 +2,7 @@
 
 A course's question banks as Moodle 5 organizes them: shared banks are activities of their own (module `qbank`), and every quiz keeps a private bank. A teacher (anyone who can manage the course's questions) lists the banks, reads a bank's categories and questions, imports questions from GIFT or Moodle XML (a file or text), and creates single questions through their type's form. Students have no access to banks. Questions in a bank are what [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) puts in a quiz.
 
-The signatures below are the functions'; each is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them.
+The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level pieces the operations are built from are functions only.
 
 A bank is identified by its course module id (`bankCmid`): a qbank activity's, or the quiz's whose bank it is. Everything is read from Moodle's bank pages by field names, data attributes and icons, so it works in any interface language. Every function throws `NotLoggedInError` when there's no session; the others are `QuestionBankError` and, for forms, `FormError` (see [Errors](../concepts/errors.md)).
 
