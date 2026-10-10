@@ -129,7 +129,7 @@ interface ActionEvent {
  * last `pastDays` to `days` ahead, in one course or all. Teachers' grading counts come from the
  * activities overview instead: Moodle gives them few action events.
  */
-export async function deadlines(context: BrowserContext, siteUrl: string, { courseId, days = 30, pastDays = 7 }: { courseId?: number; days?: number; pastDays?: number }) {
+export async function deadlines(context: BrowserContext, siteUrl: string, { courseId, days = 30, pastDays = 7 }: { courseId?: number; days?: number; pastDays?: number } = {}) {
   const now = Math.floor(Date.now() / 1000);
   const window = { timesortfrom: now - pastDays * 86400, timesortto: now + days * 86400, limitnum: 50 };
   const { events } = courseId

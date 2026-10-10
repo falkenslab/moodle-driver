@@ -80,10 +80,10 @@ export function structureOf(state: CourseState, details?: Map<number, ActivityDe
 }
 
 /** A course's sections and activities; with `details`, each activity's dates and restriction from the course page (slower). */
-export async function courseStructure(context: BrowserContext, siteUrl: string, courseId: number, { details = false } = {}) {
+export async function courseStructure(context: BrowserContext, siteUrl: string, courseId: number, { details = false } = {}): Promise<CourseSection[]> {
   const state = await courseState(context, siteUrl, courseId);
   const extra = details ? await activityDetails(context, siteUrl, courseId, state) : undefined;
-  return { course: { id: courseId, url: state.course?.baseurl }, sections: structureOf(state, extra) };
+  return structureOf(state, extra);
 }
 
 export interface CourseAssignment {

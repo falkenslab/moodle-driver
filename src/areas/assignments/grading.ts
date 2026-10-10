@@ -44,7 +44,7 @@ async function extensionDate(context: BrowserContext, siteUrl: string, activityI
 }
 
 /** Every participant's submission to an assignment, with its content unless `includeContent` is false. */
-export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, { includeContent = true } = {}) {
+export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, { includeContent = true } = {}): Promise<Submission[]> {
   const ids = await assignmentIds(context, siteUrl, activityId);
   const participants = await listParticipants(context, siteUrl, ids.instanceId);
   // A blank tab parses the panels' HTML: nothing of Moodle's loads there.
@@ -73,7 +73,7 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
   } finally {
     await parser?.close().catch(() => undefined);
   }
-  return { assignment: { id: activityId, instanceId: ids.instanceId }, submissions };
+  return submissions;
 }
 
 /**
@@ -96,7 +96,7 @@ export async function gradeSubmission(
     notify,
     fields,
   }: {
-    grade?: string;
+    grade?: string | number;
     /** Criterion id → level id. */
     rubric?: Record<number, number>;
     /** Criterion id → score. */
@@ -110,7 +110,7 @@ export async function gradeSubmission(
 ) {
   const ids = await assignmentIds(context, siteUrl, activityId);
   const values: Record<string, FieldValue> = { ...fields };
-  if (grade !== undefined) values.grade = grade;
+  if (grade !== undefined) values.grade = String(grade);
   for (const [criterion, level] of Object.entries(rubric ?? {})) values[`advancedgrading[criteria][${criterion}][levelid]`] = String(level);
   for (const [criterion, score] of Object.entries(guide ?? {})) values[`advancedgrading[criteria][${criterion}][score]`] = String(score);
   for (const [criterion, remark] of Object.entries(remarks ?? {})) values[`advancedgrading[criteria][${criterion}][remark]`] = remark;

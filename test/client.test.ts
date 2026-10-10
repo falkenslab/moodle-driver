@@ -21,6 +21,13 @@ describe("createMoodle", () => {
     assert.throws(() => createMoodle({ site: "not a url", browser: fakeBrowserManager() }), MoodleUrlError);
   });
 
+  it("closes the browser when disposed, as `await using` does", async () => {
+    let closed = 0;
+    const moodle = createMoodle({ site: SITE, browser: fakeBrowserManager({ close: async () => void closed++ }) });
+    await moodle[Symbol.asyncDispose]();
+    assert.equal(closed, 1);
+  });
+
   it("calls the function with the browser's context and the site", { skip: !browser && "no system browser" }, async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, {

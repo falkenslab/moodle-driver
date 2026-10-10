@@ -54,7 +54,7 @@ export {
   type CourseChange,
   type FormField,
 } from "./areas/activities/build.js";
-export { activityContent, CONTENT_TYPES, NotViewableError, type ContentType, type ActivityContent } from "./areas/activities/content.js";
+export { activityContent, CONTENT_TYPES, NotViewableError, type ContentType, type ContentOptions, type ActivityContent } from "./areas/activities/content.js";
 
 // Assignments.
 export { NotAnAssignmentError, GradingError, type PluginContent } from "./areas/assignments/grader.js";

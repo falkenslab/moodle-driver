@@ -69,11 +69,10 @@ describe("courseStructure", { skip: !browser && "no system browser" }, () => {
     };
     await serveFakeMoodle(context, state);
     const plain = await courseStructure(context, SITE, 5);
-    assert.deepEqual(plain.course, { id: 5, url: `${SITE}course/view.php?id=5` });
-    assert.deepEqual(plain.sections.map((s) => s.id), [10, 11, 12]);
-    assert.equal(plain.sections[0]?.activities[1]?.dates, undefined);
+    assert.deepEqual(plain.map((s) => s.id), [10, 11, 12]);
+    assert.equal(plain[0]?.activities[1]?.dates, undefined);
     assert.deepEqual(state.pagesServed!.filter((p) => p.startsWith("/course/")), []);
-    const { sections } = await courseStructure(context, SITE, 5, { details: true });
+    const sections = await courseStructure(context, SITE, 5, { details: true });
     assert.deepEqual(sections[0]?.activities[1]?.dates, [{ label: "Opened", value: "Monday, 5 October" }, { label: "Closes", value: "Friday, 9 October" }]);
     assert.equal(sections[1]?.activities[0]?.restriction, "Not available unless: You achieve a pass in Quiz 1");
     assert.deepEqual(state.pagesServed!.filter((p) => p.startsWith("/course/")), ["/course/view.php", "/course/section.php"]);

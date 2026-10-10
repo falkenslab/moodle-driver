@@ -14,10 +14,10 @@ function assignmentSubmissions(
   siteUrl: string,
   activityId: number,
   options?: { includeContent?: boolean },
-): Promise<{ assignment: { id: number; instanceId: number }; submissions: Submission[] }>;
+): Promise<Submission[]>;
 ```
 
-`activityId` is the assignment's activity id (course module id); `instanceId` is the assignment's own id, read once from its grader page. Each `Submission` has:
+`activityId` is the assignment's activity id (course module id). Each `Submission` has:
 
 - `userId`, `fullName`: the participant.
 - `status`: Moodle's submission status, `"submitted"`, `"draft"`, `"new"`, `"reopened"`, or `"none"` without a submission.
@@ -43,7 +43,7 @@ function gradeSubmission(
   activityId: number,
   userId: number,
   input: {
-    grade?: string;
+    grade?: string | number;
     rubric?: Record<number, number>; // criterion id -> level id
     guide?: Record<number, number>; // criterion id -> score
     remarks?: Record<number, string>; // criterion id -> remark
@@ -54,7 +54,7 @@ function gradeSubmission(
 ): Promise<{ changed: string; grade?: string; gradebookGrade?: string; feedback?: string }>;
 ```
 
-- `grade`: for simple grading, the grade as the grader's field takes it (`"8.5"`); for a scale, the scale item's value.
+- `grade`: for simple grading, the grade as a number (`8.5`) or as the grader's field takes it (`"8.5"`, or `"8,5"` where the site writes decimals with a comma); for a scale, the scale item's value.
 - `rubric`: for a rubric, the level chosen per criterion, by the ids `rubric()` gives.
 - `guide`: for a marking guide, the score per criterion.
 - `remarks`: a rubric's or a guide's remark per criterion.
@@ -121,7 +121,7 @@ Errors:
 
 // `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-const { submissions } = await moodle.assignmentSubmissions(45);
+const submissions = await moodle.assignmentSubmissions(45);
 for (const s of submissions.filter((s) => s.needsGrading)) {
   const text = s.content?.find((c) => c.plugin === "onlinetext")?.text ?? "";
   console.log(`${s.fullName} (${s.userId}): ${text.slice(0, 80)}`);

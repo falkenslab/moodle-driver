@@ -27,7 +27,7 @@ Chromium forgets session cookies when a persistent profile closes, and Moodle's 
 function logIn(
   browser: BrowserManager,
   siteUrl: string,
-  options: { timeoutMs: number; onWait?: (elapsedMs: number) => void },
+  options?: { timeoutMs?: number; onWait?: (elapsedMs: number) => void },
 ): Promise<LoginResult>;
 
 interface LoginResult {

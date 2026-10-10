@@ -7,19 +7,19 @@ The signatures below are the functions'. Each operation is also a method of the 
 ## activityContent
 
 ```ts
-function activityContent(
-  context: BrowserContext,
-  siteUrl: string,
-  activityId: number,
-  type: ContentType,
-  options?: { trail?: Trail; onProgress?: (secondsRead: number) => void },
-): Promise<ActivityContent>;
+function activityContent(context: BrowserContext, siteUrl: string, activity: { id: number; type: string }, options?: ContentOptions): Promise<ActivityContent>;
+function activityContent(context: BrowserContext, siteUrl: string, activityId: number, type: ContentType, options?: ContentOptions): Promise<ActivityContent>;
+
+interface ContentOptions {
+  trail?: Trail;
+  onProgress?: (secondsRead: number) => void;
+}
 
 type ContentType = "page" | "book" | "label" | "url" | "resource" | "folder"; // CONTENT_TYPES
 type Trail = "realistic" | "fast"; // TRAILS
 ```
 
-`activityId` is the activity's id (course module id) and `type` its module, both from the [course structure](courses.md) (`activity.id` and `activity.type`). Options:
+Give it an activity as the [course structure](courses.md) lists it (`{ id, type }` are what it reads), or its id (course module id) and its module. An activity of a module it doesn't read (a quiz, a forum) throws `NotViewableError` before anything is opened. Options:
 
 - `trail`: `"realistic"` (the default) or `"fast"`.
 - `onProgress`: called every few seconds while the realistic trail pauses to read, with the seconds read so far in the whole call; useful to keep a caller waiting or show progress.
@@ -64,11 +64,11 @@ Each `MediaItem` is `{ kind, url, title? }`, with `kind` one of `"video"`, `"aud
 
 // `moodle` is the object from createMoodle(), as in the getting-started pages.
 
-const { sections } = await moodle.courseStructure(3);
+const sections = await moodle.courseStructure(3);
 const book = sections.flatMap((s) => s.activities).find((a) => a.type === "book" && a.availableToMe);
 
 if (book) {
-  const content = await moodle.activityContent(book.id, "book", {
+  const content = await moodle.activityContent(book, {
     trail: "realistic",
     onProgress: (seconds) => console.log(`Reading... ${seconds} s`),
   });

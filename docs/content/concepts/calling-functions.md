@@ -69,7 +69,19 @@ The object also has its own:
 | `callService<T>(methodname, args)` | One of Moodle's AJAX services, typed; see [Going lower level](low-level.md) |
 | `tab()`, `visible()`, `setVisible(visible)` | The working tab and showing the browser; see [The browser](browser.md) |
 | `saveSession()`, `close()` | Saving the session and closing the browser |
+| `[Symbol.asyncDispose]()` | `close()`, so `await using` closes the browser when the block ends |
 | `defaults` | The defaults it was made with |
+
+With `await using` (TypeScript 5.2 or later, on a runtime that has it or through a transpiler), the browser closes on its own when the block ends, also on an error:
+
+```ts
+import { createMoodle } from "@falkenslab/moodle-driver";
+
+await using moodle = createMoodle({ site: "https://campus.example.org/", profileDir: "/home/ada/.moodle-profile", headless: true, downloadBrowser: true });
+await moodle.logIn();
+console.log(await moodle.listCourses());
+// moodle.close() runs here
+```
 
 ## Arguments
 

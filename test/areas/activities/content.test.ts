@@ -119,4 +119,12 @@ describe("activityContent", { skip: !browser && "no system browser" }, () => {
     await assert.rejects(activityContent(context, SITE, 5, "folder", fast), (error: unknown) => error instanceof NotViewableError && /isn't a folder you can view/.test(error.message));
     await context.close();
   });
+
+  it("takes an activity as the course structure gives it, and refuses a module it doesn't read", async () => {
+    const context = await site();
+    const activity = { id: 5, name: "Loops", type: "page" };
+    assert.equal((await activityContent(context, SITE, activity, fast)).activity.type, "page");
+    await assert.rejects(activityContent(context, SITE, { id: 27, type: "quiz" }, fast), (error: unknown) => error instanceof NotViewableError && /Activity 27 is a quiz/.test(error.message));
+    await context.close();
+  });
 });

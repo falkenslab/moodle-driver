@@ -116,7 +116,7 @@ import { CompletionError } from "@falkenslab/moodle-driver";
 // `moodle` is the object from createMoodle(), as in the getting-started pages.
 
 // As a student: mark every incomplete manual page in course 3 done.
-const { sections } = await moodle.courseStructure(3);
+const sections = await moodle.courseStructure(3);
 for (const activity of sections.flatMap((s) => s.activities)) {
   if (activity.type !== "page" || activity.completion?.state !== "incomplete") continue;
   try {

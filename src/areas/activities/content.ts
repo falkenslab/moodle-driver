@@ -54,14 +54,39 @@ function chapter(title: string, body: string): { title: string; text: string } {
 /**
  * Reads a page's or label's text, a book's chapters, a URL resource's target, or a file resource's
  * or folder's files. With the realistic trail, page by page at a reader's pace, calling `onProgress`
- * with the seconds read so far while it pauses.
+ * with the seconds read so far while it pauses. Takes an activity as the course structure gives it
+ * (`{ id, type }`), or its id and module.
  */
+export function activityContent(context: BrowserContext, siteUrl: string, activity: { id: number; type: string }, options?: ContentOptions): Promise<ActivityContent>;
+export function activityContent(context: BrowserContext, siteUrl: string, activityId: number, type: ContentType, options?: ContentOptions): Promise<ActivityContent>;
 export async function activityContent(
+  context: BrowserContext,
+  siteUrl: string,
+  activityOrId: { id: number; type: string } | number,
+  typeOrOptions?: ContentType | ContentOptions,
+  options?: ContentOptions,
+): Promise<ActivityContent> {
+  if (typeof activityOrId === "number") return readContent(context, siteUrl, activityOrId, typeOrOptions as ContentType, options);
+  const { id, type } = activityOrId;
+  if (!(CONTENT_TYPES as readonly string[]).includes(type)) {
+    throw new NotViewableError(`Activity ${id} is a ${type}: activityContent reads ${CONTENT_TYPES.join(", ")}.`);
+  }
+  return readContent(context, siteUrl, id, type as ContentType, typeOrOptions as ContentOptions | undefined);
+}
+
+/** How `activityContent` reads: at a person's pace (`realistic`, the default) or at once. */
+export interface ContentOptions {
+  trail?: Trail;
+  /** While pausing on the realistic trail, the seconds read so far. */
+  onProgress?: (secondsRead: number) => void;
+}
+
+async function readContent(
   context: BrowserContext,
   siteUrl: string,
   activityId: number,
   type: ContentType,
-  { trail = "realistic", onProgress }: { trail?: Trail; onProgress?: (secondsRead: number) => void } = {},
+  { trail = "realistic", onProgress }: ContentOptions = {},
 ): Promise<ActivityContent> {
   const realistic = trail === "realistic";
   const output: ActivityContent = { activity: { id: activityId, type }, trail };

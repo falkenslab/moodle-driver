@@ -5,6 +5,7 @@ import { NotLoggedInError, openSitePage, pageIsLoggedIn } from "./session.js";
 import { MoodleError } from "./errors.js";
 
 const POLL_MS = 1000;
+const LOGIN_TIMEOUT_MS = 5 * 60_000;
 
 export class LoginTimeoutError extends MoodleError {
   override name = "LoginTimeoutError";
@@ -67,9 +68,14 @@ export interface LoginResult {
 /**
  * Makes sure there's a session: the user at once if there is one; otherwise a browser window at the
  * site's login page, waiting (calling `onWait`) until the person logs in there themselves. The session
- * is saved (ADR-003), and the window closes again unless the browser is shown on demand.
+ * is saved (ADR-003), and the window closes again unless the browser is shown on demand. It waits
+ * `timeoutMs`, 5 minutes by default.
  */
-export async function logIn(browser: BrowserManager, siteUrl: string, { timeoutMs, onWait }: { timeoutMs: number; onWait?: (elapsedMs: number) => void }): Promise<LoginResult> {
+export async function logIn(
+  browser: BrowserManager,
+  siteUrl: string,
+  { timeoutMs = LOGIN_TIMEOUT_MS, onWait }: { timeoutMs?: number; onWait?: (elapsedMs: number) => void } = {},
+): Promise<LoginResult> {
   try {
     return { status: "already-logged-in", ...(await readOwnProfile(await browser.context(), siteUrl)) };
   } catch (error) {

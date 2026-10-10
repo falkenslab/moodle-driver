@@ -24,7 +24,7 @@ try {
   console.log(`\n${course.fullname} (${course.id})`);
 
   // 3. Sections and activities, with the person's completion.
-  const { sections } = await moodle.courseStructure(course.id);
+  const sections = await moodle.courseStructure(course.id);
   for (const section of sections) {
     console.log(`  ${section.title}`);
     for (const activity of section.activities) console.log(`    [${activity.type}] ${activity.name}${activity.completion?.complete ? " (done)" : ""}`);

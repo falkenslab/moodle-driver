@@ -54,7 +54,7 @@ Asking for one type that has no overview (labels, some plugins) passes Moodle's 
 What the person has to do by a date, from the calendar's action events (submit, attempt, grade…), in one course or all of theirs, from some days ago to some days ahead.
 
 ```ts
-function deadlines(context: BrowserContext, siteUrl: string, options: { courseId?: number; days?: number; pastDays?: number }): Promise<Deadline[]>;
+function deadlines(context: BrowserContext, siteUrl: string, options?: { courseId?: number; days?: number; pastDays?: number }): Promise<Deadline[]>;
 
 // The shape of each deadline (the type is inferred, not exported by this name).
 interface Deadline {

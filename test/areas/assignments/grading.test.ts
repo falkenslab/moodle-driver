@@ -31,8 +31,7 @@ describe("assignmentSubmissions", { skip: !browser && "no system browser" }, () 
     const context = await browser!.newContext();
     const state = submissionsSite(21);
     await serveFakeMoodle(context, state);
-    const { assignment, submissions } = await assignmentSubmissions(context, SITE, 21);
-    assert.deepEqual(assignment, { id: 21, instanceId: 210 });
+    const submissions = await assignmentSubmissions(context, SITE, 21);
     const [ada, alan] = submissions;
     assert.deepEqual([ada?.status, ada?.needsGrading, ada?.dueDate, ada?.allowSubmissionsFrom], ["submitted", true, new Date(DUE * 1000).toISOString(), undefined]);
     assert.deepEqual(ada?.content?.map((c) => c.plugin), ["onlinetext", "file", "onlinetext"]);
@@ -46,7 +45,7 @@ describe("assignmentSubmissions", { skip: !browser && "no system browser" }, () 
     const context = await browser!.newContext();
     const state = submissionsSite(22);
     await serveFakeMoodle(context, state);
-    const { submissions } = await assignmentSubmissions(context, SITE, 22, { includeContent: false });
+    const submissions = await assignmentSubmissions(context, SITE, 22, { includeContent: false });
     assert.ok(submissions.every((s) => s.content === undefined));
     assert.equal(state.serviceCalls?.some((call) => call.methodname === "core_get_fragment"), false);
     await context.close();
@@ -98,7 +97,7 @@ describe("gradeSubmission", { skip: !browser && "no system browser" }, () => {
     const context = await browser!.newContext();
     const { state, submitted } = gradingSite(true);
     await serveFakeMoodle(context, state);
-    const result = await gradeSubmission(context, SITE, 31, 7, { grade: "7.5", feedback: "<p>Good</p>", notify: false });
+    const result = await gradeSubmission(context, SITE, 31, 7, { grade: 7.5, feedback: "<p>Good</p>", notify: false });
     assert.deepEqual(result, { changed: "Graded user 7 in assignment 31, with feedback.", grade: "7.5", feedback: "<p>Good</p>" });
     assert.deepEqual([submitted[0]?.assignmentid, submitted[0]?.userid], [210, 7]);
     const form = new URLSearchParams(JSON.parse(String(submitted[0]?.jsonformdata)) as string);
@@ -210,7 +209,7 @@ ${select("day", range(1, 31), until?.day ?? 1)}${select("month", range(1, 12), 1
     await grantExtension(context, SITE, 43, [7, 9], new Date("2026-10-23T12:30:00Z"));
     const form = posted[0]!;
     assert.deepEqual([form.get("selectedusers"), form.getAll("extensionduedate[enabled]").at(-1), form.get("extensionduedate[day]"), form.get("extensionduedate[hour]"), form.get("extensionduedate[minute]")], ["7,9", "1", "23", "14", "30"]);
-    const { submissions } = await assignmentSubmissions(context, SITE, 43, { includeContent: false });
+    const submissions = await assignmentSubmissions(context, SITE, 43, { includeContent: false });
     assert.equal(submissions.find((s) => s.userId === 8)?.extensionDueDate, "2026-10-23T12:30:00.000Z");
     assert.equal(submissions.find((s) => s.userId === 7)?.extensionDueDate, undefined);
     await assert.rejects(grantExtension(context, SITE, 43, [], new Date()), /Give the participants/);

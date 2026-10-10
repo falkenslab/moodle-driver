@@ -170,6 +170,7 @@ export interface Moodle extends MoodleMethods {
   /** Calls one of Moodle's AJAX services as the logged-in person. */
   callService<T>(methodname: string, args: Record<string, unknown>): Promise<T>;
   /** `activityContent`, at the object's `trail` unless given. */
+  activityContent(activity: { id: number; type: string }, options?: PaceOptions<(secondsRead: number) => void>): Promise<ActivityContent>;
   activityContent(activityId: number, type: ContentType, options?: PaceOptions<(secondsRead: number) => void>): Promise<ActivityContent>;
   /** `answerQuizQuestions`, at the object's `trail` unless given. */
   answerQuizQuestions(attemptId: number, answers: Parameters<typeof answerQuizQuestions>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ attemptId: number; questions: Question[] }>;
@@ -187,12 +188,13 @@ export interface Moodle extends MoodleMethods {
   saveSession(): Promise<void>;
   /** Saves the session and closes the browser; the next call opens it again. */
   close(): Promise<void>;
+  /** `close()`, so `await using moodle = createMoodle(…)` closes the browser when the block ends. */
+  [Symbol.asyncDispose](): Promise<void>;
 }
 
 /** A site, the browser to work it with (its options for a new browser manager, or one already made), and the object's defaults. */
 export type MoodleOptions = MoodleDefaults & (({ site: string } & BrowserOptions) | { site: string; browser: BrowserManager });
 
-const LOGIN_TIMEOUT_MS = 5 * 60_000;
 
 /**
  * Works one Moodle site through a browser: give the site and the browser's options (or a browser
@@ -226,10 +228,19 @@ export function createMoodle(options: MoodleOptions): Moodle {
     browser,
     defaults,
     context: () => browser.context(),
-    logIn: (loginOptions = {}) => logIn(browser, site, { ...loginOptions, timeoutMs: loginOptions.timeoutMs ?? defaults.loginTimeoutMs ?? LOGIN_TIMEOUT_MS }),
+    logIn: (loginOptions = {}) => logIn(browser, site, { ...loginOptions, timeoutMs: loginOptions.timeoutMs ?? defaults.loginTimeoutMs }),
     publicSiteInfo: () => publicSiteInfo(site),
     callService: async <T>(methodname: string, args: Record<string, unknown>) => callService<T>(await browser.context(), site, methodname, args),
-    activityContent: async (activityId, type, given) => activityContent(await browser.context(), site, activityId, type, pace(given, onProgress && ((read: number) => onProgress(read)))),
+    activityContent: async (
+      activityOrId: { id: number; type: string } | number,
+      typeOrOptions?: ContentType | PaceOptions<(secondsRead: number) => void>,
+      given?: PaceOptions<(secondsRead: number) => void>,
+    ) => {
+      const context = await browser.context();
+      const progress = onProgress && ((read: number) => onProgress(read));
+      if (typeof activityOrId === "number") return activityContent(context, site, activityOrId, typeOrOptions as ContentType, pace(given, progress));
+      return activityContent(context, site, activityOrId, pace(typeOrOptions as PaceOptions<(secondsRead: number) => void> | undefined, progress));
+    },
     answerQuizQuestions: async (attemptId, answers, given) => answerQuizQuestions(await browser.context(), site, attemptId, answers, pace(given, onProgress)),
     answerLessonPage: async (activityId, answer, given) => answerLessonPage(await browser.context(), site, activityId, answer, pace(given, onProgress)),
     downloadFile: async (url, destDir) => {
@@ -242,5 +253,6 @@ export function createMoodle(options: MoodleOptions): Moodle {
     setVisible: (visible) => browser.setVisible(visible),
     saveSession: () => browser.saveSession(),
     close: () => browser.close(),
+    [Symbol.asyncDispose]: () => browser.close(),
   };
 }

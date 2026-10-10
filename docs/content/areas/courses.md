@@ -39,7 +39,7 @@ function courseStructure(
   siteUrl: string,
   courseId: number,
   options?: { details?: boolean },
-): Promise<{ course: { id: number; url?: string }; sections: CourseSection[] }>;
+): Promise<CourseSection[]>;
 ```
 
 With `details: false` (the default) it makes a single service call. With `details: true` it also opens the course page and reads each activity's dates and restriction as the page shows them; in a course with one section per page it then opens the section pages of the activities the course page doesn't show. That's slower, and the texts come in the site's language (for example `{ label: "Due", value: "Friday, 23 October 2026, 12:00 AM" }`).
@@ -129,7 +129,7 @@ for (const course of await moodle.listCourses("inprogress")) {
   console.log(`${course.id} ${course.fullname}${course.progress !== undefined ? ` (${course.progress}%)` : ""}`);
 }
 
-const { sections } = await moodle.courseStructure(3, { details: true });
+const sections = await moodle.courseStructure(3, { details: true });
 for (const section of sections) {
   console.log(`${section.number}. ${section.title}`);
   for (const activity of section.activities) {
