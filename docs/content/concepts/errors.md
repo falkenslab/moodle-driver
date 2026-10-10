@@ -1,0 +1,73 @@
+# Errors
+
+Errors a program can act on have their own class, and their messages speak Moodle's terms: the module, the course structure, logging in again. They never name a program's own tools or settings, so a program can show them as they are or explain them in its own words.
+
+## Catching them
+
+Every class extends `Error` and sets `name` to its class name, so both `instanceof` and `error.name` work (the latter across bundles).
+
+```ts
+import { NotLoggedInError, MoodleServiceError, FormError, gradeSubmission } from "@falkenslab/moodle-driver";
+
+try {
+  await gradeSubmission(context, site, 35, 7, { grade: "150" });
+} catch (error) {
+  if (error instanceof NotLoggedInError) {
+    // The session ended: logIn() again (a window opens), then retry.
+  } else if (error instanceof FormError) {
+    for (const { field, message } of error.fields) console.error(`${field}: ${message}`);
+  } else if (error instanceof MoodleServiceError) {
+    console.error(error.methodname, error.errorcode, error.message);
+  } else {
+    throw error;
+  }
+}
+```
+
+## The session and the browser
+
+| Error | When |
+| --- | --- |
+| `NotLoggedInError` | There's no Moodle session, or it expired. Any function that reads the site throws it. Log in again with `logIn()`. |
+| `LoginTimeoutError` | `logIn()` waited `timeoutMs` and nobody logged in; the window was closed. |
+| `LoginWindowClosedError` | The person closed the login window before logging in. |
+| `NoDisplayError` | A window was needed (logging in, `setVisible(true)`) where there's no screen. |
+| `BrowserNotFoundError` | No installed browser could be launched, and downloading Chromium isn't allowed. |
+| `BrowserDownloadingError` | Chromium is downloading in the background: try again in a minute or two. |
+| `MoodleUrlError` | A site URL isn't a URL, isn't http(s), or isn't a Moodle site. |
+
+## Generic Moodle errors
+
+| Error | When | What it carries |
+| --- | --- | --- |
+| `MoodleServiceError` | A Moodle AJAX service answered with an exception the driver doesn't translate | `methodname`, `errorcode` (Moodle's, e.g. `nopermissions`, `invalidrecord`), Moodle's message |
+| `FormError` | Moodle refused a form (its validation messages by field), a field to set isn't in the form, or it's disabled until another field enables it | `fields: { field, message }[]` |
+
+A `FormError` for a disabled field happens where Moodle wouldn't save it: for example an assignment's maximum grade once grades exist, until `grade[modgrade_rescalegrades]` is chosen. Set the enabling field first, in the same call.
+
+## Area errors
+
+Each area has its own class for what's specific to it: the id isn't that kind of activity, the person can't do that now, Moodle refused the action. Their messages say what to do.
+
+| Error | Area |
+| --- | --- |
+| `NotViewableError` | [Content](../areas/content.md): the activity isn't of the type asked, or can't be viewed |
+| `ActivitySettingsError` | [Activities](../areas/activities.md): no settings form to read |
+| `CourseError` | [Courses](../areas/courses.md): the course's settings can't be changed |
+| `SubmissionError` | [Assignments](../areas/assignments.md): nothing to submit, can't edit the submission… |
+| `NotAnAssignmentError`, `GradingError` | [Grading](../areas/grading.md): not an assignment the person can grade; Moodle didn't save the grade |
+| `QuizError` | [Quizzes](../areas/quizzes.md): attempts, reviews, results, overrides, structure |
+| `QuestionBankError` | [Question banks](../areas/question-banks.md) |
+| `NotAForumError` | [Forums](../areas/forums.md) |
+| `SurveyError`, `ChoiceError` | [Surveys and choices](../areas/surveys-and-choices.md) |
+| `LessonError` | [Lessons](../areas/lessons.md) |
+| `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
+| `NoGradeReportError`, `GradebookError` | [Grades and gradebook](../areas/grades-and-gradebook.md) |
+| `CompletionError` | [Completion](../areas/completion.md) |
+| `NoParticipantsError` | [Participants](../areas/participants.md) |
+| `CalendarError` | [Calendar](../areas/calendar.md) |
+| `MessageError` | [Messages](../areas/messages.md) |
+
+## Moodle's own messages
+
+When Moodle refuses with an error page (no permission, no such record), the driver includes Moodle's message, in the site's language, after its own explanation: "You can't see course 3's grader report: Sorry, but you do not currently have permissions to do that (View grader report)". `moodleErrorMessage(page)` reads that message from a page of your own.

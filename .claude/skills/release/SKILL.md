@@ -16,7 +16,7 @@ A release is a version commit, a `vX.Y.Z` git tag on `main`, a GitHub release, a
 - `gh auth status` works.
 - `npm whoami` works (logged in with an account in the `falkenslab` organization). If it doesn't, stop and ask the user to run `npm login` themselves: it's interactive.
 - `package.json` has `"publishConfig": { "access": "public" }` (a scoped package is private by default). If it's missing, add it in the release commit and say so.
-- **The documentation is up to date.** Run the `update-docs` skill over `git diff <last tag>..HEAD` (or the whole history for the first release): every export documented, README and `.minispec/core/project.md` listing what the driver covers, `project.md` and `stack.md` no longer saying "not published" once it is.
+- **The documentation is up to date.** Run the `update-docs` skill over `git diff <last tag>..HEAD` (or the whole history for the first release): every export documented, the site's guides (`docs/content/`) describing every change a program would notice, README and `.minispec/core/project.md` listing what the driver covers, `project.md` and `stack.md` no longer saying "not published" once it is.
 
 ## 2. Decide the bump
 
@@ -62,6 +62,7 @@ Tags are lightweight (`git tag vX.Y.Z`). Never move or delete an existing tag, a
 - `git ls-remote --tags origin` shows the tag on the release commit.
 - `gh release view vX.Y.Z` works.
 - `npm view @falkenslab/moodle-driver version` shows the new version.
+- The documentation workflow ran for the release commit (`gh run list --workflow docs.yml --limit 1`) and https://falkenslab.github.io/moodle-driver/ is up.
 - Optionally prove the install path in the session scratchpad (not the repo): `npm install @falkenslab/moodle-driver@X.Y.Z playwright-core` and check `node_modules/@falkenslab/moodle-driver/dist/index.js` exists.
 
 Report the version, the tag, the release URL, the npm package page and the notes you published. Mention that moodle-mcp still uses `file:../moodle-driver` until someone switches it to `^X.Y.Z` (offer to, not here: it's another repository).

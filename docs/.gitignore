@@ -1,0 +1,5 @@
+node_modules/
+build/
+.docusaurus/
+# Generated from src/ on every build.
+content/api/

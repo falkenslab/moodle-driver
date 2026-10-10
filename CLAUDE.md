@@ -13,6 +13,7 @@ feature or ADR). Keep features small and don't write redundant documentation.
 - `npm run typecheck`, `npm run lint`, `npm run build` (dist/ with declarations).
 - `npm run test:docker` — every test, in Docker: they open browsers, which must never run on the developer's desktop.
 - `MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/moodle/quiz.test.ts` — one file (Git Bash on Windows needs `MSYS_NO_PATHCONV=1`).
+- `npm run docs:install` once, then `npm run docs:build` (the documentation site in `docs/`, Docusaurus; fails on a broken link) or `npm run docs:start`.
 
 ## Things easy to get wrong
 

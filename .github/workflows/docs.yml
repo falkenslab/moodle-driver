@@ -1,0 +1,66 @@
+# Builds the documentation site (docs/) on every pull request, and publishes it to GitHub
+# Pages on every push to main. The API reference is generated from src/, so a change there
+# rebuilds the site too. No browser is installed or run.
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "src/**", "package.json", "package-lock.json", "tsconfig.json", ".github/workflows/docs.yml"]
+  pull_request:
+    paths: ["docs/**", "src/**", "package.json", "package-lock.json", "tsconfig.json", ".github/workflows/docs.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            docs/package-lock.json
+
+      # The driver's own dependencies, for TypeDoc to read src/ with its types; no build needed.
+      - name: Install the driver
+        run: npm ci --ignore-scripts
+
+      - name: Install the site
+        run: npm ci
+        working-directory: docs
+
+      - name: Build the site
+        run: npm run build
+        working-directory: docs
+
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs/build
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

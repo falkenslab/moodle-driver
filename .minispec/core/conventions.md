@@ -12,5 +12,5 @@
 - Page code that needs helper functions runs through `inPage()` (`src/moodle/inPage.ts`): under tsx (the tests) named functions get wrapped in a `__name` helper the page doesn't have. Plain `page.evaluate()` callbacks keep to anonymous callbacks and loops.
 - Options are plain values (`BrowserOptions`, `Trail`), read when used: the driver reads no environment variables or arguments.
 - Tests mirror `src/` under `test/`, against the fake Moodle in `src/testing/`; a bug fixed gets a regression test. Test files run one at a time: each launches a real browser. Anything that launches a browser runs in Docker (`npm run test:docker`, `scripts/in-docker.mjs`), never on the developer's desktop (asked by the owner, 9 October 2026).
-- Doc comments explain *why*, and mark Moodle or Playwright behavior verified by hand as "confirmed empirically" (with the Moodle version).
+- Every export has a doc comment (the site's API reference is generated from them); doc comments explain *why*, and mark Moodle or Playwright behavior verified by hand as "confirmed empirically" (with the Moodle version).
 - Documentation Markdown: one line per paragraph and list item, no horizontal rules between sections.

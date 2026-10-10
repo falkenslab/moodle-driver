@@ -1,0 +1,23 @@
+/* Moodle's orange for links and buttons, a deeper shade on white so text stays readable. */
+:root {
+  --ifm-color-primary: #c45a00;
+  --ifm-color-primary-dark: #b05100;
+  --ifm-color-primary-darker: #a74d00;
+  --ifm-color-primary-darkest: #893f00;
+  --ifm-color-primary-light: #d86300;
+  --ifm-color-primary-lighter: #e26800;
+  --ifm-color-primary-lightest: #f98012;
+  --ifm-code-font-size: 92%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #f98012;
+  --ifm-color-primary-dark: #ef7206;
+  --ifm-color-primary-darker: #e16c06;
+  --ifm-color-primary-darkest: #b95905;
+  --ifm-color-primary-light: #fa8f2f;
+  --ifm-color-primary-lighter: #fa973d;
+  --ifm-color-primary-lightest: #fbac67;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}

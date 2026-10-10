@@ -37,7 +37,7 @@ Add or extend a test under `test/` mirroring the `src/` path (`test/moodle/<area
 
 ## 5. Docs
 
-Run the `update-docs` skill: the doc comment on every export, `README.md` if the list of areas or the use changed, `.minispec/core/architecture.md` if a piece was added, an ADR if a decision was taken.
+Run the `update-docs` skill: the doc comment on every export (the API reference is generated from it), the area's page in `docs/content/areas/`, `README.md` if the list of areas or the use changed, `.minispec/core/architecture.md` if a piece was added, an ADR if a decision was taken.
 
 ## 6. Finish
 

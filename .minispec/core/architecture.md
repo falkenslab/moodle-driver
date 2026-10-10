@@ -46,3 +46,4 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `src/` — the library; `test/` — `node:test` suites mirroring it.
 - `scripts/` — the Docker runner for anything that opens a browser (`in-docker.mjs`, `docker-proxy.mjs`).
 - `dist/` — the build, with declarations (not committed).
+- `docs/` — the documentation site (Docusaurus): guides per area in `docs/content/`, the API reference generated from the doc comments.
