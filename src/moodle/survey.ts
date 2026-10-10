@@ -152,7 +152,31 @@ async function readAllPages(context: BrowserContext, siteUrl: string, cmid: numb
   }
 }
 
-export async function getSurvey(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType) {
+// A course module's module never changes: one look per survey and site, for the process.
+const surveyTypes = new Map<string, SurveyType>();
+
+/** Which survey module an activity is, from the page each module answers with its own view (body id). */
+export async function surveyType(context: BrowserContext, siteUrl: string, cmid: number): Promise<SurveyType> {
+  const key = `${siteUrl}|${cmid}`;
+  const known = surveyTypes.get(key);
+  if (known) return known;
+  for (const type of ["questionnaire", "feedback"] as const) {
+    const page = await openSitePage(context, siteUrl, `mod/${type}/view.php?id=${cmid}`, { follow: false });
+    try {
+      if ((await page.locator(`body#page-mod-${type}-view`).count()) > 0) {
+        surveyTypes.set(key, type);
+        return type;
+      }
+    } finally {
+      await page.close().catch(() => undefined);
+    }
+  }
+  throw new SurveyError(`Activity ${cmid} isn't a questionnaire or a feedback activity you can open. Take its id and module from the course structure.`);
+}
+
+/** A survey (questionnaire or feedback): whether it can be answered, its intro and messages, and its questions page by page. Its module is found when not given. */
+export async function getSurvey(context: BrowserContext, siteUrl: string, cmid: number, type?: SurveyType) {
+  type ??= await surveyType(context, siteUrl, cmid);
   const status = await surveyStatus(context, siteUrl, cmid, type);
   return { ...status, questions: status.canAnswer ? await readAllPages(context, siteUrl, cmid, type) : [] };
 }
@@ -161,7 +185,18 @@ export async function getSurvey(context: BrowserContext, siteUrl: string, cmid: 
  * Fills the survey page by page with `responses` (field name → value) and submits it on the last
  * page. Every name is checked against the form first, so nothing is sent with a wrong one.
  */
-export async function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }> {
+export function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, type: SurveyType, responses: Record<string, string>): Promise<{ messages: string[] }>;
+export function submitSurvey(context: BrowserContext, siteUrl: string, cmid: number, responses: Record<string, string>, options?: { type?: SurveyType }): Promise<{ messages: string[] }>;
+export async function submitSurvey(
+  context: BrowserContext,
+  siteUrl: string,
+  cmid: number,
+  typeOrResponses: SurveyType | Record<string, string>,
+  responsesOrOptions?: Record<string, string> | { type?: SurveyType },
+): Promise<{ messages: string[] }> {
+  // (cmid, type, responses), as before 0.2, or (cmid, responses, { type }), the module found when not given.
+  const responses = (typeof typeOrResponses === "string" ? responsesOrOptions : typeOrResponses) as Record<string, string>;
+  const type = typeof typeOrResponses === "string" ? typeOrResponses : ((responsesOrOptions as { type?: SurveyType } | undefined)?.type ?? (await surveyType(context, siteUrl, cmid)));
   const layout = LAYOUT[type];
   const status = await surveyStatus(context, siteUrl, cmid, type);
   if (!status.canAnswer) throw new SurveyError(`You can't answer ${type} ${cmid} now: ${status.messages.join(" ") || "it's completed, closed or not open yet"}.`);

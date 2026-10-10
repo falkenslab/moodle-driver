@@ -104,8 +104,13 @@ export async function saveSubmission(context: BrowserContext, siteUrl: string, c
   return studentAssignment(context, siteUrl, cmid);
 }
 
-/** Submits the saved submission for grading, accepting the site's statement when it asks for one; gives the assignment afterwards. */
-export async function submitForGrading(context: BrowserContext, siteUrl: string, cmid: number, acceptStatement: boolean): Promise<StudentAssignment> {
+/**
+ * Submits the saved submission for grading, accepting the site's statement when it asks for one
+ * (`acceptStatement`, once the person agrees; a bare boolean as before 0.2 too); gives the
+ * assignment afterwards.
+ */
+export async function submitForGrading(context: BrowserContext, siteUrl: string, cmid: number, options: { acceptStatement?: boolean } | boolean = {}): Promise<StudentAssignment> {
+  const acceptStatement = typeof options === "boolean" ? options : (options.acceptStatement ?? false);
   const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=submit`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
     throw new SubmissionError(`Assignment ${cmid} has nothing to submit now (no draft, submitted already, or it doesn't ask students to click submit).`);

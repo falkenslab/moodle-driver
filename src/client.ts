@@ -2,32 +2,28 @@
 // takes them, as methods. The functions stay exported on their own; this only binds them.
 import type { BrowserContext, Page } from "playwright-core";
 import { createBrowserManager, type BrowserManager } from "./browser.js";
-import { parseSiteUrl, type BrowserOptions } from "./options.js";
+import { parseSiteUrl, type BrowserOptions, type Trail } from "./options.js";
 import { activitySettings, addSection, createActivity, deleteActivity, deleteSection, duplicateActivity, editActivity, editSection, updateActivity } from "./moodle/activities.js";
-import { callService, readPageConfig } from "./moodle/ajax.js";
-import { assignmentIds, gradingPanelHtml, listParticipants, participantDates, submitGradingForm } from "./moodle/assign.js";
+import { callService } from "./moodle/ajax.js";
 import { createEvent, deleteEvent, upcomingEvents } from "./moodle/calendar.js";
 import { answerChoice, getChoice } from "./moodle/choice.js";
 import { completionReport, overrideCompletion, setCompletion } from "./moodle/completion.js";
-import { activityContent } from "./moodle/content.js";
-import { activityDetails, courseState } from "./moodle/course.js";
+import { activityContent, type ActivityContent, type ContentType } from "./moodle/content.js";
 import { listCourses, updateCourse } from "./moodle/courses.js";
-import { courseFormat, editCourse, renameActivity, renameSection } from "./moodle/editor.js";
-import { downloadFile } from "./moodle/files.js";
+import { downloadFile, type DownloadedFile } from "./moodle/files.js";
 import { openForm } from "./moodle/forms.js";
-import { discussionPosts, forumInstanceId, listDiscussions } from "./moodle/forum.js";
 import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./moodle/forumPosts.js";
 import { addGradeCategory, gradebookSetup, graderReport, updateGradeItem } from "./moodle/gradebook.js";
 import { myGrades } from "./moodle/grades.js";
 import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./moodle/grading.js";
 import { h5pActivity } from "./moodle/h5p.js";
-import { answerLessonPage, lessonPage } from "./moodle/lesson.js";
-import { logIn, readOwnProfile, type LoginResult } from "./moodle/login.js";
+import { answerLessonPage, lessonPage, type LessonPage } from "./moodle/lesson.js";
+import { logIn, type LoginResult } from "./moodle/login.js";
 import { conversation, conversations, markNotificationsRead, notifications, sendMessage } from "./moodle/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./moodle/overview.js";
 import { groups, participantFilters, participants } from "./moodle/participants.js";
 import { createQuestion, importQuestions, questionBanks, questions } from "./moodle/questionBank.js";
-import { answerQuizQuestions, finishAttempt, finishQuizAttempt, quizInfo, readAttempt, readReview, saveAnswers, setQuizOverride, startAttempt, startQuizAttempt } from "./moodle/quiz.js";
+import { answerQuizQuestions, finishQuizAttempt, quizInfo, readReview, setQuizOverride, startQuizAttempt, type Question } from "./moodle/quiz.js";
 import { quizResults } from "./moodle/quizResults.js";
 import { addQuestionsToQuiz, quizStructure } from "./moodle/quizStructure.js";
 import { logOut, openSitePage } from "./moodle/session.js";
@@ -38,30 +34,25 @@ import { getSurvey, submitSurvey } from "./moodle/survey.js";
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./moodle/user.js";
 
 /**
- * Every function that takes the browser context and the site first: each becomes a method of the
- * same name without those two parameters. `callService`, generic, is bound by hand.
+ * The functions that take the browser context and the site first, of the high-level API: each becomes
+ * a method of the same name without those two parameters. The pieces they're built from (an
+ * assignment's ids, its grading panel, a quiz attempt's steps…) stay functions only; the ones that
+ * use the object's defaults (`trail`, `downloadDir`…) and `callService`, generic, are bound by hand.
  */
 const SITE_FUNCTIONS = {
   activitiesOverview,
-  activityContent,
-  activityDetails,
   activitySettings,
   addGradeCategory,
   addQuestionsToQuiz,
   addSection,
   answerChoice,
-  answerLessonPage,
-  answerQuizQuestions,
-  assignmentIds,
   assignmentSubmissions,
   completionReport,
   conversation,
   conversations,
   courseAbilities,
   courseActivityTypes,
-  courseFormat,
   courseRoles,
-  courseState,
   courseStructure,
   courseUpdates,
   createActivity,
@@ -72,22 +63,16 @@ const SITE_FUNCTIONS = {
   deleteEvent,
   deleteSection,
   discussion,
-  discussionPosts,
-  downloadFile,
   duplicateActivity,
   editActivity,
-  editCourse,
   editSection,
-  finishAttempt,
   finishQuizAttempt,
   forumDiscussions,
-  forumInstanceId,
   getChoice,
   getSurvey,
   gradeSubmission,
   gradebookSetup,
   graderReport,
-  gradingPanelHtml,
   grantExtension,
   groups,
   h5pActivity,
@@ -95,8 +80,6 @@ const SITE_FUNCTIONS = {
   lessonPage,
   listAssignments,
   listCourses,
-  listDiscussions,
-  listParticipants,
   logOut,
   markNotificationsRead,
   myGrades,
@@ -104,7 +87,6 @@ const SITE_FUNCTIONS = {
   openForm,
   openSitePage,
   overrideCompletion,
-  participantDates,
   participantFilters,
   participants,
   pendingActivities,
@@ -113,27 +95,19 @@ const SITE_FUNCTIONS = {
   quizInfo,
   quizResults,
   quizStructure,
-  readAttempt,
-  readOwnProfile,
-  readPageConfig,
   readReview,
-  renameActivity,
-  renameSection,
   replyToPost,
   rubric,
-  saveAnswers,
   saveSubmission,
   sendMessage,
   setCompletion,
   setDiscussionState,
   setQuizOverride,
   siteName,
-  startAttempt,
   startDiscussion,
   startQuizAttempt,
   studentAssignment,
   submitForGrading,
-  submitGradingForm,
   submitSurvey,
   upcomingEvents,
   updateActivity,
@@ -151,27 +125,56 @@ type Bound<F> = F extends (context: BrowserContext, siteUrl: string, ...rest: in
 /** The methods bound from the site functions, each named and documented as its function. */
 export type MoodleMethods = { [K in keyof SiteFunctions]: Bound<SiteFunctions[K]> };
 
-/** The names of the methods a `Moodle` has from the site functions, one per function of that name. */
-export const MOODLE_METHODS = Object.keys(SITE_FUNCTIONS) as (keyof SiteFunctions)[];
+// Functions bound by hand, with the object's defaults: methods of the same name all the same.
+const DEFAULTED = ["activityContent", "answerQuizQuestions", "answerLessonPage", "downloadFile"] as const;
+
+/** The names of the methods a `Moodle` has from the driver's functions, one per function of that name. */
+export const MOODLE_METHODS: readonly string[] = [...Object.keys(SITE_FUNCTIONS), ...DEFAULTED];
+
+/** What the object does when a call doesn't say: every one can still be given per call. */
+export interface MoodleDefaults {
+  /** How student actions read and answer: "realistic" (the default, at a reader's pace) or "fast" (ADR-005). */
+  trail?: Trail;
+  /** Called every few seconds while a student action waits at a reader's pace: the seconds elapsed, and the total when known. */
+  onProgress?: (elapsedSeconds: number, totalSeconds?: number) => void;
+  /** How long `logIn` waits for the person to log in, in milliseconds: five minutes unless given. */
+  loginTimeoutMs?: number;
+  /** Where `downloadFile` saves files when not given a folder (an absolute path). */
+  downloadDir?: string;
+}
+
+/** A student action's pace for one call, over the object's defaults. */
+type PaceOptions<P> = { trail?: Trail; onProgress?: P };
 
 /**
- * One Moodle site worked through one browser: every function of the driver that takes the browser
- * context and the site, as a method without them (`moodle.listCourses()` is
- * `listCourses(context, site)`), plus the session and the browser.
+ * One Moodle site worked through one browser: the driver's operations as methods, without the
+ * browser context and the site the functions take first (`moodle.listCourses()` is
+ * `listCourses(context, site)`), plus the session and the browser. The pieces the operations are
+ * built from stay functions only.
  */
 export interface Moodle extends MoodleMethods {
   /** The site's base URL, normalized (a trailing slash). */
   readonly site: string;
   /** The browser manager underneath, for what the methods don't cover. */
   readonly browser: BrowserManager;
+  /** The defaults the object was made with. */
+  readonly defaults: Readonly<MoodleDefaults>;
   /** The browser's context, launching it if needed: what the functions take. */
   context(): Promise<BrowserContext>;
-  /** Makes sure there's a session: at once if there is one, else a window where the person logs in. */
-  logIn(options: { timeoutMs: number; onWait?: (elapsedMs: number) => void }): Promise<LoginResult>;
+  /** Makes sure there's a session: at once if there is one, else a window where the person logs in (`loginTimeoutMs` by default). */
+  logIn(options?: { timeoutMs?: number; onWait?: (elapsedMs: number) => void }): Promise<LoginResult>;
   /** What the site tells anyone before logging in, without the browser. */
   publicSiteInfo(): ReturnType<typeof publicSiteInfo>;
   /** Calls one of Moodle's AJAX services as the logged-in person. */
   callService<T>(methodname: string, args: Record<string, unknown>): Promise<T>;
+  /** `activityContent`, at the object's `trail` unless given. */
+  activityContent(cmid: number, type: ContentType, options?: PaceOptions<(secondsRead: number) => void>): Promise<ActivityContent>;
+  /** `answerQuizQuestions`, at the object's `trail` unless given. */
+  answerQuizQuestions(attemptId: number, answers: Parameters<typeof answerQuizQuestions>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ attemptId: number; questions: Question[] }>;
+  /** `answerLessonPage`, at the object's `trail` unless given. */
+  answerLessonPage(cmid: number, answer: Parameters<typeof answerLessonPage>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ feedback?: LessonPage; page: LessonPage }>;
+  /** `downloadFile`, into the object's `downloadDir` unless given a folder. */
+  downloadFile(url: string, destDir?: string): Promise<DownloadedFile>;
   /** The working tab a program drives itself (ADR-007). */
   tab(): Promise<Page>;
   /** Whether the browser shows a window now. */
@@ -184,16 +187,18 @@ export interface Moodle extends MoodleMethods {
   close(): Promise<void>;
 }
 
-/** A site and the browser to work it with: its options (a new browser manager), or one already made. */
-export type MoodleOptions = ({ site: string } & BrowserOptions) | { site: string; browser: BrowserManager };
+/** A site, the browser to work it with (its options for a new browser manager, or one already made), and the object's defaults. */
+export type MoodleOptions = MoodleDefaults & (({ site: string } & BrowserOptions) | { site: string; browser: BrowserManager });
+
+const LOGIN_TIMEOUT_MS = 5 * 60_000;
 
 /**
  * Works one Moodle site through a browser: give the site and the browser's options (or a browser
- * manager), then call the driver's functions as methods.
+ * manager), and optionally the defaults its calls use; then call the driver's operations as methods.
  *
  * ```ts
- * const moodle = createMoodle({ site: "https://campus.example.org/", profileDir: "/home/me/.moodle-profile", headless: true, downloadBrowser: true });
- * await moodle.logIn({ timeoutMs: 300_000 });
+ * const moodle = createMoodle({ site: "https://campus.example.org/", profileDir: "/home/me/.moodle-profile", headless: true, downloadBrowser: true, trail: "fast" });
+ * await moodle.logIn();
  * const courses = await moodle.listCourses();
  * await moodle.close();
  * ```
@@ -201,19 +206,35 @@ export type MoodleOptions = ({ site: string } & BrowserOptions) | { site: string
 export function createMoodle(options: MoodleOptions): Moodle {
   const site = parseSiteUrl(options.site);
   const browser = "browser" in options ? options.browser : createBrowserManager(options);
+  const defaults: MoodleDefaults = { trail: options.trail, onProgress: options.onProgress, loginTimeoutMs: options.loginTimeoutMs, downloadDir: options.downloadDir };
   const bound: Record<string, (...args: unknown[]) => Promise<unknown>> = {};
   for (const [name, fn] of Object.entries(SITE_FUNCTIONS)) {
     const call = fn as (context: BrowserContext, siteUrl: string, ...rest: unknown[]) => Promise<unknown>;
     bound[name] = async (...args: unknown[]) => call(await browser.context(), site, ...args);
   }
+  // Only what's set: an undefined option would hide the function's own default.
+  const pace = <P>(given: PaceOptions<P> = {}, progress?: P) => ({
+    ...(given.trail ?? defaults.trail ? { trail: given.trail ?? defaults.trail } : {}),
+    ...(given.onProgress ?? progress ? { onProgress: given.onProgress ?? progress } : {}),
+  });
+  const onProgress = defaults.onProgress;
   return {
     ...(bound as unknown as MoodleMethods),
     site,
     browser,
+    defaults,
     context: () => browser.context(),
-    logIn: (loginOptions) => logIn(browser, site, loginOptions),
+    logIn: (loginOptions = {}) => logIn(browser, site, { ...loginOptions, timeoutMs: loginOptions.timeoutMs ?? defaults.loginTimeoutMs ?? LOGIN_TIMEOUT_MS }),
     publicSiteInfo: () => publicSiteInfo(site),
     callService: async <T>(methodname: string, args: Record<string, unknown>) => callService<T>(await browser.context(), site, methodname, args),
+    activityContent: async (cmid, type, given) => activityContent(await browser.context(), site, cmid, type, pace(given, onProgress && ((read: number) => onProgress(read)))),
+    answerQuizQuestions: async (attemptId, answers, given) => answerQuizQuestions(await browser.context(), site, attemptId, answers, pace(given, onProgress)),
+    answerLessonPage: async (cmid, answer, given) => answerLessonPage(await browser.context(), site, cmid, answer, pace(given, onProgress)),
+    downloadFile: async (url, destDir) => {
+      const folder = destDir ?? defaults.downloadDir;
+      if (!folder) throw new Error("Give downloadFile a folder, or createMoodle a downloadDir.");
+      return downloadFile(await browser.context(), site, url, folder);
+    },
     tab: () => browser.tab(),
     visible: () => browser.visible(),
     setVisible: (visible) => browser.setVisible(visible),

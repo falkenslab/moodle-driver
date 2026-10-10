@@ -192,6 +192,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Surveys.
   getSurvey: ["course-content", "own"],
   submitSurvey: OWN,
+  surveyType: CONTENT,
 
   // Participants and groups.
   participants: PERSONAL,

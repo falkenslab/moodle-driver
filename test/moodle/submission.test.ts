@@ -99,7 +99,7 @@ describe("studentAssignment, saveSubmission and submitForGrading", { skip: !brow
     assert.deepEqual([draft.submissionState, draft.canSubmit], ["draft", true]);
     assert.deepEqual(draft.submittedFiles.map((f) => f.name), ["work.txt"]);
     assert.equal(state.posts[0]?.get("onlinetext_editor[text]"), "<p>My answer</p>");
-    const submitted = await submitForGrading(context, SITE, 30, false);
+    const submitted = await submitForGrading(context, SITE, 30);
     assert.deepEqual([submitted.submissionState, submitted.canEdit], ["submitted", false]);
     await context.close();
   });
@@ -109,7 +109,7 @@ describe("studentAssignment, saveSubmission and submitForGrading", { skip: !brow
     await saveSubmission(context, SITE, 30, { onlineText: "<p>x</p>" });
     await assert.rejects(submitForGrading(context, SITE, 30, false), (error: unknown) => error instanceof SubmissionError && /This is my own work/.test(error.message));
     assert.equal(state.stage, "draft");
-    assert.equal((await submitForGrading(context, SITE, 30, true)).submissionState, "submitted");
+    assert.equal((await submitForGrading(context, SITE, 30, { acceptStatement: true })).submissionState, "submitted");
     assert.deepEqual(state.posts.at(-1)?.getAll("submissionstatement"), ["0", "1"]);
     await context.close();
   });

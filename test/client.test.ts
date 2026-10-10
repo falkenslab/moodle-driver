@@ -15,7 +15,9 @@ describe("createMoodle", () => {
     assert.equal(noneAreNever, true);
     const moodle = createMoodle({ site: "http://moodle.test/moodle?x=1", browser: fakeBrowserManager() });
     assert.equal(moodle.site, "http://moodle.test/moodle/");
-    for (const name of MOODLE_METHODS) assert.equal(typeof moodle[name], "function", name);
+    for (const name of MOODLE_METHODS) assert.equal(typeof (moodle as unknown as Record<string, unknown>)[name], "function", name);
+    // The pieces the operations are built from stay functions only.
+    for (const name of ["assignmentIds", "gradingPanelHtml", "startAttempt", "courseState", "readPageConfig"]) assert.equal(name in moodle, false, name);
     assert.throws(() => createMoodle({ site: "not a url", browser: fakeBrowserManager() }), MoodleUrlError);
   });
 
@@ -46,6 +48,27 @@ describe("createMoodle", () => {
     await serveFakeMoodle(context, {});
     const moodle = createMoodle({ site: SITE, browser: fakeBrowserManager({ context: async () => context }) });
     await assert.rejects(moodle.whoAmI(), NotLoggedInError);
+    await context.close();
+  });
+});
+
+describe("createMoodle's defaults", { skip: !browser && "no system browser" }, () => {
+  it("uses the object's trail and download folder unless a call says otherwise, and logs in without options", async () => {
+    const context = await browser!.newContext();
+    const pagesServed: string[] = [];
+    await serveFakeMoodle(context, {
+      user: { id: 4, fullName: "Ada Lovelace" },
+      pagesServed,
+      bodies: { "/mod/book/tool/print/index.php": `<div class="book_chapter"><h2>1. Loops</h2><p>Repeat.</p></div>` },
+    });
+    const moodle = createMoodle({ site: SITE, browser: fakeBrowserManager({ context: async () => context }), trail: "fast" });
+    assert.deepEqual(moodle.defaults, { trail: "fast", onProgress: undefined, loginTimeoutMs: undefined, downloadDir: undefined });
+    // The fast trail reads a book from its print view, at once.
+    const book = await moodle.activityContent(6, "book");
+    assert.deepEqual([book.trail, book.chapters?.[0]?.title], ["fast", "1. Loops"]);
+    assert.ok(pagesServed.includes("/mod/book/tool/print/index.php"));
+    await assert.rejects(moodle.downloadFile(`${SITE}pluginfile.php/1/x.pdf`), /Give downloadFile a folder, or createMoodle a downloadDir/);
+    assert.equal((await moodle.logIn()).status, "already-logged-in");
     await context.close();
   });
 });

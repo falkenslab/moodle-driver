@@ -113,3 +113,19 @@ describe("getSurvey and submitSurvey", { skip: !browser && "no system browser" }
     await context.close();
   });
 });
+
+describe("survey modules found by their page", { skip: !browser && "no system browser" }, () => {
+  it("finds a feedback activity's module, and submits with responses first", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" } });
+    const surveys = fakeSurveys();
+    await surveys.routes(context);
+    // Activity 35 is a feedback: the questionnaire's page answers with Moodle's error page.
+    await context.route(`${SITE}mod/questionnaire/view.php?id=35`, (route: Route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 4, bodyId: "page-mod-questionnaire-view-error" }) }));
+    const survey = await getSurvey(context, SITE, 35);
+    assert.deepEqual(survey.questions.map((q) => q.fields[0]?.name), ["multichoice_1", "textfield_6"]);
+    await submitSurvey(context, SITE, 35, { multichoice_1: "1", textfield_6: "Fine" });
+    assert.ok(surveys.posts.every((p) => p.path === "/mod/feedback/complete.php"));
+    await context.close();
+  });
+});
