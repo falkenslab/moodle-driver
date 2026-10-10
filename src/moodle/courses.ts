@@ -1,6 +1,7 @@
 import type { BrowserContext } from "playwright-core";
 import { callService } from "./ajax.js";
 import { openForm, setFields, submitForm, type FieldValue } from "./forms.js";
+import { NotLoggedInError } from "./session.js";
 import { decodeEntities } from "./text.js";
 
 /** Which courses by their dates; "all" includes those the person hid from their dashboard. */
@@ -92,7 +93,8 @@ export async function updateCourse(
   if (shortName !== undefined) values.shortname = shortName;
   if (summary !== undefined) values["summary_editor[text]"] = summary;
   if (Object.keys(values).length === 0) return { changed: "Nothing to change.", course: (await listCourses(context, siteUrl)).find((c) => c.id === courseId) };
-  const page = await openForm(context, siteUrl, `course/edit.php?id=${courseId}`).catch(() => {
+  const page = await openForm(context, siteUrl, `course/edit.php?id=${courseId}`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
     throw new CourseError(`You can't change course ${courseId}'s settings: it doesn't exist, or you aren't allowed.`);
   });
   try {

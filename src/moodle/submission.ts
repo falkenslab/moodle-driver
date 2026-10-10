@@ -2,7 +2,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { checkLocalFiles } from "./files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "./forms.js";
 import { inPage } from "./inPage.js";
-import { openSitePage } from "./session.js";
+import { NotLoggedInError, openSitePage } from "./session.js";
 
 /** The assignment isn't there, or the person can't do that now. */
 export class SubmissionError extends Error {
@@ -81,7 +81,8 @@ export async function studentAssignment(context: BrowserContext, siteUrl: string
 export async function saveSubmission(context: BrowserContext, siteUrl: string, cmid: number, input: { onlineText?: string; files?: string[] }): Promise<StudentAssignment> {
   if (input.onlineText === undefined && (!input.files || input.files.length === 0)) throw new SubmissionError("Give online text, files or both.");
   if (input.files) await checkLocalFiles(input.files);
-  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=editsubmission`).catch(() => {
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=editsubmission`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
     throw new SubmissionError(`You can't edit a submission to assignment ${cmid} now (submitted already, past its cut-off date, or not yours to submit).`);
   });
   try {
@@ -105,7 +106,8 @@ export async function saveSubmission(context: BrowserContext, siteUrl: string, c
 
 /** Submits the saved submission for grading, accepting the site's statement when it asks for one; gives the assignment afterwards. */
 export async function submitForGrading(context: BrowserContext, siteUrl: string, cmid: number, acceptStatement: boolean): Promise<StudentAssignment> {
-  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=submit`).catch(() => {
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=submit`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
     throw new SubmissionError(`Assignment ${cmid} has nothing to submit now (no draft, submitted already, or it doesn't ask students to click submit).`);
   });
   try {

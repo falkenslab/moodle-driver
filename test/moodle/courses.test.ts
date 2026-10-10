@@ -116,3 +116,12 @@ describe("updateCourse", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 });
+
+describe("forms without a session", { skip: !browser && "no system browser" }, () => {
+  it("say the session ended, not that the person isn't allowed", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, {});
+    await assert.rejects(updateCourse(context, SITE, 3, { fullName: "No" }), NotLoggedInError);
+    await context.close();
+  });
+});

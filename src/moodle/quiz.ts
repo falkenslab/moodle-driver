@@ -3,7 +3,7 @@ import type { Trail } from "../options.js";
 import { dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "./forms.js";
 import { pause, readingSeconds } from "./pace.js";
 import { inPage } from "./inPage.js";
-import { openSitePage } from "./session.js";
+import { NotLoggedInError, openSitePage } from "./session.js";
 
 /** The quiz or attempt isn't there, or the person can't do what was asked. */
 export class QuizError extends Error {
@@ -339,7 +339,8 @@ export async function setQuizOverride(
   userId: number,
   { open, close, timeLimitMinutes, attempts }: { open?: Date; close?: Date; timeLimitMinutes?: number; attempts?: number },
 ): Promise<{ changed: string }> {
-  const page = await openForm(context, siteUrl, `mod/quiz/overrideedit.php?action=adduser&cmid=${quizId}`).catch(() => {
+  const page = await openForm(context, siteUrl, `mod/quiz/overrideedit.php?action=adduser&cmid=${quizId}`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
     throw new QuizError(`You can't add overrides to activity ${quizId}: it isn't a quiz, or you aren't allowed.`);
   });
   try {

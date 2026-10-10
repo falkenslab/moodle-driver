@@ -4,6 +4,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { GradingError, NotAnAssignmentError, assignmentIds, fillGradingForm, gradingPanelHtml, listParticipants, panelGrade, participantDates, readSubmissionContent, submitGradingForm, type PluginContent } from "./assign.js";
 import { isoDate } from "./courses.js";
 import { dateSelectorDate, dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "./forms.js";
+import { NotLoggedInError } from "./session.js";
 import { inPage } from "./inPage.js";
 
 /** The grader's feedback comments field, when the assignment has them on. */
@@ -29,7 +30,10 @@ export interface Submission {
 
 /** An extension's date, as its form holds it (no service open to AJAX gives it). */
 async function extensionDate(context: BrowserContext, siteUrl: string, cmid: number, userId: number): Promise<string | undefined> {
-  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grantextension&userid=${userId}`).catch(() => undefined);
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grantextension&userid=${userId}`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
+    return undefined;
+  });
   if (!page) return undefined;
   try {
     return (await dateSelectorDate(page, "extensionduedate"))?.toISOString();
@@ -205,7 +209,8 @@ export async function rubric(context: BrowserContext, siteUrl: string, cmid: num
  */
 export async function grantExtension(context: BrowserContext, siteUrl: string, cmid: number, userIds: number[], until: Date): Promise<{ changed: string }> {
   if (userIds.length === 0) throw new GradingError("Give the participants to grant the extension to.");
-  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grantextension&userid=${userIds[0]}`).catch(() => {
+  const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${cmid}&action=grantextension&userid=${userIds[0]}`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
     throw new NotAnAssignmentError(`You can't grant extensions in activity ${cmid}: it isn't an assignment, or you aren't allowed.`);
   });
   try {

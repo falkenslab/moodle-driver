@@ -119,8 +119,8 @@ export async function htmlToTexts(context: BrowserContext, fragments: string[]):
   if (fragments.length === 0) return [];
   const page = await context.newPage();
   try {
-    await page.setContent(fragments.map((html) => `<div class="mcp-fragment">${html}</div>`).join(""));
-    return await readTexts(page, "body > .mcp-fragment");
+    await page.setContent(fragments.map((html) => `<div class="driver-fragment">${html}</div>`).join(""));
+    return await readTexts(page, "body > .driver-fragment");
   } finally {
     await page.close().catch(() => undefined);
   }

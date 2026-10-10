@@ -38,9 +38,11 @@ export function readChoice(page: Page): Promise<Omit<Choice, "id">> {
       checked: boolean;
       disabled: boolean;
       innerText: string;
+      textContent: string | null;
       getAttribute(name: string): string | null;
       querySelector(s: string): El | null;
-      querySelectorAll(s: string): ArrayLike<El>;
+      querySelectorAll(s: string): ArrayLike<El & { remove(): void }>;
+      cloneNode(deep: boolean): El;
     }
     const doc = (globalThis as unknown as { document: El }).document;
     const text = (el: El | null | undefined) => (el?.innerText ?? "").replace(/\s+/g, " ").trim();
@@ -66,8 +68,10 @@ export function readChoice(page: Page): Promise<Omit<Choice, "id">> {
       messages: Array.from(doc.querySelectorAll("#region-main .alert, #region-main .generalbox"))
         .filter((box) => box.id !== "yourselection" && !box.querySelector("form"))
         .map((box) => {
-          const copy = box.innerText.replace(/Dismiss this notification/g, "");
-          return copy.replace(/\s+/g, " ").trim();
+          // Without the notification's close button, whose label is in the site's language.
+          const copy = box.cloneNode(true);
+          for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden"))) extra.remove();
+          return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
         })
         .filter(Boolean),
     };

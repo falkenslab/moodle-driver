@@ -150,24 +150,28 @@ export async function answerLessonPage(
   const page = await openLesson(context, siteUrl, cmid);
   try {
     const current = await readLessonPage(page);
+    // What the answer can't be is told before the reading pause, not after it.
+    const buttons = current.buttons ?? [];
+    const index = typeof answer.button === "number" ? answer.button : buttons.findIndex((b) => b.label === answer.button);
+    if (current.kind === "content" && (answer.button === undefined || index < 0 || index >= buttons.length)) {
+      throw new LessonError(`This content page's buttons are: ${buttons.map((b, i) => `${i}: "${b.label}"`).join(", ")}. Give one by label or position.`);
+    }
+    if (current.kind === "question" && (!answer.responses || Object.keys(answer.responses).length === 0)) {
+      throw new LessonError("This page is a question: answer it with its fields' values (responses).");
+    }
+    if (current.kind === "end" || current.kind === "feedback") {
+      throw new LessonError(current.kind === "end" ? "The lesson has ended: there's nothing more to answer." : "This page only goes on: answer the page it leads to.");
+    }
     if (trail === "realistic") {
       const seconds = readingSeconds([current.text, ...(current.fields ?? []).flatMap((f) => [f.label ?? "", ...(f.options ?? []).map((o) => o.label)])].join(" "));
       await pause(seconds, (elapsed) => onProgress?.(elapsed, seconds));
     }
     if (current.kind === "content") {
-      const buttons = current.buttons ?? [];
-      const index = typeof answer.button === "number" ? answer.button : buttons.findIndex((b) => b.label === answer.button);
-      if (answer.button === undefined || index < 0 || index >= buttons.length) {
-        throw new LessonError(`This content page's buttons are: ${buttons.map((b, i) => `${i}: "${b.label}"`).join(", ")}. Give one by label or position.`);
-      }
       await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.locator('.branchbuttoncontainer form[action*="/mod/lesson/continue.php"] [type=submit], .branchbuttoncontainer form button').nth(index).click()]);
-    } else if (current.kind === "question") {
-      if (!answer.responses || Object.keys(answer.responses).length === 0) throw new LessonError("This page is a question: answer it with its fields' values (responses).");
-      const form = 'form.mform[action*="/mod/lesson/continue.php"]';
-      await setFields(page, answer.responses, form);
-      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click(`${form} [name="submitbutton"]`)]);
     } else {
-      throw new LessonError(current.kind === "end" ? "The lesson has ended: there's nothing more to answer." : "This page only goes on: answer the page it leads to.");
+      const form = 'form.mform[action*="/mod/lesson/continue.php"]';
+      await setFields(page, answer.responses!, form);
+      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click(`${form} [name="submitbutton"]`)]);
     }
     let next = await readLessonPage(page);
     let feedback: LessonPage | undefined;

@@ -7,7 +7,7 @@ import path from "node:path";
 import type { BrowserContext, Page } from "playwright-core";
 import { checkLocalFiles } from "./files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "./forms.js";
-import { openSitePage } from "./session.js";
+import { NotLoggedInError, openSitePage } from "./session.js";
 
 /** The bank isn't there, or Moodle refused the questions. */
 export class QuestionBankError extends Error {
@@ -203,7 +203,8 @@ export async function importQuestions(
   const dir = text !== undefined ? await mkdtemp(path.join(tmpdir(), "moodle-import-")) : undefined;
   const upload = dir ? path.join(dir, format === "gift" ? "questions.txt" : "questions.xml") : file!;
   if (dir) await writeFile(upload, text!, "utf8");
-  const page = await openForm(context, siteUrl, `question/bank/importquestions/import.php?cmid=${bankCmid}`).catch(() => {
+  const page = await openForm(context, siteUrl, `question/bank/importquestions/import.php?cmid=${bankCmid}`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
     throw new QuestionBankError(`Activity ${bankCmid} has no question bank you can import into.`);
   });
   try {
@@ -261,8 +262,10 @@ export async function createQuestion(context: BrowserContext, siteUrl: string, b
   if (["multichoice", "shortanswer", "numerical"].includes(input.type) && answers.length === 0) throw new QuestionBankError(`A ${input.type} question needs answers.`);
   if (input.type === "truefalse" && input.correct === undefined) throw new QuestionBankError("A true/false question needs its right answer (correct).");
   const { categories } = await questions(context, siteUrl, bankCmid);
-  const category = input.categoryId ?? categories.find((c) => !/^Top for /.test(c.name))?.id ?? categories[0]?.id;
-  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${bankCmid}&category=${category}&qtype=${input.type}`).catch(() => {
+  // The bank lists its "Top" category first, which holds no questions: its default one comes next.
+  const category = input.categoryId ?? (categories[1] ?? categories[0])?.id;
+  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${bankCmid}&category=${category}&qtype=${input.type}`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
     throw new QuestionBankError(`Activity ${bankCmid} has no question bank you can add to, or category ${category} isn't in it.`);
   });
   try {
