@@ -101,6 +101,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   whoAmI: OWN,
   courseAbilities: OWN,
   listCourses: OWN,
+  updateCourse: CONTENT,
   myGrades: OWN,
   deadlines: OWN,
   pendingActivities: OWN,

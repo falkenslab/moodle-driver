@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { MoodleCourse, NotLoggedInError, listCourses, toCourse } from "../../src/index.js";
-import { SITE, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/index.js";
+import { CourseError, FormError, MoodleCourse, NotLoggedInError, listCourses, toCourse, updateCourse } from "../../src/index.js";
+import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/index.js";
 const browser = await launchTestBrowser();
 after(() => browser?.close());
 
@@ -63,6 +63,56 @@ describe("listCourses", { skip: !browser && "no system browser" }, () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { services });
     await assert.rejects(listCourses(context, SITE), NotLoggedInError);
+    await context.close();
+  });
+});
+
+describe("updateCourse", { skip: !browser && "no system browser" }, () => {
+  /** The course settings form, reduced and made up, as Moodle 5.2's course/edit.php: a taken short name fails. */
+  function fakeSettings() {
+    const course = { id: 3, shortname: "loops", fullname: "Loops" };
+    const posted: URLSearchParams[] = [];
+    const form = (error = "") =>
+      moodlePage({
+        userId: 3,
+        bodyId: "page-course-edit",
+        body: `<form class="mform" method="post" action="${SITE}course/edit.php"><input type="hidden" name="id" value="3"><input name="fullname" value="${course.fullname}"><input name="shortname" value="${course.shortname}"><div id="id_error_shortname">${error}</div>
+<textarea name="summary_editor[text]"></textarea><input type="submit" name="saveanddisplay" value="Save and display"></form>`,
+      });
+    const state: FakeMoodleState = {
+      user: { id: 3, fullName: "Teacher" },
+      services: {
+        core_course_get_enrolled_courses_by_timeline_classification: () => ({ courses: [{ ...course, viewurl: `${SITE}course/view.php?id=3`, visible: true }] }),
+      },
+    };
+    return { course, posted, form, state };
+  }
+
+  it("changes names and summary through the settings form and gives the course afterwards", async () => {
+    const fake = fakeSettings();
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, fake.state);
+    await context.route(`${SITE}course/edit.php**`, (route) => {
+      if (route.request().method() === "POST") {
+        const data = new URLSearchParams(route.request().postData() ?? "");
+        fake.posted.push(data);
+        if (data.get("shortname") === "taken") return route.fulfill({ status: 200, contentType: "text/html", body: fake.form("Short name is already used for another course (Other)") });
+        fake.course.fullname = data.get("fullname")!;
+        return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-course-view" }) });
+      }
+      return route.fulfill({ status: 200, contentType: "text/html", body: fake.form() });
+    });
+    const result = await updateCourse(context, SITE, 3, { fullName: "Loops and lists", summary: "<p>About loops.</p>" });
+    assert.equal(result.course?.fullname, "Loops and lists");
+    assert.equal(fake.posted[0]?.get("summary_editor[text]"), "<p>About loops.</p>");
+    await assert.rejects(updateCourse(context, SITE, 3, { shortName: "taken" }), (error: Error) => error instanceof FormError && /shortname: Short name is already used/.test(error.message));
+    await context.close();
+  });
+
+  it("refuses a course whose settings the person can't open", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" }, bodies: { "/course/edit.php": `<div data-rel="fatalerror">No permission.</div>` } });
+    await assert.rejects(updateCourse(context, SITE, 3, { fullName: "No" }), CourseError);
     await context.close();
   });
 });

@@ -30,7 +30,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API)
 - `moodle/h5p.ts` — an H5P activity's content type (from its player page's settings) and the person's attempts (their report, by position and icon); playing it is the working tab's (ADR-007).
 - `moodle/lesson.ts` — a lesson page by page as a student: content pages' buttons, question forms, the feedback after an answer and the end, read by their forms; Moodle's "resume where you left" is accepted.
 - `moodle/choice.ts` — a choice read and answered on its page (its services aren't open to AJAX): options by id, whether answers can change, the answer.
-- `moodle/courses.ts`, `moodle/course.ts`, `moodle/structure.ts` — the person's courses; a course's state and activity details; its structure, assignments and what's pending.
+- `moodle/courses.ts`, `moodle/course.ts`, `moodle/structure.ts` — the person's courses, and changing one's settings through its form; a course's state and activity details; its structure, assignments and what's pending.
 - `moodle/content.ts` — a page, book, label, URL, file or folder viewed as a person would. `moodle/files.ts` — local files checked, site files downloaded with the session.
 - `moodle/editor.ts`, `moodle/activities.ts` — the course editor's actions and renames; creating, updating, moving, duplicating and deleting activities and sections, each answering with the structure afterwards. `activitySettings()` reads an activity's form as fields (name, label, value, options, disabled) without submitting it.
 - `moodle/assign.ts`, `moodle/grading.ts`, `moodle/submission.ts` — an assignment's ids, participants and panels; everyone's submissions and grading; the student's side (save, submit).
