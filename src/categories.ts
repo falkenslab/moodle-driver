@@ -145,6 +145,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   assignmentSubmissions: PERSONAL,
   submitGradingForm: ["others-write"],
   gradeSubmission: ["others-personal", "others-write"],
+  rubric: CONTENT,
+  readGradingDefinition: NONE,
 
   // Quizzes: a teacher may review someone else's attempt.
   quizInfo: ["course-content", "own"],

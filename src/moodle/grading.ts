@@ -1,9 +1,10 @@
 // A teacher's side of an assignment: everyone's submissions, and grading one participant as the
 // grader does (its panel's form, submitted through the grading service).
-import type { BrowserContext } from "playwright-core";
-import { assignmentIds, fillGradingForm, gradingPanelHtml, listParticipants, panelGrade, participantDates, readSubmissionContent, submitGradingForm, type PluginContent } from "./assign.js";
+import type { BrowserContext, Page } from "playwright-core";
+import { GradingError, assignmentIds, fillGradingForm, gradingPanelHtml, listParticipants, panelGrade, participantDates, readSubmissionContent, submitGradingForm, type PluginContent } from "./assign.js";
 import { isoDate } from "./courses.js";
 import type { FieldValue } from "./forms.js";
+import { inPage } from "./inPage.js";
 
 /** The grader's feedback comments field, when the assignment has them on. */
 const FEEDBACK_FIELD = "assignfeedbackcomments_editor[text]";
@@ -57,19 +58,43 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
 }
 
 /**
- * Grades a participant as the grader does: a grade, feedback comments (HTML), whether to notify, and
- * any other grading field by name (a rubric's or marking guide's). Returns the grade saved.
+ * Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion
+ * or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion,
+ * feedback comments (HTML), whether to notify, and any other grading field by name. Returns the
+ * grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide.
  */
 export async function gradeSubmission(
   context: BrowserContext,
   siteUrl: string,
   cmid: number,
   userId: number,
-  { grade, feedback, notify, fields }: { grade?: string; feedback?: string; notify?: boolean; fields?: Record<string, FieldValue> },
+  {
+    grade,
+    rubric,
+    guide,
+    remarks,
+    feedback,
+    notify,
+    fields,
+  }: {
+    grade?: string;
+    /** Criterion id → level id. */
+    rubric?: Record<number, number>;
+    /** Criterion id → score. */
+    guide?: Record<number, number>;
+    /** Criterion id → remark, for a rubric or a guide. */
+    remarks?: Record<number, string>;
+    feedback?: string;
+    notify?: boolean;
+    fields?: Record<string, FieldValue>;
+  },
 ) {
   const ids = await assignmentIds(context, siteUrl, cmid);
   const values: Record<string, FieldValue> = { ...fields };
   if (grade !== undefined) values.grade = grade;
+  for (const [criterion, level] of Object.entries(rubric ?? {})) values[`advancedgrading[criteria][${criterion}][levelid]`] = String(level);
+  for (const [criterion, score] of Object.entries(guide ?? {})) values[`advancedgrading[criteria][${criterion}][score]`] = String(score);
+  for (const [criterion, remark] of Object.entries(remarks ?? {})) values[`advancedgrading[criteria][${criterion}][remark]`] = remark;
   if (feedback !== undefined) values[FEEDBACK_FIELD] = feedback;
   if (notify !== undefined) values.sendstudentnotifications = notify ? 1 : 0;
   // A blank tab holds the panel's form: nothing of the grader's page needs to load.
@@ -84,6 +109,77 @@ export async function gradeSubmission(
     await submitGradingForm(context, siteUrl, ids.instanceId, userId, serialized);
     const saved = await panelGrade(page, await gradingPanelHtml(context, siteUrl, ids.contextId, userId));
     return { changed: `Graded user ${userId} in assignment ${cmid}${feedback !== undefined ? ", with feedback" : ""}.`, ...saved };
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+export interface GradingCriterion {
+  id: number;
+  /** A rubric criterion's description; a guide criterion's short name. */
+  description: string;
+  /** A guide criterion's description for students and for markers. */
+  details?: string;
+  markers?: string;
+  /** A rubric criterion's levels, by the ids grading takes. */
+  levels?: { id: number; definition: string; score: number }[];
+  /** A guide criterion's maximum score. */
+  maxScore?: number;
+}
+
+export interface GradingDefinition {
+  /** "simple" for a plain grade (or a scale), "rubric" or "guide" for advanced grading. */
+  method: "simple" | "rubric" | "guide";
+  criteria: GradingCriterion[];
+}
+
+/** The grading method and its criteria, read from a grading panel's form by field names and blocks. */
+export async function readGradingDefinition(page: Page, panelHtml: string): Promise<GradingDefinition> {
+  await page.setContent(panelHtml);
+  // Through inPage: it has a helper function (see the conventions on page.evaluate).
+  return inPage(page, () => {
+    interface El {
+      id: string;
+      value: string;
+      textContent: string | null;
+      getAttribute(name: string): string | null;
+      querySelector(s: string): El | null;
+      querySelectorAll(s: string): ArrayLike<El>;
+    }
+    const doc = (globalThis as unknown as { document: El }).document;
+    const text = (el: El | null | undefined) => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
+    const method = doc.querySelector(".gradingform_rubric") ? "rubric" : doc.querySelector(".gradingform_guide") ? "guide" : "simple";
+    const criteria = Array.from(doc.querySelectorAll('.gradingform_rubric tr.criterion, .gradingform_guide tr.criterion')).flatMap((row): GradingCriterion[] => {
+      const id = Number(/-criteria-(\d+)$/.exec(row.id)?.[1]);
+      if (!id) return [];
+      if (method === "rubric") {
+        const levels = Array.from(row.querySelectorAll("td.level")).map((level) => ({
+          id: Number(level.querySelector('input[type="radio"]')?.value),
+          definition: text(level.querySelector(".definition")),
+          score: Number(text(level.querySelector(".scorevalue"))),
+        }));
+        return [{ id, description: text(row.querySelector("td.description")), levels }];
+      }
+      const max = Number(text(row.querySelector(".criteriondescriptionscore")));
+      const details = text(row.querySelector(".criteriondescription"));
+      const markers = text(row.querySelector(".criteriondescriptionmarkers"));
+      return [{ id, description: text(row.querySelector(".criterionshortname")), ...(details ? { details } : {}), ...(markers ? { markers } : {}), ...(max ? { maxScore: max } : {}) }];
+    });
+    return { method, criteria } as GradingDefinition;
+  }, null);
+}
+
+/**
+ * An assignment's grading method and, for a rubric or a marking guide, its criteria with the ids
+ * `gradeSubmission` takes: read from the grader's panel for its first participant.
+ */
+export async function rubric(context: BrowserContext, siteUrl: string, cmid: number): Promise<{ assignment: { id: number } } & GradingDefinition> {
+  const ids = await assignmentIds(context, siteUrl, cmid);
+  const [first] = await listParticipants(context, siteUrl, ids.instanceId);
+  if (!first) throw new GradingError(`Assignment ${cmid} has no participants: its grading form can't be read without one.`);
+  const page = await context.newPage();
+  try {
+    return { assignment: { id: cmid }, ...(await readGradingDefinition(page, await gradingPanelHtml(context, siteUrl, ids.contextId, first.id))) };
   } finally {
     await page.close().catch(() => undefined);
   }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import { GradingError, NotAnAssignmentError, assignmentSubmissions, gradeSubmission } from "../../src/index.js";
+import { GradingError, NotAnAssignmentError, assignmentSubmissions, gradeSubmission, rubric } from "../../src/index.js";
 import { PANEL, SITE, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -120,6 +120,60 @@ describe("gradeSubmission", { skip: !browser && "no system browser" }, () => {
     await serveFakeMoodle(context, state);
     await assert.rejects(gradeSubmission(context, SITE, 33, 7, { grade: "9", feedback: "<p>x</p>" }), /has no feedback comments/);
     assert.equal(submitted.length, 0);
+    await context.close();
+  });
+});
+
+/** A grader panel with a rubric, reduced from Moodle 5.2's: two criteria with their levels, made up. */
+const level = (criterion: number, id: number, definition: string, score: number, checked = false) =>
+  `<td class="level"><input type="radio" name="advancedgrading[criteria][${criterion}][levelid]" value="${id}"${checked ? " checked" : ""}><div class="definition">${definition}</div><div class="score"><span class="scorevalue">${score}</span> points</div></td>`;
+const rubricPanel = (graded: boolean) => `<form class="gradeform mform"><input type="hidden" name="action" value="submitgrade">
+<div class="gradingform_rubric"><table><tr class="criterion" id="advancedgrading-criteria-1"><td class="description">Explains a loop</td><td class="levels"><table><tr>${level(1, 1, "No", 0)}${level(1, 2, "Partly", 1)}${level(1, 3, "Clearly", 2, graded)}</tr></table></td><td class="remark"><textarea name="advancedgrading[criteria][1][remark]"></textarea></td></tr>
+<tr class="criterion" id="advancedgrading-criteria-2"><td class="description">Gives an example</td><td class="levels"><table><tr>${level(2, 4, "None", 0)}${level(2, 5, "Wrong", 1, graded)}</tr></table></td><td class="remark"><textarea name="advancedgrading[criteria][2][remark]"></textarea></td></tr></table></div>
+<div id="fitem_id_currentgrade_x"><div class="felement">${graded ? "75.00" : "-"}</div></div>
+<input type="hidden" name="sendstudentnotifications" value="1"></form>`;
+
+describe("rubric", { skip: !browser && "no system browser" }, () => {
+  function rubricSite(cmid: number) {
+    const submitted: Record<string, unknown>[] = [];
+    const state: FakeMoodleState = {
+      user: { id: 3, fullName: "Teacher" },
+      bodies: { "/mod/assign/view.php": `<div data-assignmentid="${cmid * 10}" data-contextid="${cmid * 100}"></div>` },
+      services: {
+        mod_assign_list_participants: () => [{ id: 7, fullname: "Ada Lovelace", submitted: true, requiregrading: true, grantedextension: false, submissionstatus: "submitted" }],
+        core_get_fragment: () => ({ html: rubricPanel(submitted.length > 0), javascript: "" }),
+        mod_assign_submit_grading_form: (args) => {
+          submitted.push(args);
+          return [];
+        },
+      },
+    };
+    return { state, submitted };
+  }
+
+  it("reads the grading method and the rubric's criteria and levels by id", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, rubricSite(41).state);
+    assert.deepEqual(await rubric(context, SITE, 41), {
+      assignment: { id: 41 },
+      method: "rubric",
+      criteria: [
+        { id: 1, description: "Explains a loop", levels: [{ id: 1, definition: "No", score: 0 }, { id: 2, definition: "Partly", score: 1 }, { id: 3, definition: "Clearly", score: 2 }] },
+        { id: 2, description: "Gives an example", levels: [{ id: 4, definition: "None", score: 0 }, { id: 5, definition: "Wrong", score: 1 }] },
+      ],
+    });
+    await context.close();
+  });
+
+  it("grades by levels and remarks, and gives the total Moodle computes", async () => {
+    const context = await browser!.newContext();
+    const { state, submitted } = rubricSite(42);
+    await serveFakeMoodle(context, state);
+    const result = await gradeSubmission(context, SITE, 42, 7, { rubric: { 1: 3, 2: 5 }, remarks: { 2: "Check the bounds." } });
+    assert.equal(result.gradebookGrade, "75.00");
+    const form = new URLSearchParams(JSON.parse(String(submitted[0]?.jsonformdata)) as string);
+    assert.deepEqual([form.get("advancedgrading[criteria][1][levelid]"), form.get("advancedgrading[criteria][2][levelid]"), form.get("advancedgrading[criteria][2][remark]")], ["3", "5", "Check the bounds."]);
+    await assert.rejects(gradeSubmission(context, SITE, 42, 7, { rubric: { 9: 1 } }), /no such field: advancedgrading\[criteria\]\[9\]\[levelid\]/);
     await context.close();
   });
 });

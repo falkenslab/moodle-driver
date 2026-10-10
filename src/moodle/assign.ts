@@ -186,13 +186,15 @@ export async function fillGradingForm(page: Page, panelHtml: string, fields: Rec
 }
 
 /** The grade and feedback currently in a grading panel, if any. */
-export async function panelGrade(page: Page, panelHtml: string): Promise<{ grade?: string; feedback?: string }> {
+export async function panelGrade(page: Page, panelHtml: string): Promise<{ grade?: string; gradebookGrade?: string; feedback?: string }> {
   await page.setContent(panelHtml);
   return page.evaluate(() => {
-    const doc = (globalThis as unknown as { document: { querySelector(s: string): { value: string } | null } }).document;
+    const doc = (globalThis as unknown as { document: { querySelector(s: string): { value: string; textContent: string | null } | null } }).document;
     const grade = doc.querySelector('form.gradeform [name="grade"]')?.value;
     const feedback = doc.querySelector('form.gradeform [name="assignfeedbackcomments_editor[text]"]')?.value;
-    return { grade: grade || undefined, feedback: feedback || undefined };
+    // "Current grade in gradebook": the total Moodle computed, also for a rubric or a guide.
+    const gradebook = (doc.querySelector('form.gradeform [id^="fitem_id_currentgrade"] .felement')?.textContent ?? "").replace(/\s+/g, " ").trim();
+    return { grade: grade || undefined, ...(gradebook && gradebook !== "-" ? { gradebookGrade: gradebook } : {}), feedback: feedback || undefined };
   });
 }
 
