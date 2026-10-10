@@ -43,7 +43,7 @@
   <text x="805" y="108" font-size="20" font-weight="800" text-anchor="middle" fill="#5b21b6">🛠️ For your program</text>
   <g font-size="16" fill="#4c1d95">
     <text x="686" y="146">🧩  One object, typed methods</text>
-    <text x="686" y="178">📦  Plain JSON results</text>
+    <text x="686" y="178">🖥️  A moodle command, too</text>
     <text x="686" y="210">✍️  Writes say what changed</text>
     <text x="686" y="242">🚨  Errors with stable codes</text>
     <text x="686" y="274">🔌  Any Moodle AJAX service</text>

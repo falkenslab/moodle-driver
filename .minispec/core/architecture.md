@@ -14,6 +14,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 - `client.ts` — `createMoodle()`: one site and its browser as an object whose methods are the site functions, bound (ADR-009).
 - `options.ts` — what a program chooses: `BrowserOptions` (profile, channel, headless, download), channels, trails, `parseSiteUrl()`.
 - `categories.ts` — what data each public function reads or writes (`DATA_CATEGORIES`, `moduleCategories()`), for programs that restrict what an agent may do; a test fails on an undeclared export.
+- `cli/` — the `moodle` command (ADR-012): `main.ts` (the `bin`), `run.ts` (one command line, its surroundings injected), `args.ts` (arguments and flags into the method's arguments), `output.ts` (tables or JSON), `config.ts` (site and profiles), `commands.generated.ts` (the table, from `scripts/generate-cli-commands.mjs`).
 - `testing/` — the fake Moodle served inside a browser context, grading panel HTML, a browser manager that launches nothing.
 
 ### `browser/`

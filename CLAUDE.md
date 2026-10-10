@@ -14,6 +14,7 @@ feature or ADR). Keep features small and don't write redundant documentation.
 - `npm run test:docker` — every test, in Docker: they open browsers, which must never run on the developer's desktop.
 - `MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/areas/quizzes/attempts.test.ts` — one file (Git Bash on Windows needs `MSYS_NO_PATHCONV=1`).
 - `npm run docs:install` once, then `npm run docs:build` (the documentation site in `docs/`, Docusaurus; fails on a broken link) or `npm run docs:start`.
+- `npm run cli:generate` — regenerates the `moodle` command's table and its reference page after an API change (`npm run build` refuses a stale one).
 - `npm run docs:check` — every program in the guides compiles against `src/` (fence a partial one as ` ```ts fragment `).
 
 ## Things easy to get wrong

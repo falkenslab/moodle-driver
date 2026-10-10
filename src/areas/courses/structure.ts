@@ -112,6 +112,7 @@ export function assignmentsOf(state: CourseState): CourseAssignment[] {
     });
 }
 
+/** The course's assignments, in the course's order, with the section each is in. */
 export async function listAssignments(context: BrowserContext, siteUrl: string, courseId: number): Promise<CourseAssignment[]> {
   return assignmentsOf(await courseState(context, siteUrl, courseId));
 }

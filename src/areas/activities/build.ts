@@ -140,6 +140,7 @@ export async function editActivity(
   return afterChange(context, siteUrl, courseId, done.length > 0 ? `Activity ${activityId} ${done.join(", ")}.` : "Nothing to change.");
 }
 
+/** Duplicates an activity as the course page's "Duplicate" does (right after it, named with "(copy)"); gives the copy's id and the course afterwards. */
 export async function duplicateActivity(context: BrowserContext, siteUrl: string, courseId: number, activityId: number): Promise<CourseChange> {
   const before = new Set((await courseState(context, siteUrl, courseId)).cm.map((cm) => cm.id));
   await editCourse(context, siteUrl, courseId, "cm_duplicate", [activityId]);
@@ -147,6 +148,7 @@ export async function duplicateActivity(context: BrowserContext, siteUrl: string
   return afterChange(context, siteUrl, courseId, `Activity ${activityId} duplicated${copy ? ` as ${copy.id}` : ""}.`, { activityId: copy ? Number(copy.id) : undefined });
 }
 
+/** Deletes an activity, with its participants' data (submissions, posts, attempts); gives the course afterwards. */
 export async function deleteActivity(context: BrowserContext, siteUrl: string, courseId: number, activityId: number): Promise<CourseChange> {
   await editCourse(context, siteUrl, courseId, "cm_delete", [activityId]);
   return afterChange(context, siteUrl, courseId, `Activity ${activityId} deleted.`);

@@ -12,6 +12,7 @@ npm run test:docker   # every test, in Docker
 npm run build         # dist/, with declarations
 npm run docs:install  # the documentation site's dependencies
 npm run docs:start    # the site on localhost, live
+npm run cli:generate  # the moodle command's table and reference, after an API change
 npm run docs:check    # every program in the guides compiles against the code
 npm run docs:build    # the site, as published
 ```

@@ -1,7 +1,7 @@
 {
   "name": "@falkenslab/moodle-driver",
   "version": "0.2.0",
-  "description": "Full control of Moodle as any user, with their own login: no web services, no tokens, no admin.",
+  "description": "Full control of Moodle as any user, from code or the command line, with their own login: no web services, no tokens, no admin.",
   "author": "Falkenslab",
   "license": "MIT",
   "keywords": [
@@ -29,6 +29,9 @@
       "import": "./dist/testing/index.js"
     }
   },
+  "bin": {
+    "moodle": "dist/cli/main.js"
+  },
   "files": [
     "dist"
   ],
@@ -42,7 +45,9 @@
     "docs:install": "npm --prefix docs ci",
     "docs:start": "npm --prefix docs start",
     "docs:build": "npm --prefix docs run build",
-    "docs:check": "node scripts/check-doc-examples.mjs"
+    "docs:check": "node scripts/check-doc-examples.mjs",
+    "cli:generate": "node scripts/generate-cli-commands.mjs",
+    "prebuild": "node scripts/generate-cli-commands.mjs --check"
   },
   "peerDependencies": {
     "playwright-core": "^1.64.0"

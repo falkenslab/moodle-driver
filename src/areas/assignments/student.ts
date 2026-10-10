@@ -69,6 +69,7 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
   );
 }
 
+/** An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, and whether it can be edited or submitted now. */
 export async function studentAssignment(context: BrowserContext, siteUrl: string, activityId: number): Promise<StudentAssignment> {
   const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${activityId}`);
   try {

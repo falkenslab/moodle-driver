@@ -69,6 +69,7 @@ for (const course of courses) console.log(course.id, course.fullname);
 - [Logging in](getting-started/logging-in.md): profiles, sessions and windows.
 - [Your first program](getting-started/first-program.md): a complete script, step by step.
 - [How it works](concepts/how-it-works.md): services, pages and why the driver reads Moodle the way it does.
+- [The command line](getting-started/command-line.md): every operation as a `moodle` command, without writing a program.
 - [Examples](examples/index.md): complete programs for real tasks, as a student, as a teacher and for your program, commented step by step.
 - [Moodle areas](areas/courses.md): one page per area, with every function.
 - [Glossary](reference/glossary.md): Moodle's terms (submission, attempt, slot, override…) explained for programmers.

@@ -11,7 +11,7 @@ const sidebars: SidebarsConfig = {
       type: "category",
       label: "Getting started",
       collapsed: false,
-      items: ["getting-started/installation", "getting-started/logging-in", "getting-started/first-program"],
+      items: ["getting-started/installation", "getting-started/logging-in", "getting-started/first-program", "getting-started/command-line"],
     },
     {
       type: "category",
@@ -97,7 +97,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Reference",
-      items: ["reference/glossary", "reference/troubleshooting", "reference/compatibility", "reference/development", "reference/versioning"],
+      items: ["reference/glossary", "reference/commands", "reference/troubleshooting", "reference/compatibility", "reference/development", "reference/versioning"],
     },
   ],
   api: [{ type: "doc", id: "api/index", label: "Overview" }, ...apiSidebar],

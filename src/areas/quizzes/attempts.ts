@@ -186,6 +186,7 @@ export function readNavigation(page: Page): Promise<Record<number, number>> {
   });
 }
 
+/** A quiz's page as the person sees it: its description and dates, the person's attempts with their summary, and whether they can start one. */
 export async function quizInfo(context: BrowserContext, siteUrl: string, activityId: number): Promise<QuizInfo> {
   const page = await openSitePage(context, siteUrl, `mod/quiz/view.php?id=${activityId}`);
   try {
