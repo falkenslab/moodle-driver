@@ -13,3 +13,5 @@ profiles/
 *.log
 .DS_Store
 Thumbs.db
+# The documentation examples, while docs:check compiles them
+.doccheck/

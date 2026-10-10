@@ -13,6 +13,7 @@ npm run lint
 npm run test:docker
 npm run build
 (cd ../moodle-mcp && npm run typecheck)
+npm run docs:check
 npm run docs:build
 ```
 
@@ -23,6 +24,7 @@ Notes:
 - The test run must report `fail 0`. Quote the pass/fail counts in your report.
 - `dist/` is gitignored and `tsc` never deletes stale output. If files were moved or removed under `src/`, run `rm -rf dist` before `npm run build`, otherwise orphaned `.js`/`.d.ts` files linger and hide broken imports.
 - moodle-mcp (the sibling folder) uses the driver from `file:../moodle-driver`, so its typecheck sees the `dist/` just built. Run it whenever something exported from `src/index.ts`, `src/internals.ts` or `src/testing/index.ts` changed; skip it (and say so) when `../moodle-mcp` doesn't exist or the change touches no export. A failure there is a breaking change for consumers: report it, don't fix moodle-mcp from this repo unless the user asks.
+- `npm run docs:check` compiles every program in the guides (` ```ts ` blocks that await or use `moodle.`) against `src/`, and points each error at its Markdown line; a piece of a program is fenced ` ```ts fragment ` to be skipped. Run it whenever `docs/` or anything exported changed.
 - `npm run docs:build` builds the site (`docs/`, Docusaurus) and fails on a broken link or anchor; its API reference is generated from `src/`'s doc comments, so it also catches one that breaks the site. If `docs/node_modules` is missing, run `npm run docs:install` first. Run it whenever `docs/` or anything exported changed; skip it (and say so) otherwise.
 - Never "fix" a failure by weakening a rule, skipping a test, adding `any` or running the tests outside Docker. Find the cause; if the fix is out of scope, report it instead.
 

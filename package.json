@@ -41,7 +41,8 @@
     "prepare": "npm run build",
     "docs:install": "npm --prefix docs ci",
     "docs:start": "npm --prefix docs start",
-    "docs:build": "npm --prefix docs run build"
+    "docs:build": "npm --prefix docs run build",
+    "docs:check": "node scripts/check-doc-examples.mjs"
   },
   "peerDependencies": {
     "playwright-core": "^1.64.0"

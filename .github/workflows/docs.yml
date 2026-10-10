@@ -6,9 +6,9 @@ name: Documentation
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "src/**", "package.json", "package-lock.json", "tsconfig.json", ".github/workflows/docs.yml"]
+    paths: ["docs/**", "src/**", "scripts/check-doc-examples.mjs", "package.json", "package-lock.json", "tsconfig.json", ".github/workflows/docs.yml"]
   pull_request:
-    paths: ["docs/**", "src/**", "package.json", "package-lock.json", "tsconfig.json", ".github/workflows/docs.yml"]
+    paths: ["docs/**", "src/**", "scripts/check-doc-examples.mjs", "package.json", "package-lock.json", "tsconfig.json", ".github/workflows/docs.yml"]
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,10 @@ jobs:
       # The driver's own dependencies, for TypeDoc to read src/ with its types; no build needed.
       - name: Install the driver
         run: npm ci --ignore-scripts
+
+      # Every example in the guides compiles against src/.
+      - name: Check the examples
+        run: npm run docs:check
 
       - name: Install the site
         run: npm ci
