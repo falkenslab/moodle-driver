@@ -11,7 +11,13 @@ The driver is a Node.js library with one peer dependency, `playwright-core`, whi
 
 ## Install
 
-The package isn't on npm yet: install it from a GitHub release or from a clone.
+The package isn't on npm yet: install it from a GitHub release or from a clone. Each [release](https://github.com/falkenslab/moodle-driver/releases) carries the package, built, as a `.tgz`:
+
+```bash
+npm install https://github.com/falkenslab/moodle-driver/releases/download/v0.3.0/falkenslab-moodle-driver-0.3.0.tgz playwright-core
+```
+
+Or from a clone, to follow `main` or change the driver:
 
 ```bash
 # From a clone, next to your program's folder
