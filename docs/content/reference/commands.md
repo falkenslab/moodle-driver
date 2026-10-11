@@ -469,6 +469,21 @@ moodle get-survey <activityId> [type]
 | `activityId` | `number` |  |
 | `type` (optional) | `SurveyType` |  |
 
+## gradeQuizQuestion
+
+Grades one question of a finished attempt by hand, with a comment, through Moodle's comment form (the review's "Make comment or override mark"): an essay waiting for grading, or any question whose mark the teacher overrides. The mark is in the question's points (0 to its maximum in the quiz). Returns the attempt's grade afterwards when the results report shows it.
+
+```bash
+moodle grade-quiz-question <attemptId> <slot> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `attemptId` | `number` |  |
+| `slot` | `number` |  |
+| `--mark` (required) | `number` |  |
+| `--comment` | `string` |  |
+
 ## gradeSubmission
 
 Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion, feedback comments (HTML), whether to notify, and any other grading field by name. Returns the grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide.
@@ -735,6 +750,18 @@ A bank's categories and every question in them, category by category.
 
 ```bash
 moodle questions <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
+## questionsToGrade
+
+The questions of a quiz that wait for grading by hand (essays…), as its manual grading report lists them, each with the finished attempts whose answer requires grading (from the results report). People as user id and full name.
+
+```bash
+moodle questions-to-grade <activityId>
 ```
 
 | Argument | Type | Description |

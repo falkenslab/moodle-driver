@@ -1,6 +1,6 @@
 # Quizzes
 
-Quizzes from both sides. A student reads a quiz's page, starts or continues an attempt, answers its questions page by page (at a person's pace by default) and finishes it, then reads the review. A teacher reads every attempt with its grade and marks per question (and the answers given), reads which questions a quiz holds, adds questions from a bank (chosen or random), and gives a student other dates, a time limit or more attempts with a user override. Quizzes are identified by their course module id (the `id` in `mod/quiz/view.php?id=`), attempts by Moodle's attempt id.
+Quizzes from both sides. A student reads a quiz's page, starts or continues an attempt, answers its questions page by page (at a person's pace by default) and finishes it, then reads the review. A teacher reads every attempt with its grade and marks per question (and the answers given), grades by hand what Moodle can't grade by itself (essays) or overrides a mark, reads which questions a quiz holds, adds questions from a bank (chosen or random), and gives a student other dates, a time limit or more attempts with a user override. Quizzes are identified by their course module id (the `id` in `mod/quiz/view.php?id=`), attempts by Moodle's attempt id.
 
 **Terms:** [quiz](../reference/glossary.md#quiz), [attempt](../reference/glossary.md#attempt), [slot](../reference/glossary.md#slot), [review](../reference/glossary.md#review), [override](../reference/glossary.md#override).
 
@@ -68,6 +68,7 @@ interface Question {
   fields: QuestionField[];
   feedback?: string;
   rightAnswer?: string;
+  comment?: string;
 }
 
 interface QuestionField {
@@ -87,6 +88,7 @@ interface QuestionField {
 - `mark`: the mark line as shown ("Marked out of 1.00").
 - `text`: the question's text, without what only screen readers get; `images` holds its images' URLs.
 - `feedback` and `rightAnswer`: in a review, when the quiz's review options show them.
+- `comment`: in a review, the teacher's comment from grading by hand, as the text of its paragraphs (without the page's "Comment:" label); a comment written without paragraphs comes with the label, as shown.
 
 Each input of the question is a field with its form name, such as `q9:1_answer` (`q<usage>:<slot>_<name>`). Answering means giving values for those names:
 
@@ -223,6 +225,65 @@ interface QuizAttemptResult {
 
 People come as user id and full name: hiding who they are is the calling program's job. The report lists the attempts of enrolled users. Throws `QuizError` with Moodle's message when the person can't see the report (a student, or the id isn't a quiz).
 
+## questionsToGrade
+
+The questions of a quiz that wait for grading by hand, as its manual grading report lists them, each with the finished attempts whose answer requires grading.
+
+```ts
+function questionsToGrade(context: BrowserContext, siteUrl: string, activityId: number): Promise<{
+  quiz: { id: number };
+  questions: QuestionToGrade[];
+}>;
+
+interface QuestionToGrade {
+  slot: number;
+  questionId?: number;
+  name: string;
+  type: string;
+  toGrade: number;
+  graded: number;
+  total: number;
+  attempts: { id: number; userId: number; fullName: string }[];
+}
+```
+
+- `slot`, `questionId`, `name`, `type`: the question, as in the quiz (`type` is "essay" for most).
+- `toGrade`, `graded`, `total`: the report's counts: attempts waiting for a grade, already graded by hand, and in all.
+- `attempts`: the attempts waiting, with the attempt's id (what `gradeQuizQuestion` and `readReview` take) and its person; they come from the results report (the question's result `requiresgrading` in [`quizResults`](#quizresults)), since the grading report itself names attempts only by person.
+
+Moodle's report lists the questions that need grading by hand, not the ones graded automatically. Throws `QuizError` with Moodle's message when the person can't grade the quiz.
+
+## gradeQuizQuestion
+
+Grades one question of a finished attempt by hand, with a comment, through Moodle's comment form (the review's "Make comment or override mark"): an essay waiting for its grade, or any question whose mark the teacher overrides.
+
+```ts
+function gradeQuizQuestion(
+  context: BrowserContext,
+  siteUrl: string,
+  attemptId: number,
+  slot: number,
+  options: { mark: number; comment?: string },
+): Promise<{ changed: string; attemptId: number; slot: number; mark: number; maxMark?: number; grade?: string }>;
+```
+
+- `mark`: in the question's points in the quiz, from 0 to its maximum (`maxMark` in the result).
+- `comment` (HTML): the teacher's comment the student sees in the review; without it, the comment the question already has stays.
+- `grade`: the attempt's grade afterwards, as the results report shows it ("9.17"); Moodle updates the quiz's grade in the gradebook too.
+
+No AJAX service grades a question, so this fills the comment form and posts it as its Save button does. Errors: `FormError` with Moodle's message on the field `mark` when the mark is outside the question's range or isn't a number Moodle reads; `QuizError` when the form can't be opened (the attempt isn't finished, the slot isn't in it, or the person can't grade; Moodle's reason comes in the message), or when the question has no mark (a description).
+
+```ts
+// Grade every essay waiting in quiz 47 with half its marks, and a comment.
+const { questions } = await moodle.questionsToGrade(47);
+for (const question of questions) {
+  for (const attempt of question.attempts) {
+    const result = await moodle.gradeQuizQuestion(attempt.id, question.slot, { mark: 2.5, comment: "<p>Seen; let's talk in class.</p>" });
+    console.log(result.changed);
+  }
+}
+```
+
 ## quizStructure
 
 A quiz's questions as its edit page lists them: slots in order, each with its page, question, type, name and mark.
@@ -318,7 +379,8 @@ The single steps these are built on (starting an attempt, saving a page, finishi
 - `quizInfo`: `course-content` and `own` (the quiz and the person's attempts).
 - `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`: `own`.
 - `readReview`: `own` and `others-personal`, since a teacher may review someone else's attempt.
-- `quizResults`: `others-personal`.
+- `quizResults`, `questionsToGrade`: `others-personal`.
+- `gradeQuizQuestion`: `others-personal` and `others-write`.
 - `quizStructure`, `addQuestionsToQuiz`: `course-content`.
 - `setQuizOverride`: `others-write`.
 

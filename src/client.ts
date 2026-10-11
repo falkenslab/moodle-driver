@@ -26,6 +26,7 @@ import { groups, participantFilters, participants } from "./areas/participants/p
 import { createQuestion, importQuestions, questionBanks, questions } from "./areas/questions/banks.js";
 import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
+import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
 import { addQuestionsToQuiz, quizStructure } from "./areas/quizzes/structure.js";
 import { logOut, openSitePage } from "./core/session.js";
 import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
@@ -72,6 +73,7 @@ const SITE_FUNCTIONS = {
   forumDiscussions,
   getChoice,
   getSurvey,
+  gradeQuizQuestion,
   gradeSubmission,
   gradebookSetup,
   graderReport,
@@ -95,6 +97,7 @@ const SITE_FUNCTIONS = {
   pendingActivities,
   questionBanks,
   questions,
+  questionsToGrade,
   quizInfo,
   quizResults,
   quizStructure,

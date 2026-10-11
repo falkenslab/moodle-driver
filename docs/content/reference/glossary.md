@@ -109,11 +109,11 @@ A folder of questions inside a [question bank](#question-bank); each bank has a 
 
 ### Quiz
 
-The activity of questions a participant answers in [attempts](#attempt), graded automatically where it can be (module `quiz`). The driver covers the student's side (`quizInfo`, `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`, `readReview`) and the teacher's (`quizResults`, `quizStructure`, `addQuestionsToQuiz`, `setQuizOverride`); its errors are `QuizError`. See [Quizzes](../areas/quizzes.md).
+The activity of questions a participant answers in [attempts](#attempt), graded automatically where it can be (module `quiz`). The driver covers the student's side (`quizInfo`, `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`, `readReview`) and the teacher's (`quizResults`, `questionsToGrade`, `gradeQuizQuestion`, `quizStructure`, `addQuestionsToQuiz`, `setQuizOverride`); its errors are `QuizError`. See [Quizzes](../areas/quizzes.md).
 
 ### Review
 
-The page of a finished [attempt](#attempt) that shows its summary and questions with their state, mark, feedback and right answer, as far as the quiz's review options allow ("Review" in the interface). The driver reads it with `readReview(attemptId)` (`summary` and `questions`), and `finishQuizAttempt` returns it as `review` when the quiz shows it right away. See [Quizzes](../areas/quizzes.md).
+The page of a finished [attempt](#attempt) that shows its summary and questions with their state, mark, feedback and right answer, as far as the quiz's review options allow ("Review" in the interface). The driver reads it with `readReview(attemptId)` (`summary` and `questions`, with the teacher's `comment` on a question graded by hand), and `finishQuizAttempt` returns it as `review` when the quiz shows it right away. See [Quizzes](../areas/quizzes.md).
 
 ### Role
 
