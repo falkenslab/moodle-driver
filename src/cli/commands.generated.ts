@@ -603,6 +603,50 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "createGroup",
+    "description": "Creates a group in a course with its group form (`group/group.php`). Throws `FormError` with Moodle's reason when it refuses (a name already used, an enrolment key another group has).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "settings",
+        "optional": false,
+        "type": "GroupSettings & { name: string; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
+    "name": "createGrouping",
+    "description": "Creates a grouping in a course with its form (`group/grouping.php`); add its groups with `setGroupingGroups`.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "settings",
+        "optional": false,
+        "type": "GroupingSettings & { name: string; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
     "name": "createQuestion",
     "description": "Creates one question in a bank through its type's edit form; returns its id. Imports are the way for several; this is for one-offs.",
     "params": [
@@ -762,6 +806,34 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "eventId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteGroup",
+    "description": "Deletes a group, as the groups page's \"Delete selected group\" does once confirmed; its members stay in the course.",
+    "params": [
+      {
+        "name": "groupId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteGrouping",
+    "description": "Deletes a grouping, as its delete icon does once confirmed; its groups stay.",
+    "params": [
+      {
+        "name": "groupingId",
         "optional": false,
         "type": "number",
         "value": {
@@ -1247,6 +1319,20 @@ export const COMMANDS: readonly CommandSpec[] = [
         "type": "Date",
         "value": {
           "kind": "date"
+        }
+      }
+    ]
+  },
+  {
+    "name": "groupings",
+    "description": "A course's groupings with their groups' ids, from its groupings page and each grouping's groups page.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
         }
       }
     ]
@@ -1874,6 +1960,65 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "setGroupMembers",
+    "description": "Adds and removes a group's members (user ids), as its members page does. Only the course's participants can be added: ids the page doesn't offer (not enrolled, or already members) and members not in it are left as they were and named in `changed`. Returns the members afterwards.",
+    "params": [
+      {
+        "name": "groupId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "add",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        },
+        {
+          "name": "remove",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "setGroupingGroups",
+    "description": "Makes a grouping's groups exactly `groupIds`, as its groups page adds and removes them. Groups of other courses aren't offered there and are left out, named in `changed`. Returns the groups afterwards.",
+    "params": [
+      {
+        "name": "groupingId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "groupIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      }
+    ]
+  },
+  {
     "name": "setQuizOverride",
     "description": "Sets a user override on a quiz, through its override form: other opening and closing dates, a time limit in minutes, or a number of attempts (0 unlimited); what isn't given stays the quiz's.",
     "params": [
@@ -2310,6 +2455,61 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "number"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "updateGroup",
+    "description": "Changes a group's name, description, ID number or enrolment key with its form; what isn't given stays.",
+    "params": [
+      {
+        "name": "groupId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "settings",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "HTML."
+        },
+        {
+          "name": "idNumber",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "enrolmentKey",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The key that puts a student enrolling with self enrolment in this group."
         }
       ]
     }

@@ -170,6 +170,14 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   enrolUsers: ["others-personal", "others-write"],
   unenrolUser: ["others-personal", "others-write"],
   setUserRoles: ["others-personal", "others-write"],
+  createGroup: CONTENT,
+  updateGroup: CONTENT,
+  deleteGroup: CONTENT,
+  setGroupMembers: ["others-personal", "others-write"],
+  groupings: CONTENT,
+  createGrouping: CONTENT,
+  deleteGrouping: CONTENT,
+  setGroupingGroups: CONTENT,
 
   // Completion: the person's own, deciding someone else's, everyone's report.
   setCompletion: OWN,

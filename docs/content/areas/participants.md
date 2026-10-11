@@ -1,6 +1,6 @@
 # Participants
 
-This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`) and giving or taking roles (`setUserRoles`). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
+This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`), giving or taking roles (`setUserRoles`), and making groups and groupings and choosing their members (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
 
 **Terms:** [participant](../reference/glossary.md#participant), [role](../reference/glossary.md#role), [group](../reference/glossary.md#group).
 
@@ -122,6 +122,48 @@ function setUserRoles(context: BrowserContext, siteUrl: string, courseId: number
 
 The roles in `roleIds` are given and the other roles the person may assign are taken away; roles the person can't assign, and those from elsewhere (a category, an enrolment method that protects its roles), stay. The result is the user's roles afterwards as the column shows them. It goes through the column's own service (`core_update_inplace_editable`). An editing teacher may usually assign Non-editing teacher and Student, not Teacher: a role outside those is refused with `EnrolmentError` and Moodle's reason ("Role cannot be assigned in this course"), as is a user who isn't enrolled ("User does not belong to the course").
 
+## Groups and groupings
+
+A teacher makes, changes and deletes a course's groups and groupings, and chooses their members, on Moodle's group pages: no group service that writes is open to AJAX. Each write returns `changed`, and those that create something the new id.
+
+```ts
+function createGroup(context: BrowserContext, siteUrl: string, courseId: number, settings: GroupSettings & { name: string }): Promise<{ changed: string; groupId: number }>;
+function updateGroup(context: BrowserContext, siteUrl: string, groupId: number, settings: GroupSettings): Promise<{ changed: string }>;
+function deleteGroup(context: BrowserContext, siteUrl: string, groupId: number): Promise<{ changed: string }>;
+function setGroupMembers(context: BrowserContext, siteUrl: string, groupId: number, change: { add?: number[]; remove?: number[] }): Promise<{ changed: string; members: number[] }>;
+
+function groupings(context: BrowserContext, siteUrl: string, courseId: number): Promise<Grouping[]>;
+function createGrouping(context: BrowserContext, siteUrl: string, courseId: number, settings: GroupingSettings & { name: string }): Promise<{ changed: string; groupingId: number }>;
+function deleteGrouping(context: BrowserContext, siteUrl: string, groupingId: number): Promise<{ changed: string }>;
+function setGroupingGroups(context: BrowserContext, siteUrl: string, groupingId: number, groupIds: number[]): Promise<{ changed: string; groupIds: number[] }>;
+
+interface GroupSettings {
+  name?: string;
+  description?: string; // HTML
+  idNumber?: string;
+  enrolmentKey?: string; // puts a student who self-enrols with it in this group
+}
+
+interface GroupingSettings {
+  name?: string;
+  description?: string;
+  idNumber?: string;
+}
+
+interface Grouping {
+  id: number;
+  name: string;
+  groupIds: number[];
+}
+```
+
+- `createGroup`, `updateGroup`, `createGrouping` fill the group's or grouping's form (`group/group.php`, `group/grouping.php`); what isn't given stays as it was. Moodle's refusals come as `FormError` with its reason by field: a group name already used in the course, an enrolment key another group has.
+- `setGroupMembers` adds and removes user ids on the group's members page (`group/members.php`), as its Add and Remove buttons do, and returns the members afterwards. Only participants of the course can be added: ids the page doesn't offer are left as they were and named in `changed`.
+- `groupings` reads the course's groupings page and each grouping's groups page; `setGroupingGroups` makes a grouping's groups exactly those given on that page (`group/assign.php`), leaving out ids that aren't groups of the course.
+- `deleteGroup` and `deleteGrouping` do what their confirmation does; the group's members stay in the course, a grouping's groups stay as groups.
+
+A group or grouping that doesn't exist, or that the person can't manage, throws a `MoodleError` (code `not-found`) with Moodle's message. `groups` reads groups with their members.
+
 ## Pseudonymizing
 
 The driver returns real names: it's a library for any program, and what a program does with names is its own choice. A program that hands participants' data to someone else (an AI model, say) pseudonymizes it itself; moodle-mcp, one consumer, does it with `@falkenslab/pseudonym`. User ids are stable within a site, so a program can keep a table from id to pseudonym and translate back before acting.
@@ -157,4 +199,6 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 - `participants`, `groups`: `others-personal`.
 - `participantFilters`: `course-content` (the course's roles and groups, nobody's data).
 - `potentialUsers`: `others-personal`.
+- `createGroup`, `updateGroup`, `deleteGroup`, `groupings`, `createGrouping`, `deleteGrouping`, `setGroupingGroups`: `course-content`.
+- `setGroupMembers`: `others-personal` and `others-write`.
 - `enrolUsers`, `unenrolUser`, `setUserRoles`: `others-personal` and `others-write` (deciding who is in the course and with which role).

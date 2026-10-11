@@ -277,6 +277,32 @@ moodle create-event --options
 | `--duration-minutes` | `number` |  |
 | `--description` | `string` |  |
 
+## createGroup
+
+Creates a group in a course with its group form (`group/group.php`). Throws `FormError` with Moodle's reason when it refuses (a name already used, an enrolment key another group has).
+
+```bash
+moodle create-group <courseId> <settings>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `settings` | `GroupSettings & { name: string; }` |  |
+
+## createGrouping
+
+Creates a grouping in a course with its form (`group/grouping.php`); add its groups with `setGroupingGroups`.
+
+```bash
+moodle create-grouping <courseId> <settings>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `settings` | `GroupingSettings & { name: string; }` |  |
+
 ## createQuestion
 
 Creates one question in a bank through its type's edit form; returns its id. Imports are the way for several; this is for one-offs.
@@ -335,6 +361,30 @@ moodle delete-event <eventId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `eventId` | `number` |  |
+
+## deleteGroup
+
+Deletes a group, as the groups page's "Delete selected group" does once confirmed; its members stay in the course.
+
+```bash
+moodle delete-group <groupId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupId` | `number` |  |
+
+## deleteGrouping
+
+Deletes a grouping, as its delete icon does once confirmed; its groups stay.
+
+```bash
+moodle delete-grouping <groupingId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupingId` | `number` |  |
 
 ## deleteSection
 
@@ -543,6 +593,18 @@ moodle grant-extension <activityId> <userIds> <until>
 | `activityId` | `number` |  |
 | `userIds` | `number[]` |  |
 | `until` | `Date` |  |
+
+## groupings
+
+A course's groupings with their groups' ids, from its groupings page and each grouping's groups page.
+
+```bash
+moodle groupings <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
 
 ## groups
 
@@ -923,6 +985,33 @@ moodle set-discussion-state <activityId> <discussionId> --options
 | `--pinned` | `boolean` |  |
 | `--locked` | `boolean` |  |
 
+## setGroupMembers
+
+Adds and removes a group's members (user ids), as its members page does. Only the course's participants can be added: ids the page doesn't offer (not enrolled, or already members) and members not in it are left as they were and named in `changed`. Returns the members afterwards.
+
+```bash
+moodle set-group-members <groupId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupId` | `number` |  |
+| `--add` | `number[]` |  |
+| `--remove` | `number[]` |  |
+
+## setGroupingGroups
+
+Makes a grouping's groups exactly `groupIds`, as its groups page adds and removes them. Groups of other courses aren't offered there and are left out, named in `changed`. Returns the groups afterwards.
+
+```bash
+moodle set-grouping-groups <groupingId> <groupIds>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupingId` | `number` |  |
+| `groupIds` | `number[]` |  |
+
 ## setQuizOverride
 
 Sets a user override on a quiz, through its override form: other opening and closing dates, a time limit in minutes, or a number of attempts (0 unlimited); what isn't given stays the quiz's.
@@ -1100,6 +1189,22 @@ moodle update-grade-item <courseId> <itemId> --options
 | `--category` | `number` |  |
 | `--weight` | `number` |  |
 | `--max-grade` | `number` |  |
+
+## updateGroup
+
+Changes a group's name, description, ID number or enrolment key with its form; what isn't given stays.
+
+```bash
+moodle update-group <groupId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupId` | `number` |  |
+| `--name` | `string` |  |
+| `--description` | `string` | HTML. |
+| `--id-number` | `string` |  |
+| `--enrolment-key` | `string` | The key that puts a student enrolling with self enrolment in this group. |
 
 ## userById
 
