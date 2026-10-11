@@ -6,7 +6,7 @@ import path from "node:path";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
 import { MoodleError, createMoodle, siteProfileDir } from "../../src/index.js";
-import { cliHome, legacyHome, listSites, migrate } from "../../src/cli/config.js";
+import { cliHome, legacyHome, listSites, migrate, tidy } from "../../src/cli/config.js";
 import { run, type CliDeps } from "../../src/cli/run.js";
 import { SITE, fakeBrowserManager, launchTestBrowser, serveFakeMoodle } from "../../src/testing/index.js";
 
@@ -31,10 +31,10 @@ describe("the command's home", () => {
 
   it("gives each site a folder, and each account on it a profile", () => {
     const home = path.join("/home/ada", ".moodle-driver");
-    assert.equal(siteProfileDir("https://campus.example.org", { home }), path.join(home, "sites", "campus.example.org", "profile"));
+    assert.equal(siteProfileDir("https://campus.example.org", { home }), path.join(home, "sites", "campus.example.org", "profiles", "default"));
     assert.equal(siteProfileDir("http://localhost:8080/moodle/", { as: "teacher", home }), path.join(home, "sites", "localhost_8080", "profiles", "teacher"));
-    assert.equal(siteProfileDir(SITE, { as: "default", home }), path.join(home, "sites", "moodle.test", "profile"));
-    assert.equal(siteProfileDir(SITE), path.join(cliHome({}), "sites", "moodle.test", "profile"));
+    assert.equal(siteProfileDir(SITE, { as: "default", home }), siteProfileDir(SITE, { home }));
+    assert.equal(siteProfileDir(SITE), path.join(cliHome({}), "sites", "moodle.test", "profiles", "default"));
     assert.throws(() => siteProfileDir(SITE, { as: "../x", home }), (error: unknown) => error instanceof MoodleError && error.code === "invalid-input");
   });
 
@@ -50,12 +50,21 @@ describe("the command's home", () => {
       JSON.stringify({ site: SITE, profiles: { [SITE]: path.join(legacy, "profiles", "moodle.test"), "https://other.example.org/": own } }),
     );
     assert.equal(migrate(home, legacy), `Moved moodle's sites and sessions from ${legacy} to ${home}.`);
-    assert.ok(existsSync(path.join(home, "sites", "moodle.test", "profile", "moodle-session.json")));
+    assert.ok(existsSync(path.join(home, "sites", "moodle.test", "profiles", "default", "moodle-session.json")));
     assert.deepEqual(JSON.parse(await readFile(path.join(home, "config.json"), "utf8")), { site: SITE });
     assert.deepEqual(JSON.parse(await readFile(path.join(home, "sites", "other.example.org", "site.json"), "utf8")), { url: "https://other.example.org/", profileDir: own });
     assert.equal(existsSync(legacy), false);
     // Only once: the home is there now.
     assert.equal(migrate(home, legacy), undefined);
+  });
+
+  it("moves a site's profile/ from an early build to profiles/default", async () => {
+    const home = await temp();
+    await mkdir(path.join(home, "sites", "moodle.test", "profile"), { recursive: true });
+    await writeFile(path.join(home, "sites", "moodle.test", "profile", "moodle-session.json"), "[]");
+    tidy(home);
+    assert.ok(existsSync(path.join(siteProfileDir(SITE, { home }), "moodle-session.json")));
+    assert.equal(existsSync(path.join(home, "sites", "moodle.test", "profile")), false);
   });
 });
 

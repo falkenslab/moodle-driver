@@ -21,14 +21,16 @@ export function siteDir(site: string, home = defaultHome()): string {
   return path.join(home, "sites", siteFolderName(site));
 }
 
+/** The name of a site's own account: the profile used without `--as`. */
+export const DEFAULT_PROFILE = "default";
+
 /**
- * The browser profile folder the `moodle` command uses for a site: `sites/<host>/profile`, or
- * `sites/<host>/profiles/<as>` for a named one (another account on the same site). Pass it as
- * `profileDir` to share the command's session; `home` is `~/.moodle-driver` unless given.
+ * The browser profile folder the `moodle` command uses for an account on a site:
+ * `sites/<host>/profiles/<as>`, `default` unless named (another account on the same site has a
+ * name of its own). Pass it as `profileDir` to share the command's session; `home` is
+ * `~/.moodle-driver` unless given.
  */
-export function siteProfileDir(site: string, { as, home = defaultHome() }: { as?: string; home?: string } = {}): string {
-  const dir = siteDir(site, home);
-  if (as === undefined || as === "default") return path.join(dir, "profile");
+export function siteProfileDir(site: string, { as = DEFAULT_PROFILE, home = defaultHome() }: { as?: string; home?: string } = {}): string {
   if (!/^[\w.-]+$/.test(as) || as === "." || as === "..") throw new MoodleError(`A profile's name is letters, digits, dots, hyphens and underscores: "${as}".`, "invalid-input");
-  return path.join(dir, "profiles", as);
+  return path.join(siteDir(site, home), "profiles", as);
 }

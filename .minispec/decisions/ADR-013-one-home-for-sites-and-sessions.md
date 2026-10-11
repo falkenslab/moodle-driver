@@ -2,7 +2,7 @@
 
 ## Decision
 
-The `moodle` command keeps everything in `~/.moodle-driver` on every system (`MOODLE_DRIVER_HOME` moves it): `config.json` with the default site, and a folder per site, `sites/<host>/`, with its `site.json` (its URL, the named profile it uses unless told, a profile folder of the person's own if given) and its browser profiles: `profile/`, and `profiles/<name>/` for other accounts on the site (`--as <name>`). `moodle sites` lists them and `moodle forget` deletes one. The library exports `siteProfileDir(site, { as, home })`, the same folder, and still chooses none by itself. A home in the old place is moved once (decided with the owner, 11 October 2026).
+The `moodle` command keeps everything in `~/.moodle-driver` on every system (`MOODLE_DRIVER_HOME` moves it): `config.json` with the default site, and a folder per site, `sites/<host>/`, with its `site.json` (its URL, the named profile it uses unless told, a profile folder of the person's own if given) and its browser profiles, one per account: `profiles/<name>/`, `default` unless another name is given (`--as <name>`); every account is a name, the first one too, so there's one place to look and no special case. `moodle sites` lists them and `moodle forget` deletes one. The library exports `siteProfileDir(site, { as, home })`, the same folder, and still chooses none by itself. A home in the old place is moved once (decided with the owner, 11 October 2026).
 
 ## Motivation
 

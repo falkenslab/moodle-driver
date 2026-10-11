@@ -3,7 +3,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { defaultHome, siteDir, siteProfileDir } from "../home.js";
+import { DEFAULT_PROFILE, defaultHome, siteDir, siteProfileDir } from "../home.js";
 
 export interface CliConfig {
   /** The site commands work on when none is given: the last one logged in to. */
@@ -15,7 +15,7 @@ export interface SiteRecord {
   url: string;
   /** The named profile commands use on this site unless told (`login --as`). */
   as?: string;
-  /** A profile folder of the person's own, given to `login --profile`. */
+  /** A profile folder of the person's own for the site's default account, given to `login --profile`. */
   profileDir?: string;
 }
 
@@ -53,9 +53,9 @@ export const saveSite = (home: string, record: SiteRecord) => writeJson(path.joi
 export function profileFor(home: string, site: string, { profile, as }: { profile?: string; as?: string }): { profileDir: string; as?: string } {
   if (profile) return { profileDir: profile };
   const record = loadSite(home, site);
-  const name = as ?? record?.as;
-  // The site's own profile is the folder given to `login --profile`, when one was.
-  if (name === undefined || name === "default") return { profileDir: record?.profileDir ?? siteProfileDir(site, { home }), as: name };
+  const name = as ?? record?.as ?? DEFAULT_PROFILE;
+  // The default account's profile is the folder given to `login --profile`, when one was.
+  if (name === DEFAULT_PROFILE && record?.profileDir) return { profileDir: record.profileDir, as: name };
   return { profileDir: siteProfileDir(site, { as: name, home }), as: name };
 }
 
@@ -78,17 +78,14 @@ export function listSites(home: string): SiteProfile[] {
   for (const folder of readdirSync(sitesDir).sort()) {
     const record = readJson<SiteRecord>(path.join(sitesDir, folder, "site.json"));
     if (!record) continue;
-    const named = existsSync(path.join(sitesDir, folder, "profiles")) ? readdirSync(path.join(sitesDir, folder, "profiles")).sort() : [];
-    const profiles: [string, string][] = [
-      ["default", record.profileDir ?? siteProfileDir(record.url, { home })],
-      ...named.map((name): [string, string] => [name, siteProfileDir(record.url, { as: name, home })]),
-    ];
-    for (const [profile, dir] of profiles) {
-      if (profile === "default" && !existsSync(dir) && named.length > 0) continue;
+    const names = new Set(existsSync(path.join(sitesDir, folder, "profiles")) ? readdirSync(path.join(sitesDir, folder, "profiles")) : []);
+    if (record.profileDir) names.add(DEFAULT_PROFILE);
+    for (const profile of [...names].sort((a, b) => (a === DEFAULT_PROFILE ? -1 : b === DEFAULT_PROFILE ? 1 : a < b ? -1 : 1))) {
+      const dir = profile === DEFAULT_PROFILE && record.profileDir ? record.profileDir : siteProfileDir(record.url, { as: profile, home });
       rows.push({
         site: record.url,
         profile,
-        default: config.site === record.url && (record.as ?? "default") === profile,
+        default: config.site === record.url && (record.as ?? DEFAULT_PROFILE) === profile,
         session: existsSync(path.join(dir, "moodle-session.json")),
         path: dir,
       });
@@ -101,11 +98,16 @@ export function listSites(home: string): SiteProfile[] {
 export function forgetSite(home: string, site: string, as?: string): string[] {
   const dir = siteDir(site, home);
   if (!existsSync(dir)) return [];
-  if (as !== undefined && as !== "default") {
+  if (as !== undefined) {
+    const record = loadSite(home, site);
+    // A folder of the person's own is theirs: forgetting the account only stops using it.
+    if (as === DEFAULT_PROFILE && record?.profileDir) {
+      saveSite(home, { ...record, profileDir: undefined, as: record.as === as ? undefined : record.as });
+      return [record.profileDir];
+    }
     const profile = siteProfileDir(site, { as, home });
     if (!existsSync(profile)) return [];
     rmSync(profile, { recursive: true, force: true });
-    const record = loadSite(home, site);
     if (record?.as === as) saveSite(home, { ...record, as: undefined });
     return [profile];
   }
@@ -123,6 +125,17 @@ function move(from: string, to: string): void {
   } catch {
     cpSync(from, to, { recursive: true });
     rmSync(from, { recursive: true, force: true });
+  }
+}
+
+/** Profiles kept as `sites/<host>/profile` by an early build of 0.3 move to `profiles/default`. */
+export function tidy(home: string): void {
+  const sitesDir = path.join(home, "sites");
+  if (!existsSync(sitesDir)) return;
+  for (const folder of readdirSync(sitesDir)) {
+    const old = path.join(sitesDir, folder, "profile");
+    const now = path.join(sitesDir, folder, "profiles", DEFAULT_PROFILE);
+    if (existsSync(old) && !existsSync(now)) move(old, now);
   }
 }
 

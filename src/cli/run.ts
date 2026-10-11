@@ -8,7 +8,7 @@ import { NotLoggedInError } from "../core/session.js";
 import { parseSiteUrl } from "../options.js";
 import { UsageError, commandName, findCommand, kebab, methodArguments, splitLine } from "./args.js";
 import { COMMANDS } from "./commands.generated.js";
-import { forgetSite, listSites, loadConfig, loadSite, migrate, profileFor, saveConfig, saveSite } from "./config.js";
+import { forgetSite, listSites, loadConfig, loadSite, migrate, profileFor, saveConfig, saveSite, tidy } from "./config.js";
 import { render } from "./output.js";
 import type { CommandSpec } from "./spec.js";
 
@@ -41,7 +41,7 @@ function overview(): string {
     "",
     "Global options:",
     "  --site <url>       The Moodle site (remembered after login; or MOODLE_SITE)",
-    "  --as <name>        A named profile on the site, for another account (or MOODLE_AS)",
+    "  --as <name>        The account on the site: its own profile (or MOODLE_AS; \"default\" unless told)",
     "  --profile <dir>    A browser profile folder of your own (or MOODLE_PROFILE)",
     "  --json             Print JSON (the default when the output isn't a terminal)",
     "  --show             Show the browser while the command works",
@@ -50,7 +50,7 @@ function overview(): string {
     "",
     "The command's own:",
     `  ${"sites".padEnd(width)}  The sites and profiles logged in to, which is the default, and whether each has a session`,
-    `  ${"forget".padEnd(width)}  Deletes a site and its sessions (forget <site>), or one profile (--as <name>)`,
+    `  ${"forget".padEnd(width)}  Deletes a site and its sessions (forget <site>), or one account's profile (--as <name>)`,
     "",
     "Commands:",
     ...COMMANDS.map((c) => `  ${kebab(c.name).padEnd(width)}  ${firstSentence(c.description).slice(0, 90)}`),
@@ -100,6 +100,7 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
     }
     const notice = deps.legacyHome ? migrate(deps.home, deps.legacyHome) : undefined;
     if (notice) deps.stderr(notice);
+    tidy(deps.home);
     if (typed === "sites") {
       const text = render(listSites(deps.home), global.json || !deps.interactive);
       deps.stdout(text === "(none)" ? "No sites yet: `moodle login --site https://campus.example.org/`." : text);
@@ -152,7 +153,7 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
       mkdirSync(profileDir, { recursive: true });
       saveSite(deps.home, {
         url: site,
-        as: as === undefined || as === "default" ? undefined : as,
+        as: as === "default" ? undefined : as,
         profileDir: ownProfile ?? record?.profileDir,
       });
       saveConfig(deps.home, { ...config, site });

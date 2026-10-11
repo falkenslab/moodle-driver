@@ -86,7 +86,7 @@ Errors go to standard error as `code: message` (the [error codes](../concepts/er
 | Option | What it does |
 | --- | --- |
 | `--site <url>` | The Moodle site; or `MOODLE_SITE`; remembered after `moodle login` |
-| `--as <name>` | A named profile on the site, for another account; or `MOODLE_AS`; `--as default` is the site's own |
+| `--as <name>` | The account on the site, each with its own profile; or `MOODLE_AS`; `default` unless told |
 | `--profile <dir>` | A browser profile folder of your own, over everything else; or `MOODLE_PROFILE` |
 | `--json` | Print JSON even at a terminal |
 | `--show` | Show the browser while the command works (see [The browser](../concepts/browser.md)) |
@@ -103,7 +103,7 @@ moodle login --site https://aulavirtual.uni-b.es/
 moodle --site https://campus.uni-a.es/ list-courses
 ```
 
-For another account on the same site (a teacher and a student, say), give it a name: each name is a profile of its own, with its own session. The site remembers the name last logged in with; `--as` (or `MOODLE_AS`) picks another, and `--as default` is the site's own profile.
+Every account on a site has a name and a profile of its own, with its own session: the first one, logged in without `--as`, is `default`. For another account on the same site (a teacher and a student, say), give it a name. The site remembers the name last logged in with; `--as` (or `MOODLE_AS`) picks another for one command.
 
 ```bash
 moodle login --site https://campus.uni-a.es/ --as student
@@ -116,9 +116,9 @@ moodle --as default who-am-i
 ```text
 $ moodle sites
 site                            profile  default  session  path
-------------------------------  -------  -------  -------  -----------------------------------------------------------
-https://aulavirtual.uni-b.es/   default  true     true     /home/ada/.moodle-driver/sites/aulavirtual.uni-b.es/profile
-https://campus.uni-a.es/        default  false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profile
+------------------------------  -------  -------  -------  --------------------------------------------------------------
+https://aulavirtual.uni-b.es/   default  true     true     /home/ada/.moodle-driver/sites/aulavirtual.uni-b.es/profiles/default
+https://campus.uni-a.es/        default  false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/default
 https://campus.uni-a.es/        student  false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/student
 ```
 
@@ -131,8 +131,8 @@ Everything is in `~/.moodle-driver`, the same on Windows, Linux and macOS (`MOOD
 ├── config.json                  the default site
 └── sites/<host>/                one folder per site (localhost:8080 is localhost_8080)
     ├── site.json                its URL, and the account it uses unless told
-    ├── profile/                 its browser profile, with the session (moodle-session.json)
-    └── profiles/<name>/         the profiles of other accounts on it
+    └── profiles/<name>/         one browser profile per account, with its session (moodle-session.json):
+                                 default/, and one per --as name
 ```
 
 Treat `~/.moodle-driver` as you'd treat a logged-in browser: its profiles hold the sessions. On Linux and macOS its files are readable only by you.
