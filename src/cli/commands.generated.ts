@@ -341,6 +341,36 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "allocateMarker",
+    "description": "Allocates a marker (the user id of someone who can grade; several where the assignment uses several markers per submission) to participants' submissions, as the grading table's \"Allocate marker\" does. Moodle leaves alone submissions past marking (marking completed, in review, ready for release, released).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      },
+      {
+        "name": "markerId",
+        "optional": false,
+        "type": "number | number[]",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
     "name": "answerChoice",
     "description": "Answers a choice with one option (several where it allows them) by id, as \"Save my choice\" does; returns the choice afterwards.",
     "params": [
@@ -446,7 +476,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "assignmentSubmissions",
-    "description": "Every participant's submission to an assignment, with its content unless `includeContent` is false.",
+    "description": "Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel).",
     "params": [
       {
         "name": "activityId",
@@ -1701,7 +1731,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "gradeSubmission",
-    "description": "Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion, feedback comments (HTML), whether to notify, and any other grading field by name. Returns the grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide.",
+    "description": "Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion, feedback comments (HTML), feedback files (local paths that replace the ones the participant has; `[]` removes them), whether to notify, and any other grading field by name. Returns the grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide, and the feedback files after saving when they were given. Throws `GradingError` when Moodle refuses the grade, or when files are given to an assignment without feedback files.",
     "params": [
       {
         "name": "activityId",
@@ -1767,6 +1797,41 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "string"
           }
+        },
+        {
+          "name": "feedbackFiles",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local paths (absolute): the participant's feedback files afterwards."
+        },
+        {
+          "name": "workflowState",
+          "optional": true,
+          "type": "\"notmarked\" | \"inmarking\" | \"readyforreview\" | \"inreview\" | \"readyforrelease\" | \"released\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "notmarked",
+              "inmarking",
+              "readyforreview",
+              "inreview",
+              "readyforrelease",
+              "released"
+            ]
+          },
+          "description": "With the marking workflow: the state to leave the submission in (\"released\" shows the grade)."
+        },
+        {
+          "name": "applyToGroup",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "With group submissions: grade every member of the participant's group alike (Moodle's default), or only them."
         },
         {
           "name": "notify",
@@ -2958,6 +3023,58 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "setWorkflowState",
+    "description": "Sets the marking workflow state of participants' submissions, as the grading table's \"Set marking workflow state\" does; \"released\" shows them their grades, notifying them when `notify` is true (the form's default is not to). With several markers, it sets the submission's overall state.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      },
+      {
+        "name": "state",
+        "optional": false,
+        "type": "\"inmarking\" | \"readyforreview\" | \"inreview\" | \"readyforrelease\" | \"released\"",
+        "value": {
+          "kind": "enum",
+          "values": [
+            "inmarking",
+            "readyforreview",
+            "inreview",
+            "readyforrelease",
+            "released"
+          ]
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "notify",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "siteName",

@@ -1,7 +1,8 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { callService } from "../../core/ajax.js";
-import { setFields, type FieldValue } from "../../core/forms.js";
-import { openSitePage } from "../../core/session.js";
+import { setFields, uploadToDraft, type FieldValue } from "../../core/forms.js";
+import { siteFetch } from "../../core/http.js";
+import { NotLoggedInError, openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
 
 /** An assignment's ids beyond its course module id, which only the grader page shows. */
@@ -55,6 +56,9 @@ export interface MoodleParticipant {
   requiregrading: boolean;
   grantedextension: boolean;
   submissionstatus: string;
+  /** With group submissions, the group the participant submits for (absent or 0 for none). */
+  groupid?: number;
+  groupname?: string;
 }
 
 /** The dates `mod_assign_get_participant` gives for one participant (Unix seconds; 0 is none). */
@@ -203,6 +207,94 @@ export async function panelGrade(page: Page, panelHtml: string): Promise<{ grade
     const gradebook = (doc.querySelector('form.gradeform [id^="fitem_id_currentgrade"] .felement')?.textContent ?? "").replace(/\s+/g, " ").trim();
     return { grade: grade || undefined, ...(gradebook && gradebook !== "-" ? { gradebookGrade: gradebook } : {}), feedback: feedback || undefined };
   });
+}
+
+/** The marking workflow's states, as Moodle names them ("notmarked" is the grading form's empty choice). */
+export const WORKFLOW_STATES = ["notmarked", "inmarking", "readyforreview", "inreview", "readyforrelease", "released"] as const;
+export type WorkflowState = (typeof WORKFLOW_STATES)[number];
+
+/** What a grading panel's form says beyond the grade, read by field names. */
+export interface PanelState {
+  /** The feedback files' draft area, where the assignment has feedback files on. */
+  draftId?: string;
+  sesskey?: string;
+  /** Where the assignment uses the marking workflow. */
+  workflowState?: WorkflowState;
+  /** Where it allocates markers: the ones allocated (Moodle 5.2 allows several per submission). */
+  markers?: { id: number; name: string }[];
+}
+
+export function readPanelState(page: Page, html: string): Promise<PanelState> {
+  return page.evaluate((html) => {
+    interface Field {
+      name: string;
+      value: string;
+      selectedOptions?: ArrayLike<{ textContent: string | null }>;
+    }
+    const g = globalThis as unknown as { DOMParser: new () => { parseFromString(html: string, type: string): { querySelectorAll(s: string): ArrayLike<Field> } } };
+    const fields = Array.from(new g.DOMParser().parseFromString(html, "text/html").querySelectorAll("form.gradeform [name]"));
+    // The feedback files plugin names its file manager after the participant: files_<userid>_filemanager.
+    const draft = fields.find((field) => /^files_\d+_filemanager$/.test(field.name));
+    const workflow = fields.find((field) => field.name === "workflowstate");
+    const markerFields = fields.filter((field) => /^allocatedmarker\[\d+\]$/.test(field.name));
+    const markers = markerFields.filter((field) => Number(field.value) > 0).map((field) => ({ id: Number(field.value), name: (field.selectedOptions?.[0]?.textContent ?? "").trim() }));
+    return {
+      draftId: draft?.value || undefined,
+      sesskey: fields.find((field) => field.name === "sesskey")?.value || undefined,
+      ...(workflow ? { workflowState: (workflow.value || "notmarked") as "notmarked" } : {}),
+      ...(markerFields.length > 0 ? { markers } : {}),
+    };
+  }, html);
+}
+
+/** A file in a draft area as `repository/draftfiles_ajax.php?action=list` gives it (Moodle 5.2), the fields read. */
+interface DraftFile {
+  filename: string;
+  filepath: string;
+  type: string;
+  url: string;
+}
+
+async function draftFilesRequest<T>(context: BrowserContext, siteUrl: string, action: string, fields: Record<string, string>): Promise<T> {
+  const { status, url, body } = await siteFetch(context, new URL(`repository/draftfiles_ajax.php?action=${action}`, siteUrl).href, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(fields).toString(),
+  });
+  // Without a session, Moodle sends the request to its login page.
+  if (new URL(url).pathname.includes("/login/")) throw new NotLoggedInError();
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new GradingError(`Moodle's file manager answered ${status} to "${action}" with something other than JSON.`);
+  }
+}
+
+/** The files at the top of a draft area of the person's, as the file manager lists them. */
+export async function draftAreaFiles(context: BrowserContext, siteUrl: string, sesskey: string, draftId: string): Promise<{ name: string; url: string }[]> {
+  const listing = await draftFilesRequest<{ list?: DraftFile[] }>(context, siteUrl, "list", { sesskey, itemid: draftId, filepath: "/" });
+  return (listing.list ?? []).filter((file) => file.type === "file").map((file) => ({ name: file.filename, url: file.url }));
+}
+
+/**
+ * Makes a draft area hold exactly `files` (local paths): what's in it is deleted, as the file
+ * manager's "Delete" does, then they're uploaded from Moodle's own grading page for the participant,
+ * the page whose file picker the grader uses (it carries the upload repository).
+ */
+export async function replaceDraftFiles(context: BrowserContext, siteUrl: string, activityId: number, userId: number, sesskey: string, draftId: string, files: string[]): Promise<void> {
+  const listing = await draftFilesRequest<{ list?: DraftFile[] }>(context, siteUrl, "list", { sesskey, itemid: draftId, filepath: "/" });
+  const existing = (listing.list ?? []).map((file) => ({ filename: file.filename, filepath: file.filepath }));
+  if (existing.length > 0) {
+    const deleted = await draftFilesRequest<unknown>(context, siteUrl, "deleteselected", { sesskey, itemid: draftId, selected: JSON.stringify(existing) });
+    if (!Array.isArray(deleted)) throw new GradingError("Moodle didn't delete the feedback files there were: nothing was graded.");
+  }
+  if (files.length === 0) return;
+  const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=grade&userid=${userId}`);
+  try {
+    await uploadToDraft(page, draftId, files);
+  } finally {
+    await page.close().catch(() => undefined);
+  }
 }
 
 /** Submits a serialized grading form; Moodle answers warnings when it refuses it. */

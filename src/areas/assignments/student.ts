@@ -4,6 +4,8 @@ import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldVa
 import { inPage } from "../../core/inPage.js";
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
+import { callService } from "../../core/ajax.js";
+import { participantFilters } from "../participants/participants.js";
 
 /** The assignment isn't there, or the person can't do that now. */
 export class SubmissionError extends MoodleError {
@@ -23,8 +25,16 @@ export interface StudentAssignment {
   graded: boolean;
   submittedFiles: { name: string; url: string }[];
   feedback: { label: string; value: string }[];
+  /** The files the teacher attached to the feedback, for `downloadFile`. */
+  feedbackFiles: { name: string; url: string }[];
   canEdit: boolean;
   canSubmit: boolean;
+  /**
+   * With group submissions, the submission is the group's: its name, and its id where the
+   * participants page shows the group to the person (`participants(courseId, { group: id })` gives
+   * its members); only the name for Moodle's "Default group" (the person is in no group).
+   */
+  group?: { id?: number; name: string };
 }
 
 export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
@@ -61,6 +71,8 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
         graded: doc.querySelector(".submissionstatustable td.submissiongraded") !== null,
         submittedFiles: links('.submissionstatustable a[href*="pluginfile.php"]'),
         feedback: rows(".feedback tr"),
+        // The feedback files plugin's block: summary_assignfeedback_file_<gradeid>.
+        feedbackFiles: links('.feedback [class*="summary_assignfeedback_file_"] a[href*="pluginfile.php"]'),
         canEdit: actions.includes("editsubmission"),
         canSubmit: actions.includes("submit"),
       };
@@ -76,10 +88,39 @@ export async function studentAssignment(context: BrowserContext, siteUrl: string
     if ((await page.locator("body#page-mod-assign-view").count()) === 0) {
       throw new SubmissionError(`Activity ${activityId} isn't an assignment you can open. Take the id of an assignment (module "assign") from the course structure.`);
     }
-    return await readStudentAssignment(page);
+    const assignment = await readStudentAssignment(page);
+    const group = await submissionGroup(context, siteUrl, page, assignment);
+    return group ? { ...assignment, group } : assignment;
   } finally {
     await page.close().catch(() => undefined);
   }
+}
+
+/**
+ * With group submissions, the status table's first row is the group's ("Group": its name, or
+ * "Default group"), before the submission status, whose cell has a class. Its label is told apart
+ * by Moodle's own string in the person's language (`core_get_string`), only when there's a row
+ * before the status one; its id comes from the participants page's group filter.
+ */
+async function submissionGroup(context: BrowserContext, siteUrl: string, page: Page, assignment: StudentAssignment): Promise<StudentAssignment["group"]> {
+  const before = await page.evaluate(() => {
+    const doc = (globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<{ querySelector(s: string): unknown }> } }).document;
+    return Array.from(doc.querySelectorAll(".submissionstatustable tr")).findIndex((row) => row.querySelector('td[class*="submissionstatus"]') !== null);
+  });
+  const first = assignment.status[0];
+  if (before < 1 || !first) return undefined;
+  const [team, defaultTeam] = await Promise.all(["submissionteam", "defaultteam"].map((stringid) => callService<string>(context, siteUrl, "core_get_string", { stringid, component: "assign" })));
+  if (first.label !== team?.trim()) return undefined;
+  if (first.value === defaultTeam?.trim()) return { name: first.value };
+  const courseId = await page.evaluate(() => Number(/\bcourse-(\d+)\b/.exec((globalThis as unknown as { document: { body: { className: string } } }).document.body.className)?.[1]));
+  // The participants page may be closed to the person: the group's name is what the assignment says.
+  const filters = await participantFilters(context, siteUrl, courseId).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
+    return undefined;
+  });
+  const group = filters?.groups.find((g) => g.name === first.value);
+  // Not its members: they're others' data, which `participants(courseId, { group: id })` gives.
+  return group ? { id: group.id, name: group.name } : { name: first.value };
 }
 
 /** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */

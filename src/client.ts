@@ -19,7 +19,7 @@ import { forumGrades, gradeForumUser } from "./areas/forums/grading.js";
 import { rate } from "./areas/ratings/ratings.js";
 import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
 import { myGrades } from "./areas/grades/user-report.js";
-import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./areas/assignments/grading.js";
+import { allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension, rubric, setWorkflowState } from "./areas/assignments/grading.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
 import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
@@ -54,6 +54,7 @@ const SITE_FUNCTIONS = {
   activitySettings,
   addGradeCategory,
   addGradeItem,
+  allocateMarker,
   addQuestionsToQuiz,
   addQuizSection,
   addSection,
@@ -148,6 +149,7 @@ const SITE_FUNCTIONS = {
   setQuizOverride,
   setQuizPages,
   setQuestionStatus,
+  setWorkflowState,
   siteName,
   startDiscussion,
   startQuizAttempt,

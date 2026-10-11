@@ -60,8 +60,8 @@ export type { Restriction, Restrictions, Completion } from "./areas/activities/c
 export { activityContent, CONTENT_TYPES, NotViewableError, type ContentType, type ContentOptions, type ActivityContent } from "./areas/activities/content.js";
 
 // Assignments.
-export { NotAnAssignmentError, GradingError, type PluginContent } from "./areas/assignments/grader.js";
-export { assignmentSubmissions, gradeSubmission, rubric, grantExtension, type Submission, type GradingCriterion, type GradingDefinition } from "./areas/assignments/grading.js";
+export { NotAnAssignmentError, GradingError, WORKFLOW_STATES, type PluginContent, type WorkflowState } from "./areas/assignments/grader.js";
+export { assignmentSubmissions, gradeSubmission, rubric, grantExtension, setWorkflowState, allocateMarker, type Submission, type GradingCriterion, type GradingDefinition } from "./areas/assignments/grading.js";
 export { studentAssignment, saveSubmission, submitForGrading, SubmissionError, type StudentAssignment } from "./areas/assignments/student.js";
 
 // Quizzes and question banks.

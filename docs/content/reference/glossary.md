@@ -15,7 +15,7 @@ A function of Moodle's web services that its own pages call from JavaScript thro
 
 ### Assignment
 
-The activity where students hand in work for a teacher to grade: module `assign` in Moodle's code and URLs (`mod/assign/view.php`), "Assignment" in the interface. The student's side is `studentAssignment`, `saveSubmission` and `submitForGrading` ([Assignments](../areas/assignments.md)); the teacher's is `assignmentSubmissions`, `gradeSubmission`, `rubric` and `grantExtension` ([Grading](../areas/grading.md)); `listAssignments` lists a course's ([Courses](../areas/courses.md)). An id that isn't an assignment throws `SubmissionError` or `NotAnAssignmentError`.
+The activity where students hand in work for a teacher to grade: module `assign` in Moodle's code and URLs (`mod/assign/view.php`), "Assignment" in the interface. The student's side is `studentAssignment`, `saveSubmission` and `submitForGrading` ([Assignments](../areas/assignments.md)); the teacher's is `assignmentSubmissions`, `gradeSubmission`, `rubric`, `grantExtension`, `setWorkflowState` and `allocateMarker` ([Grading](../areas/grading.md)); `listAssignments` lists a course's ([Courses](../areas/courses.md)). An id that isn't an assignment throws `SubmissionError` or `NotAnAssignmentError`.
 
 ### Attempt
 
@@ -48,7 +48,7 @@ More time for one participant to submit an assignment, past its due date and cut
 
 ### Feedback
 
-See [survey](#survey): Moodle's `feedback` module is a survey activity, not the feedback comments a teacher writes when grading (those are `gradeSubmission`'s `feedback` input, see [grading method](#grading-method)).
+See [survey](#survey): Moodle's `feedback` module is a survey activity, not the feedback comments a teacher writes when grading (those are `gradeSubmission`'s `feedback` input, see [grading method](#grading-method)). Files a teacher attaches to that feedback (a corrected PDF, an audio comment) are an assignment's feedback files: `gradeSubmission`'s `feedbackFiles`, read by the student in `studentAssignment` and by the teacher in `assignmentSubmissions` ([Grading](../areas/grading.md)).
 
 ### Grade category
 
@@ -69,7 +69,7 @@ How an assignment is graded: simple direct grading (a number or a [scale](#scale
 
 ### Group
 
-A set of participants within a course, used to separate or filter them (a group's own forum discussions, a grader report per group). The driver lists them with `groups` (`CourseGroup`, with `id`, `name`, `members`), gives each participant's `groups` with `participants`, and takes a group id as the `group` option of `participants`, `graderReport` and `completionReport`. See [Participants](../areas/participants.md).
+A set of participants within a course, used to separate or filter them (a group's own forum discussions, a grader report per group). The driver lists them with `groups` (`CourseGroup`, with `id`, `name`, `members`), gives each participant's `groups` with `participants`, and takes a group id as the `group` option of `participants`, `graderReport` and `completionReport`. See [Participants](../areas/participants.md). An assignment with group submissions takes one submission per group: `assignmentSubmissions` gives each participant's `group`, `gradeSubmission`'s `applyToGroup` grades the whole group, and `studentAssignment` gives the student's `group` ([Grading](../areas/grading.md)).
 
 ### H5P
 
@@ -82,6 +82,10 @@ The id of an activity in its module's own table (the quiz's id among quizzes, th
 ### Lesson page
 
 One page of a lesson activity (module `lesson`): a content page with buttons that jump elsewhere, or a question page with a form, after which Moodle may show feedback; Moodle keeps which page the person is on. The driver reads the current one with `lessonPage` (`LessonPage`, with `kind` `"content"`, `"question"`, `"feedback"` or `"end"`, `pageId`, `buttons[].jumpTo`, `fields`) and answers it with `answerLessonPage`, which returns the `page` that follows. See [Lessons](../areas/lessons.md).
+
+### Marking workflow
+
+An assignment setting ("Use marking workflow") under which a grade goes through states before students see it: not marked, in marking, marking completed, in review, ready for release, released; markers can be allocated to submissions ("Use marking allocation"). The driver names the states as Moodle's code does (`WorkflowState`: `"notmarked"`, `"inmarking"`, `"readyforreview"`, `"inreview"`, `"readyforrelease"`, `"released"`), gives each submission's `workflowState` and `markers` in `assignmentSubmissions`, sets one with `gradeSubmission`'s `workflowState`, several with `setWorkflowState` (which releases), and allocates markers with `allocateMarker`. See [Grading](../areas/grading.md).
 
 ### Module
 

@@ -22,8 +22,10 @@ interface StudentAssignment {
   graded: boolean;
   submittedFiles: { name: string; url: string }[];
   feedback: { label: string; value: string }[];
+  feedbackFiles: { name: string; url: string }[];
   canEdit: boolean;
   canSubmit: boolean;
+  group?: { id?: number; name: string };
 }
 ```
 
@@ -35,10 +37,14 @@ interface StudentAssignment {
 - `graded`: the grading status says it's graded.
 - `submittedFiles`: the files in the person's submission.
 - `feedback`: the feedback table, row by row (grade, graded on, graded by, feedback comments), when there's feedback.
+- `feedbackFiles`: the files the teacher attached to the feedback (a corrected PDF, an audio comment), `pluginfile.php` links for [downloadFile](files.md); read from the feedback files plugin's block, so links in the feedback comments aren't among them.
 - `canEdit`: the page offers to add or edit the submission now.
 - `canSubmit`: the page offers to submit it for grading now (a draft in an assignment that asks students to click submit).
+- `group`: present when the assignment takes group submissions, so the submission is the group's: what one member saves and submits is everyone's, and the teacher may grade them all at once. `name` is the group the page names; `id` comes from the course's participants page when it shows the group to the person; the members are others' data, which `participants(courseId, { group: id })` gives. For a student in no group, it's Moodle's "Default group", by name only.
 
-Labels and values are in the site's language; `submissionState`, `graded`, `canEdit` and `canSubmit` don't depend on it.
+Labels and values are in the site's language; `submissionState`, `graded`, `canEdit`, `canSubmit` and `group` don't depend on it (the group's row has no class of its own, so its label is compared with Moodle's own string in the person's language, from `core_get_string`).
+
+With the marking workflow, the grade and feedback appear in `feedback` (and `graded` turns true) only once the teacher releases them; until then the grading status says the workflow's state.
 
 It throws `SubmissionError` when the id isn't an assignment the person can open (Moodle shows another module's page or an error), and `NotLoggedInError` without a session.
 
