@@ -36,6 +36,7 @@ export {
   type PendingActivity,
 } from "./areas/courses/structure.js";
 export { activitiesOverview, deadlines, courseUpdates, type OverviewField } from "./areas/courses/overview.js";
+export { copyCourse, backupCourse, restoreCourse, importActivities, BackupError, type CourseRef } from "./areas/backup/backup.js";
 
 // Activities: building them and viewing their content.
 export {

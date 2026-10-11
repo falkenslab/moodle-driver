@@ -153,6 +153,22 @@ moodle assignment-submissions <activityId> [--options]
 | `activityId` | `number` |  |
 | `--include-content` | `boolean` |  |
 
+## backupCourse
+
+Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too.
+
+```bash
+moodle backup-course <courseId> <destDir> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `destDir` | `string` |  |
+| `--with-users` | `boolean` |  |
+| `--anonymize` | `boolean` |  |
+| `--timeout-ms` | `number` |  |
+
 ## callService
 
 Calls one of Moodle's AJAX services as the logged-in person.
@@ -198,6 +214,26 @@ The person's conversations, latest first, with their last message as text.
 ```bash
 moodle conversations
 ```
+
+## copyCourse
+
+Copies a course into a new one, as Moodle's "Copy course" does: its content (and its people's data and enrolments, `withUsers`), under a new full and short name, in a category (the course's unless given), with new dates. Goes through Moodle's copy service, then waits for the copy, which Moodle makes in its scheduled tasks, up to `timeoutMs` (ten minutes). Needs the rights to back up, restore and create courses (`moodle/backup:backupcourse`, `moodle/restore:restorecourse`, `moodle/course:create`); without them, `BackupError` says so.
+
+```bash
+moodle copy-course <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--full-name` (required) | `string` |  |
+| `--short-name` (required) | `string` |  |
+| `--category-id` | `number` |  |
+| `--start` | `Date` |  |
+| `--end` | `Date` |  |
+| `--with-users` | `boolean` |  |
+| `--visible` | `boolean` |  |
+| `--timeout-ms` | `number` |  |
 
 ## courseAbilities
 
@@ -584,6 +620,20 @@ moodle h5p-activity <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## importActivities
+
+Imports activities from another course into a course, as Moodle's "Import" does: every activity of `fromCourseId`, or only `activityIds`, added to `toCourseId`'s content (with their sections), without users' data. Needs `moodle/restore:restoretargetimport` in the course imported into and `moodle/backup:backuptargetimport` in the other. Returns the activities the course has afterwards that it didn't have before, by id.
+
+```bash
+moodle import-activities <fromCourseId> <toCourseId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `fromCourseId` | `number` |  |
+| `toCourseId` | `number` |  |
+| `--activity-ids` | `number[]` |  |
+
 ## importQuestions
 
 Imports questions into a bank from a GIFT or Moodle XML file (a local path) or text, through the bank's import form; returns the questions created. A file Moodle can't parse comes back as a `QuestionBankError` with its messages, and nothing is imported.
@@ -862,6 +912,25 @@ moodle reply-to-post <postId> <input>
 | --- | --- | --- |
 | `postId` | `number` |  |
 | `input` | `PostInput & { subject?: string; }` |  |
+
+## restoreCourse
+
+Restores a backup file (`.mbz`) through Moodle's restore wizard: into a new course in a category (`into: "new"`, with `categoryId`, which needs `moodle/course:create` there), or into an existing course (`into: <course id>`), its content added to the course's (`mode: "merge"`, the default) or replacing it (`"replace"`: the course's content is deleted first). A new course takes the backup's names unless `fullName` and `shortName` are given. Users' data is restored when `withUsers` and the backup has it. An asynchronous restore is waited for up to `timeoutMs` (ten minutes). Needs `moodle/restore:restorecourse` where it restores.
+
+```bash
+moodle restore-course <file> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `file` | `string` |  |
+| `--into` (required) | `number \| "new"` |  |
+| `--category-id` | `number` |  |
+| `--mode` | `"merge" \| "replace"` |  |
+| `--full-name` | `string` |  |
+| `--short-name` | `string` |  |
+| `--with-users` | `boolean` |  |
+| `--timeout-ms` | `number` |  |
 
 ## rubric
 

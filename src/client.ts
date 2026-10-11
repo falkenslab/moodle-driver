@@ -8,6 +8,7 @@ import { callService } from "./core/ajax.js";
 import { createEvent, deleteEvent, upcomingEvents } from "./areas/calendar/calendar.js";
 import { answerChoice, getChoice } from "./areas/surveys/choice.js";
 import { activityReport, courseLogs, participationReport } from "./areas/reports/reports.js";
+import { backupCourse, copyCourse, importActivities, restoreCourse } from "./areas/backup/backup.js";
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
 import { listCourses, updateCourse } from "./areas/courses/list.js";
@@ -50,8 +51,10 @@ const SITE_FUNCTIONS = {
   addQuestionsToQuiz,
   addSection,
   answerChoice,
+  backupCourse,
   assignmentSubmissions,
   completionReport,
+  copyCourse,
   conversation,
   conversations,
   courseAbilities,
@@ -81,6 +84,7 @@ const SITE_FUNCTIONS = {
   grantExtension,
   groups,
   h5pActivity,
+  importActivities,
   scorm,
   importQuestions,
   lessonPage,
@@ -105,6 +109,7 @@ const SITE_FUNCTIONS = {
   readAttempt,
   readReview,
   replyToPost,
+  restoreCourse,
   rubric,
   saveSubmission,
   sendMessage,

@@ -397,6 +397,59 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "backupCourse",
+    "description": "Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "destDir",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "withUsers",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "anonymize",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "timeoutMs",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "callService",
     "description": "Calls one of Moodle's AJAX services as the logged-in person.",
     "params": [
@@ -463,6 +516,91 @@ export const COMMANDS: readonly CommandSpec[] = [
     "name": "conversations",
     "description": "The person's conversations, latest first, with their last message as text.",
     "params": []
+  },
+  {
+    "name": "copyCourse",
+    "description": "Copies a course into a new one, as Moodle's \"Copy course\" does: its content (and its people's data and enrolments, `withUsers`), under a new full and short name, in a category (the course's unless given), with new dates. Goes through Moodle's copy service, then waits for the copy, which Moodle makes in its scheduled tasks, up to `timeoutMs` (ten minutes). Needs the rights to back up, restore and create courses (`moodle/backup:backupcourse`, `moodle/restore:restorecourse`, `moodle/course:create`); without them, `BackupError` says so.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "fullName",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "shortName",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "categoryId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "withUsers",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "visible",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "timeoutMs",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "courseAbilities",
@@ -1340,6 +1478,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "importActivities",
+    "description": "Imports activities from another course into a course, as Moodle's \"Import\" does: every activity of `fromCourseId`, or only `activityIds`, added to `toCourseId`'s content (with their sections), without users' data. Needs `moodle/restore:restoretargetimport` in the course imported into and `moodle/backup:backuptargetimport` in the other. Returns the activities the course has afterwards that it didn't have before, by id.",
+    "params": [
+      {
+        "name": "fromCourseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "toCourseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "activityIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "importQuestions",
     "description": "Imports questions into a bank from a GIFT or Moodle XML file (a local path) or text, through the bank's import form; returns the questions created. A file Moodle can't parse comes back as a `QuestionBankError` with its messages, and nothing is imported.",
     "params": [
@@ -1813,6 +1988,87 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "restoreCourse",
+    "description": "Restores a backup file (`.mbz`) through Moodle's restore wizard: into a new course in a category (`into: \"new\"`, with `categoryId`, which needs `moodle/course:create` there), or into an existing course (`into: <course id>`), its content added to the course's (`mode: \"merge\"`, the default) or replacing it (`\"replace\"`: the course's content is deleted first). A new course takes the backup's names unless `fullName` and `shortName` are given. Users' data is restored when `withUsers` and the backup has it. An asynchronous restore is waited for up to `timeoutMs` (ten minutes). Needs `moodle/restore:restorecourse` where it restores.",
+    "params": [
+      {
+        "name": "file",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "into",
+          "optional": false,
+          "type": "number | \"new\"",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "categoryId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "mode",
+          "optional": true,
+          "type": "\"merge\" | \"replace\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "merge",
+              "replace"
+            ]
+          }
+        },
+        {
+          "name": "fullName",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "shortName",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "withUsers",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "timeoutMs",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "rubric",

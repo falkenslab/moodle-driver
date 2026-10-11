@@ -101,6 +101,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   courseAbilities: OWN,
   listCourses: OWN,
   updateCourse: CONTENT,
+  // Copies, backups and restores carry the course's content, and its people's data when asked (withUsers).
+  copyCourse: ["course-content", "others-personal"],
+  backupCourse: ["course-content", "others-personal"],
+  restoreCourse: ["course-content", "others-personal"],
+  importActivities: CONTENT,
   myGrades: OWN,
   deadlines: OWN,
   pendingActivities: OWN,

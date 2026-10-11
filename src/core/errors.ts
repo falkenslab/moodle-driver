@@ -23,6 +23,7 @@ export type MoodleErrorCode =
   | "moodle-service"
   | "form"
   | "activity-settings"
+  | "backup"
   | "not-viewable"
   | "not-an-assignment"
   | "grading"
