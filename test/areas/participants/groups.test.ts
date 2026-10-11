@@ -59,6 +59,10 @@ async function site() {
     return html(route, page(assignPage([...groups], [12, 13].filter((g) => !groups.has(g)), true), "page-group-assign"));
   });
   await context.route(`${SITE}group/groupings.php**`, (route) => {
+    // Course 4: a student's refusal, which keeps the page's body id (Moodle 5.2, seen on the sandbox).
+    if (new URL(route.request().url()).searchParams.get("id") === "4") {
+      return html(route, page('<div data-rel="fatalerror"><p class="errormessage">Sorry, but you do not currently have permissions to do that (Manage groups).</p></div>', "page-group-groupings"));
+    }
     const rows = [...groupingGroups.keys()].map((id) => `<tr><td class="cell c0">Grouping ${id}</td><td>Groups</td><td>0</td><td><a href="${SITE}group/grouping.php?id=${id}">e</a><a href="${SITE}group/assign.php?id=${id}">g</a></td></tr>`);
     return html(route, page(`<table class="generaltable"><thead><tr><th>Grouping</th></tr></thead><tbody>${rows.join("")}</tbody></table>`, "page-group-groupings"));
   });
@@ -132,6 +136,7 @@ describe("groupings", { skip: !browser && "no system browser" }, () => {
     await deleteGrouping(context, SITE, 2);
     assert.deepEqual(Object.fromEntries(posts.at(-1)!.form), { id: "2", delete: "1", courseid: "3", confirm: "1", sesskey: "s1" });
     assert.deepEqual((await groupings(context, SITE, 3)).map((g) => g.id), [1]);
+    await assert.rejects(groupings(context, SITE, 4), /You can't see the groupings of course 4: Sorry, but you do not currently have permissions/);
     await context.close();
   });
 });

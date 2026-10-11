@@ -901,7 +901,7 @@ moodle grant-extension <activityId> <userIds> <until>
 
 ## groupings
 
-A course's groupings with their groups' ids, from its groupings page and each grouping's groups page.
+A course's groupings with their groups' ids, from its groupings page and each grouping's groups page. Throws `MoodleError` with Moodle's refusal for a person who can't manage groups.
 
 ```bash
 moodle groupings <courseId>

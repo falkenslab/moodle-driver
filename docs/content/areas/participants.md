@@ -159,7 +159,7 @@ interface Grouping {
 
 - `createGroup`, `updateGroup`, `createGrouping` fill the group's or grouping's form (`group/group.php`, `group/grouping.php`); what isn't given stays as it was. Moodle's refusals come as `FormError` with its reason by field: a group name already used in the course, an enrolment key another group has.
 - `setGroupMembers` adds and removes user ids on the group's members page (`group/members.php`), as its Add and Remove buttons do, and returns the members afterwards. Only participants of the course can be added: ids the page doesn't offer are left as they were and named in `changed`.
-- `groupings` reads the course's groupings page and each grouping's groups page; `setGroupingGroups` makes a grouping's groups exactly those given on that page (`group/assign.php`), leaving out ids that aren't groups of the course.
+- `groupings` reads the course's groupings page and each grouping's groups page (a person without `moodle/course:managegroups`, a student, gets a `MoodleError` with Moodle's refusal); `setGroupingGroups` makes a grouping's groups exactly those given on that page (`group/assign.php`), leaving out ids that aren't groups of the course.
 - `deleteGroup` and `deleteGrouping` do what their confirmation does; the group's members stay in the course, a grouping's groups stay as groups.
 
 A group or grouping that doesn't exist, or that the person can't manage, throws a `MoodleError` (code `not-found`) with Moodle's message. `groups` reads groups with their members.
