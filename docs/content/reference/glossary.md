@@ -31,7 +31,7 @@ The activity where participants pick one or several options a teacher offers (mo
 
 ### Completion
 
-Moodle's activity completion: whether each participant has done each activity, marked by hand (manual) or by Moodle when a condition is met (automatic), in one of four states the driver names `incomplete`, `complete`, `complete-pass` and `complete-fail` (`COMPLETION_STATES`, `CompletionState`). The person's own comes with `courseStructure` (each activity's `completion`), `setCompletion` marks it, `overrideCompletion` sets someone else's as a teacher, and `completionReport` reads the progress report ("Activity completion" in the interface), each cell with `state`, `tracking` and `overridden`. See [Completion](../areas/completion.md).
+Moodle's activity completion: whether each participant has done each activity, marked by hand (manual) or by Moodle when a condition is met (automatic), in one of four states the driver names `incomplete`, `complete`, `complete-pass` and `complete-fail` (`COMPLETION_STATES`, `CompletionState`). The person's own comes with `courseStructure` (each activity's `completion`), `setCompletion` marks it, `overrideCompletion` sets someone else's as a teacher, and `completionReport` reads the progress report ("Activity completion" in the interface), each cell with `state`, `tracking` and `overridden`. An activity's rules are its `completion` in `createActivity`, `updateActivity` and `activitySettings`. See [Completion](../areas/completion.md).
 
 ### Conversation
 

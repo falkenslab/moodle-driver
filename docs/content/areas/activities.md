@@ -34,6 +34,8 @@ interface ActivityFields {
   content?: string; // HTML: a page's content or a label's text
   url?: string; // a URL resource's target
   visibility?: "shown" | "hidden" | "stealth"; // ACTIVITY_VISIBILITIES
+  restrictions?: Restrictions; // when students can open it
+  completion?: Completion; // when it counts as complete
   settings?: Record<string, FieldValue>;
 }
 ```
@@ -44,6 +46,7 @@ interface ActivityFields {
 - `content`: a page's content (`page[text]`) or a label's text (`introeditor[text]`); for any other type it's an error.
 - `url`: a URL resource's target (`externalurl`).
 - `visibility`: `"hidden"` by default, so a teacher publishes after checking; `"stealth"` hides it from the course page but keeps it available by link, where the site allows it.
+- `restrictions`, `completion`: when students can open it and when it counts as complete, in plain terms (see [Restrictions and completion](#restrictions-and-completion)).
 - `settings`: any other field of the form by its form name, such as `{ "duedate[enabled]": true, "duedate[day]": 23 }` or `{ completion: 1 }`. They're set after the common inputs, in the order given, and win over them for the same field.
 - `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)); a SCORM takes the first as its package (see [SCORM](scorm.md)). A `{ from, to }` (`DraftUpload`) gives a file another name or puts it in a folder's subfolder: `{ from: "/home/ada/notes.pdf", to: "week1/notes.pdf" }`.
 
@@ -94,7 +97,17 @@ function activitySettings(
   context: BrowserContext,
   siteUrl: string,
   activityId: number,
-): Promise<{ id: number; module: string; courseId: number; name: string; description: string; fields: FormField[]; files?: DraftFile[] }>;
+): Promise<{
+  id: number;
+  module: string;
+  courseId: number;
+  name: string;
+  description: string;
+  fields: FormField[];
+  files?: DraftFile[];
+  restrictions?: Restrictions;
+  completion?: Completion;
+}>;
 
 interface FormField {
   name: string;
@@ -107,7 +120,7 @@ interface FormField {
 }
 ```
 
-`description` is the description editor's HTML. `files`, for a file resource, a folder or a SCORM (its package), are its files as `{ name, size }`: `name` is the path in the activity (`"week1/notes.pdf"`), as `updateActivity`'s `files.remove` takes it, and `size` is in bytes. Each field in `fields` has:
+`description` is the description editor's HTML. `files`, for a file resource, a folder or a SCORM (its package), are its files as `{ name, size }`: `name` is the path in the activity (`"week1/notes.pdf"`), as `updateActivity`'s `files.remove` takes it, and `size` is in bytes. `restrictions` (undefined without any) and `completion` (undefined when completion is off in the course) are in the terms `updateActivity` takes (see [Restrictions and completion](#restrictions-and-completion)). Each field in `fields` has:
 
 - `name`: the form name `settings` takes.
 - `type`: a date selector's parts (`duedate[day]`, `[month]`, `[year]`, `[hour]`, `[minute]`) are `"date"`; text, URL and email inputs are `"text"`; anything else unrecognized is `"other"`.
@@ -124,6 +137,53 @@ Internal fields (the sesskey, ids, buttons, hidden fields) are left out, and so 
 Moodle disables some fields until another one enables them: a date until its "Enable" checkbox is checked, a maximum grade until "Rescale existing grades" is chosen once there are grades. Moodle doesn't send a disabled field, so the change would be lost: `createActivity`, `updateActivity` and every form the driver fills throw `FormError` for a field still disabled when it's set. Fields are set one at a time in the order given, so put the enabling field first in the same call, as in `{ "grade[modgrade_rescalegrades]": "no", "grade[modgrade_point]": 20 }`.
 
 `activitySettings` throws `ActivitySettingsError` when there's no form to read (not an activity, or not the person's to edit), with Moodle's own reason when its error page gives one (`Sorry, no permission (Manage activities).`).
+
+## Restrictions and completion
+
+`createActivity` and `updateActivity` take when an activity is available (`restrictions`) and when it counts as complete (`completion`) in plain terms, and build Moodle's fields from them: the availability tree its form keeps as JSON (`availabilityconditionsjson`), and the module's completion fields. `editSection` takes `restrictions` for a section. `activitySettings` gives both back in the same terms.
+
+```ts
+interface Restrictions {
+  conditions: Restriction[]; // [] removes every restriction
+  match?: "all" | "any"; // "all" by default
+  hidden?: boolean; // while not met: hidden from students, or (false, the default) shown greyed out with the conditions
+}
+
+type Restriction =
+  | { type: "date"; from?: Date | string; until?: Date | string } // ISO dates; from, until or both
+  | { type: "grade"; activityId: number; min?: number; max?: number } // percentages of its maximum grade
+  | { type: "completion"; activityId: number; state: CompletionState } // "complete", "incomplete", "complete-pass", "complete-fail"
+  | { type: "group"; groupId: number }
+  | { type: "other"; json: unknown }; // a condition the driver has no terms for, as Moodle keeps it
+
+type Completion = "none" | "manual" | { view?: boolean; grade?: boolean; passGrade?: boolean; submit?: boolean; expected?: Date | string };
+```
+
+Restrictions:
+
+- A date condition with `from` and `until` is one range: both must hold, whatever `match` says of the others. `from` is "from" in Moodle (`>=`) and `until` is "until" (`<`).
+- A grade condition names the activity; Moodle's names its grade item, which the driver finds in the course's gradebook setup page (an activity with several grade items, such as a forum's whole-forum grade and its ratings, takes the first). `min` and `max` are percentages, as in Moodle's form (`min: 50` is at least half the maximum grade). An activity without a grade item is a `MoodleError` (`not-found`).
+- `hidden: true` hides the activity or section from students who don't meet the conditions; otherwise the course page shows it greyed out with the conditions (Moodle's eye icon).
+- Read back, a condition the driver has no terms for (a grouping, a user profile field, a nested set, a "must not" set) comes as `{ type: "other", json }`, Moodle's own node, and is written back as given; so is a grade condition whose grade item the driver can't map to an activity.
+- Moodle saves a condition on a group the course doesn't have without complaint, so take group ids from the course's groups ([participants and groups](participants.md)); a completion condition's activity is checked against the course first (a `MoodleError`, `not-found`). A tree Moodle refuses when the form is saved is a `FormError` with its message on `availabilityconditionsjson`.
+
+Completion:
+
+- `"none"`: not tracked; `"manual"`: students mark it done ([setCompletion](completion.md#setcompletion)).
+- An object: complete on its conditions, all of them: `view` (viewing it), `grade` (receiving a grade), `passGrade` (a passing grade; implies `grade`, and the activity needs a grade to pass, or Moodle refuses the form), `submit` (submitting: assignments and choices). `expected` is the date shown to students as when it's expected, not a condition. Conditions not given are turned off.
+- A condition the module's form doesn't have (`submit` on a page) is a `MoodleError` (`invalid-input`) naming it, before anything is saved; a form without completion settings (completion off in the course or the site) is a `MoodleError` (`not-available`).
+- The module's other conditions (a forum's number of posts, a quiz's attempts) stay as they are: set them through `settings` by their form names (`activitySettings` lists them). `settings` are set last and win over `completion` and `restrictions` for the same field.
+- Once students have completed the activity, Moodle locks its completion settings: setting them then is a `FormError` for disabled fields.
+
+```ts fragment
+// A page that's complete on view, and a quiz open only to those who completed it, from Monday.
+const intro = await moodle.createActivity({ courseId: 3, sectionId: 12, type: "page", name: "Read first", content: "<p>…</p>", completion: { view: true } });
+await moodle.updateActivity(41, {
+  restrictions: { conditions: [{ type: "completion", activityId: intro.activityId!, state: "complete" }, { type: "date", from: "2026-10-19T08:00:00Z" }] },
+  completion: { grade: true, passGrade: true },
+});
+console.log((await moodle.activitySettings(41)).restrictions);
+```
 
 ## Reordering
 
@@ -177,14 +237,14 @@ function editSection(
   siteUrl: string,
   courseId: number,
   sectionId: number,
-  changes: { name?: string; visible?: boolean; summary?: string; afterSectionId?: number },
+  changes: { name?: string; visible?: boolean; summary?: string; restrictions?: Restrictions; afterSectionId?: number },
 ): Promise<CourseChange>;
 function deleteSection(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number): Promise<CourseChange>;
 ```
 
 - `addSection` adds a section after `afterSectionId`, or at the end without it; with `name` it renames it afterwards, and with `summary` it gives it a description. `sectionId` is the new section's id.
-- `editSection` renames, describes (`summary`), shows (`visible: true`) or hides it, or moves it after another section.
-- `summary` is the section's description, HTML as given (`""` removes it), shown on the course page under the section's name. No service changes it, so it's saved through the section's own form (`course/editsection.php`, its `summary_editor`), which only takes a section of the given course: another course's is a `MoodleError` (`not-found`), and Moodle's refusals of the form a `FormError`. [courseStructure](courses.md) with `details` reads it back as `summary`.
+- `editSection` renames, describes (`summary`), restricts (`restrictions`, see [Restrictions and completion](#restrictions-and-completion)), shows (`visible: true`) or hides it, or moves it after another section.
+- `summary` is the section's description, HTML as given (`""` removes it), shown on the course page under the section's name. No service changes it nor `restrictions`, so they're saved through the section's own form (`course/editsection.php`, its `summary_editor` and `availabilityconditionsjson`), in one save when both are given; the driver only takes a section of the given course: another course's is a `MoodleError` (`not-found`), and Moodle's refusals of the form a `FormError`. [courseStructure](courses.md) with `details` reads it back as `summary`.
 - `deleteSection` deletes the section and every activity in it, with their participants' data.
 
 Sections are renamed through the course format's in-place editor (`format_topics`, `format_weeks`…): the driver reads the course's format once from the course page's classes and keeps it for the process.

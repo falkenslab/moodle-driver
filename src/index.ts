@@ -56,6 +56,7 @@ export {
   type FileChanges,
   type FormField,
 } from "./areas/activities/build.js";
+export type { Restriction, Restrictions, Completion } from "./areas/activities/conditions.js";
 export { activityContent, CONTENT_TYPES, NotViewableError, type ContentType, type ContentOptions, type ActivityContent } from "./areas/activities/content.js";
 
 // Assignments.

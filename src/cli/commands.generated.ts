@@ -76,7 +76,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "activitySettings",
-    "description": "An activity's settings as its form holds them, without submitting it: its module, name and description, every field by the name `updateActivity` takes in `settings`, and the files of a resource, folder or SCORM. Teachers only.",
+    "description": "An activity's settings as its form holds them, without submitting it: its module, name and description, every field by the name `updateActivity` takes in `settings`, the files of a resource, folder or SCORM, and its restrictions and completion in plain terms. Teachers only.",
     "params": [
       {
         "name": "activityId",
@@ -926,7 +926,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "editSection",
-    "description": "Renames, shows or hides, describes (`summary`, HTML) or moves a section after another one.",
+    "description": "Renames, shows or hides, describes (`summary`, HTML), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.",
     "params": [
       {
         "name": "courseId",
@@ -972,6 +972,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "string",
           "value": {
             "kind": "string"
+          }
+        },
+        {
+          "name": "restrictions",
+          "optional": true,
+          "type": "Restrictions",
+          "value": {
+            "kind": "json"
           }
         },
         {

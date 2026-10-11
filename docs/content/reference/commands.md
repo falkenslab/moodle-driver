@@ -31,7 +31,7 @@ moodle activity-content <activityId> <type> [--options]
 
 ## activitySettings
 
-An activity's settings as its form holds them, without submitting it: its module, name and description, every field by the name `updateActivity` takes in `settings`, and the files of a resource, folder or SCORM. Teachers only.
+An activity's settings as its form holds them, without submitting it: its module, name and description, every field by the name `updateActivity` takes in `settings`, the files of a resource, folder or SCORM, and its restrictions and completion in plain terms. Teachers only.
 
 ```bash
 moodle activity-settings <activityId>
@@ -407,7 +407,7 @@ moodle edit-activity <courseId> <activityId> --options
 
 ## editSection
 
-Renames, shows or hides, describes (`summary`, HTML) or moves a section after another one.
+Renames, shows or hides, describes (`summary`, HTML), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
 
 ```bash
 moodle edit-section <courseId> <sectionId> --options
@@ -420,6 +420,7 @@ moodle edit-section <courseId> <sectionId> --options
 | `--name` | `string` |  |
 | `--visible` | `boolean` |  |
 | `--summary` | `string` |  |
+| `--restrictions` | `Restrictions` |  |
 | `--after-section-id` | `number` |  |
 
 ## finishQuizAttempt

@@ -6,7 +6,7 @@ Activity completion is how Moodle tracks what each participant has done in a cou
 
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
-Completion has to be enabled in the course and set in each activity (manual, or automatic on view, grade, submission…): the driver doesn't change that. Setting an activity's completion rules is part of its settings (see [Activities](activities.md)).
+Completion has to be enabled in the course. Each activity's rules (manual, or automatic on view, grade, submission…) are set with `createActivity` and `updateActivity`'s `completion`, and read back with `activitySettings` (see [Restrictions and completion](activities.md#restrictions-and-completion)).
 
 ## Completion states
 
