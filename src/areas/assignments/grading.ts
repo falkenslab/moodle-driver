@@ -11,16 +11,20 @@ import {
   listParticipants,
   panelGrade,
   participantDates,
-  readPanelFeedbackDraft,
+  readPanelState,
   readSubmissionContent,
   replaceDraftFiles,
   submitGradingForm,
+  WORKFLOW_STATES,
+  type PanelState,
   type PluginContent,
+  type WorkflowState,
 } from "./grader.js";
 import { checkLocalFiles } from "../../core/files.js";
 import { isoDate } from "../courses/list.js";
-import { dateSelectorDate, dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
-import { NotLoggedInError } from "../../core/session.js";
+import { FormError, dateSelectorDate, dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
+import { NotLoggedInError, fetchSitePage } from "../../core/session.js";
+import { decodeEntities } from "../../core/text.js";
 import { inPage } from "../../core/inPage.js";
 import { MoodleError } from "../../core/errors.js";
 
@@ -48,6 +52,12 @@ export interface Submission {
    * manager holds them, a working copy (`draftfile.php`) that `downloadFile` saves while the session lasts.
    */
   feedbackFiles?: { name: string; url: string }[];
+  /** With group submissions, the group the participant submits for; absent for none (Moodle's "Default group"). */
+  group?: { id: number; name: string };
+  /** With the marking workflow, the submission's state ("notmarked" before any). */
+  workflowState?: WorkflowState;
+  /** With marker allocation, the markers allocated to it. */
+  markers?: { id: number; name: string }[];
 }
 
 /** An extension's date, as its form holds it (no service open to AJAX gives it). */
@@ -65,8 +75,9 @@ async function extensionDate(context: BrowserContext, siteUrl: string, activityI
 }
 
 /**
- * Every participant's submission to an assignment, with its content and the feedback files they
- * have unless `includeContent` is false (both come from each participant's grading panel).
+ * Every participant's submission to an assignment, with the group they submit for (group
+ * submissions), and, unless `includeContent` is false, its content, the feedback files they have,
+ * its marking workflow state and markers (all from each participant's grading panel).
  */
 export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, { includeContent = true } = {}): Promise<Submission[]> {
   const ids = await assignmentIds(context, siteUrl, activityId);
@@ -82,7 +93,7 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
       // Everyone's panel: feedback files can come without a submission.
       const panel = parser ? await gradingPanelHtml(context, siteUrl, ids.contextId, participant.id) : undefined;
       const withContent = status === "submitted" || status === "draft";
-      const draft = parser && panel !== undefined ? await readPanelFeedbackDraft(parser, panel) : {};
+      const state: PanelState = parser && panel !== undefined ? await readPanelState(parser, panel) : {};
       submissions.push({
         userId: participant.id,
         fullName: participant.fullname,
@@ -95,7 +106,10 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
         dueDate: isoDate(dates.duedate),
         cutoffDate: isoDate(dates.cutoffdate),
         content: parser && panel !== undefined && withContent ? await readSubmissionContent(parser, panel) : undefined,
-        feedbackFiles: draft.draftId && draft.sesskey ? await draftAreaFiles(context, siteUrl, draft.sesskey, draft.draftId) : undefined,
+        feedbackFiles: state.draftId && state.sesskey ? await draftAreaFiles(context, siteUrl, state.sesskey, state.draftId) : undefined,
+        ...(participant.groupid ? { group: { id: participant.groupid, name: participant.groupname ?? "" } } : {}),
+        ...(state.workflowState ? { workflowState: state.workflowState } : {}),
+        ...(state.markers ? { markers: state.markers } : {}),
       });
     }
   } finally {
@@ -125,6 +139,8 @@ export async function gradeSubmission(
     remarks,
     feedback,
     feedbackFiles,
+    workflowState,
+    applyToGroup,
     notify,
     fields,
   }: {
@@ -138,6 +154,10 @@ export async function gradeSubmission(
     feedback?: string;
     /** Local paths (absolute): the participant's feedback files afterwards. */
     feedbackFiles?: string[];
+    /** With the marking workflow: the state to leave the submission in ("released" shows the grade). */
+    workflowState?: WorkflowState;
+    /** With group submissions: grade every member of the participant's group alike (Moodle's default), or only them. */
+    applyToGroup?: boolean;
     notify?: boolean;
     fields?: Record<string, FieldValue>;
   },
@@ -151,6 +171,12 @@ export async function gradeSubmission(
   for (const [criterion, remark] of Object.entries(remarks ?? {})) values[`advancedgrading[criteria][${criterion}][remark]`] = remark;
   if (feedback !== undefined) values[FEEDBACK_FIELD] = feedback;
   if (notify !== undefined) values.sendstudentnotifications = notify ? 1 : 0;
+  if (workflowState !== undefined) {
+    if (!WORKFLOW_STATES.includes(workflowState)) throw new GradingError(`"${workflowState}" isn't a marking workflow state: one of ${WORKFLOW_STATES.join(", ")}.`);
+    // The form's "Not marked" is its empty choice.
+    values.workflowstate = workflowState === "notmarked" ? "" : workflowState;
+  }
+  if (applyToGroup !== undefined) values.applytoall = applyToGroup ? "1" : "0";
   // A blank tab holds the panel's form: nothing of the grader's page needs to load.
   const page = await context.newPage();
   try {
@@ -159,11 +185,21 @@ export async function gradeSubmission(
       if (feedback !== undefined && error.message.includes(FEEDBACK_FIELD)) {
         throw new MoodleError("This assignment has no feedback comments: grade it without feedback, or turn feedback comments on in its settings.", "not-available");
       }
+      if (workflowState !== undefined && error.message.includes("workflowstate")) {
+        throw new GradingError(`Assignment ${activityId} doesn't use the marking workflow (or ${workflowState} isn't a state you can set): grade it without workflowState, or turn "Use marking workflow" on in its settings.`);
+      }
+      if (applyToGroup !== undefined && error.message.includes("applytoall")) {
+        throw new GradingError(`Assignment ${activityId} doesn't take group submissions: grade it without applyToGroup.`);
+      }
       throw error;
     });
+    // A select keeps no value it doesn't offer: Moodle offers each person only the states they may set.
+    if (values.workflowstate !== undefined && new URLSearchParams(serialized).get("workflowstate") !== values.workflowstate) {
+      throw new GradingError(`You can't set assignment ${activityId}'s submission to ${workflowState}: its grading form doesn't offer that state to you.`);
+    }
     if (feedbackFiles) {
       // The panel's draft area is what the form saves as the feedback files: changed before submitting it.
-      const draft = await readPanelFeedbackDraft(page, panel);
+      const draft = await readPanelState(page, panel);
       if (!draft.draftId || !draft.sesskey) {
         throw new GradingError(`Assignment ${activityId} has no feedback files: grade it without them, or turn "Feedback files" on in its settings.`);
       }
@@ -172,12 +208,13 @@ export async function gradeSubmission(
     await submitGradingForm(context, siteUrl, ids.instanceId, userId, serialized);
     const after = await gradingPanelHtml(context, siteUrl, ids.contextId, userId);
     const saved = await panelGrade(page, after);
-    const files = feedbackFiles ? await readPanelFeedbackDraft(page, after) : undefined;
+    const state = await readPanelState(page, after);
     const extras = [feedback !== undefined ? "feedback" : "", feedbackFiles ? `${feedbackFiles.length} feedback file${feedbackFiles.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
     return {
-      changed: `Graded user ${userId} in assignment ${activityId}${extras ? `, with ${extras}` : ""}.`,
+      changed: `Graded user ${userId}${applyToGroup ? " and their group" : ""} in assignment ${activityId}${extras ? `, with ${extras}` : ""}${workflowState ? `, workflow state ${workflowState}` : ""}.`,
       ...saved,
-      ...(files?.draftId && files.sesskey ? { feedbackFiles: await draftAreaFiles(context, siteUrl, files.sesskey, files.draftId) } : {}),
+      ...(feedbackFiles && state.draftId && state.sesskey ? { feedbackFiles: await draftAreaFiles(context, siteUrl, state.sesskey, state.draftId) } : {}),
+      ...(state.workflowState ? { workflowState: state.workflowState } : {}),
     };
   } finally {
     await page.close().catch(() => undefined);
@@ -272,4 +309,82 @@ export async function grantExtension(context: BrowserContext, siteUrl: string, a
     await page.close().catch(() => undefined);
   }
   return { changed: `Extension until ${until.toISOString()} granted to user${userIds.length > 1 ? "s" : ""} ${userIds.join(", ")} in assignment ${activityId}.` };
+}
+
+/**
+ * Opens one of the grading table's batch forms for `userIds` (as its "With selected…" menu does),
+ * or throws `GradingError` with Moodle's reason when it shows none.
+ */
+async function openBatchForm(context: BrowserContext, siteUrl: string, activityId: number, action: string, userIds: number[], what: string): Promise<Page> {
+  if (userIds.length === 0) throw new GradingError(`Give the participants to ${what} for.`);
+  const path = `mod/assign/view.php?id=${activityId}&action=${action}&selectedusers=${userIds.join(",")}`;
+  return openForm(context, siteUrl, path).catch(async (error: unknown) => {
+    if (!(error instanceof FormError)) throw error;
+    // Moodle's error page says why (not enough markers, not allowed…): read without a tab.
+    const { html } = await fetchSitePage(context, siteUrl, path);
+    const reason = /class="errormessage">([^<]*)</.exec(html)?.[1];
+    throw new GradingError(`Moodle didn't open the form to ${what} in activity ${activityId}: ${reason ? decodeEntities(reason).trim() : "it isn't an assignment with the marking workflow, or you aren't allowed"}`);
+  });
+}
+
+/**
+ * Sets the marking workflow state of participants' submissions, as the grading table's "Set marking
+ * workflow state" does; "released" shows them their grades, notifying them when `notify` is true
+ * (the form's default is not to). With several markers, it sets the submission's overall state.
+ */
+export async function setWorkflowState(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  userIds: number[],
+  state: Exclude<WorkflowState, "notmarked">,
+  { notify }: { notify?: boolean } = {},
+): Promise<{ changed: string }> {
+  if (!WORKFLOW_STATES.includes(state) || (state as string) === "notmarked") {
+    throw new GradingError(`"${state}" isn't a state the batch form sets: one of ${WORKFLOW_STATES.slice(1).join(", ")}.`);
+  }
+  if (notify && state !== "released") throw new GradingError('Moodle notifies students only when releasing: give notify with "released".');
+  const page = await openBatchForm(context, siteUrl, activityId, "viewbatchsetmarkingworkflowstate", userIds, "set the marking workflow state");
+  try {
+    if ((await page.locator(`form.mform [name="markingworkflowstate"] option[value="${state}"]`).count()) === 0) {
+      throw new GradingError(`You can't set submissions to ${state} in assignment ${activityId}: the form doesn't offer that state to you.`);
+    }
+    const values: Record<string, FieldValue> = {};
+    // With several markers the form asks whose state: the submission's ("grade"), not the person's own mark.
+    if ((await page.locator('form.mform [name="workflowcontext"]').count()) > 0) values.workflowcontext = "grade";
+    values.markingworkflowstate = state;
+    if (state === "released" && notify !== undefined) values.sendstudentnotifications = notify ? 1 : 0;
+    await setFields(page, values);
+    await submitForm(page, "submitbutton");
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  return { changed: `Set the marking workflow state of user${userIds.length > 1 ? "s" : ""} ${userIds.join(", ")} to ${state} in assignment ${activityId}${notify ? ", notifying them" : ""}.` };
+}
+
+/**
+ * Allocates a marker (the user id of someone who can grade; several where the assignment uses
+ * several markers per submission) to participants' submissions, as the grading table's "Allocate
+ * marker" does. Moodle leaves alone submissions past marking (marking completed, in review, ready
+ * for release, released).
+ */
+export async function allocateMarker(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], markerId: number | number[]): Promise<{ changed: string }> {
+  const markerIds = Array.isArray(markerId) ? markerId : [markerId];
+  if (markerIds.length === 0) throw new GradingError("Give the marker to allocate.");
+  const page = await openBatchForm(context, siteUrl, activityId, "viewbatchmarkingallocation", userIds, "allocate markers");
+  try {
+    // One select per marker the assignment uses: allocatedmarker1, allocatedmarker2…
+    const slots = await page.locator('form.mform select[name^="allocatedmarker"]').count();
+    if (markerIds.length > slots) throw new GradingError(`Assignment ${activityId} uses ${slots} marker${slots === 1 ? "" : "s"} per submission; ${markerIds.length} given.`);
+    for (const [index, id] of markerIds.entries()) {
+      if ((await page.locator(`form.mform [name="allocatedmarker${index + 1}"] option[value="${id}"]`).count()) === 0) {
+        throw new GradingError(`User ${id} can't mark assignment ${activityId}: markers are the course's users who can grade it.`);
+      }
+    }
+    await setFields(page, Object.fromEntries(markerIds.map((id, index) => [`allocatedmarker${index + 1}`, String(id)])));
+    await submitForm(page, "submitbutton");
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  return { changed: `Allocated marker${markerIds.length > 1 ? "s" : ""} ${markerIds.join(", ")} to user${userIds.length > 1 ? "s" : ""} ${userIds.join(", ")} in assignment ${activityId}.` };
 }

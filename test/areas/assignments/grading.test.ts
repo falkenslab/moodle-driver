@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { GradingError, NotAnAssignmentError, assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "../../../src/index.js";
+import { GradingError, NotAnAssignmentError, allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension, rubric, setWorkflowState } from "../../../src/index.js";
 import { PANEL, SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -218,6 +218,130 @@ ${select("day", range(1, 31), until?.day ?? 1)}${select("month", range(1, 12), 1
     assert.equal(submissions.find((s) => s.userId === 7)?.extensionDueDate, undefined);
     await assert.rejects(grantExtension(context, SITE, 43, [], new Date()), /Give the participants/);
     await context.close();
+  });
+});
+
+describe("group submissions and the marking workflow", { skip: !browser && "no system browser" }, () => {
+  /** A grading panel with Moodle 5.2's workflow state, two marker slots and "apply to all group members", reduced and made up. */
+  const workflowPanel = (state: string) => {
+    const option = (value: string, text: string, selected: string) => `<option value="${value}"${value === selected ? " selected" : ""}>${text}</option>`;
+    const states = ["", "inmarking", "readyforreview", "inreview", "readyforrelease", "released"].map((s) => option(s, s || "Not marked", state)).join("");
+    return `<form class="gradeform mform"><input type="hidden" name="action" value="submitgrade"><input type="text" name="grade" value="">
+<select name="workflowstate">${states}</select>
+<select name="allocatedmarker[0]">${option("", "Choose...", "3")}${option("3", "Teacher Uno", "3")}</select><select name="allocatedmarker[1]">${option("", "Choose...", "")}${option("3", "Teacher Uno", "")}</select>
+<select name="applytoall">${option("0", "No", "1")}${option("1", "Yes", "1")}</select></form>`;
+  };
+
+  function workflowSite(activityId: number) {
+    const submitted: URLSearchParams[] = [];
+    let saved = "";
+    const state: FakeMoodleState = {
+      user: { id: 3, fullName: "Teacher" },
+      bodies: { "/mod/assign/view.php": `<div data-assignmentid="${activityId * 10}" data-contextid="${activityId * 100}"></div>` },
+      services: {
+        mod_assign_list_participants: () => [
+          { id: 5, fullname: "Lucía Martín", submitted: true, requiregrading: true, grantedextension: false, submissionstatus: "submitted", groupid: 4, groupname: "Driver group" },
+          { id: 7, fullname: "Alan Turing", submitted: false, requiregrading: false, grantedextension: false, submissionstatus: "" },
+        ],
+        mod_assign_get_participant: () => ({ allowsubmissionsfromdate: 0, duedate: 0, cutoffdate: 0 }),
+        core_get_fragment: () => ({ html: workflowPanel(saved), javascript: "" }),
+        mod_assign_submit_grading_form: (args) => {
+          const form = new URLSearchParams(JSON.parse(String(args.jsonformdata)) as string);
+          submitted.push(form);
+          saved = form.get("workflowstate") ?? "";
+          return [];
+        },
+      },
+    };
+    return { state, submitted };
+  }
+
+  it("gives each participant's group, workflow state and markers", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, workflowSite(61).state);
+    const [lucia, alan] = await assignmentSubmissions(context, SITE, 61);
+    assert.deepEqual([lucia?.group, lucia?.workflowState, lucia?.markers], [{ id: 4, name: "Driver group" }, "notmarked", [{ id: 3, name: "Teacher Uno" }]]);
+    assert.deepEqual([alan?.group, alan?.workflowState], [undefined, "notmarked"]);
+    await context.close();
+  });
+
+  it("grades for the whole group with a workflow state, and refuses a state it doesn't offer", async () => {
+    const context = await browser!.newContext();
+    const { state, submitted } = workflowSite(62);
+    await serveFakeMoodle(context, state);
+    const result = await gradeSubmission(context, SITE, 62, 5, { grade: 7, workflowState: "readyforrelease", applyToGroup: true });
+    assert.equal(result.changed, "Graded user 5 and their group in assignment 62, workflow state readyforrelease.");
+    assert.equal(result.workflowState, "readyforrelease");
+    assert.deepEqual([submitted[0]?.get("workflowstate"), submitted[0]?.get("applytoall")], ["readyforrelease", "1"]);
+    await gradeSubmission(context, SITE, 62, 5, { grade: 7, workflowState: "notmarked", applyToGroup: false });
+    assert.deepEqual([submitted[1]?.get("workflowstate"), submitted[1]?.get("applytoall")], ["", "0"]);
+    await assert.rejects(gradeSubmission(context, SITE, 62, 5, { workflowState: "graded" as "released" }), /isn't a marking workflow state/);
+    await context.close();
+  });
+
+  it("refuses a workflow state or group grading where the assignment has neither", async () => {
+    const context = await browser!.newContext();
+    const { state, submitted } = gradingSite(true);
+    await serveFakeMoodle(context, state);
+    await assert.rejects(gradeSubmission(context, SITE, 63, 7, { grade: 5, workflowState: "released" }), (error: unknown) => error instanceof GradingError && /doesn't use the marking workflow/.test(error.message));
+    await assert.rejects(gradeSubmission(context, SITE, 63, 7, { grade: 5, applyToGroup: true }), (error: unknown) => error instanceof GradingError && /doesn't take group submissions/.test(error.message));
+    assert.equal(submitted.length, 0);
+    await context.close();
+  });
+
+  /** The batch forms as Moodle 5.2's, reduced and made up; `markers` 0 is its error page for too few markers. */
+  async function batchSite(context: BrowserContext, { markers = 1, multi = false } = {}) {
+    const posted: URLSearchParams[] = [];
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+    const page = (body: string, bodyId: string) => moodlePage({ userId: 3, bodyId, body });
+    await context.route(`${SITE}mod/assign/view.php**`, (route: Route) => {
+      const html = (body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
+      if (route.request().method() === "POST") {
+        posted.push(new URLSearchParams(route.request().postData() ?? ""));
+        return html(page("", "page-mod-assign-grading"));
+      }
+      const url = new URL(route.request().url());
+      const hidden = `<input type="hidden" name="id" value="${url.searchParams.get("id")}"><input type="hidden" name="selectedusers" value="${url.searchParams.get("selectedusers")}">`;
+      if (url.searchParams.get("action") === "viewbatchsetmarkingworkflowstate") {
+        const states = ["inmarking", "readyforreview", "inreview", "readyforrelease", "released"].map((s) => `<option value="${s}">${s}</option>`).join("");
+        const context_ = multi ? `<select name="workflowcontext"><option value="mark">Mark</option><option value="grade">Grade</option></select>` : "";
+        return html(page(`<form class="mform" method="post" action="${SITE}mod/assign/view.php">${hidden}<input type="hidden" name="action" value="setbatchmarkingworkflowstate">${context_}<select name="markingworkflowstate">${states}</select>
+<select name="sendstudentnotifications"><option value="0">No</option><option value="1">Yes</option></select><input type="submit" name="submitbutton" value="Save"></form>`, "page-mod-assign-viewbatchsetmarkingworkflowstate"));
+      }
+      if (markers === 0) return html(page(`<div data-rel="fatalerror"><p class="errormessage">There are not enough markers (1) to meet the required number for this assignment (2).</p></div>`, "page-mod-assign-viewbatchmarkingallocation"));
+      const slots = Array.from({ length: markers }, (_, i) => `<select name="allocatedmarker${i + 1}"><option value="">Choose...</option><option value="3">Teacher Uno</option></select>`).join("");
+      return html(page(`<form class="mform" method="post" action="${SITE}mod/assign/view.php">${hidden}<input type="hidden" name="action" value="setbatchmarkingallocation">${slots}<input type="submit" name="submitbutton" value="Save"></form>`, "page-mod-assign-viewbatchmarkingallocation"));
+    });
+    return posted;
+  }
+
+  it("releases submissions as the batch form does, notifying when asked", async () => {
+    const context = await browser!.newContext();
+    const posted = await batchSite(context, { multi: true });
+    const result = await setWorkflowState(context, SITE, 64, [5, 6], "released", { notify: true });
+    assert.equal(result.changed, "Set the marking workflow state of users 5, 6 to released in assignment 64, notifying them.");
+    assert.deepEqual(
+      ["selectedusers", "action", "workflowcontext", "markingworkflowstate", "sendstudentnotifications"].map((name) => posted[0]?.get(name)),
+      ["5,6", "setbatchmarkingworkflowstate", "grade", "released", "1"],
+    );
+    await assert.rejects(setWorkflowState(context, SITE, 64, [5], "inmarking", { notify: true }), /only when releasing/);
+    await assert.rejects(setWorkflowState(context, SITE, 64, [], "released"), /Give the participants/);
+    assert.equal(posted.length, 1);
+    await context.close();
+  });
+
+  it("allocates a marker, and says why Moodle won't", async () => {
+    const context = await browser!.newContext();
+    const posted = await batchSite(context);
+    assert.equal((await allocateMarker(context, SITE, 65, [5, 6], 3)).changed, "Allocated marker 3 to users 5, 6 in assignment 65.");
+    assert.deepEqual([posted[0]?.get("allocatedmarker1"), posted[0]?.get("action")], ["3", "setbatchmarkingallocation"]);
+    await assert.rejects(allocateMarker(context, SITE, 65, [5], 9), /User 9 can't mark/);
+    await assert.rejects(allocateMarker(context, SITE, 65, [5], [3, 3]), /uses 1 marker per submission/);
+    await context.close();
+    const refused = await browser!.newContext();
+    await batchSite(refused, { markers: 0 });
+    await assert.rejects(allocateMarker(refused, SITE, 66, [5], 3), (error: unknown) => error instanceof GradingError && /not enough markers \(1\)/.test(error.message));
+    await refused.close();
   });
 });
 

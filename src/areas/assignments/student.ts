@@ -4,6 +4,8 @@ import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldVa
 import { inPage } from "../../core/inPage.js";
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
+import { callService } from "../../core/ajax.js";
+import { participantFilters, readParticipantRows } from "../participants/participants.js";
 
 /** The assignment isn't there, or the person can't do that now. */
 export class SubmissionError extends MoodleError {
@@ -27,6 +29,12 @@ export interface StudentAssignment {
   feedbackFiles: { name: string; url: string }[];
   canEdit: boolean;
   canSubmit: boolean;
+  /**
+   * With group submissions, the submission is the group's: its name, and its id and members where
+   * the participants page shows the group to the person; only the name for Moodle's "Default group"
+   * (the person is in no group).
+   */
+  group?: { id?: number; name: string; members?: { userId: number; fullName: string }[] };
 }
 
 export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
@@ -80,9 +88,62 @@ export async function studentAssignment(context: BrowserContext, siteUrl: string
     if ((await page.locator("body#page-mod-assign-view").count()) === 0) {
       throw new SubmissionError(`Activity ${activityId} isn't an assignment you can open. Take the id of an assignment (module "assign") from the course structure.`);
     }
-    return await readStudentAssignment(page);
+    const assignment = await readStudentAssignment(page);
+    const group = await submissionGroup(context, siteUrl, page, assignment);
+    return group ? { ...assignment, group } : assignment;
   } finally {
     await page.close().catch(() => undefined);
+  }
+}
+
+/**
+ * With group submissions, the status table's first row is the group's ("Group": its name, or
+ * "Default group"), before the submission status, whose cell has a class. Its label is told apart
+ * by Moodle's own string in the person's language (`core_get_string`), only when there's a row
+ * before the status one; its members come from the participants page, filtered by the group.
+ */
+async function submissionGroup(context: BrowserContext, siteUrl: string, page: Page, assignment: StudentAssignment): Promise<StudentAssignment["group"]> {
+  const before = await page.evaluate(() => {
+    const doc = (globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<{ querySelector(s: string): unknown }> } }).document;
+    return Array.from(doc.querySelectorAll(".submissionstatustable tr")).findIndex((row) => row.querySelector('td[class*="submissionstatus"]') !== null);
+  });
+  const first = assignment.status[0];
+  if (before < 1 || !first) return undefined;
+  const [team, defaultTeam] = await Promise.all(["submissionteam", "defaultteam"].map((stringid) => callService<string>(context, siteUrl, "core_get_string", { stringid, component: "assign" })));
+  if (first.label !== team?.trim()) return undefined;
+  if (first.value === defaultTeam?.trim()) return { name: first.value };
+  const courseId = await page.evaluate(() => Number(/\bcourse-(\d+)\b/.exec((globalThis as unknown as { document: { body: { className: string } } }).document.body.className)?.[1]));
+  // The participants page may be closed to the person: the group's name is what the assignment says.
+  const filters = await participantFilters(context, siteUrl, courseId).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
+    return undefined;
+  });
+  const group = filters?.groups.find((g) => g.name === first.value);
+  if (!group) return { name: first.value };
+  const { html } = await callService<{ html: string }>(context, siteUrl, "core_table_get_dynamic_table_content", {
+    component: "core_user",
+    handler: "participants",
+    uniqueid: `user-index-participants-${courseId}`,
+    sortdata: [{ sortby: "lastname", sortorder: 4 }],
+    // The participants page's filters (core\output\datafilter): this course, and this group (join "any", then "all").
+    filters: [
+      { name: "courseid", jointype: 1, values: [courseId] },
+      { name: "groups", jointype: 1, values: [group.id] },
+    ],
+    jointype: 2,
+    firstinitial: "",
+    lastinitial: "",
+    pagenumber: 1,
+    pagesize: 100,
+    hiddencolumns: [],
+    resetpreferences: false,
+  });
+  const parser = await context.newPage();
+  try {
+    await parser.setContent(html);
+    return { id: group.id, name: group.name, members: await readParticipantRows(parser) };
+  } finally {
+    await parser.close().catch(() => undefined);
   }
 }
 

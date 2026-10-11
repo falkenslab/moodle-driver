@@ -56,6 +56,9 @@ export interface MoodleParticipant {
   requiregrading: boolean;
   grantedextension: boolean;
   submissionstatus: string;
+  /** With group submissions, the group the participant submits for (absent or 0 for none). */
+  groupid?: number;
+  groupname?: string;
 }
 
 /** The dates `mod_assign_get_participant` gives for one participant (Unix seconds; 0 is none). */
@@ -206,18 +209,41 @@ export async function panelGrade(page: Page, panelHtml: string): Promise<{ grade
   });
 }
 
-/** What a grading panel's form says beyond its grade: its feedback files' draft area, and the session's sesskey. */
-export function readPanelFeedbackDraft(page: Page, html: string): Promise<{ draftId?: string; sesskey?: string }> {
+/** The marking workflow's states, as Moodle names them ("notmarked" is the grading form's empty choice). */
+export const WORKFLOW_STATES = ["notmarked", "inmarking", "readyforreview", "inreview", "readyforrelease", "released"] as const;
+export type WorkflowState = (typeof WORKFLOW_STATES)[number];
+
+/** What a grading panel's form says beyond the grade, read by field names. */
+export interface PanelState {
+  /** The feedback files' draft area, where the assignment has feedback files on. */
+  draftId?: string;
+  sesskey?: string;
+  /** Where the assignment uses the marking workflow. */
+  workflowState?: WorkflowState;
+  /** Where it allocates markers: the ones allocated (Moodle 5.2 allows several per submission). */
+  markers?: { id: number; name: string }[];
+}
+
+export function readPanelState(page: Page, html: string): Promise<PanelState> {
   return page.evaluate((html) => {
-    interface Input {
+    interface Field {
       name: string;
       value: string;
+      selectedOptions?: ArrayLike<{ textContent: string | null }>;
     }
-    const g = globalThis as unknown as { DOMParser: new () => { parseFromString(html: string, type: string): { querySelectorAll(s: string): ArrayLike<Input> } } };
-    const inputs = Array.from(new g.DOMParser().parseFromString(html, "text/html").querySelectorAll("form.gradeform input[name]"));
+    const g = globalThis as unknown as { DOMParser: new () => { parseFromString(html: string, type: string): { querySelectorAll(s: string): ArrayLike<Field> } } };
+    const fields = Array.from(new g.DOMParser().parseFromString(html, "text/html").querySelectorAll("form.gradeform [name]"));
     // The feedback files plugin names its file manager after the participant: files_<userid>_filemanager.
-    const draft = inputs.find((input) => /^files_\d+_filemanager$/.test(input.name));
-    return { draftId: draft?.value || undefined, sesskey: inputs.find((input) => input.name === "sesskey")?.value || undefined };
+    const draft = fields.find((field) => /^files_\d+_filemanager$/.test(field.name));
+    const workflow = fields.find((field) => field.name === "workflowstate");
+    const markerFields = fields.filter((field) => /^allocatedmarker\[\d+\]$/.test(field.name));
+    const markers = markerFields.filter((field) => Number(field.value) > 0).map((field) => ({ id: Number(field.value), name: (field.selectedOptions?.[0]?.textContent ?? "").trim() }));
+    return {
+      draftId: draft?.value || undefined,
+      sesskey: fields.find((field) => field.name === "sesskey")?.value || undefined,
+      ...(workflow ? { workflowState: (workflow.value || "notmarked") as "notmarked" } : {}),
+      ...(markerFields.length > 0 ? { markers } : {}),
+    };
   }, html);
 }
 

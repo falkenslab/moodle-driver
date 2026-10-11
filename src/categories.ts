@@ -131,13 +131,16 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   downloadFile: ["course-content", "others-personal"],
 
   // Assignments.
-  studentAssignment: ["course-content", "own"],
+  // With group submissions, the group's members too.
+  studentAssignment: ["course-content", "own", "others-personal"],
   saveSubmission: OWN,
   submitForGrading: OWN,
   assignmentSubmissions: PERSONAL,
   gradeSubmission: ["others-personal", "others-write"],
   rubric: CONTENT,
   grantExtension: ["others-write"],
+  setWorkflowState: ["others-write"],
+  allocateMarker: ["others-write"],
 
   // Quizzes: a teacher may review someone else's attempt.
   quizInfo: ["course-content", "own"],

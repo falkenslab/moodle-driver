@@ -5,7 +5,7 @@ import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
 import { SubmissionError, saveSubmission, studentAssignment, submitForGrading } from "../../../src/index.js";
-import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
+import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
 let dir: string;
@@ -144,6 +144,49 @@ describe("studentAssignment, saveSubmission and submitForGrading", { skip: !brow
     const assignment = await studentAssignment(context, SITE, 32);
     assert.deepEqual(assignment.feedbackFiles, [{ name: "corrected.pdf", url: `${SITE}pluginfile.php/89/assignfeedback_file/feedback_files/13/corrected.pdf?forcedownload=1` }]);
     await context.close();
+  });
+
+  /** A made-up assignment page with group submissions, as Moodle 5.2's: the group's row first, then the status with its class. */
+  async function teamSite(groupCell: string) {
+    const context = await browser!.newContext();
+    const state: FakeMoodleState = {
+      user: { id: 5, fullName: "Student" },
+      serviceCalls: [],
+      bodies: { "/mod/assign/view.php": `<div class="submissionstatustable"><table><tbody><tr><th>Group</th><td>${groupCell}</td></tr><tr><th>Submission status</th><td class="submissionstatussubmitted">Submitted</td></tr></tbody></table></div>` },
+      bodyClasses: { "/mod/assign/view.php": "course-3" },
+      services: {
+        // Moodle's strings in the person's language: matched against the row's label.
+        core_get_string: (args) => ({ submissionteam: "Group", defaultteam: "Default group" })[String(args.stringid)],
+        core_table_get_dynamic_table_content: (args) => {
+          const group = (args.filters as { name: string; values: number[] }[]).find((f) => f.name === "groups")?.values[0];
+          const rows = group === 4 ? [[6, "Marcos López"], [5, "Lucía Martín"]] : [];
+          return { html: `<table><tbody>${rows.map(([id, name]) => `<tr><th><a href="${SITE}user/view.php?id=${id}&amp;course=3"><span class="userinitials">XX</span>${name}</a></th></tr>`).join("")}</tbody></table>`, warnings: [] };
+        },
+      },
+    };
+    await serveFakeMoodle(context, state);
+    const filters = `<select data-field-name="groups"><option value="-1">No group</option><option value="4">Driver group</option></select>`;
+    await context.route(`${SITE}user/index.php**`, (route: Route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 5, bodyId: "page-course-view-participants", body: filters }) }));
+    return { context, state };
+  }
+
+  it("says the submission is the group's, with its members", async () => {
+    const { context, state } = await teamSite("Driver group");
+    const assignment = await studentAssignment(context, SITE, 33);
+    assert.deepEqual(assignment.group, { id: 4, name: "Driver group", members: [{ userId: 6, fullName: "Marcos López" }, { userId: 5, fullName: "Lucía Martín" }] });
+    const table = state.serviceCalls?.find((call) => call.methodname === "core_table_get_dynamic_table_content");
+    assert.equal(table?.args.uniqueid, "user-index-participants-3");
+    await context.close();
+  });
+
+  it("gives Moodle's default group by name only, and no group without group submissions", async () => {
+    const { context } = await teamSite("Default group");
+    assert.deepEqual((await studentAssignment(context, SITE, 34)).group, { name: "Default group" });
+    await context.close();
+    const solo = await site();
+    const { group } = await studentAssignment(solo.context, SITE, 30);
+    assert.equal(group, undefined);
+    await solo.context.close();
   });
 
   it("refuses an activity that isn't an assignment", async () => {

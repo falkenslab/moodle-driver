@@ -15,7 +15,7 @@ import { openForm } from "./core/forms.js";
 import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
 import { addGradeCategory, gradebookSetup, graderReport, updateGradeItem } from "./areas/grades/gradebook.js";
 import { myGrades } from "./areas/grades/user-report.js";
-import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./areas/assignments/grading.js";
+import { allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension, rubric, setWorkflowState } from "./areas/assignments/grading.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
 import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
@@ -45,6 +45,7 @@ const SITE_FUNCTIONS = {
   activitiesOverview,
   activitySettings,
   addGradeCategory,
+  allocateMarker,
   addQuestionsToQuiz,
   addSection,
   answerChoice,
@@ -107,6 +108,7 @@ const SITE_FUNCTIONS = {
   setCompletion,
   setDiscussionState,
   setQuizOverride,
+  setWorkflowState,
   siteName,
   startDiscussion,
   startQuizAttempt,

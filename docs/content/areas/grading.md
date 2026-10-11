@@ -1,6 +1,6 @@
 # Grading
 
-The teacher's side of an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions; feedback files go with the grade. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
+The teacher's side of an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
 **Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale).
 
@@ -29,9 +29,12 @@ function assignmentSubmissions(
 - `extensionDueDate`: until when (ISO 8601), where an extension is granted.
 - `allowSubmissionsFrom`, `dueDate`, `cutoffDate`: for this participant, with their overrides and extensions applied (ISO 8601; absent when the assignment has none).
 - `feedbackFiles`: the files attached to the participant's feedback, `{ name, url }`, where the assignment has feedback files on. They're read as the grader's file manager holds them: `url` is the person's working copy (`draftfile.php`), which [downloadFile](files.md) saves while the session lasts; the student sees the saved files' own links (`studentAssignment`).
+- `group`: with group submissions ("Students submit in groups"), the group the participant submits for, `{ id, name }`; absent for a participant in no group (Moodle's "Default group").
+- `workflowState`: with the marking workflow, the submission's state: `"notmarked"`, `"inmarking"`, `"readyforreview"` (marking completed), `"inreview"`, `"readyforrelease"` or `"released"`. Students see their grade only once it's released.
+- `markers`: with marker allocation, the markers allocated to the submission, `{ id, name }[]` (Moodle 5.2 allows several per submission; empty when none is).
 - `content`: per submission plugin, `{ plugin, text, files }`: `plugin` is the plugin's name (`"onlinetext"`, `"file"`…), `text` its content as plain text with paragraphs and lists kept, `files` its `{ name, url }` links (for [downloadFile](files.md)). Only for submitted and draft submissions; the comments plugin isn't part of it.
 
-`includeContent` is `true` by default. Content and feedback files come from each participant's grading panel, one service call per participant (and one listing of the panel's feedback files where the assignment has them); with `includeContent: false` neither is loaded, which is much faster for a large course when only the statuses are needed. Participants are read one at a time; an extension's date comes from the extension form (no service open to AJAX gives it), one page per participant with an extension.
+`includeContent` is `true` by default. Content, feedback files, the workflow state and the markers come from each participant's grading panel (the group from the participants service, always), one service call per participant (and one listing of the panel's feedback files where the assignment has them); with `includeContent: false` neither is loaded, which is much faster for a large course when only the statuses are needed. Participants are read one at a time; an extension's date comes from the extension form (no service open to AJAX gives it), one page per participant with an extension.
 
 It throws `NotAnAssignmentError` when the id isn't an assignment the person can grade, and passes the services' refusals as `MoodleServiceError`.
 
@@ -52,10 +55,14 @@ function gradeSubmission(
     remarks?: Record<number, string>; // criterion id -> remark
     feedback?: string;
     feedbackFiles?: string[];
+    workflowState?: WorkflowState;
+    applyToGroup?: boolean;
     notify?: boolean;
     fields?: Record<string, FieldValue>;
   },
-): Promise<{ changed: string; grade?: string; gradebookGrade?: string; feedback?: string; feedbackFiles?: { name: string; url: string }[] }>;
+): Promise<{ changed: string; grade?: string; gradebookGrade?: string; feedback?: string; feedbackFiles?: { name: string; url: string }[]; workflowState?: WorkflowState }>;
+
+type WorkflowState = "notmarked" | "inmarking" | "readyforreview" | "inreview" | "readyforrelease" | "released";
 ```
 
 - `grade`: for simple grading, the grade as a number (`8.5`) or as the grader's field takes it (`"8.5"`, or `"8,5"` where the site writes decimals with a comma); for a scale, the scale item's value.
@@ -64,6 +71,8 @@ function gradeSubmission(
 - `remarks`: a rubric's or a guide's remark per criterion.
 - `feedback`: feedback comments (HTML), when the assignment has feedback comments on.
 - `feedbackFiles`: absolute local paths of files for the feedback (a corrected PDF, an audio comment), when the assignment has feedback files on. They replace the files the participant had: what the panel's file manager holds is deleted, then they're uploaded from Moodle's grading page for the participant (`mod/assign/view.php?action=grade`, whose file picker carries the upload repository), before the form is submitted. `[]` removes them all; without the option they stay as they are.
+- `workflowState`: with the marking workflow, the state the submission is left in (`WORKFLOW_STATES` lists them); `"released"` shows the student the grade, any other state keeps it hidden. Moodle offers each person only the states they may set (releasing takes its own capability).
+- `applyToGroup`: with group submissions, whether the grade and feedback go to every member of the participant's group (`true`, Moodle's default) or only to them.
 - `notify`: whether Moodle notifies the student; the panel's default otherwise.
 - `fields`: any other field of the grading panel's form by name (another feedback plugin's, a workflow state…); the named options win for the same field.
 
@@ -74,13 +83,16 @@ It fills the panel's form in a blank tab (nothing of the grader's page loads), s
 - `gradebookGrade`: the "Current grade in gradebook" Moodle shows, which for a rubric or a guide is the total it computed from the levels or scores (`"75.00"`); absent when there's none.
 - `feedback`: the feedback comments now.
 - `feedbackFiles`: when files were given, the participant's feedback files now, as `assignmentSubmissions` gives them.
+- `workflowState`: the submission's workflow state now, with the marking workflow.
+
+With the marking workflow, `gradebookGrade` stays "not graded" until the grade is released: the gradebook only gets it then.
 
 Errors:
 
 - `NotAnAssignmentError` when the id isn't an assignment the person can grade.
 - `FormError` when a field isn't in the panel's form, such as a criterion or level id that doesn't exist (`advancedgrading[criteria][9][levelid]`), or `grade` on an assignment graded by rubric.
 - A `MoodleError` (`not-available`) when `feedback` is given and the assignment has no feedback comments; nothing is saved.
-- `GradingError` when `feedbackFiles` is given and the assignment has no feedback files; nothing is saved.
+- `GradingError` when `feedbackFiles` is given and the assignment has no feedback files, `workflowState` and it doesn't use the marking workflow (or the state isn't one the form offers the person), or `applyToGroup` and it doesn't take group submissions; nothing is saved.
 - A `MoodleError` (`invalid-input`, `not-found`) when a file path isn't absolute or doesn't exist, checked before anything; `FormError` when the upload fails (no upload repository, a file too big).
 - `GradingError` when Moodle doesn't save the grade. Moodle's service only answers that it couldn't save, without the reason: usually a grade out of the assignment's range or scale, or a field's name.
 
@@ -123,6 +135,42 @@ Errors:
 
 `assignmentSubmissions` reports the granted date as `extensionDueDate`.
 
+## setWorkflowState
+
+Sets the marking workflow state of several participants' submissions at once, as the grading table's "Set marking workflow state" does (`mod/assign/view.php?action=viewbatchsetmarkingworkflowstate`), and releases their grades with `"released"`.
+
+```ts
+function setWorkflowState(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  userIds: number[],
+  state: "inmarking" | "readyforreview" | "inreview" | "readyforrelease" | "released",
+  options?: { notify?: boolean },
+): Promise<{ changed: string }>;
+```
+
+- `state`: any state but `"notmarked"`, which the form doesn't offer. Releasing makes the grade and feedback visible to the students and puts the grade in the gradebook.
+- `notify`: when releasing, whether Moodle notifies the students, as the form's "Notify student" does; `false` by default, the form's default. Moodle notifies only on release, so `notify` with another state is refused.
+
+With group submissions, a group's members are separate participants: give every member's id (`assignmentSubmissions` gives each one's `group`). With several markers per submission, it sets the submission's overall state (the form's "Grade" context), not the person's own mark. Moodle skips participants whose grading is disabled (locked, or a submission they can't be graded on).
+
+Errors (`GradingError`): `userIds` empty; a state that isn't one, or that the form doesn't offer the person (releasing takes Moodle's "release grades" capability); `notify` without releasing; Moodle not opening the form (the activity isn't an assignment with the marking workflow, or the person isn't allowed), with Moodle's reason when it gives one. `FormError` when Moodle refuses the form.
+
+## allocateMarker
+
+Allocates a marker to several participants' submissions, as the grading table's "Allocate marker" does (`mod/assign/view.php?action=viewbatchmarkingallocation`), in an assignment with the marking workflow and marker allocation on.
+
+```ts
+function allocateMarker(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], markerId: number | number[]): Promise<{ changed: string }>;
+```
+
+- `markerId`: the user id of someone in the course who can grade the assignment; an array where the assignment uses several markers per submission (Moodle 5.2's "Number of markers"), one per marker in order. The ones not given are left unallocated.
+
+Moodle leaves alone the submissions whose state is past marking (marking completed, in review, ready for release, released). `assignmentSubmissions` gives each submission's `markers`.
+
+Errors (`GradingError`): `userIds` or `markerId` empty; more markers than the assignment uses; a user who can't mark it; Moodle not opening the form, with its reason, such as an assignment needing more markers per submission than the course has ("There are not enough markers (1) to meet the required number for this assignment (2)").
+
 ## Example
 
 ```ts
@@ -154,6 +202,22 @@ if (definition.method === "rubric") {
 await moodle.grantExtension(45, [4, 7], new Date("2026-11-06T22:59:00Z"));
 ```
 
+An assignment with group submissions and the marking workflow: grade one member for the whole group, then release the group's grades.
+
+```ts
+
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
+
+const submissions = await moodle.assignmentSubmissions(52);
+const ada = submissions.find((s) => s.userId === 7)!;
+await moodle.allocateMarker(52, [7], 3);
+await moodle.gradeSubmission(52, 7, { grade: 8, feedback: "<p>Good work, team.</p>", workflowState: "readyforrelease", applyToGroup: true });
+
+// Every member of Ada's group, released together.
+const members = submissions.filter((s) => s.group && s.group.id === ada.group?.id).map((s) => s.userId);
+await moodle.setWorkflowState(52, members, "released", { notify: true });
+```
+
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension` is `others-write`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. See [data categories](../concepts/data-categories.md).

@@ -227,6 +227,36 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "allocateMarker",
+    "description": "Allocates a marker (the user id of someone who can grade; several where the assignment uses several markers per submission) to participants' submissions, as the grading table's \"Allocate marker\" does. Moodle leaves alone submissions past marking (marking completed, in review, ready for release, released).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      },
+      {
+        "name": "markerId",
+        "optional": false,
+        "type": "number | number[]",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
     "name": "answerChoice",
     "description": "Answers a choice with one option (several where it allows them) by id, as \"Save my choice\" does; returns the choice afterwards.",
     "params": [
@@ -332,7 +362,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "assignmentSubmissions",
-    "description": "Every participant's submission to an assignment, with its content and the feedback files they have unless `includeContent` is false (both come from each participant's grading panel).",
+    "description": "Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel).",
     "params": [
       {
         "name": "activityId",
@@ -1116,6 +1146,32 @@ export const COMMANDS: readonly CommandSpec[] = [
           "description": "Local paths (absolute): the participant's feedback files afterwards."
         },
         {
+          "name": "workflowState",
+          "optional": true,
+          "type": "\"notmarked\" | \"inmarking\" | \"readyforreview\" | \"inreview\" | \"readyforrelease\" | \"released\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "notmarked",
+              "inmarking",
+              "readyforreview",
+              "inreview",
+              "readyforrelease",
+              "released"
+            ]
+          },
+          "description": "With the marking workflow: the state to leave the submission in (\"released\" shows the grade)."
+        },
+        {
+          "name": "applyToGroup",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "With group submissions: grade every member of the participant's group alike (Moodle's default), or only them."
+        },
+        {
           "name": "notify",
           "optional": true,
           "type": "boolean",
@@ -1863,6 +1919,58 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "setWorkflowState",
+    "description": "Sets the marking workflow state of participants' submissions, as the grading table's \"Set marking workflow state\" does; \"released\" shows them their grades, notifying them when `notify` is true (the form's default is not to). With several markers, it sets the submission's overall state.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      },
+      {
+        "name": "state",
+        "optional": false,
+        "type": "\"inmarking\" | \"readyforreview\" | \"inreview\" | \"readyforrelease\" | \"released\"",
+        "value": {
+          "kind": "enum",
+          "values": [
+            "inmarking",
+            "readyforreview",
+            "inreview",
+            "readyforrelease",
+            "released"
+          ]
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "notify",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
           }
         }
       ]

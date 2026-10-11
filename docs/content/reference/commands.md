@@ -85,6 +85,20 @@ moodle add-section <courseId> [--options]
 | `--name` | `string` |  |
 | `--after-section-id` | `number` |  |
 
+## allocateMarker
+
+Allocates a marker (the user id of someone who can grade; several where the assignment uses several markers per submission) to participants' submissions, as the grading table's "Allocate marker" does. Moodle leaves alone submissions past marking (marking completed, in review, ready for release, released).
+
+```bash
+moodle allocate-marker <activityId> <userIds> <markerId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `userIds` | `number[]` |  |
+| `markerId` | `number \| number[]` |  |
+
 ## answerChoice
 
 Answers a choice with one option (several where it allows them) by id, as "Save my choice" does; returns the choice afterwards.
@@ -128,7 +142,7 @@ moodle answer-quiz-questions <attemptId> <answers> [--options]
 
 ## assignmentSubmissions
 
-Every participant's submission to an assignment, with its content and the feedback files they have unless `includeContent` is false (both come from each participant's grading panel).
+Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel).
 
 ```bash
 moodle assignment-submissions <activityId> [--options]
@@ -487,6 +501,8 @@ moodle grade-submission <activityId> <userId> --options
 | `--remarks` | `Record<number, string>` | Criterion id → remark, for a rubric or a guide. |
 | `--feedback` | `string` |  |
 | `--feedback-files` | `string[]` | Local paths (absolute): the participant's feedback files afterwards. |
+| `--workflow-state` | `"notmarked" \| "inmarking" \| "readyforreview" \| "inreview" \| "readyforrelease" \| "released"` | With the marking workflow: the state to leave the submission in ("released" shows the grade). |
+| `--apply-to-group` | `boolean` | With group submissions: grade every member of the participant's group alike (Moodle's default), or only them. |
 | `--notify` | `boolean` |  |
 | `--fields` | `Record<string, FieldValue>` |  |
 
@@ -911,6 +927,21 @@ moodle set-quiz-override <activityId> <userId> --options
 | `--close` | `Date` |  |
 | `--time-limit-minutes` | `number` |  |
 | `--attempts` | `number` |  |
+
+## setWorkflowState
+
+Sets the marking workflow state of participants' submissions, as the grading table's "Set marking workflow state" does; "released" shows them their grades, notifying them when `notify` is true (the form's default is not to). With several markers, it sets the submission's overall state.
+
+```bash
+moodle set-workflow-state <activityId> <userIds> <state> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `userIds` | `number[]` |  |
+| `state` | `"inmarking" \| "readyforreview" \| "inreview" \| "readyforrelease" \| "released"` |  |
+| `--notify` | `boolean` |  |
 
 ## siteName
 
