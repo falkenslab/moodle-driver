@@ -10,7 +10,7 @@ An interactive session of the `moodle` command that keeps one browser open acros
 
 - Each `moodle …` is a process of its own: it opens the browser on the profile, works and closes it. With `--show` the window lives only while that command runs, and a profile can be open in one browser at a time, so the next command can't reuse the window (ADR-012, ADR-013).
 - A program using the library keeps its browser for its lifetime, and `setVisible(true)` shows every call; Node's REPL with top-level `await` already does this by hand, but means writing JavaScript.
-- A second way, a background browser other commands connect to (`connectOverCDP`), was set aside for now: it needs a process to start and stop and a debugging port that gives full control of the logged-in browser to anything on the machine.
+- A second way, a background browser separate commands connect to, is its own card, after this one: #25 (`background-browser.md`).
 
 ## Changes
 
