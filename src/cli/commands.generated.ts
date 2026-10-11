@@ -75,6 +75,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "activityReport",
+    "description": "A course's activity report: per activity, how many times it was viewed, by how many people, and when last, from the logs (between `from` and `until` when given). Activities nobody viewed come with zero views.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "from",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "until",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "activitySettings",
     "description": "An activity's settings as its form holds them, without submitting it: its module, name and description, and every field by the name `updateActivity` takes in `settings`. Teachers only.",
     "params": [
@@ -462,6 +499,82 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "courseLogs",
+    "description": "A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "userId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "activityId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "from",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "until",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "action",
+          "optional": true,
+          "type": "\"create\" | \"view\" | \"update\" | \"delete\" | \"change\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "create",
+              "view",
+              "update",
+              "delete",
+              "change"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "courseRoles",
@@ -1485,6 +1598,63 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "Date",
           "value": {
             "kind": "date"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "participationReport",
+    "description": "Who took part in an activity of a course, as its participation report counts it: everyone with the role (every role the report offers, unless `roleId`), with how many actions they made there (views or posts only, when `action`; since `since`, when given); those who did nothing come with 0.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "roleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "since",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "action",
+          "optional": true,
+          "type": "\"view\" | \"post\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "view",
+              "post"
+            ]
           }
         }
       ]

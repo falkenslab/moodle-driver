@@ -117,6 +117,19 @@ export {
   type GradebookCategory,
   type GradebookItem,
 } from "./areas/grades/gradebook.js";
+export {
+  courseLogs,
+  activityReport,
+  participationReport,
+  LOG_ACTIONS,
+  PARTICIPATION_ACTIONS,
+  ReportError,
+  type LogAction,
+  type LogEntry,
+  type ActivityViews,
+  type ParticipationAction,
+  type ActivityParticipant,
+} from "./areas/reports/reports.js";
 export { setCompletion, overrideCompletion, completionReport, CompletionError, type CompletionCell, type CompletionReport } from "./areas/completion/completion.js";
 export { participants, participantFilters, groups, NoParticipantsError, type Participant, type CourseGroup } from "./areas/participants/participants.js";
 export { upcomingEvents, createEvent, deleteEvent, CalendarError, type CalendarEvent } from "./areas/calendar/calendar.js";

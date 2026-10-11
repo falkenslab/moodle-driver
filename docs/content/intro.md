@@ -35,6 +35,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Grades | The person's grades, the grader report, the gradebook setup (categories, weights) |
 | Completion | Mark activities done, override completion, read the progress report |
 | People | Participants with roles and groups, inactivity, groups |
+| Logs and reports | A course's logs by user, activity, action and date; the views per activity; who took part in an activity |
 | Overview | The activities overview, deadlines, course updates |
 | Calendar and messages | Course events; notifications, conversations, private messages |
 | Session and site | Log in by hand, log out, who the person is, the site's public information |

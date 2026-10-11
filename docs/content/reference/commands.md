@@ -29,6 +29,20 @@ moodle activity-content <activityId> <type> [--options]
 | `type` | `"url" \| "page" \| "book" \| "label" \| "resource" \| "folder"` |  |
 | `--trail` | `"realistic" \| "fast"` |  |
 
+## activityReport
+
+A course's activity report: per activity, how many times it was viewed, by how many people, and when last, from the logs (between `from` and `until` when given). Activities nobody viewed come with zero views.
+
+```bash
+moodle activity-report <courseId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--from` | `Date` |  |
+| `--until` | `Date` |  |
+
 ## activitySettings
 
 An activity's settings as its form holds them, without submitting it: its module, name and description, and every field by the name `updateActivity` takes in `settings`. Teachers only.
@@ -209,6 +223,24 @@ moodle course-activity-types <courseId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` | `number` |  |
+
+## courseLogs
+
+A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format.
+
+```bash
+moodle course-logs <courseId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--user-id` | `number` |  |
+| `--activity-id` | `number` |  |
+| `--from` | `Date` |  |
+| `--until` | `Date` |  |
+| `--action` | `"create" \| "view" \| "update" \| "delete" \| "change"` |  |
+| `--limit` | `number` |  |
 
 ## courseRoles
 
@@ -696,6 +728,22 @@ moodle participants <courseId> [--options]
 | `--role` | `number` |  |
 | `--group` | `number` |  |
 | `--inactive-since` | `Date` |  |
+
+## participationReport
+
+Who took part in an activity of a course, as its participation report counts it: everyone with the role (every role the report offers, unless `roleId`), with how many actions they made there (views or posts only, when `action`; since `since`, when given); those who did nothing come with 0.
+
+```bash
+moodle participation-report <courseId> <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `activityId` | `number` |  |
+| `--role-id` | `number` |  |
+| `--since` | `Date` |  |
+| `--action` | `"view" \| "post"` |  |
 
 ## pendingActivities
 

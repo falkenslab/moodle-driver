@@ -7,6 +7,7 @@ import { activitySettings, addSection, createActivity, deleteActivity, deleteSec
 import { callService } from "./core/ajax.js";
 import { createEvent, deleteEvent, upcomingEvents } from "./areas/calendar/calendar.js";
 import { answerChoice, getChoice } from "./areas/surveys/choice.js";
+import { activityReport, courseLogs, participationReport } from "./areas/reports/reports.js";
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
 import { listCourses, updateCourse } from "./areas/courses/list.js";
@@ -43,6 +44,7 @@ import { MoodleError } from "./core/errors.js";
  */
 const SITE_FUNCTIONS = {
   activitiesOverview,
+  activityReport,
   activitySettings,
   addGradeCategory,
   addQuestionsToQuiz,
@@ -54,6 +56,7 @@ const SITE_FUNCTIONS = {
   conversations,
   courseAbilities,
   courseActivityTypes,
+  courseLogs,
   courseRoles,
   courseStructure,
   courseUpdates,
@@ -92,6 +95,7 @@ const SITE_FUNCTIONS = {
   overrideCompletion,
   participantFilters,
   participants,
+  participationReport,
   pendingActivities,
   questionBanks,
   questions,

@@ -172,6 +172,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   overrideCompletion: ["others-write"],
   completionReport: PERSONAL,
 
+  // Reports on what people did: the logs and each one's participation; the views per activity identify no one.
+  courseLogs: PERSONAL,
+  participationReport: PERSONAL,
+  activityReport: ["course-content", "others-aggregate"],
+
   // The gradebook: everyone's grades, and its setup (course content).
   graderReport: PERSONAL,
   gradebookSetup: CONTENT,

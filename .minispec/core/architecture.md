@@ -49,6 +49,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 - `grades/` — `user-report.ts`: the user grade report; `gradebook.ts`: the grader report and the gradebook setup read by data attributes, categories and items changed through Moodle's dynamic forms (`core_form_dynamic_form`) and the setup page's move action.
 - `completion/completion.ts` — manual completion (the person's), overrides (a teacher's) through their services; the progress report read by its links and icon names.
 - `participants/participants.ts` — a course's participants and groups from the participants table's service, filtered by role, group and inactivity; roles and groups by id from the page's filters.
+- `reports/` — `reports.ts`: a course's logs, activity report and participation report, read from their pages (no service open to AJAX) by cells, links and form fields; `dates.ts`: dates as reports write them, read back with the language's strftime format (`core_get_strings`) and ICU month names, in the person's time zone.
 - `calendar/calendar.ts` — course events created through the calendar's event form (a fragment opened at the start time, so no dates are filled in the person's time zone), read from the upcoming view, deleted through its service.
 - `messages/messages.ts` — the person's notifications and conversations, and sending a private message, through the popover's and the messaging drawer's services.
 

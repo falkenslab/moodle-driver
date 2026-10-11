@@ -39,6 +39,7 @@ export type MoodleErrorCode =
   | "message"
   | "no-participants"
   | "question-bank"
+  | "report"
   | "quiz"
   | "choice"
   | "survey";

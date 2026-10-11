@@ -93,6 +93,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `NoGradeReportError`, `GradebookError` | [Grades and gradebook](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Completion](../areas/completion.md) |
 | `NoParticipantsError` | [Participants](../areas/participants.md) |
+| `ReportError` | [Logs and reports](../areas/logs-and-reports.md): the person can't see the report, or the activity isn't the course's |
 | `CalendarError` | [Calendar](../areas/calendar.md) |
 | `MessageError` | [Messages](../areas/messages.md) |
 

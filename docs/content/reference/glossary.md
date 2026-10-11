@@ -83,6 +83,10 @@ The id of an activity in its module's own table (the quiz's id among quizzes, th
 
 One page of a lesson activity (module `lesson`): a content page with buttons that jump elsewhere, or a question page with a form, after which Moodle may show feedback; Moodle keeps which page the person is on. The driver reads the current one with `lessonPage` (`LessonPage`, with `kind` `"content"`, `"question"`, `"feedback"` or `"end"`, `pageId`, `buttons[].jumpTo`, `fields`) and answers it with `answerLessonPage`, which returns the `page` that follows. See [Lessons](../areas/lessons.md).
 
+### Log
+
+Moodle's record of every event in a course: who did what, when, where, and about whom ("Course module viewed", "Submission graded"), kept by its log store and read by teachers in the logs, activity and participation reports. The driver reads them with `courseLogs` (`LogEntry`, with `time`, `userId`, `relatedUserId`, `activityId`, `event`, `description`), the views per activity with `activityReport`, and who took part in an activity with `participationReport`. Acting at a person's pace (the [trail](#trail)) keeps the log looking like a person's. See [Logs and reports](../areas/logs-and-reports.md).
+
 ### Module
 
 The kind of an activity, by its plugin's name in Moodle's code and URLs: `assign` (Assignment), `quiz`, `forum`, `page`, `resource` (File), `url`, `h5pactivity`, `qbank` (a shared question bank)… The driver gives it as the activity's `type` (`CourseActivity.type`, `activityType` in grade rows, `activity.type` in calendar events) and takes it as `createActivity`'s `type`; `courseActivityTypes` lists those the person can add, and `moduleCategories` tells what reading one touches. See [Courses](../areas/courses.md) and [Activities and sections](../areas/activities.md).
