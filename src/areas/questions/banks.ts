@@ -219,8 +219,9 @@ export async function importQuestions(
     await uploadToDraft(page, (await formValue(page, "newfile"))!, [upload]);
     const values: Record<string, FieldValue> = { format };
     const category = await categoryOption(page, categoryId);
-    // The file's own categories would override the one chosen.
-    if (category) Object.assign(values, { category, catfromfile: false, contextfromfile: false });
+    // The file's own categories would override the one chosen. Unticking "category from file" also
+    // disables "context from file", which then isn't sent (confirmed empirically, 5.2).
+    if (category) Object.assign(values, { category, catfromfile: false });
     await setFields(page, values);
     await submitForm(page, "submitbutton");
     const problems = await pageProblems(page);
