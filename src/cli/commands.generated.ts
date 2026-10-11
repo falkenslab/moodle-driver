@@ -1990,6 +1990,59 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "resetCourse",
+    "description": "Resets a course for a new year, as Moodle's reset form does: deletes only what's named in `delete` (in every module of the course that has it), unenrols the people with `unenrolRoles` (role ids), moves the course's start date to `start` (and its activities' dates with it), and sets any other of the form's fields by name (`fields`). Nothing is deleted unless asked: the form's own defaults are unticked first. It can't be undone. Returns Moodle's report: per component, what it did and its errors. Needs `moodle/course:reset`.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "delete",
+          "optional": true,
+          "type": "ResetDeletions",
+          "value": {
+            "kind": "json"
+          }
+        },
+        {
+          "name": "unenrolRoles",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "restoreCourse",
     "description": "Restores a backup file (`.mbz`) through Moodle's restore wizard: into a new course in a category (`into: \"new\"`, with `categoryId`, which needs `moodle/course:create` there), or into an existing course (`into: <course id>`), its content added to the course's (`mode: \"merge\"`, the default) or replacing it (`\"replace\"`: the course's content is deleted first). A new course takes the backup's names unless `fullName` and `shortName` are given. Users' data is restored when `withUsers` and the backup has it. An asynchronous restore is waited for up to `timeoutMs` (ten minutes). Needs `moodle/restore:restorecourse` where it restores.",
     "params": [

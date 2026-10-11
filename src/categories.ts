@@ -106,6 +106,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   backupCourse: ["course-content", "others-personal"],
   restoreCourse: ["course-content", "others-personal"],
   importActivities: CONTENT,
+  // Resetting deletes the course's people's work and enrolments: deciding about others.
+  resetCourse: ["course-content", "others-write"],
   myGrades: OWN,
   deadlines: OWN,
   pendingActivities: OWN,

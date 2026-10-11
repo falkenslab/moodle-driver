@@ -12,6 +12,7 @@ import { backupCourse, copyCourse, importActivities, restoreCourse } from "./are
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
 import { listCourses, updateCourse } from "./areas/courses/list.js";
+import { resetCourse } from "./areas/courses/reset.js";
 import { downloadFile, type DownloadedFile } from "./core/files.js";
 import { openForm } from "./core/forms.js";
 import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
@@ -109,6 +110,7 @@ const SITE_FUNCTIONS = {
   readAttempt,
   readReview,
   replyToPost,
+  resetCourse,
   restoreCourse,
   rubric,
   saveSubmission,

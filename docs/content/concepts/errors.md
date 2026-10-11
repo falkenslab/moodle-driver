@@ -80,7 +80,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | --- | --- |
 | `NotViewableError` | [Content](../areas/content.md): the activity isn't of the type asked, or can't be viewed |
 | `ActivitySettingsError` | [Activities](../areas/activities.md): no settings form to read |
-| `CourseError` | [Courses](../areas/courses.md): the course's settings can't be changed |
+| `CourseError` | [Courses](../areas/courses.md): the course's settings can't be changed, or it can't be reset |
 | `BackupError` | [Copy, backup and restore](../areas/copy-backup-restore.md): Moodle refused, or didn't finish in time |
 | `SubmissionError` | [Assignments](../areas/assignments.md): nothing to submit, can't edit the submission… |
 | `NotAnAssignmentError`, `GradingError` | [Grading](../areas/grading.md): not an assignment the person can grade; Moodle didn't save the grade |
