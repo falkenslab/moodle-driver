@@ -175,6 +175,20 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   participants: PERSONAL,
   groups: PERSONAL,
   participantFilters: ["course-content"],
+  potentialUsers: PERSONAL,
+  enrolUsers: ["others-personal", "others-write"],
+  unenrolUser: ["others-personal", "others-write"],
+  setUserRoles: ["others-personal", "others-write"],
+  createGroup: CONTENT,
+  updateGroup: CONTENT,
+  deleteGroup: CONTENT,
+  setGroupMembers: ["others-personal", "others-write"],
+  groupings: CONTENT,
+  createGrouping: CONTENT,
+  deleteGrouping: CONTENT,
+  setGroupingGroups: CONTENT,
+  enrolmentMethods: CONTENT,
+  setEnrolmentMethod: CONTENT,
 
   // Completion: the person's own, deciding someone else's, everyone's report.
   setCompletion: OWN,
@@ -202,6 +216,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   conversations: PERSONAL,
   conversation: PERSONAL,
   sendMessage: ["communication"],
+  messageParticipants: ["communication"],
 
   // The calendar: the person's upcoming events; course events are what teachers set.
   upcomingEvents: ["own", "course-content"],

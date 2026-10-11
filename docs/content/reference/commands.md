@@ -293,6 +293,32 @@ moodle create-event --options
 | `--duration-minutes` | `number` |  |
 | `--description` | `string` |  |
 
+## createGroup
+
+Creates a group in a course with its group form (`group/group.php`). Throws `FormError` with Moodle's reason when it refuses (a name already used, an enrolment key another group has).
+
+```bash
+moodle create-group <courseId> <settings>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `settings` | `GroupSettings & { name: string; }` |  |
+
+## createGrouping
+
+Creates a grouping in a course with its form (`group/grouping.php`); add its groups with `setGroupingGroups`.
+
+```bash
+moodle create-grouping <courseId> <settings>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `settings` | `GroupingSettings & { name: string; }` |  |
+
 ## createQuestion
 
 Creates one question in a bank through its type's edit form; returns its id. Imports are the way for several; this is for one-offs.
@@ -351,6 +377,30 @@ moodle delete-event <eventId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `eventId` | `number` |  |
+
+## deleteGroup
+
+Deletes a group, as the groups page's "Delete selected group" does once confirmed; its members stay in the course.
+
+```bash
+moodle delete-group <groupId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupId` | `number` |  |
+
+## deleteGrouping
+
+Deletes a grouping, as its delete icon does once confirmed; its groups stay.
+
+```bash
+moodle delete-grouping <groupingId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupingId` | `number` |  |
 
 ## deleteQuestions
 
@@ -466,6 +516,34 @@ moodle edit-section <courseId> <sectionId> --options
 | `--summary` | `string` |  |
 | `--restrictions` | `Restrictions` |  |
 | `--after-section-id` | `number` |  |
+
+## enrolUsers
+
+Enrols users in a course by manual enrolment, as the participants page's "Enrol users" dialog does: with `roleId` or the enrolment's default role, from `start` (now, unless given) until `end` (the enrolment's default duration, unless given). Users already enrolled keep their enrolment, with the new dates. Throws `EnrolmentError` with Moodle's reason when it refuses (a role the person can't assign, no manual enrolment).
+
+```bash
+moodle enrol-users <courseId> <userIds> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `userIds` | `number[]` |  |
+| `--role-id` | `number` |  |
+| `--start` | `Date` |  |
+| `--end` | `Date` |  |
+
+## enrolmentMethods
+
+A course's enrolment methods, in the order Moodle tries them: each one's type, name, whether it's enabled and how many users it enrolled, and from its form the role it gives and, for self enrolment and guest access, whether it asks for a key (never the key), self enrolment's dates and limit. Throws `EnrolmentError` when the person can't manage the course's enrolment methods.
+
+```bash
+moodle enrolment-methods <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
 
 ## finishQuizAttempt
 
@@ -590,6 +668,18 @@ moodle grant-extension <activityId> <userIds> <until>
 | `userIds` | `number[]` |  |
 | `until` | `Date` |  |
 
+## groupings
+
+A course's groupings with their groups' ids, from its groupings page and each grouping's groups page.
+
+```bash
+moodle groupings <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+
 ## groups
 
 A course's groups the person can see, with their members' user ids.
@@ -694,6 +784,20 @@ Marks all the person's notifications read, as the popover's "Mark all as read" d
 moodle mark-notifications-read
 ```
 
+## messageParticipants
+
+Sends one message to several participants of a course, as the participants page's "Send a message" does for the users selected: one private message each, in one call. They are `userIds`, or the participants `participants()` chooses with `role`, `group` and `inactiveSince` (all of them when none is given), the person left out. `sentTo` lists exactly who got it, `refused` who Moodle didn't write to and why (they blocked the person, their privacy settings); someone who may message any user (a teacher, `moodle/site:messageanyuser`) gets through a block, as in Moodle's own page (confirmed empirically, Moodle 5.2). Throws `MessageError` for an empty message or nobody to write to, `NoParticipantsError` when the person can't see the course's participants.
+
+```bash
+moodle message-participants <courseId> <text> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `text` | `string` |  |
+| `--user-ids` (required) | `number[]` |  |
+
 ## myGrades
 
 The person's own grade report for a course.
@@ -770,6 +874,19 @@ moodle pending-activities <courseId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` | `number` |  |
+
+## potentialUsers
+
+Users the person may enrol in a course by manual enrolment, matching `search` anywhere in their name or the identity fields the site shows (all of them, a page of up to 100, when empty), as the "Enrol users" dialog finds them. Throws `EnrolmentError` when the course has no manual enrolment the person can use.
+
+```bash
+moodle potential-users <courseId> [search]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `search` (optional) | `string` |  |
 
 ## publicSiteInfo
 
@@ -981,6 +1098,53 @@ moodle set-discussion-state <activityId> <discussionId> --options
 | `--pinned` | `boolean` |  |
 | `--locked` | `boolean` |  |
 
+## setEnrolmentMethod
+
+Sets an enrolment method with its form: by id, or the course's first method of a type (`{ type: "self" }`), added when the course has none and the "Add method" menu offers it. Only what's given changes. Returns the method afterwards. Throws `EnrolmentError` for a method the course doesn't have or can't add, `FormError` with Moodle's reason when it refuses the form (a key required by the site, an end before the start).
+
+```bash
+moodle set-enrolment-method <courseId> <method> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `method` | `number \| { type: string; }` |  |
+| `--enabled` | `boolean` |  |
+| `--key` | `string` | Self enrolment and guest access: the key to ask for; "" removes it. |
+| `--start` | `Date` | Self enrolment: from when and until when students may enrol; `null` removes the limit. |
+| `--end` | `Date` |  |
+| `--role-id` | `number` | The role it gives (manual and self enrolment). |
+| `--max-users` | `number` | Self enrolment: the most users it enrols; 0 for no limit. |
+| `--welcome` | `string \| false` | Self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none. |
+
+## setGroupMembers
+
+Adds and removes a group's members (user ids), as its members page does. Only the course's participants can be added: ids the page doesn't offer (not enrolled, or already members) and members not in it are left as they were and named in `changed`. Returns the members afterwards.
+
+```bash
+moodle set-group-members <groupId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupId` | `number` |  |
+| `--add` | `number[]` |  |
+| `--remove` | `number[]` |  |
+
+## setGroupingGroups
+
+Makes a grouping's groups exactly `groupIds`, as its groups page adds and removes them. Groups of other courses aren't offered there and are left out, named in `changed`. Returns the groups afterwards.
+
+```bash
+moodle set-grouping-groups <groupingId> <groupIds>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupingId` | `number` |  |
+| `groupIds` | `number[]` |  |
+
 ## setQuestionStatus
 
 Sets a question ready (quizzes can use it) or draft, as the bank's status menu does, through its service.
@@ -1023,6 +1187,20 @@ moodle set-quiz-pages <activityId> --options
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `--per-page` (required) | `number` |  |
+
+## setUserRoles
+
+Sets a user's roles in a course, as the participants page's roles column does: gives the roles in `roleIds` the person may assign, and takes away the others the person may assign. Roles the person can't assign that the user already holds, and those from elsewhere (a category, an enrolment that protects them), stay. Returns the user's roles afterwards, as that column shows them. Throws `EnrolmentError` with Moodle's reason for a role the person can't assign or a user not enrolled.
+
+```bash
+moodle set-user-roles <courseId> <userId> <roleIds>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `userId` | `number` |  |
+| `roleIds` | `number[]` |  |
 
 ## siteName
 
@@ -1096,6 +1274,19 @@ moodle submit-survey <activityId> <responses> [--options]
 | `responses` | `Record<string, string>` |  |
 | `--type` | `SurveyType` |  |
 
+## unenrolUser
+
+Unenrols a user from a course: removes every enrolment of theirs the person may remove (its unenrol link on the participants page), with their roles and group memberships in the course, as that link does. `changed` and `removed` say which ones (by enrolment method's name), `kept` those the person may not remove (a cohort sync, another teacher's method). Throws `EnrolmentError` when the user isn't enrolled.
+
+```bash
+moodle unenrol-user <courseId> <userId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `userId` | `number` |  |
+
 ## upcomingEvents
 
 The person's upcoming events, as the calendar's "Upcoming events" view lists them, in one course or all.
@@ -1152,6 +1343,22 @@ moodle update-grade-item <courseId> <itemId> --options
 | `--category` | `number` |  |
 | `--weight` | `number` |  |
 | `--max-grade` | `number` |  |
+
+## updateGroup
+
+Changes a group's name, description, ID number or enrolment key with its form; what isn't given stays.
+
+```bash
+moodle update-group <groupId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `groupId` | `number` |  |
+| `--name` | `string` |  |
+| `--description` | `string` | HTML. |
+| `--id-number` | `string` |  |
+| `--enrolment-key` | `string` | The key that puts a student enrolling with self enrolment in this group. |
 
 ## updateQuestion
 

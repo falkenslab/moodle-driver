@@ -6,6 +6,7 @@ import { isoDate } from "../courses/list.js";
 import { htmlToTexts } from "../forums/discussions.js";
 import { decodeEntities } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
+import { participants } from "../participants/participants.js";
 
 /** Moodle didn't deliver a message. */
 export class MessageError extends MoodleError {
@@ -153,13 +154,61 @@ export async function conversation(context: BrowserContext, siteUrl: string, con
   };
 }
 
+function checkNotEmpty(text: string): void {
+  if (text.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim() === "") throw new MessageError("The message is empty: write something before sending it.");
+}
+
 /** Sends a private message to a user, as the messaging drawer does; returns the message and its conversation. */
 export async function sendMessage(context: BrowserContext, siteUrl: string, userId: number, text: string): Promise<{ changed: string; messageId: number; conversationId?: number }> {
-  if (text.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim() === "") throw new MessageError("The message is empty: write something before sending it.");
+  checkNotEmpty(text);
   const [sent] = await callService<{ msgid: number; conversationid?: number; errormessage?: string }[]>(context, siteUrl, "core_message_send_instant_messages", {
     messages: [{ touserid: userId, text, textformat: 1 }],
   });
   // A refused message comes back with id -1 and Moodle's reason (blocked, not a contact…).
   if (!sent || sent.msgid < 0) throw new MessageError(`Moodle didn't send the message to user ${userId}: ${sent?.errormessage ?? "no reason given"}`);
   return { changed: `Message ${sent.msgid} sent to user ${userId}.`, messageId: sent.msgid, ...(sent.conversationid ? { conversationId: sent.conversationid } : {}) };
+}
+
+/** Who `messageParticipants` writes to: chosen users, or the participants `participants()` chooses with these filters. */
+export type ParticipantSelection = { userIds: number[] } | { role?: number; group?: number; inactiveSince?: Date };
+
+/**
+ * Sends one message to several participants of a course, as the participants page's "Send a message"
+ * does for the users selected: one private message each, in one call. They are `userIds`, or the
+ * participants `participants()` chooses with `role`, `group` and `inactiveSince` (all of them when
+ * none is given), the person left out. `sentTo` lists exactly who got it, `refused` who Moodle
+ * didn't write to and why (they blocked the person, their privacy settings); someone who may message
+ * any user (a teacher, `moodle/site:messageanyuser`) gets through a block, as in Moodle's own page
+ * (confirmed empirically, Moodle 5.2). Throws `MessageError`
+ * for an empty message or nobody to write to, `NoParticipantsError` when the person can't see the
+ * course's participants.
+ */
+export async function messageParticipants(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  text: string,
+  selection: ParticipantSelection = {},
+): Promise<{ changed: string; sentTo: number[]; refused: { userId: number; reason: string }[] }> {
+  checkNotEmpty(text);
+  let userIds: number[];
+  if ("userIds" in selection) userIds = [...new Set(selection.userIds)];
+  else {
+    const { userId: me } = await readPageConfig(context, siteUrl);
+    userIds = (await participants(context, siteUrl, courseId, selection)).map((p) => p.userId).filter((id) => id !== me);
+  }
+  if (userIds.length === 0) throw new MessageError(`Nobody to write to in course ${courseId}: no participant matches.`);
+  const sent = await callService<{ msgid: number; errormessage?: string }[]>(context, siteUrl, "core_message_send_instant_messages", {
+    messages: userIds.map((touserid) => ({ touserid, text, textformat: 1 })),
+  });
+  // One answer per message, in order; a refused one has id -1 and Moodle's reason.
+  const sentTo: number[] = [];
+  const refused: { userId: number; reason: string }[] = [];
+  userIds.forEach((userId, i) => {
+    const answer = sent[i];
+    if (answer && answer.msgid >= 0) sentTo.push(userId);
+    else refused.push({ userId, reason: answer?.errormessage ?? "no reason given" });
+  });
+  const refusedText = refused.length > 0 ? `; refused for ${refused.map((r) => r.userId).join(", ")}` : "";
+  return { changed: `Message sent to ${sentTo.length} participant(s) of course ${courseId}${refusedText}.`, sentTo, refused };
 }

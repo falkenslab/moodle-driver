@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
-import { MessageError, conversation, conversations, markNotificationsRead, notifications, sendMessage } from "../../../src/index.js";
-import { SITE, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
+import { MessageError, conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "../../../src/index.js";
+import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
 after(() => browser?.close());
@@ -121,6 +121,70 @@ describe("conversations and messages", { skip: !browser && "no system browser" }
     assert.deepEqual(await sendMessage(context, SITE, 3, "<p>Hello</p>"), { changed: "Message 3 sent to user 3.", messageId: 3, conversationId: 6 });
     await assert.rejects(sendMessage(context, SITE, 3, "<p>&nbsp;</p>"), /The message is empty/);
     await assert.rejects(sendMessage(context, SITE, 9, "Hi"), (error: Error) => error instanceof MessageError && /blocked you/.test(error.message));
+    await context.close();
+  });
+});
+
+describe("messageParticipants", { skip: !browser && "no system browser" }, () => {
+  // Course 3 as the teacher (user 3) sees it: the teacher, Ana (group 1) and Bruno (group 1, who blocked the teacher), Carla.
+  const PEOPLE = [
+    { id: 3, groups: [] as number[] },
+    { id: 4, groups: [1] },
+    { id: 5, groups: [1] },
+    { id: 6, groups: [] as number[] },
+  ];
+  const tableRow = (id: number) => `<tr><th scope="row"><a href="${SITE}user/view.php?id=${id}&amp;course=3">User ${id}</a></th></tr>`;
+
+  async function course() {
+    const state: FakeMoodleState = {
+      user: { id: 3, fullName: "Teacher" },
+      serviceCalls: [],
+      services: {
+        core_table_get_dynamic_table_content: (args) => {
+          const group = (args.filters as { name: string; values: number[] }[]).find((f) => f.name === "groups")?.values[0];
+          const rows = PEOPLE.filter((p) => group === undefined || p.groups.includes(group)).map((p) => tableRow(p.id));
+          return { html: `<table><tbody>${rows.join("")}</tbody></table>` };
+        },
+        // Moodle answers each message in order; Bruno blocked the sender.
+        core_message_send_instant_messages: (args) =>
+          (args.messages as { touserid: number }[]).map((m) => (m.touserid === 5 ? { msgid: -1, errormessage: "This user has blocked you." } : { msgid: 100 + m.touserid, conversationid: 7 })),
+      },
+    };
+    const context: BrowserContext = await browser!.newContext();
+    await serveFakeMoodle(context, state);
+    const filters = `<select data-field-name="roles"><option value="5">Student</option></select><select data-field-name="groups"><option value="1">Group A</option></select>`;
+    await context.route(`${SITE}user/index.php**`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-course-view-participants", body: filters }) }));
+    return { context, state };
+  }
+
+  it("writes to a group's participants in one call, and lists who Moodle refused", async () => {
+    const { context, state } = await course();
+    assert.deepEqual(await messageParticipants(context, SITE, 3, "<p>Hello</p>", { group: 1 }), {
+      changed: "Message sent to 1 participant(s) of course 3; refused for 5.",
+      sentTo: [4],
+      refused: [{ userId: 5, reason: "This user has blocked you." }],
+    });
+    const sends = state.serviceCalls!.filter((c) => c.methodname === "core_message_send_instant_messages");
+    assert.equal(sends.length, 1);
+    assert.deepEqual(sends[0]!.args.messages, [
+      { touserid: 4, text: "<p>Hello</p>", textformat: 1 },
+      { touserid: 5, text: "<p>Hello</p>", textformat: 1 },
+    ]);
+    await context.close();
+  });
+
+  it("writes to everyone but the person when no filter is given, and to chosen users as given", async () => {
+    const { context } = await course();
+    assert.deepEqual((await messageParticipants(context, SITE, 3, "Hi")).sentTo, [4, 6]);
+    assert.deepEqual((await messageParticipants(context, SITE, 3, "Hi", { userIds: [6, 6, 4] })).sentTo, [6, 4]);
+    await context.close();
+  });
+
+  it("refuses an empty message and an empty selection before sending", async () => {
+    const { context, state } = await course();
+    await assert.rejects(messageParticipants(context, SITE, 3, "<p> </p>", { group: 1 }), MessageError);
+    await assert.rejects(messageParticipants(context, SITE, 3, "Hi", { userIds: [] }), MessageError);
+    assert.equal(state.serviceCalls!.filter((c) => c.methodname === "core_message_send_instant_messages").length, 0);
     await context.close();
   });
 });

@@ -1,6 +1,6 @@
 # Messages
 
-This area covers the person's Moodle messaging: their notifications (`notifications`, `markNotificationsRead`), their conversations (`conversations`, `conversation`) and sending a private message (`sendMessage`). It works the same for students and teachers, always as the logged-in person: there's no reading someone else's messages. Forum posts are in [Forums](forums.md).
+This area covers the person's Moodle messaging: their notifications (`notifications`, `markNotificationsRead`), their conversations (`conversations`, `conversation`) and sending a private message (`sendMessage`), to one person or to several participants of a course at once (`messageParticipants`). It works the same for students and teachers, always as the logged-in person: there's no reading someone else's messages. Forum posts are in [Forums](forums.md).
 
 **Terms:** [notification](../reference/glossary.md#notification), [conversation](../reference/glossary.md#conversation).
 
@@ -109,6 +109,25 @@ It throws `MessageError`:
 
 It goes through `core_message_send_instant_messages`.
 
+## messageParticipants
+
+Sends one message to several participants of a course, as the participants page's "Send a message" does for the users selected: one private message to each, in one call.
+
+```ts
+function messageParticipants(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  text: string,
+  selection?: { userIds: number[] } | { role?: number; group?: number; inactiveSince?: Date },
+): Promise<{ changed: string; sentTo: number[]; refused: { userId: number; reason: string }[] }>;
+```
+
+- `selection`: the users by id, or the participants `participants` chooses with `role`, `group` and `inactiveSince` (see [Participants](participants.md)); with no filter, every participant. Chosen by filters, the person is left out.
+- `sentTo` lists exactly who got the message; `refused` who Moodle didn't write to, with its reason (they blocked the person, their messaging privacy).
+
+It throws `MessageError` before sending anything when the text is empty or nobody matches, and `NoParticipantsError` when the person can't see the course's participants. Someone who can message any user (a teacher, on a default site: `moodle/site:messageanyuser`) gets through a block, as in Moodle's own page: a student who blocked their teacher still gets the teacher's message (confirmed empirically, Moodle 5.2).
+
 ## Example
 
 Read the unread notifications, then answer a student's latest message.
@@ -142,4 +161,4 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 
 - `notifications`, `markNotificationsRead`: `own`.
 - `conversations`, `conversation`: `others-personal` (they hold others' messages).
-- `sendMessage`: `communication` (writing to others).
+- `sendMessage`, `messageParticipants`: `communication` (writing to others).

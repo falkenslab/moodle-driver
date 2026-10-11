@@ -656,6 +656,50 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "createGroup",
+    "description": "Creates a group in a course with its group form (`group/group.php`). Throws `FormError` with Moodle's reason when it refuses (a name already used, an enrolment key another group has).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "settings",
+        "optional": false,
+        "type": "GroupSettings & { name: string; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
+    "name": "createGrouping",
+    "description": "Creates a grouping in a course with its form (`group/grouping.php`); add its groups with `setGroupingGroups`.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "settings",
+        "optional": false,
+        "type": "GroupingSettings & { name: string; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
     "name": "createQuestion",
     "description": "Creates one question in a bank through its type's edit form; returns its id. Imports are the way for several; this is for one-offs.",
     "params": [
@@ -815,6 +859,34 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "eventId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteGroup",
+    "description": "Deletes a group, as the groups page's \"Delete selected group\" does once confirmed; its members stay in the course.",
+    "params": [
+      {
+        "name": "groupId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteGrouping",
+    "description": "Deletes a grouping, as its delete icon does once confirmed; its groups stay.",
+    "params": [
+      {
+        "name": "groupingId",
         "optional": false,
         "type": "number",
         "value": {
@@ -1114,6 +1186,73 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "enrolUsers",
+    "description": "Enrols users in a course by manual enrolment, as the participants page's \"Enrol users\" dialog does: with `roleId` or the enrolment's default role, from `start` (now, unless given) until `end` (the enrolment's default duration, unless given). Users already enrolled keep their enrolment, with the new dates. Throws `EnrolmentError` with Moodle's reason when it refuses (a role the person can't assign, no manual enrolment).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "roleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "enrolmentMethods",
+    "description": "A course's enrolment methods, in the order Moodle tries them: each one's type, name, whether it's enabled and how many users it enrolled, and from its form the role it gives and, for self enrolment and guest access, whether it asks for a key (never the key), self enrolment's dates and limit. Throws `EnrolmentError` when the person can't manage the course's enrolment methods.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "finishQuizAttempt",
     "description": "Submits an attempt for grading, and gives its review when the quiz shows it.",
     "params": [
@@ -1388,6 +1527,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "groupings",
+    "description": "A course's groupings with their groups' ids, from its groupings page and each grouping's groups page.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "groups",
     "description": "A course's groups the person can see, with their members' user ids.",
     "params": [
@@ -1551,6 +1704,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": []
   },
   {
+    "name": "messageParticipants",
+    "description": "Sends one message to several participants of a course, as the participants page's \"Send a message\" does for the users selected: one private message each, in one call. They are `userIds`, or the participants `participants()` chooses with `role`, `group` and `inactiveSince` (all of them when none is given), the person left out. `sentTo` lists exactly who got it, `refused` who Moodle didn't write to and why (they blocked the person, their privacy settings); someone who may message any user (a teacher, `moodle/site:messageanyuser`) gets through a block, as in Moodle's own page (confirmed empirically, Moodle 5.2). Throws `MessageError` for an empty message or nobody to write to, `NoParticipantsError` when the person can't see the course's participants.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "text",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "selection",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "userIds",
+          "optional": false,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "myGrades",
     "description": "The person's own grade report for a course.",
     "params": [
@@ -1689,6 +1879,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         "type": "number",
         "value": {
           "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "potentialUsers",
+    "description": "Users the person may enrol in a course by manual enrolment, matching `search` anywhere in their name or the identity fields the site shows (all of them, a page of up to 100, when empty), as the \"Enrol users\" dialog finds them. Throws `EnrolmentError` when the course has no manual enrolment the person can use.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "search",
+        "optional": true,
+        "type": "string",
+        "value": {
+          "kind": "string"
         }
       }
     ]
@@ -2024,6 +2236,155 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "setEnrolmentMethod",
+    "description": "Sets an enrolment method with its form: by id, or the course's first method of a type (`{ type: \"self\" }`), added when the course has none and the \"Add method\" menu offers it. Only what's given changes. Returns the method afterwards. Throws `EnrolmentError` for a method the course doesn't have or can't add, `FormError` with Moodle's reason when it refuses the form (a key required by the site, an end before the start).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "method",
+        "optional": false,
+        "type": "number | { type: string; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ],
+    "options": {
+      "name": "settings",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "enabled",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "key",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Self enrolment and guest access: the key to ask for; \"\" removes it."
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          },
+          "description": "Self enrolment: from when and until when students may enrol; `null` removes the limit."
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "roleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "The role it gives (manual and self enrolment)."
+        },
+        {
+          "name": "maxUsers",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Self enrolment: the most users it enrols; 0 for no limit."
+        },
+        {
+          "name": "welcome",
+          "optional": true,
+          "type": "string | false",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none."
+        }
+      ]
+    }
+  },
+  {
+    "name": "setGroupMembers",
+    "description": "Adds and removes a group's members (user ids), as its members page does. Only the course's participants can be added: ids the page doesn't offer (not enrolled, or already members) and members not in it are left as they were and named in `changed`. Returns the members afterwards.",
+    "params": [
+      {
+        "name": "groupId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "add",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        },
+        {
+          "name": "remove",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "setGroupingGroups",
+    "description": "Makes a grouping's groups exactly `groupIds`, as its groups page adds and removes them. Groups of other courses aren't offered there and are left out, named in `changed`. Returns the groups afterwards.",
+    "params": [
+      {
+        "name": "groupingId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "groupIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      }
+    ]
+  },
+  {
     "name": "setQuestionStatus",
     "description": "Sets a question ready (quizzes can use it) or draft, as the bank's status menu does, through its service.",
     "params": [
@@ -2138,6 +2499,36 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "setUserRoles",
+    "description": "Sets a user's roles in a course, as the participants page's roles column does: gives the roles in `roleIds` the person may assign, and takes away the others the person may assign. Roles the person can't assign that the user already holds, and those from elsewhere (a category, an enrolment that protects them), stay. Returns the user's roles afterwards, as that column shows them. Throws `EnrolmentError` with Moodle's reason for a role the person can't assign or a user not enrolled.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "roleIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      }
+    ]
   },
   {
     "name": "siteName",
@@ -2263,6 +2654,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "unenrolUser",
+    "description": "Unenrols a user from a course: removes every enrolment of theirs the person may remove (its unenrol link on the participants page), with their roles and group memberships in the course, as that link does. `changed` and `removed` say which ones (by enrolment method's name), `kept` those the person may not remove (a cohort sync, another teacher's method). Throws `EnrolmentError` when the user isn't enrolled.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
   },
   {
     "name": "upcomingEvents",
@@ -2408,6 +2821,61 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "number"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "updateGroup",
+    "description": "Changes a group's name, description, ID number or enrolment key with its form; what isn't given stays.",
+    "params": [
+      {
+        "name": "groupId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "settings",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "HTML."
+        },
+        {
+          "name": "idNumber",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "enrolmentKey",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The key that puts a student enrolling with self enrolment in this group."
         }
       ]
     }

@@ -31,10 +31,10 @@ export class NoParticipantsError extends MoodleError {
 // The table's join types (core\output\datafilter): a filter's values match any; filters all apply.
 const JOIN_ANY = 1;
 const JOIN_ALL = 2;
-const PAGE_SIZE = 100;
-const MAX_PAGES = 100;
+export const PARTICIPANTS_PAGE_SIZE = 100;
+export const MAX_PARTICIPANT_PAGES = 100;
 
-interface Filter {
+export interface Filter {
   name: string;
   jointype: number;
   values: number[];
@@ -64,29 +64,35 @@ export function readParticipantRows(page: Page): Promise<{ userId: number; fullN
   });
 }
 
+/** One page (from 1) of the participants table matching `filters`, as the HTML fragment the page renders. */
+export async function participantsTablePage(context: BrowserContext, siteUrl: string, courseId: number, filters: Filter[], pagenumber: number): Promise<string> {
+  const { html } = await callService<{ html: string }>(context, siteUrl, "core_table_get_dynamic_table_content", {
+    component: "core_user",
+    handler: "participants",
+    uniqueid: `user-index-participants-${courseId}`,
+    sortdata: [{ sortby: "lastname", sortorder: 4 }],
+    // Integer filters take numbers: a string id fails (confirmed empirically, Moodle 5.2).
+    filters: [{ name: "courseid", jointype: JOIN_ANY, values: [courseId] }, ...filters],
+    jointype: JOIN_ALL,
+    firstinitial: "",
+    lastinitial: "",
+    pagenumber,
+    pagesize: PARTICIPANTS_PAGE_SIZE,
+    hiddencolumns: [],
+    resetpreferences: false,
+  });
+  return html;
+}
+
 /** Every participant matching `filters`, page by page, parsed in `parser` (a blank tab). */
 async function fetchAll(context: BrowserContext, siteUrl: string, parser: Page, courseId: number, filters: Filter[]): Promise<{ userId: number; fullName: string }[]> {
   const all = new Map<number, { userId: number; fullName: string }>();
-  for (let pagenumber = 1; pagenumber <= MAX_PAGES; pagenumber++) {
-    const { html } = await callService<{ html: string }>(context, siteUrl, "core_table_get_dynamic_table_content", {
-      component: "core_user",
-      handler: "participants",
-      uniqueid: `user-index-participants-${courseId}`,
-      sortdata: [{ sortby: "lastname", sortorder: 4 }],
-      // Integer filters take numbers: a string id fails (confirmed empirically, Moodle 5.2).
-      filters: [{ name: "courseid", jointype: JOIN_ANY, values: [courseId] }, ...filters],
-      jointype: JOIN_ALL,
-      firstinitial: "",
-      lastinitial: "",
-      pagenumber,
-      pagesize: PAGE_SIZE,
-      hiddencolumns: [],
-      resetpreferences: false,
-    });
+  for (let pagenumber = 1; pagenumber <= MAX_PARTICIPANT_PAGES; pagenumber++) {
+    const html = await participantsTablePage(context, siteUrl, courseId, filters, pagenumber);
     await parser.setContent(html);
     const rows = await readParticipantRows(parser);
     for (const row of rows) all.set(row.userId, row);
-    if (rows.length < PAGE_SIZE) break;
+    if (rows.length < PARTICIPANTS_PAGE_SIZE) break;
   }
   return Array.from(all.values());
 }

@@ -38,6 +38,7 @@ export type MoodleErrorCode =
   | "lesson"
   | "message"
   | "no-participants"
+  | "enrolment"
   | "question-bank"
   | "quiz"
   | "choice"
