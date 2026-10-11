@@ -13,7 +13,7 @@ Everywhere, as a command of your system:
 npm i -g @falkenslab/moodle-driver
 
 # Meanwhile, from a GitHub release's package
-npm i -g https://github.com/falkenslab/moodle-driver/releases/download/v0.3.0/falkenslab-moodle-driver-0.3.0.tgz
+npm i -g https://github.com/falkenslab/moodle-driver/releases/download/v0.3.1/falkenslab-moodle-driver-0.3.1.tgz
 
 # Or from a clone, to follow main
 git clone https://github.com/falkenslab/moodle-driver.git
