@@ -152,7 +152,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   gradeQuizQuestion: ["others-personal", "others-write"],
   quizStructure: CONTENT,
   addQuestionsToQuiz: CONTENT,
-  editQuizSlot: CONTENT,
+  // A new maximum mark regrades the attempts already made.
+  editQuizSlot: ["course-content", "others-write"],
   removeQuizSlot: CONTENT,
   setQuizPages: CONTENT,
   addQuizSection: CONTENT,

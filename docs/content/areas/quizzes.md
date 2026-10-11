@@ -460,7 +460,8 @@ The single steps these are built on (starting an attempt, saving a page, finishi
 - `readReview`: `own` and `others-personal`, since a teacher may review someone else's attempt.
 - `quizResults`, `questionsToGrade`: `others-personal`.
 - `gradeQuizQuestion`: `others-personal` and `others-write`.
-- `quizStructure`, `addQuestionsToQuiz`, `editQuizSlot`, `removeQuizSlot`, `setQuizPages`, `addQuizSection`: `course-content`.
+- `quizStructure`, `addQuestionsToQuiz`, `removeQuizSlot`, `setQuizPages`, `addQuizSection`: `course-content`.
+- `editQuizSlot`: `course-content` and `others-write` (a new maximum mark regrades the attempts already made).
 - `setQuizOverride`: `others-write`.
 
 See [Data categories](../concepts/data-categories.md).
