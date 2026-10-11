@@ -23,6 +23,7 @@ import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
 import { groups, participantFilters, participants } from "./areas/participants/participants.js";
+import { enrolUsers, potentialUsers, setUserRoles, unenrolUser } from "./areas/participants/enrolments.js";
 import { createQuestion, importQuestions, questionBanks, questions } from "./areas/questions/banks.js";
 import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
@@ -92,6 +93,10 @@ const SITE_FUNCTIONS = {
   overrideCompletion,
   participantFilters,
   participants,
+  potentialUsers,
+  enrolUsers,
+  unenrolUser,
+  setUserRoles,
   pendingActivities,
   questionBanks,
   questions,

@@ -166,6 +166,10 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   participants: PERSONAL,
   groups: PERSONAL,
   participantFilters: ["course-content"],
+  potentialUsers: PERSONAL,
+  enrolUsers: ["others-personal", "others-write"],
+  unenrolUser: ["others-personal", "others-write"],
+  setUserRoles: ["others-personal", "others-write"],
 
   // Completion: the person's own, deciding someone else's, everyone's report.
   setCompletion: OWN,

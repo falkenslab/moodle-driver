@@ -1,12 +1,12 @@
 # Participants
 
-This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). It's mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
+This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`) and giving or taking roles (`setUserRoles`). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
 
 **Terms:** [participant](../reference/glossary.md#participant), [role](../reference/glossary.md#role), [group](../reference/glossary.md#group).
 
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
-People come as a user id and a full name, with their roles and groups by id. Emails, phone numbers, profile fields, pictures and last access dates are deliberately left out: telling participants apart, filtering them and acting on them (grading, overriding, messaging) needs nothing else. A single user is read by id with `userById` (see [Users and site](users-and-site.md)).
+People come as a user id and a full name, with their roles and groups by id. Emails (except for `potentialUsers`), phone numbers, profile fields, pictures and last access dates are deliberately left out: telling participants apart, filtering them and acting on them (grading, overriding, messaging) needs nothing else. A single user is read by id with `userById` (see [Users and site](users-and-site.md)).
 
 ## How it reads Moodle
 
@@ -66,6 +66,62 @@ function participantFilters(context: BrowserContext, siteUrl: string, courseId: 
 
 Names are in the site's language ("Student", "Estudiante"); ids are what `participants` and `graderReport` take. The page's "No roles" and "No group" options are left out. It throws `NoParticipantsError` when the person can't open the page.
 
+## potentialUsers
+
+Users the person may enrol in a course by manual enrolment, as the participants page's "Enrol users" dialog finds them.
+
+```ts
+function potentialUsers(context: BrowserContext, siteUrl: string, courseId: number, search?: string): Promise<PotentialUser[]>;
+
+interface PotentialUser {
+  userId: number;
+  fullName: string;
+  email?: string;
+}
+```
+
+`search` matches anywhere in the name or the identity fields the site shows to the person (empty: anyone, up to 100). Users already enrolled are left out. `email` comes only when the site shows it to the person; it's the one place this area returns one, since telling apart people who aren't participants yet may need it. It comes from `core_enrol_get_potential_users`, the dialog's own service. It throws `EnrolmentError` when the course has no manual enrolment the person can use (not among its enrolment methods, disabled, or no permission to enrol), `NoParticipantsError` when the person can't open the participants page.
+
+## enrolUsers
+
+Enrols users by the course's manual enrolment, as the "Enrol users" dialog does.
+
+```ts
+function enrolUsers(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  userIds: number[],
+  options?: { roleId?: number; start?: Date; end?: Date },
+): Promise<{ changed: string; count: number; roleId?: number }>;
+```
+
+- `roleId`: the role to give; the manual enrolment's default role (usually Student) when left out. The roles the person may give are those of `setUserRoles`.
+- `start`: when the enrolment starts; the dialog's default ("Now", or what the site sets) when left out.
+- `end`: when it ends; the enrolment's default duration (unlimited unless the method sets one) when left out.
+
+Dates are sent in the person's time zone in Moodle, as the dialog's date selectors are. The driver reads the dialog's form (`core_get_fragment`) for its defaults and submits it where the dialog does (`enrol/manual/ajax.php`); `count` is the number Moodle reports enrolled. A user already enrolled by that method keeps the enrolment, with the new role added and the new dates. Moodle's refusals throw `EnrolmentError` with its reason: a role the person can't assign ("Invalid role"), no manual enrolment.
+
+## unenrolUser
+
+Removes a user from a course, as the unenrol icon in the participants page's status column does, once for each enrolment the user has there.
+
+```ts
+function unenrolUser(context: BrowserContext, siteUrl: string, courseId: number, userId: number): Promise<{ changed: string; removed: string[]; kept: string[] }>;
+```
+
+Every enrolment of the user's that the person may remove goes (`core_enrol_unenrol_user_enrolment`), and with it Moodle takes their roles and group memberships in the course; `removed` names them by enrolment method ("Manual enrolments"), `kept` names those the person can't remove (a cohort sync, a method without the permission), which keep the user in the course. It throws `EnrolmentError` when the user isn't enrolled, or when none of their enrolments can be removed.
+
+## setUserRoles
+
+Sets a user's roles in a course, as the participants page's roles column does.
+
+```ts
+function setUserRoles(context: BrowserContext, siteUrl: string, courseId: number, userId: number, roleIds: number[]): Promise<{ changed: string; roleIds: number[] }>;
+```
+
+The roles in `roleIds` are given and the other roles the person may assign are taken away; roles the person can't assign, and those from elsewhere (a category, an enrolment method that protects its roles), stay. The result is the user's roles afterwards as the column shows them. It goes through the column's own service (`core_update_inplace_editable`). An editing teacher may usually assign Non-editing teacher and Student, not Teacher: a role outside those is refused with `EnrolmentError` and Moodle's reason ("Role cannot be assigned in this course"), as is a user who isn't enrolled ("User does not belong to the course").
+
 ## Pseudonymizing
 
 The driver returns real names: it's a library for any program, and what a program does with names is its own choice. A program that hands participants' data to someone else (an AI model, say) pseudonymizes it itself; moodle-mcp, one consumer, does it with `@falkenslab/pseudonym`. User ids are stable within a site, so a program can keep a table from id to pseudonym and translate back before acting.
@@ -100,3 +156,5 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 
 - `participants`, `groups`: `others-personal`.
 - `participantFilters`: `course-content` (the course's roles and groups, nobody's data).
+- `potentialUsers`: `others-personal`.
+- `enrolUsers`, `unenrolUser`, `setUserRoles`: `others-personal` and `others-write` (deciding who is in the course and with which role).

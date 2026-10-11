@@ -119,5 +119,6 @@ export {
 } from "./areas/grades/gradebook.js";
 export { setCompletion, overrideCompletion, completionReport, CompletionError, type CompletionCell, type CompletionReport } from "./areas/completion/completion.js";
 export { participants, participantFilters, groups, NoParticipantsError, type Participant, type CourseGroup } from "./areas/participants/participants.js";
+export { potentialUsers, enrolUsers, unenrolUser, setUserRoles, EnrolmentError, type PotentialUser } from "./areas/participants/enrolments.js";
 export { upcomingEvents, createEvent, deleteEvent, CalendarError, type CalendarEvent } from "./areas/calendar/calendar.js";
 export { notifications, markNotificationsRead, conversations, conversation, sendMessage, MessageError, type Notification, type ConversationSummary } from "./areas/messages/messages.js";

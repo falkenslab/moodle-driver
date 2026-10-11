@@ -420,6 +420,22 @@ moodle edit-section <courseId> <sectionId> --options
 | `--visible` | `boolean` |  |
 | `--after-section-id` | `number` |  |
 
+## enrolUsers
+
+Enrols users in a course by manual enrolment, as the participants page's "Enrol users" dialog does: with `roleId` or the enrolment's default role, from `start` (now, unless given) until `end` (the enrolment's default duration, unless given). Users already enrolled keep their enrolment, with the new dates. Throws `EnrolmentError` with Moodle's reason when it refuses (a role the person can't assign, no manual enrolment).
+
+```bash
+moodle enrol-users <courseId> <userIds> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `userIds` | `number[]` |  |
+| `--role-id` | `number` |  |
+| `--start` | `Date` |  |
+| `--end` | `Date` |  |
+
 ## finishQuizAttempt
 
 Submits an attempt for grading, and gives its review when the quiz shows it.
@@ -709,6 +725,19 @@ moodle pending-activities <courseId>
 | --- | --- | --- |
 | `courseId` | `number` |  |
 
+## potentialUsers
+
+Users the person may enrol in a course by manual enrolment, matching `search` anywhere in their name or the identity fields the site shows (all of them, a page of up to 100, when empty), as the "Enrol users" dialog finds them. Throws `EnrolmentError` when the course has no manual enrolment the person can use.
+
+```bash
+moodle potential-users <courseId> [search]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `search` (optional) | `string` |  |
+
 ## publicSiteInfo
 
 What the site tells anyone before logging in, without the browser.
@@ -911,6 +940,20 @@ moodle set-quiz-override <activityId> <userId> --options
 | `--time-limit-minutes` | `number` |  |
 | `--attempts` | `number` |  |
 
+## setUserRoles
+
+Sets a user's roles in a course, as the participants page's roles column does: gives the roles in `roleIds` the person may assign, and takes away the others the person may assign. Roles the person can't assign that the user already holds, and those from elsewhere (a category, an enrolment that protects them), stay. Returns the user's roles afterwards, as that column shows them. Throws `EnrolmentError` with Moodle's reason for a role the person can't assign or a user not enrolled.
+
+```bash
+moodle set-user-roles <courseId> <userId> <roleIds>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `userId` | `number` |  |
+| `roleIds` | `number[]` |  |
+
 ## siteName
 
 The site's name, from its public settings; `undefined` where the mobile app support is off.
@@ -982,6 +1025,19 @@ moodle submit-survey <activityId> <responses> [--options]
 | `activityId` | `number` |  |
 | `responses` | `Record<string, string>` |  |
 | `--type` | `SurveyType` |  |
+
+## unenrolUser
+
+Unenrols a user from a course: removes every enrolment of theirs the person may remove (its unenrol link on the participants page), with their roles and group memberships in the course, as that link does. `changed` and `removed` say which ones (by enrolment method's name), `kept` those the person may not remove (a cohort sync, another teacher's method). Throws `EnrolmentError` when the user isn't enrolled.
+
+```bash
+moodle unenrol-user <courseId> <userId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `userId` | `number` |  |
 
 ## upcomingEvents
 

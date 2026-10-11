@@ -196,6 +196,11 @@ export async function submitForm(page: Page, button: string): Promise<void> {
  */
 export async function dateSelectorValues(page: Page, name: string, date: Date): Promise<Record<string, FieldValue>> {
   const timeZone = await page.evaluate(() => (globalThis as unknown as { M?: { cfg?: { usertimezone?: string } } }).M?.cfg?.usertimezone ?? "UTC");
+  return dateSelectorParts(name, date, timeZone);
+}
+
+/** The parts of a Moodle date selector (`name[day]`…) for `date` in `timeZone`, as `dateSelectorValues` gives them for a page. */
+export function dateSelectorParts(name: string, date: Date, timeZone: string): Record<string, number> {
   let parts: Intl.DateTimeFormatPart[];
   try {
     parts = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(date);

@@ -8,7 +8,8 @@ const TRANSPORT_PATH = "__fake-transport";
 
 /**
  * A Moodle page reduced to what the driver reads: the body class, `M.cfg` (`wwwroot`, `sesskey`,
- * `userId`), the logout link in the user menu and the page heading, as Moodle 5.2 renders them.
+ * `userId`, and `contextid` when given), the logout link in the user menu and the page heading, as
+ * Moodle 5.2 renders them.
  */
 export function moodlePage({
   userId,
@@ -19,10 +20,11 @@ export function moodlePage({
   body = "",
   bodyId = "",
   bodyClass = "",
-}: { userId: number; heading?: string; guest?: boolean; sesskey?: string; wwwroot?: string; body?: string; bodyId?: string; bodyClass?: string }): string {
+  contextId,
+}: { userId: number; heading?: string; guest?: boolean; sesskey?: string; wwwroot?: string; body?: string; bodyId?: string; bodyClass?: string; contextId?: number }): string {
   const loggedIn = userId > 0;
   return `<!DOCTYPE html><html><head><title>${heading}</title>
-<script>var M = {}; M.cfg = {"wwwroot":${JSON.stringify(wwwroot).replaceAll("/", "\\/")},"sesskey":"${sesskey}","userId":${userId},"language":"en","usertimezone":"Europe/Madrid"};</script></head>
+<script>var M = {}; M.cfg = {"wwwroot":${JSON.stringify(wwwroot).replaceAll("/", "\\/")},"sesskey":"${sesskey}","userId":${userId},"language":"en","usertimezone":"Europe/Madrid"${contextId ? `,"contextid":${contextId}` : ""}};</script></head>
 <body${bodyId ? ` id="${bodyId}"` : ""} class="${loggedIn ? "" : "notloggedin"} ${bodyClass}">
 <nav>${loggedIn && !guest ? '<div class="usermenu"><a href="http://moodle.test/login/logout.php?sesskey=x">Log out</a></div>' : '<a href="http://moodle.test/login/index.php">Log in</a>'}</nav>
 <div id="page-header"><div class="page-header-headings"><h1>${heading}</h1></div></div>

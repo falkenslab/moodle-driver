@@ -970,6 +970,59 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "enrolUsers",
+    "description": "Enrols users in a course by manual enrolment, as the participants page's \"Enrol users\" dialog does: with `roleId` or the enrolment's default role, from `start` (now, unless given) until `end` (the enrolment's default duration, unless given). Users already enrolled keep their enrolment, with the new dates. Throws `EnrolmentError` with Moodle's reason when it refuses (a role the person can't assign, no manual enrolment).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "roleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "finishQuizAttempt",
     "description": "Submits an attempt for grading, and gives its review when the quiz shows it.",
     "params": [
@@ -1505,6 +1558,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "potentialUsers",
+    "description": "Users the person may enrol in a course by manual enrolment, matching `search` anywhere in their name or the identity fields the site shows (all of them, a page of up to 100, when empty), as the \"Enrol users\" dialog finds them. Throws `EnrolmentError` when the course has no manual enrolment the person can use.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "search",
+        "optional": true,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ]
+  },
+  {
     "name": "publicSiteInfo",
     "description": "What the site tells anyone before logging in, without the browser.",
     "params": []
@@ -1860,6 +1935,36 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "setUserRoles",
+    "description": "Sets a user's roles in a course, as the participants page's roles column does: gives the roles in `roleIds` the person may assign, and takes away the others the person may assign. Roles the person can't assign that the user already holds, and those from elsewhere (a category, an enrolment that protects them), stay. Returns the user's roles afterwards, as that column shows them. Throws `EnrolmentError` with Moodle's reason for a role the person can't assign or a user not enrolled.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "roleIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      }
+    ]
+  },
+  {
     "name": "siteName",
     "description": "The site's name, from its public settings; `undefined` where the mobile app support is off.",
     "params": []
@@ -1983,6 +2088,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "unenrolUser",
+    "description": "Unenrols a user from a course: removes every enrolment of theirs the person may remove (its unenrol link on the participants page), with their roles and group memberships in the course, as that link does. `changed` and `removed` say which ones (by enrolment method's name), `kept` those the person may not remove (a cohort sync, another teacher's method). Throws `EnrolmentError` when the user isn't enrolled.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
   },
   {
     "name": "upcomingEvents",
