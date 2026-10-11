@@ -722,6 +722,20 @@ Marks all the person's notifications read, as the popover's "Mark all as read" d
 moodle mark-notifications-read
 ```
 
+## messageParticipants
+
+Sends one message to several participants of a course, as the participants page's "Send a message" does for the users selected: one private message each, in one call. They are `userIds`, or the participants `participants()` chooses with `role`, `group` and `inactiveSince` (all of them when none is given), the person left out. `sentTo` lists exactly who got it, `refused` who Moodle didn't write to and why (they blocked the person, their privacy settings); someone who may message any user (a teacher, `moodle/site:messageanyuser`) gets through a block, as in Moodle's own page (confirmed empirically, Moodle 5.2). Throws `MessageError` for an empty message or nobody to write to, `NoParticipantsError` when the person can't see the course's participants.
+
+```bash
+moodle message-participants <courseId> <text> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `text` | `string` |  |
+| `--user-ids` (required) | `number[]` |  |
+
 ## myGrades
 
 The person's own grade report for a course.

@@ -208,6 +208,10 @@ interface EnrolmentMethodSettings {
 
 A student enrols with the key in Moodle itself (the course's "Enrol me"); the driver only sets the method up.
 
+## Messaging participants
+
+`messageParticipants` (in [Messages](messages.md)) writes one message to several participants at once, chosen as `participants` chooses them: by role, group or inactivity.
+
 ## Pseudonymizing
 
 The driver returns real names: it's a library for any program, and what a program does with names is its own choice. A program that hands participants' data to someone else (an AI model, say) pseudonymizes it itself; moodle-mcp, one consumer, does it with `@falkenslab/pseudonym`. User ids are stable within a site, so a program can keep a table from id to pseudonym and translate back before acting.

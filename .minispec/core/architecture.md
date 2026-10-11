@@ -50,7 +50,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 - `completion/completion.ts` — manual completion (the person's), overrides (a teacher's) through their services; the progress report read by its links and icon names.
 - `participants/participants.ts` — a course's participants and groups from the participants table's service, filtered by role, group and inactivity; roles and groups by id from the page's filters. `enrolments.ts`: enrolling (the "Enrol users" form fragment, sent to `enrol/manual/ajax.php`), unenrolling (each enrolment's unenrol link in the table) and roles (the roles column's inplace editable). `groups.ts`: groups and groupings through the group and grouping forms and the members and grouping pages (`group/members.php`, `group/assign.php`), posted as their buttons post. `methods.ts`: enrolment methods from the methods page (`enrol/instances.php`) and each method's form (`enrol/editinstance.php`).
 - `calendar/calendar.ts` — course events created through the calendar's event form (a fragment opened at the start time, so no dates are filled in the person's time zone), read from the upcoming view, deleted through its service.
-- `messages/messages.ts` — the person's notifications and conversations, and sending a private message, through the popover's and the messaging drawer's services.
+- `messages/messages.ts` — the person's notifications and conversations, and sending a private message (to one person, or to participants chosen as `participants` chooses them), through the popover's and the messaging drawer's services.
 
 ## Folder map
 

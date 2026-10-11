@@ -20,7 +20,7 @@ import { h5pActivity } from "./areas/h5p/h5p.js";
 import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
 import { logIn, type LoginResult } from "./core/login.js";
-import { conversation, conversations, markNotificationsRead, notifications, sendMessage } from "./areas/messages/messages.js";
+import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
 import { groups, participantFilters, participants } from "./areas/participants/participants.js";
 import { createGroup, createGrouping, deleteGroup, deleteGrouping, groupings, setGroupMembers, setGroupingGroups, updateGroup } from "./areas/participants/groups.js";
@@ -121,6 +121,7 @@ const SITE_FUNCTIONS = {
   rubric,
   saveSubmission,
   sendMessage,
+  messageParticipants,
   setCompletion,
   setDiscussionState,
   setQuizOverride,

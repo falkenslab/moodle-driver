@@ -1515,6 +1515,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": []
   },
   {
+    "name": "messageParticipants",
+    "description": "Sends one message to several participants of a course, as the participants page's \"Send a message\" does for the users selected: one private message each, in one call. They are `userIds`, or the participants `participants()` chooses with `role`, `group` and `inactiveSince` (all of them when none is given), the person left out. `sentTo` lists exactly who got it, `refused` who Moodle didn't write to and why (they blocked the person, their privacy settings); someone who may message any user (a teacher, `moodle/site:messageanyuser`) gets through a block, as in Moodle's own page (confirmed empirically, Moodle 5.2). Throws `MessageError` for an empty message or nobody to write to, `NoParticipantsError` when the person can't see the course's participants.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "text",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "selection",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "userIds",
+          "optional": false,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "myGrades",
     "description": "The person's own grade report for a course.",
     "params": [

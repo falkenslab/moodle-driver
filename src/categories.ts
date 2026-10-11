@@ -204,6 +204,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   conversations: PERSONAL,
   conversation: PERSONAL,
   sendMessage: ["communication"],
+  messageParticipants: ["communication"],
 
   // The calendar: the person's upcoming events; course events are what teachers set.
   upcomingEvents: ["own", "course-content"],

@@ -123,4 +123,4 @@ export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, crea
 export { enrolmentMethods, setEnrolmentMethod, type EnrolmentMethod, type EnrolmentMethodSettings } from "./areas/participants/methods.js";
 export { potentialUsers, enrolUsers, unenrolUser, setUserRoles, EnrolmentError, type PotentialUser } from "./areas/participants/enrolments.js";
 export { upcomingEvents, createEvent, deleteEvent, CalendarError, type CalendarEvent } from "./areas/calendar/calendar.js";
-export { notifications, markNotificationsRead, conversations, conversation, sendMessage, MessageError, type Notification, type ConversationSummary } from "./areas/messages/messages.js";
+export { notifications, markNotificationsRead, conversations, conversation, sendMessage, messageParticipants, MessageError, type Notification, type ConversationSummary, type ParticipantSelection } from "./areas/messages/messages.js";
