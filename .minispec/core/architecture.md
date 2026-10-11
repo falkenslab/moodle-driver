@@ -15,12 +15,13 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 - `home.ts` — `siteProfileDir()`: the folder the `moodle` command keeps a site's profile in (`~/.moodle-driver/sites/<host>/`), for programs that share its sessions (ADR-013).
 - `options.ts` — what a program chooses: `BrowserOptions` (profile, channel, headless, download), channels, trails, `parseSiteUrl()`.
 - `categories.ts` — what data each public function reads or writes (`DATA_CATEGORIES`, `moduleCategories()`), for programs that restrict what an agent may do; a test fails on an undeclared export.
-- `cli/` — the `moodle` command (ADR-012): `main.ts` (the `bin`), `run.ts` (one command line, its surroundings injected), `args.ts` (arguments and flags into the method's arguments), `output.ts` (tables or JSON), `config.ts` (the home: the default site, a folder per site with its `site.json` and named profiles, a first login named after the username, `sites`, `forget`; ADR-013), `commands.generated.ts` (the table, from `scripts/generate-cli-commands.mjs`).
+- `cli/` — the `moodle` command (ADR-012): `main.ts` (the `bin`), `run.ts` (one command line, its surroundings injected), `command.ts` (a line run on a session that keeps its Moodle object, shared by `run` and the shell), `shell.ts` (`moodle shell`: lines read with `node:readline` on one browser kept open), `background.ts` (`moodle open`/`close`: the detached `__background` process, `.browser.json`, the lock; ADR-014), `args.ts` (arguments and flags into the method's arguments), `output.ts` (tables or JSON), `config.ts` (the home: the default site, a folder per site with its `site.json` and named profiles, a first login named after the username, `sites`, `forget`; ADR-013), `commands.generated.ts` (the table, from `scripts/generate-cli-commands.mjs`).
 - `testing/` — the fake Moodle served inside a browser context, grading panel HTML, a browser manager that launches nothing.
 
 ### `browser/`
 
 - `manager.ts` — `createBrowserManager()`: the persistent context opened on first use and reused, one operation at a time; a headed request relaunches it with a window; Chromium downloaded in the background when no browser is installed (ADR-001); shown or hidden on demand (`setVisible`), following pages in one working tab (`show`, `tab`, ADR-007); refuses a window where there's no screen.
+- `host.ts` — `hostBrowser()`: a browser launched on a pipe only its process holds, offered to one client at a time as a token-checked WebSocket on 127.0.0.1 (ADR-014); `background.ts` — `backgroundBrowser()` (the profile's `.browser.json`, a stale one removed) and `connectBrowserManager()`, a manager over `connectOverCDP` whose `close()` only disconnects.
 - `cookies.ts` — session cookies saved in the profile and restored on launch (ADR-003). `chromium.ts` — Playwright's CLI as a process tree that ends with the program.
 
 ### `core/`: what every area is built on

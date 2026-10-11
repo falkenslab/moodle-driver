@@ -158,6 +158,10 @@ An activity that asks participants questions without grading them. The driver an
 
 ## Driver terms
 
+### Background browser
+
+A browser `moodle open` leaves open on a [profile](#profile), which every command on that profile (and `moodle shell`, and a program through `backgroundBrowser` and `connectBrowserManager`) works in instead of launching its own, one at a time, until `moodle close`. It's reached on 127.0.0.1 with a token from the profile's `.browser.json`. See [The command line](../getting-started/command-line.md#watching-separate-commands-act) and [The browser](../concepts/browser.md#a-browser-left-open-in-the-background).
+
 ### Changed
 
 The short sentence every write returns as `changed`, saying what it did (`Created page 42 "Loops" in section 2.`), beside the state afterwards where it's cheap to read (the course's `sections`, the `assignment`, the `choice`) and the ids of what it created (`activityId`, `attemptId`, `messageId`). A program can show it as it is or check the state instead of reading again. See [the Moodle object and the functions](../concepts/calling-functions.md#writes-answer-with-the-state-afterwards).

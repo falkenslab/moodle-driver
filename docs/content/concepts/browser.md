@@ -59,6 +59,25 @@ await tab.goto(`${moodle.site}mod/h5pactivity/view.php?id=38`);
 
 Leave it open: the manager reuses it.
 
+## A browser left open in the background
+
+`moodle open` keeps a browser open on a profile for every command on it (see [the command line](../getting-started/command-line.md#watching-separate-commands-act)). A program can work in that browser too, instead of launching one on the same profile (which would fail: a profile is open in one browser at a time). `backgroundBrowser(profileDir)` reads where it is and its token from the profile's `.browser.json` (`undefined` when none runs, a stale file removed), and `connectBrowserManager()` gives a manager on it for `createMoodle`:
+
+```ts
+import { backgroundBrowser, connectBrowserManager, createMoodle, siteProfileDir } from "@falkenslab/moodle-driver";
+
+const site = "https://campus.example.org/";
+const profileDir = siteProfileDir(site);
+const running = await backgroundBrowser(profileDir);
+if (!running) throw new Error("Run `moodle open --show` first.");
+
+const moodle = createMoodle({ site, browser: connectBrowserManager({ ...running, profileDir }) });
+console.log(await moodle.listCourses());
+await moodle.close(); // disconnects: the browser stays open
+```
+
+The connected manager works in the browser's own context, and `close()` saves the session and disconnects. It can't add or remove a window from a browser it didn't launch: with one, the pages functions open are followed in its first tab, and `setVisible(true)` on one without throws `NoDisplayError`. The browser takes one client at a time; another connecting meanwhile is refused. Nothing connects without the token in `.browser.json`, readable only by the person: Chromium's own debugging port, which has no such check, is never opened.
+
 ## The session on disk
 
 The profile holds the browser's cookies and storage. Chromium drops session cookies (those without an expiry date, like Moodle's `MoodleSession`) when it closes, so the manager writes them to a file inside the profile (`SESSION_COOKIES_FILE`, readable only by the user) on `close()`, `saveSession()` and after logging in, and restores them on launch. Treat the whole profile folder as a secret.

@@ -15,3 +15,4 @@ People want to try the driver, script it from a shell or check something on thei
 - Methods that give a browser tab (`openSitePage`, `openForm`) have no command: a tab means nothing once the command exits.
 - A new method needs `npm run cli:generate`; `npm run build` checks the table first.
 - Output is a table or key-value lines at a terminal, JSON otherwise (`--json`); exit status 0, 1 (an error, its code printed), 2 (a command line that doesn't fit).
+- `moodle shell` runs lines on one Moodle object, so its browser (and window, with `--show`) lasts the session; `run` and the shell share how a line is read, run and printed (`src/cli/command.ts`).

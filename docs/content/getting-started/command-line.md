@@ -92,6 +92,50 @@ Errors go to standard error as `code: message` (the [error codes](../concepts/er
 | `--allow <categories>` | Refuse commands that touch other [data categories](../concepts/data-categories.md): `--allow own,course-content` reads your own data and the courses, nothing about others |
 | `--help`, `--version` | Help, and the driver's version |
 
+## An interactive session
+
+Each `moodle …` opens the browser, works and closes it, so with `--show` the window lives only while that command runs. `moodle shell` keeps one browser open while you type commands one after another, each as `moodle <command>` would run it, without the `moodle` in front:
+
+```text
+$ moodle shell --show
+moodle campus.example.org a.martin> list-courses
+id  shortname  fullname          …
+3   loops      Loops in Python   …
+moodle campus.example.org a.martin> course-structure 3
+…
+moodle campus.example.org a.martin> activity-settings 57
+…
+moodle campus.example.org a.martin> exit
+```
+
+- It takes the global options (`--site`, `--as`, `--profile`, `--show`, `--allow`, `--json`), which hold for every line; a line can still add its own, as `list-courses --json`.
+- With `--show` the window opens at once and stays open; every page a command opens comes to the front of its tab (see [The browser](../concepts/browser.md)). Commands that only call Moodle's services, as `list-courses` and `course-structure`, open no page. `show` and `hide` open and close the window during the session.
+- A failing command prints its error and the session goes on. `exit`, `quit` or Ctrl+D leave, closing the browser and saving the session; Ctrl+C clears the line being typed. The exit status is 0.
+- `help` lists the commands, and `help <command>` explains one. Tab completes command names and a command's options; the lines typed are kept in `~/.moodle-driver/history` for the arrow keys.
+- `sites`, `forget` and `login` work inside. `login --as <name>` goes on with the profile logged in with, and `use <site>` (or `use --as <name>`) works on another site or profile; either closes the browser and opens it on the new profile.
+- Lines are split as a shell splits them: quotes keep spaces and JSON together (`submit-survey 34 '{"textfield_12":"Clear"}'`), and a backslash only escapes a space, a quote or another backslash, so Windows paths go as typed.
+
+Lines can also come from a file or a pipe (`moodle shell < monday.txt`): no prompt then, and the session ends with the input. With a [background browser](#watching-separate-commands-act) open on the profile, the shell works in it, one line at a time.
+
+## Watching separate commands act
+
+`moodle open` leaves a browser open in the background on the profile, and every command on that profile, from any terminal or script, works in it instead of launching its own; `moodle close` closes it and saves the session. With `--show` it has a window, where each command's pages come to the front of its first tab:
+
+```bash
+moodle open --show                 # a window opens, and stays
+moodle list-courses                # from any terminal: no browser launched
+moodle activity-settings 57        # its form shows in the window
+moodle close
+```
+
+- Commands take turns: one works on the background browser at a time, and another waits a few seconds, then says `browser-busy`.
+- `moodle sites` says which profiles have one running (`background`). Without one, every command launches its own browser, as always.
+- If its process is gone (the computer restarted, or you closed the window), the next command notices, removes what it left and launches its own.
+
+### Its security
+
+A browser that other programs can drive is, while it runs, as powerful as your logged-in session. So the command doesn't open Chromium's own debugging port, which any program on the computer could use without asking. The browser talks only to the command's background process, over a pipe; that process accepts connections on 127.0.0.1 only (never from the network), and only with a random token it writes, with the address, in the profile's `.browser.json`, readable only by you (on Linux and macOS; on Windows, your user folder already is). It refuses web pages outright. A program of yours can share the browser with `backgroundBrowser(profileDir)` and `connectBrowserManager()` (see [The browser](../concepts/browser.md#a-browser-left-open-in-the-background)). `moodle close` when you're done.
+
 ## Several sites and accounts
 
 Log in to each site once; the last one is the default, and `--site` (or `MOODLE_SITE`) picks another for one command. `moodle login` on a site whose session is still alive opens no window: it only makes that site the default.
@@ -111,15 +155,15 @@ moodle --as a.martin who-am-i
 moodle login --as a.martin                               # back to a.martin as the default
 ```
 
-`moodle sites` lists every site and profile: which is the default and whether it has a session file (Moodle may still have ended the session). `moodle forget <site>` deletes a site with its profiles and sessions, and `moodle forget <site> --as <name>` one profile; forgetting the default leaves the site without one until the next `login` (or an `--as`).
+`moodle sites` lists every site and profile: which is the default and whether it has a session file (Moodle may still have ended the session), and whether a background browser runs on it. Forgetting a profile closes its background browser first. `moodle forget <site>` deletes a site with its profiles and sessions, and `moodle forget <site> --as <name>` one profile; forgetting the default leaves the site without one until the next `login` (or an `--as`).
 
 ```text
 $ moodle sites
-site                            profile  default  session  path
-------------------------------  -------  -------  -------  --------------------------------------------------------------
-https://aulavirtual.uni-b.es/   ada      true     true     /home/ada/.moodle-driver/sites/aulavirtual.uni-b.es/profiles/ada
-https://campus.uni-a.es/        a.martin false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/a.martin
-https://campus.uni-a.es/        student  false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/student
+site                            profile   default  session  background  path
+------------------------------  --------  -------  -------  ----------  --------------------------------------------------------------
+https://aulavirtual.uni-b.es/   ada       true     true     false       /home/ada/.moodle-driver/sites/aulavirtual.uni-b.es/profiles/ada
+https://campus.uni-a.es/        a.martin  false    true     true        /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/a.martin
+https://campus.uni-a.es/        student   false    true     false       /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/student
 ```
 
 ## Where things are
@@ -129,10 +173,12 @@ Everything is in `~/.moodle-driver`, the same on Windows, Linux and macOS (`MOOD
 ```text
 ~/.moodle-driver/
 ├── config.json                  the default site
+├── history                      the lines typed in `moodle shell`
 └── sites/<host>/                one folder per site (localhost:8080 is localhost_8080)
     ├── site.json                its URL, and its default profile by name
     └── profiles/<name>/         one browser profile per account, with its session (moodle-session.json),
-                                 named after the Moodle username or by --as
+                                 named after the Moodle username or by --as;
+                                 .browser.json while `moodle open` keeps a browser on it
 ```
 
 Treat `~/.moodle-driver` as you'd treat a logged-in browser: its profiles hold the sessions. On Linux and macOS its files are readable only by you.

@@ -29,6 +29,48 @@ const PATH_FIELDS = new Set(["files", "file", "destDir"]);
 export const camel = (name: string) => name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 export const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
+/**
+ * A line typed in `moodle shell`, split as a shell splits a command line: on spaces, with '…' and "…"
+ * keeping spaces (and JSON's quotes) inside one word. A backslash escapes only a space, a quote or
+ * another backslash, so Windows paths (`C:\Users\ada`) come through as typed.
+ */
+export function tokenize(line: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let inToken = false;
+  let quote: string | undefined;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]!;
+    const next = line[i + 1];
+    if (quote) {
+      if (c === quote) quote = undefined;
+      else if (c === "\\" && quote === '"' && (next === '"' || next === "\\")) current += line[++i];
+      else current += c;
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      quote = c;
+      inToken = true;
+    } else if (c === "\\" && next !== undefined && " \t'\"\\".includes(next)) {
+      current += line[++i];
+      inToken = true;
+    } else if (c === " " || c === "\t") {
+      if (inToken) tokens.push(current);
+      current = "";
+      inToken = false;
+    } else {
+      current += c;
+      inToken = true;
+    }
+  }
+  if (quote) throw new UsageError(`A ${quote} quote isn't closed.`);
+  if (inToken) tokens.push(current);
+  return tokens;
+}
+
+/** The command's own flags, as typed: for completing them. */
+export const GLOBAL_FLAGS = [...GLOBAL_VALUES, ...GLOBAL_SWITCHES].map((name) => `--${name}`);
+
 /** The command named on the line, before any flags are read (they depend on it). */
 export function commandName(argv: string[]): string | undefined {
   for (let i = 0; i < argv.length; i++) {
