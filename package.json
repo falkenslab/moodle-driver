@@ -1,6 +1,6 @@
 {
   "name": "@falkenslab/moodle-driver",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Full control of Moodle as any user, from code or the command line, with their own login: no web services, no tokens, no admin.",
   "author": "Falkenslab",
   "license": "MIT",
