@@ -1,8 +1,8 @@
 # Grading
 
-The teacher's side of an assignment, and of forums: whole-forum grades with `forumGrades` and `gradeForumUser`, and ratings on forum posts, glossary entries and database records with `rate`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
+The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop's phases and assessments with `workshopInfo`, `setWorkshopPhase` and `assessWorkshopSubmission`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
-**Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale).
+**Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale), [workshop](../reference/glossary.md#workshop).
 
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
@@ -241,6 +241,89 @@ It opens the item's page (`mod/forum/discuss.php`, `mod/glossary/showentry.php`,
 
 A forum's ratings and its whole-forum grade are separate grade items in the gradebook, and both show in [`graderReport`](grades-and-gradebook.md#graderreport).
 
+## workshopInfo
+
+A workshop's phase, and its report as the workshop's page shows it to a teacher.
+
+```ts
+function workshopInfo(context: BrowserContext, siteUrl: string, activityId: number): Promise<WorkshopInfo>;
+
+type WorkshopPhase = "setup" | "submission" | "assessment" | "evaluation" | "closed";
+
+interface WorkshopInfo {
+  activityId: number;
+  phase: WorkshopPhase;
+  submissions: WorkshopSubmission[];
+  assessments: WorkshopAssessment[];
+}
+
+interface WorkshopSubmission {
+  id: number;
+  title: string;
+  authorId: number;
+  author: string;
+  grade?: number;
+  gradeOverride?: number;
+}
+
+interface WorkshopAssessment {
+  id: number;
+  submissionId?: number;
+  authorId?: number;
+  author?: string;
+  reviewerId?: number;
+  reviewer?: string;
+  grade?: number;
+  gradingGrade?: number;
+  gradingGradeOverride?: number;
+  weight: number;
+}
+```
+
+- `phase`: the phase the workshop is in (`WORKSHOP_PHASES` lists them in order).
+- `submissions`: one per participant who submitted, with the grade for the submission once the evaluation phase calculated it (out of the workshop's "grade for submission"), and the teacher's override of it.
+- `assessments`: every assessment of a submission, with its reviewer (left out when the person can't see reviewers' names), the submission's author, the grade it gives (out of the same maximum; left out until it's assessed), its weight, and the grade for the assessment itself once calculated.
+
+It reads the workshop's page (`mod/workshop/view.php`), every page of its report, by the phase list's and the report's classes and links, so it works in any language. Moodle shows the report from the submission phase on to those who can see every submission (a teacher), in the course's current group; for a student both lists are empty. Grades are numbers as Moodle shows them, with as many decimals as the workshop's settings say. Calculating the grades in the evaluation phase ("Re-calculate grades") isn't covered. It throws `WorkshopError` for an activity that isn't a workshop the person can view.
+
+## setWorkshopPhase
+
+Switches a workshop to a phase, as the phase links on its page do.
+
+```ts
+function setWorkshopPhase(context: BrowserContext, siteUrl: string, activityId: number, phase: WorkshopPhase): Promise<{ changed: string; phase: WorkshopPhase }>;
+```
+
+It opens Moodle's confirmation (`mod/workshop/switchphase.php`) and confirms it, then reads the phase from the workshop's page it lands on. Any phase can be chosen, forwards or back. Switching does only that: a teacher allocates submissions to reviewers (Moodle's "Allocate submissions") and calculates grades on Moodle's pages. It throws `WorkshopError` with Moodle's reason when the person can't switch phases (a student), and `MoodleError` (`invalid-input`) for a phase that isn't one of the five.
+
+## assessWorkshopSubmission
+
+Assesses a submission as the person, through the workshop's assessment form.
+
+```ts
+function assessWorkshopSubmission(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  submissionId: number,
+  input: { criteria?: WorkshopCriterion[]; feedback?: string; fields?: Record<string, FieldValue> },
+): Promise<{ changed: string; assessmentId: number; grade?: number; maxGrade?: number }>;
+
+interface WorkshopCriterion {
+  grade?: number | string;
+  comment?: string;
+}
+```
+
+- `criteria`: one per criterion of the form, in its order (the first is the form's "Aspect 1"). What `grade` takes depends on the workshop's grading strategy: accumulative grading, the points (`8`) or a scale item's name; number of errors, `1` when the assertion holds and `-1` when it doesn't (or the word the teacher gave either); rubric, the level, by its position (`1` for the first) or its definition; comments, none. `comment` is the comment on the criterion (not in a rubric).
+- `feedback`: the overall feedback for the author (HTML), where the workshop has overall feedback on.
+- `fields`: any other field of the form by name, such as `weight` (the assessment's weight, for a teacher).
+- `grade`, `maxGrade`: the grade the assessment gives the submission, out of the workshop's grade for submission, as the assessment's page shows it afterwards.
+
+A teacher who hasn't assessed the submission gets an assessment of their own, as "Assess" on the submission's page (`mod/workshop/submission.php`) does; one the person already made (a teacher's, or a reviewer's allocated one) is changed. The form (`mod/workshop/assessment.php`) is filled by its field names and saved with "Save and continue". Moodle only lets anyone assess in the assessment phase. It throws `WorkshopError` when Moodle offers no assessment (another phase, or the person isn't a reviewer or teacher), when a criterion's grade isn't one it takes (the error lists those it takes), when more criteria are given than the form has, or when the workshop has no overall feedback; `FormError` with Moodle's messages when it refuses the form (a criterion without a grade).
+
+Students submit to a workshop on Moodle's pages: the driver has no workshop submission.
+
 ## Example
 
 ```ts
@@ -277,6 +360,17 @@ for (const person of forum.grades.filter((g) => g.grade === undefined)) {
   await moodle.gradeForumUser(54, person.userId, { grade: forum.method === "point" ? 7 : forum.scale![0]!.name });
 }
 await moodle.rate({ type: "forum-post", id: 11, discussionId: 6 }, 4);
+
+// A workshop: open the assessment phase and assess every submission with an accumulative form of two criteria.
+await moodle.setWorkshopPhase(58, "assessment");
+const workshop = await moodle.workshopInfo(58);
+for (const submission of workshop.submissions) {
+  const result = await moodle.assessWorkshopSubmission(58, submission.id, {
+    criteria: [{ grade: 8, comment: "Clear." }, { grade: 4 }],
+    feedback: "<p>Good work.</p>",
+  });
+  console.log(submission.author, result.grade, "of", result.maxGrade);
+}
 ```
 
 An assignment with group submissions and the marking workflow: grade one member for the whole group, then release the group's grades.
@@ -297,4 +391,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), and `assessWorkshopSubmission` `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).

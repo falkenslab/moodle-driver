@@ -189,6 +189,22 @@ moodle answer-quiz-questions <attemptId> <answers> [--options]
 | `answers` | `{ slot: number; responses: Record<string, string>; }[]` |  |
 | `--trail` | `"realistic" \| "fast"` |  |
 
+## assessWorkshopSubmission
+
+Assesses a submission as the person, through the workshop's assessment form (its grading strategy's: accumulative, comments, number of errors or rubric), as "Assess" on the submission's page and the form do: a teacher who hasn't assessed it yet gets an assessment of their own, and one already made is changed. `criteria` go in the form's order; `feedback` is the overall feedback for the author (HTML), where the workshop has it on; `fields` sets any other field of the form by name (`weight`…). Returns a sentence of what changed, the assessment's id, and the grade it gives the submission out of the workshop's grade. Throws `WorkshopError` outside the assessment phase, when a criterion's grade isn't one it takes, or when the workshop has no overall feedback; `FormError` when Moodle refuses the form (a criterion left without a grade).
+
+```bash
+moodle assess-workshop-submission <activityId> <submissionId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `submissionId` | `number` |  |
+| `--criteria` | `WorkshopCriterion[]` |  |
+| `--feedback` | `string` |  |
+| `--fields` | `Record<string, FieldValue>` |  |
+
 ## assignmentSubmissions
 
 Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel).
@@ -1528,6 +1544,19 @@ moodle set-workflow-state <activityId> <userIds> <state> [--options]
 | `state` | `"inmarking" \| "readyforreview" \| "inreview" \| "readyforrelease" \| "released"` |  |
 | `--notify` | `boolean` |  |
 
+## setWorkshopPhase
+
+Switches a workshop to a phase, as its page's phase links do, confirming Moodle's question (any phase, forwards or back; Moodle allocates nothing and calculates no grades on its own when it switches). Returns a sentence of what changed and the phase afterwards. Throws `WorkshopError` when the person can't switch the workshop's phases (Moodle's `mod/workshop:switchphase`, a teacher's) or the id isn't a workshop's.
+
+```bash
+moodle set-workshop-phase <activityId> <phase>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `phase` | `WorkshopPhase` |  |
+
 ## siteName
 
 The site's name, from its public settings; `undefined` where the mobile app support is off.
@@ -1765,3 +1794,15 @@ moodle who-am-i [courseId]
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` (optional) | `number` |  |
+
+## workshopInfo
+
+A workshop's phase, and its report as the workshop's page shows it to a teacher: every submission (its author, title, and grade once calculated) and every assessment (reviewer, the submission's author, the grade it gives, its weight, the grade for assessing once calculated), all of its pages. The report is Moodle's own: it shows from the submission phase on to those who can see every submission, in the course's current group; for anyone else the lists are empty. Grades are out of the workshop's grade for submission, as Moodle shows them. Throws `WorkshopError` for an activity that isn't a workshop the person can view.
+
+```bash
+moodle workshop-info <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |

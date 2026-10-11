@@ -105,6 +105,7 @@ export {
 // Forums, surveys, choices, lessons, H5P.
 export { forumGrades, gradeForumUser, type ForumGrade, type ForumGrades } from "./areas/forums/grading.js";
 export { rate, type RateableItem } from "./areas/ratings/ratings.js";
+export { workshopInfo, setWorkshopPhase, assessWorkshopSubmission, WorkshopError, WORKSHOP_PHASES, type WorkshopPhase, type WorkshopInfo, type WorkshopSubmission, type WorkshopAssessment, type WorkshopCriterion } from "./areas/workshops/workshops.js";
 export { NotAForumError, ForumError } from "./areas/forums/discussions.js";
 export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, editPost, deletePost, type ForumDiscussion, type ForumPost, type PostInput, type PostChanges } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";
