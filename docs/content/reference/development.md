@@ -9,6 +9,7 @@ npm install
 npm run typecheck
 npm run lint
 npm run test:docker   # every test, in Docker
+npm run test:sandbox  # the regression suite against the Moodle sandbox
 npm run build         # dist/, with declarations
 npm run docs:install  # the documentation site's dependencies
 npm run docs:start    # the site on localhost, live
@@ -31,7 +32,21 @@ MSYS_NO_PATHCONV=1 node scripts/in-docker.mjs npx tsx --test test/areas/quizzes/
 
 ## A real Moodle
 
-The fake Moodle stands for what the driver reads, but only a real site confirms it. The Moodle sandbox (a sibling repository) runs Moodle 5.2 in Docker with a demo course, teacher and students. When it's running, `scripts/in-docker.mjs` joins its network and forwards `localhost:8080` inside the container, so a scratch script can call the driver against it headless, on profiles logged in once.
+The fake Moodle stands for what the driver reads, but only a real site confirms it. The Moodle sandbox (a sibling repository, `../moodle-sandbox`) runs Moodle 5.2 in Docker with a demo course, teacher and students. When it's running, `scripts/in-docker.mjs` joins its network and forwards `localhost:8080` inside the container, so a scratch script can call the driver against it headless, on profiles logged in once.
+
+`npm run test:sandbox` is the regression suite against it: every exported function, as a student, a teacher and an admin.
+
+```bash
+npm run test:sandbox                                      # every file in test/sandbox/
+npm run test:sandbox -- test/sandbox/forums.sandbox.ts    # some
+```
+
+- The accounts are read from the sandbox when the suite starts (`node manage.mjs info --json`; `MOODLE_SANDBOX_DIR` points elsewhere) into a temporary folder only you can read, with the browser profiles, and the folder is deleted at the end. No password is printed or stored.
+- Course 3 is the content course and is only read; the sandbox's own course (2) is never used. Writes happen on a scratch course each file creates ("Driver check …") and deletes, and each test removes what it made.
+- The sandbox has no cron: while the suite runs, Moodle's pending ad hoc tasks (copies, backups, restores) run every 10 seconds.
+- Test names start with the function they exercise (`courseStructure: …`). At the end a summary lists, per function, passed, failed or skipped with its reason, and the full run fails when an exported function is in no test, or a skip gives no reason.
+
+Run it before a release; it isn't part of `npm publish`, which can't count on the sandbox.
 
 ## Conventions
 

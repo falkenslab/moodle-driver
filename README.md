@@ -121,6 +121,7 @@ You need Node.js 20+, a Moodle 4.x or 5.x site, and Edge or Chrome (or let it do
 npm install
 npm run typecheck && npm run lint
 npm run test:docker    # the tests open browsers: always in Docker, never on the desktop
+npm run test:sandbox   # every function against a real Moodle (the sandbox), before a release
 npm run build          # dist/, with declarations
 npm run docs:check     # every example in the docs compiles against the code
 ```
