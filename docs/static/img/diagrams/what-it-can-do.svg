@@ -17,7 +17,7 @@
     <text x="56" y="210">📝  Submit assignments</text>
     <text x="56" y="242">❓  Take quizzes, read reviews</text>
     <text x="56" y="274">🗳️  Surveys and choices</text>
-    <text x="56" y="306">📘  Lessons, page by page</text>
+    <text x="56" y="306">📘  Lessons, H5P and SCORM</text>
     <text x="56" y="338">📊  My grades, my completion</text>
     <text x="56" y="370">💬  Forums and messages</text>
     <text x="56" y="402">🐢  At a person's pace, if you like</text>
@@ -27,15 +27,15 @@
   <g filter="url(#shadow)"><rect x="345" y="70" width="300" height="350" rx="20" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/></g>
   <text x="495" y="108" font-size="20" font-weight="800" text-anchor="middle" fill="#9a3412">🧑‍🏫 As a teacher</text>
   <g font-size="16" fill="#7c2d12">
-    <text x="371" y="146">🏗️  Build courses and activities</text>
-    <text x="371" y="178">✅  Grade, with rubrics and guides</text>
+    <text x="371" y="146">🏗️  Build, copy, back up, reset</text>
+    <text x="371" y="178">✅  Grade with rubrics, workflow</text>
     <text x="371" y="210">⏰  Extensions and quiz overrides</text>
-    <text x="371" y="242">📋  Quiz results and structure</text>
-    <text x="371" y="274">🏦  Question banks and imports</text>
-    <text x="371" y="306">📈  Gradebook setup and report</text>
-    <text x="371" y="338">👥  Participants, groups, inactive</text>
-    <text x="371" y="370">✔️  Completion overrides</text>
-    <text x="371" y="402">📆  Calendar events, forum pins</text>
+    <text x="371" y="242">📋  Quiz results, essays, structure</text>
+    <text x="371" y="274">🏦  Question banks: import, edit</text>
+    <text x="371" y="306">📈  Gradebook: grade, set up, export</text>
+    <text x="371" y="338">👥  Enrol, roles, groups, messages</text>
+    <text x="371" y="370">✔️  Restrictions and completion</text>
+    <text x="371" y="402">📆  Calendar, forums, logs</text>
   </g>
 
   <!-- Programs column -->
@@ -43,7 +43,7 @@
   <text x="805" y="108" font-size="20" font-weight="800" text-anchor="middle" fill="#5b21b6">🛠️ For your program</text>
   <g font-size="16" fill="#4c1d95">
     <text x="686" y="146">🧩  One object, typed methods</text>
-    <text x="686" y="178">🖥️  A moodle command, too</text>
+    <text x="686" y="178">🖥️  A moodle command and shell</text>
     <text x="686" y="210">✍️  Writes say what changed</text>
     <text x="686" y="242">🚨  Errors with stable codes</text>
     <text x="686" y="274">🔌  Any Moodle AJAX service</text>

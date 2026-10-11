@@ -26,20 +26,20 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Courses | List the person's courses, read a course's sections and activities, what's pending, change a course's settings, reset it for a new year |
 | Copy, backup and restore | Copy a course into a new one, back it up to a file, restore a backup, import activities from another course |
 | Content | Read pages, books, labels, URLs, files and folders, with their media |
-| Building a course | Create, update, move, duplicate and delete activities and sections; read an activity's settings |
-| Assignments | Submit as a student; read everyone's submissions, grade (simple, rubrics, marking guides), grant extensions as a teacher |
-| Quizzes | Attempt a quiz page by page; read results, the quiz's questions, add questions, set overrides |
-| Question banks | List banks and questions, import GIFT or Moodle XML, create single questions |
-| Forums | Read discussions and posts, reply, start discussions, pin and lock, grade the forum as a whole, rate posts (and glossary entries, database records) |
+| Building a course | Create, update, move, duplicate and delete activities and sections; their files, descriptions, access restrictions and completion conditions; read an activity's settings |
+| Assignments | Submit as a student; read everyone's submissions, grade (simple, rubrics, marking guides, feedback files, whole groups), the marking workflow and markers, grant extensions as a teacher |
+| Quizzes | Attempt a quiz page by page; read results, grade essays by hand; read, add, remove, move and paginate the quiz's questions; set overrides |
+| Question banks | List banks and questions, import GIFT or Moodle XML, create, edit and delete single questions |
+| Forums | Read discussions and posts, reply, start discussions, edit and delete posts, pin and lock, grade the forum as a whole, rate posts (and glossary entries, database records) |
 | Workshops | Read a workshop's phase, submissions and assessments, switch its phase, assess a submission |
 | Surveys and choices | Answer questionnaires, feedback activities and choices |
 | Lessons, H5P and SCORM | Go through a lesson page by page; read an H5P activity's type and attempts; read a SCORM's attempts and SCOs, open its player, create one from a package |
 | Grades | The person's grades, the grader report and Moodle's grade exports, grading and overriding in the gradebook, the gradebook setup (manual items, categories, weights) |
 | Completion | Mark activities done, override completion, read the progress report |
-| People | Participants with roles and groups, inactivity, groups |
+| People | Participants with roles and groups, inactivity; enrol and unenrol, set roles, groups and groupings, enrolment methods; message several at once |
 | Logs and reports | A course's logs by user, activity, action and date; the views per activity; who took part in an activity |
 | Overview | The activities overview, deadlines, course updates |
-| Calendar and messages | Course events; notifications, conversations, private messages |
+| Calendar and messages | Course events (create, change, delete); notifications, conversations, private messages |
 | Session and site | Log in by hand, log out, who the person is, the site's public information |
 
 ## Who it's for

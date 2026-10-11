@@ -37,7 +37,7 @@ That's it: no API keys, nothing to ask the administrator. The browser closes by 
 ## 🧰 What it can do
 
 <div align="center">
-<img src="docs/static/img/diagrams/what-it-can-do.svg" alt="As a student: agenda, content, assignments, quizzes, surveys, lessons, grades, forums. As a teacher: build courses, grade with rubrics, extensions and overrides, quiz results, question banks, gradebook, participants, completion, calendar. For your program: typed methods, a moodle command, errors with codes, any AJAX service, data categories, a fake Moodle for tests." width="900"/>
+<img src="docs/static/img/diagrams/what-it-can-do.svg" alt="As a student: agenda, content, assignments, quizzes, surveys, lessons, H5P and SCORM, grades, forums. As a teacher: build, copy, back up and reset courses, grade with rubrics and the marking workflow, extensions and overrides, quiz results and essays, question banks, the gradebook, enrolments, roles and groups, restrictions and completion, calendar, forums and logs. For your program: typed methods, a moodle command and shell, errors with codes, any AJAX service, data categories, a fake Moodle for tests." width="900"/>
 </div>
 
 ## 🚀 A taste
