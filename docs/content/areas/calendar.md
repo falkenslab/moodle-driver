@@ -1,6 +1,6 @@
 # Calendar
 
-This area works the Moodle calendar: the person's upcoming events (`upcomingEvents`), creating a course event (`createEvent`) and deleting an event (`deleteEvent`). Anyone can read their upcoming events; creating and deleting course events needs the right to manage the course's calendar, which teachers have by default. What the person has to do by a date (submit, attempt, grade) is better read with `deadlines` (see [Overview and deadlines](overview-and-deadlines.md)).
+This area works the Moodle calendar: the person's upcoming events (`upcomingEvents`) or one event (`calendarEvent`), creating a course event (`createEvent`), changing an event (`updateEvent`) and deleting one (`deleteEvent`). Anyone can read their upcoming events; creating, changing and deleting course events needs the right to manage the course's calendar, which teachers have by default. What the person has to do by a date (submit, attempt, grade) is better read with `deadlines` (see [Overview and deadlines](overview-and-deadlines.md)).
 
 **Terms:** [calendar event](../reference/glossary.md#calendar-event).
 
@@ -22,7 +22,7 @@ interface CalendarEvent {
 }
 ```
 
-- `id`: the event's id, what `deleteEvent` takes.
+- `id`: the event's id, what `calendarEvent`, `updateEvent` and `deleteEvent` take.
 - `type`: Moodle's event type: `"course"`, `"group"`, `"user"`, `"site"`, or an activity's own (`"due"`, `"open"`, `"close"`…).
 - `start`: an ISO date in UTC.
 - `durationMinutes`: only for an event with a duration.
@@ -70,6 +70,45 @@ A Moodle form shows dates in the person's time zone (their profile's, or the sit
 
 `event.start` comes back as an ISO date in UTC: format it in the person's time zone (`readPageConfig()` returns it as `timeZone`) when showing it to them.
 
+## calendarEvent
+
+One event by its id, in the same shape as `upcomingEvents` gives them, through `core_calendar_get_calendar_event_by_id`.
+
+```ts
+function calendarEvent(context: BrowserContext, siteUrl: string, eventId: number): Promise<CalendarEvent>;
+```
+
+It throws `CalendarError` when there's no such event or the person can't see it: Moodle answers both the same way.
+
+## updateEvent
+
+Changes an event through the calendar's own form, opened on the event (as its "Edit" does): only what's given changes. Returns the event as the calendar has it afterwards.
+
+```ts
+function updateEvent(context: BrowserContext, siteUrl: string, eventId: number, changes: EventChanges): Promise<{ changed: string; event: CalendarEvent }>;
+
+interface EventChanges {
+  name?: string;
+  description?: string;
+  start?: Date;
+  durationMinutes?: number;
+  until?: Date;
+  location?: string;
+  wholeSeries?: boolean;
+}
+```
+
+- `name`, `description` (HTML, sent as written), `location`: replace what the event has.
+- `start`: the new start. The event keeps its length: an event of 45 minutes moved to another day still lasts 45 minutes.
+- `durationMinutes`: the new length in minutes, `0` for none; `until`: the new end instead. Not both.
+- `wholeSeries`: for an event of a repeated series, whether the change applies to every event of the series or only to this one. Without it, Moodle's default applies: the whole series. Ignored for an event that doesn't repeat.
+
+Unlike `createEvent`, the form opened on an event shows the event's own dates, so `start` and `until` are filled in the person's time zone (read from Moodle, as `readPageConfig()` gives it), as they'd type them.
+
+It throws `CalendarError` when there's no such event, when the person can't change it (an activity's event, which changes with the activity's settings, or someone else's), and when Moodle's validation refuses the changes (an end before the start, a start before the course's); a `MoodleError` with code `invalid-input` when both `durationMinutes` and `until` are given, or the name is empty. With nothing to change, it opens no form and answers `"Nothing to change."` with the event as it is.
+
+The calendar's form holds every event type's fields (a group event's course and group, a category event's category): `createEvent` and `updateEvent` send only those of the event's own type, as Moodle's page shows only those. Outside the page, the form's group list still holds its first group, and Moodle would save it into a course event, which then only that group would see (confirmed empirically, Moodle 5.2).
+
 ## deleteEvent
 
 Deletes a calendar event the person can manage.
@@ -82,7 +121,7 @@ It goes through `core_calendar_delete_calendar_events`, one event (not the rest 
 
 ## Example
 
-A teacher adds a 45-minute tutorial to course 3, lists the course's upcoming events, and removes it again.
+A teacher adds a 45-minute tutorial to course 3, moves it two days later, lists the course's upcoming events, and removes it again.
 
 ```ts
 import { CalendarError } from "@falkenslab/moodle-driver";
@@ -98,6 +137,10 @@ try {
     description: "<p>Room 3, bring your exercises.</p>",
   });
   console.log(`Created ${event.id} at ${event.start}`);
+
+  // Two days later, same length, in another room.
+  const moved = await moodle.updateEvent(event.id, { start: new Date("2026-11-06T16:00:00Z"), location: "Room 4" });
+  console.log(moved.changed);
 
   for (const upcoming of await moodle.upcomingEvents({ courseId: 3 })) {
     console.log(upcoming.start, upcoming.type, upcoming.name);
@@ -115,4 +158,5 @@ try {
 From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 
 - `upcomingEvents`: `own` and `course-content` (the person's own events, and the events teachers set in courses).
-- `createEvent`, `deleteEvent`: `course-content`.
+- `calendarEvent`: `own` and `course-content`, as `upcomingEvents`.
+- `createEvent`, `updateEvent`, `deleteEvent`: `course-content`.

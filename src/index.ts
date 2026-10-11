@@ -100,10 +100,10 @@ export {
 } from "./areas/questions/banks.js";
 
 // Forums, surveys, choices, lessons, H5P.
-export { NotAForumError } from "./areas/forums/discussions.js";
 export { forumGrades, gradeForumUser, type ForumGrade, type ForumGrades } from "./areas/forums/grading.js";
 export { rate, type RateableItem } from "./areas/ratings/ratings.js";
-export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, type ForumDiscussion, type ForumPost, type PostInput } from "./areas/forums/posts.js";
+export { NotAForumError, ForumError } from "./areas/forums/discussions.js";
+export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, editPost, deletePost, type ForumDiscussion, type ForumPost, type PostInput, type PostChanges } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";
 export { getChoice, answerChoice, ChoiceError, type Choice } from "./areas/surveys/choice.js";
 export { lessonPage, answerLessonPage, LessonError, type LessonField, type LessonPage } from "./areas/lessons/lessons.js";
@@ -136,5 +136,5 @@ export { participants, participantFilters, groups, NoParticipantsError, type Par
 export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, createGrouping, deleteGrouping, setGroupingGroups, type GroupSettings, type GroupingSettings, type Grouping } from "./areas/participants/groups.js";
 export { enrolmentMethods, setEnrolmentMethod, type EnrolmentMethod, type EnrolmentMethodSettings } from "./areas/participants/methods.js";
 export { potentialUsers, enrolUsers, unenrolUser, setUserRoles, EnrolmentError, type PotentialUser } from "./areas/participants/enrolments.js";
-export { upcomingEvents, createEvent, deleteEvent, CalendarError, type CalendarEvent } from "./areas/calendar/calendar.js";
+export { upcomingEvents, calendarEvent, createEvent, updateEvent, deleteEvent, CalendarError, type CalendarEvent, type EventChanges } from "./areas/calendar/calendar.js";
 export { notifications, markNotificationsRead, conversations, conversation, sendMessage, messageParticipants, MessageError, type Notification, type ConversationSummary, type ParticipantSelection } from "./areas/messages/messages.js";

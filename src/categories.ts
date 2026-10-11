@@ -84,6 +84,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   uploadToDraft: ANY,
   draftFiles: ANY,
   deleteDraftFile: ANY,
+  removeFromDraft: ANY,
   submitForm: ANY,
   editCourse: ANY,
 
@@ -166,6 +167,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   replyToPost: ["communication"],
   startDiscussion: ["communication"],
   setDiscussionState: ["others-personal", "communication"],
+  // Editing or deleting one's own posts is communication; a moderator's, someone else's, is writing about others.
+  editPost: ["communication", "others-write"],
+  deletePost: ["communication", "others-write"],
 
   // Surveys.
   getSurvey: ["course-content", "own"],
@@ -234,7 +238,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
 
   // The calendar: the person's upcoming events; course events are what teachers set.
   upcomingEvents: ["own", "course-content"],
+  calendarEvent: ["own", "course-content"],
   createEvent: CONTENT,
+  updateEvent: CONTENT,
   deleteEvent: CONTENT,
 
   // H5P: the content (course content) and the person's own attempts.

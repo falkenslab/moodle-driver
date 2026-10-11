@@ -172,6 +172,18 @@ moodle assignment-submissions <activityId> [--options]
 | `activityId` | `number` |  |
 | `--include-content` | `boolean` |  |
 
+## calendarEvent
+
+One calendar event by its id, as `upcomingEvents` gives them.
+
+```bash
+moodle calendar-event <eventId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `eventId` | `number` |  |
+
 ## callService
 
 Calls one of Moodle's AJAX services as the logged-in person.
@@ -445,6 +457,18 @@ moodle delete-grouping <groupingId>
 | --- | --- | --- |
 | `groupingId` | `number` |  |
 
+## deletePost
+
+Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a discussion's first post takes the whole discussion. Only a moderator deletes a post with replies, or someone else's. `replies` says how many replies went with it. Throws `ForumError` with Moodle's reason when it refuses.
+
+```bash
+moodle delete-post <postId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `postId` | `number` |  |
+
 ## deleteQuestions
 
 Deletes questions from a bank, every version of each, as the bank's delete action does: asked, then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.
@@ -525,6 +549,21 @@ moodle edit-activity <courseId> <activityId> --options
 | `--visibility` | `"shown" \| "hidden" \| "stealth"` |  |
 | `--section-id` | `number` |  |
 | `--before-activity-id` | `number` |  |
+
+## editPost
+
+Changes a post through Moodle's own post form (`post.php?edit=`), as its author (within the site's editing time) or a moderator: only what's given changes. Returns the post afterwards. Throws `ForumError` with Moodle's reason when it refuses.
+
+```bash
+moodle edit-post <postId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `postId` | `number` |  |
+| `--subject` | `string` |  |
+| `--message` | `string` | The new message (HTML), replacing the old one. |
+| `--files` | `{ add?: string[]; remove?: string[]; }` | Attachments to add (absolute local paths) and to remove (by name, as the post lists them). |
 
 ## editQuizSlot
 
@@ -1447,6 +1486,25 @@ moodle update-course <courseId> --options
 | `--short-name` | `string` |  |
 | `--summary` | `string` |  |
 | `--settings` | `Record<string, FieldValue>` |  |
+
+## updateEvent
+
+Changes a calendar event through the calendar's own form, opened on it: only what's given changes. A new start keeps the event's length unless a new one is given. Returns the event as the calendar has it afterwards.
+
+```bash
+moodle update-event <eventId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `eventId` | `number` |  |
+| `--name` | `string` |  |
+| `--description` | `string` | HTML, sent as written. |
+| `--start` | `Date` |  |
+| `--duration-minutes` | `number` | The new length in minutes; 0 leaves the event without one. |
+| `--until` | `Date` | The new end, instead of a length in minutes. |
+| `--location` | `string` |  |
+| `--whole-series` | `boolean` | For an event of a repeated series: change every event of the series (Moodle's default), or only this one. |
 
 ## updateGradeCategory
 

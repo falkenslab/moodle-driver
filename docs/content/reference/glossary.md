@@ -23,7 +23,7 @@ One go at a quiz, from starting it to submitting it, with its answers, marks and
 
 ### Calendar event
 
-An entry in Moodle's calendar: a course, group, user or site event, or one an activity creates for its dates (an assignment's due date, a quiz's close). The driver reads them as `CalendarEvent` (`id`, `type`, `start`, `courseId`, and for an activity's event `activity: { type, instance }`, with the [instance id](#instance-id)) with `upcomingEvents`, creates course events with `createEvent` and removes one with `deleteEvent`; `deadlines` reads what the person has to do by a date from the same calendar. See [Calendar](../areas/calendar.md) and [Overview and deadlines](../areas/overview-and-deadlines.md).
+An entry in Moodle's calendar: a course, group, user or site event, or one an activity creates for its dates (an assignment's due date, a quiz's close). The driver reads them as `CalendarEvent` (`id`, `type`, `start`, `courseId`, and for an activity's event `activity: { type, instance }`, with the [instance id](#instance-id)) with `upcomingEvents` (one with `calendarEvent`), creates course events with `createEvent`, changes one with `updateEvent` and removes one with `deleteEvent`; `deadlines` reads what the person has to do by a date from the same calendar. See [Calendar](../areas/calendar.md) and [Overview and deadlines](../areas/overview-and-deadlines.md).
 
 ### Choice
 

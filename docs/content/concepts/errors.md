@@ -85,7 +85,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `NotAnAssignmentError`, `GradingError` | [Grading](../areas/grading.md): not an assignment the person can grade; Moodle didn't save the grade |
 | `QuizError` | [Quizzes](../areas/quizzes.md): attempts, reviews, results, overrides, structure |
 | `QuestionBankError` | [Question banks](../areas/question-banks.md) |
-| `NotAForumError` | [Forums](../areas/forums.md) |
+| `NotAForumError`, `ForumError` | [Forums](../areas/forums.md) |
 | `SurveyError`, `ChoiceError` | [Surveys and choices](../areas/surveys-and-choices.md) |
 | `LessonError` | [Lessons](../areas/lessons.md) |
 | `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |

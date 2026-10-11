@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { NotAForumError, discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "../../../src/index.js";
+import { ForumError, NotAForumError, deletePost, discussion, editPost, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "../../../src/index.js";
 import { SITE, ServiceFailure, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -237,6 +237,116 @@ describe("setDiscussionState", { skip: !browser && "no system browser" }, () => 
     assert.equal(fake.calls.length, calls);
     assert.equal((await setDiscussionState(context, SITE, 37, 4, { locked: false })).discussion?.locked, false);
     await assert.rejects(setDiscussionState(context, SITE, 37, 99, { pinned: true }), NotAForumError);
+    await context.close();
+  });
+});
+
+describe("editPost and deletePost", { skip: !browser && "no system browser" }, () => {
+  /** Moodle 5.2's error page box, as post.php shows a refusal; reduced. */
+  const fatal = (message: string) => `<div role="main"><div data-rel="fatalerror" class="box py-3 errorbox alert alert-danger"><p class="errormessage">${message}</p><p class="errorcode"><a href="https://docs.moodle.org/">More information about this error</a></p></div></div>`;
+  /** The notification Moodle redirects with, as on the discussion page; reduced. */
+  const notice = (kind: string, message: string) => `<span class="notifications" id="user-notifications"><div class="alert alert-${kind} alert-block fade in alert-dismissible" role="alert">${message}<button type="button" class="btn-close"><span class="visually-hidden">Dismiss this notification</span></button></div></span>`;
+  /** The edit form of post 13 (a reply in discussion 7), reduced; made up. */
+  const editForm = `<form class="mform" action="${SITE}mod/forum/post.php" method="post">
+<input type="hidden" name="discussion" value="7"><input type="hidden" name="parent" value="12"><input type="hidden" name="edit" value="13"><input type="hidden" name="sesskey" value="s1">
+<input type="text" name="subject" value="Re: Loops"><textarea name="message[text]" id="id_message">&lt;p&gt;Old&lt;/p&gt;</textarea>
+<input type="hidden" name="attachments" value="555"><input type="submit" name="submitbutton" value="Save changes"></form>
+<script>var fp = {"repositories":{"5":{"id":"5","name":"Upload a file","type":"upload"}}};</script>`;
+  /** Post.php's confirmation for deleting post 13, reduced: the cancel and confirm buttons, the posts to go. */
+  const confirmPage = `<div role="main"><div class="modal-content"><form method="get" action="${SITE}mod/forum/discuss.php#p13"><input type="hidden" name="d" value="7"><button type="submit">Cancel</button></form>
+<form method="post" action="post.php"><input type="hidden" name="delete" value="13"><input type="hidden" name="confirm" value="13"><input type="hidden" name="sesskey" value="s1"><button type="submit">Continue</button></form></div>
+<article data-post-id="13" data-content="forum-post"></article><article data-post-id="14" data-content="forum-post"></article></div>`;
+
+  async function site({ refuseSave = false } = {}) {
+    const posted: URLSearchParams[] = [];
+    const drafts: { action: string; filename?: string }[] = [];
+    const uploads: string[] = [];
+    const posts = [
+      { id: 12, subject: "Loops", message: "<p>Why?</p>", author: { id: 3, fullname: "Teacher" }, parentid: null, timecreated: 1_790_000_000, timemodified: 1_790_000_000, attachments: [] },
+      { id: 13, subject: "Re: Loops", message: "<p>Old</p>", author: { id: 5, fullname: "Lucía" }, parentid: 12, timecreated: 1_790_000_600, timemodified: 1_790_000_600, attachments: [{ filename: "old.txt", url: `${SITE}pluginfile.php/old.txt` }] },
+      { id: 14, subject: "Re: Loops", message: "<p>Me too</p>", author: { id: 6, fullname: "Ana" }, parentid: 13, timecreated: 1_790_000_900, timemodified: 1_790_000_900, attachments: [] },
+    ];
+    const context: BrowserContext = await browser!.newContext();
+    await serveFakeMoodle(context, {
+      user: { id: 3, fullName: "Teacher" },
+      services: { mod_forum_get_discussion_posts: () => ({ forumid: 1, courseid: 3, posts }) },
+    });
+    const page = (body: string, bodyId = "page-mod-forum-post") => moodlePage({ userId: 3, body, bodyId });
+    const land = (url: string) => `<script>location.replace("${url}")</script>`;
+    await context.route(`${SITE}mod/forum/post.php**`, (route: Route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const html = (body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
+      if (request.method() === "GET") {
+        if (url.searchParams.get("edit") === "13") return html(page(editForm));
+        if (url.searchParams.get("edit")) return html(page(fatal("You can&#039;t edit other people&#039;s posts!")));
+        if (url.searchParams.get("delete") === "13") return html(page(confirmPage));
+        if (url.searchParams.get("delete") === "12") return html(page(notice("danger", "You can't delete this post!"), "page-mod-forum-discuss"));
+        return html(page(fatal("Invalid post ID - {$a}")));
+      }
+      const form = new URLSearchParams(request.postData() ?? "");
+      posted.push(form);
+      if (form.get("edit")) {
+        if (refuseSave) return html(land(`${SITE}mod/forum/discuss.php?d=7&refused=1`));
+        posts[1]!.subject = form.get("subject") ?? "";
+        posts[1]!.message = form.get("message[text]") ?? "";
+        posts[1]!.timemodified = 1_790_009_000;
+      }
+      return html(land(`${SITE}mod/forum/discuss.php?d=7`));
+    });
+    await context.route(`${SITE}mod/forum/discuss.php**`, (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/html", body: page(new URL(route.request().url()).searchParams.get("refused") ? notice("danger", "Sorry, you are not allowed to update this post") : notice("success", "Your post was updated"), "page-mod-forum-discuss") }),
+    );
+    await context.route(`${SITE}repository/draftfiles_ajax.php**`, (route: Route) => {
+      const action = new URL(route.request().url()).searchParams.get("action") ?? "";
+      const form = new URLSearchParams(route.request().postData() ?? "");
+      drafts.push({ action, filename: form.get("filename") ?? undefined });
+      const body = action === "list" ? { list: [{ filename: "old.txt", filepath: "/", type: "file" }] } : { filepath: "/" };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+    });
+    await context.route(`${SITE}repository/repository_ajax.php**`, (route: Route) => {
+      uploads.push(/filename="([^"]+)"/.exec(route.request().postData() ?? "")?.[1] ?? "");
+      return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    });
+    return { context, posted, drafts, uploads };
+  }
+
+  it("changes only what's given, attachments by name, and returns the post afterwards", async () => {
+    const { context, posted, drafts, uploads } = await site();
+    const result = await editPost(context, SITE, 13, { message: "<p>New</p>", files: { add: [path.join(dir, "shot.txt")], remove: ["old.txt"] } });
+    assert.equal(result.changed, "Edited post 13: message, 1 attachment(s) added, 1 attachment(s) removed.");
+    assert.deepEqual([result.post?.id, result.post?.text, result.post?.subject], [13, "New", "Re: Loops"]);
+    assert.equal(posted[0]?.get("subject"), "Re: Loops");
+    assert.equal(posted[0]?.get("message[text]"), "<p>New</p>");
+    assert.deepEqual(drafts, [{ action: "list", filename: undefined }, { action: "delete", filename: "old.txt" }]);
+    assert.deepEqual(uploads, ["shot.txt"]);
+    await context.close();
+  });
+
+  it("refuses an attachment the post doesn't have, before saving", async () => {
+    const { context, posted } = await site();
+    await assert.rejects(editPost(context, SITE, 13, { files: { remove: ["nope.txt"] } }), /nope\.txt: not among the files \(old\.txt\)/);
+    assert.equal(posted.length, 0);
+    assert.equal((await editPost(context, SITE, 13, {})).changed, "Nothing to change.");
+    await context.close();
+  });
+
+  it("gives Moodle's refusals as ForumError", async () => {
+    const { context } = await site();
+    await assert.rejects(editPost(context, SITE, 12, { subject: "Mine" }), (error: unknown) => error instanceof ForumError && error.code === "forum" && /can't be edited: You can't edit other people's posts!/.test(error.message));
+    await assert.rejects(deletePost(context, SITE, 12), (error: unknown) => error instanceof ForumError && /can't be deleted: You can't delete this post!$/.test(error.message));
+    await assert.rejects(deletePost(context, SITE, 99), (error: unknown) => error instanceof ForumError && /Invalid post ID/.test(error.message));
+    await context.close();
+    const refusing = await site({ refuseSave: true });
+    await assert.rejects(editPost(refusing.context, SITE, 13, { subject: "x" }), (error: unknown) => error instanceof ForumError && /wasn't changed: Sorry, you are not allowed to update this post$/.test(error.message));
+    await refusing.context.close();
+  });
+
+  it("deletes a post after confirming, counting the replies under it", async () => {
+    const { context, posted } = await site();
+    const result = await deletePost(context, SITE, 13);
+    assert.deepEqual(result, { changed: "Deleted post 13 and 1 reply under it.", discussionId: 7, replies: 1, discussionDeleted: false });
+    assert.deepEqual([posted[0]?.get("delete"), posted[0]?.get("confirm"), posted[0]?.get("sesskey")], ["13", "13", "s1"]);
     await context.close();
   });
 });

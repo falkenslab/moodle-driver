@@ -1,12 +1,13 @@
 // A forum's discussions and posts as plain data, and posting through Moodle's own post form
 // (mod/forum/post.php), which takes attachments and prefills a reply's subject (ADR-004: no AJAX
 // service opens a discussion).
-import type { BrowserContext } from "playwright-core";
+import type { BrowserContext, Page } from "playwright-core";
 import { callService } from "../../core/ajax.js";
 import { isoDate } from "../courses/list.js";
 import { checkLocalFiles } from "../../core/files.js";
-import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
-import { NotAForumError, discussionPosts, forumInstanceId, htmlToTexts, listDiscussions } from "./discussions.js";
+import { FormError, formValue, openForm, removeFromDraft, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
+import { ForumError, NotAForumError, discussionPosts, forumInstanceId, htmlToTexts, listDiscussions } from "./discussions.js";
+import { fetchSitePage, moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { decodeEntities } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
 
@@ -88,11 +89,16 @@ export interface PostInput {
   fields?: Record<string, FieldValue>;
 }
 
+/** Refuses a message with nothing in it before any form is opened. */
+function checkMessage(message: string): void {
+  // Moodle takes "<p></p>" as a message and posts it blank (confirmed empirically, 5.2).
+  const text = message.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  if (text === "" && !/<(img|video|audio|iframe)\b/i.test(message)) throw new MoodleError("The message is empty: write something before posting.", "invalid-input");
+}
+
 /** Fills and submits the post form at `formPath`; returns the URL Moodle lands on. */
 async function post(context: BrowserContext, siteUrl: string, formPath: string, input: PostInput & { subject?: string }): Promise<string> {
-  // Moodle takes "<p></p>" as a message and posts it blank (confirmed empirically, 5.2).
-  const text = input.message.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-  if (text === "" && !/<(img|video|audio|iframe)\b/i.test(input.message)) throw new MoodleError("The message is empty: write something before posting.", "invalid-input");
+  checkMessage(input.message);
   if (input.files) await checkLocalFiles(input.files);
   const page = await openForm(context, siteUrl, formPath);
   try {
@@ -161,4 +167,134 @@ export async function setDiscussionState(
     done.push(locked ? "locked" : "unlocked");
   }
   return { changed: done.length > 0 ? `Discussion ${discussionId} ${done.join(" and ")}.` : "Nothing to change.", discussion: await find() };
+}
+
+/** What to change in a post: only what's given changes. */
+export interface PostChanges {
+  subject?: string;
+  /** The new message (HTML), replacing the old one. */
+  message?: string;
+  /** Attachments to add (absolute local paths) and to remove (by name, as the post lists them). */
+  files?: { add?: string[]; remove?: string[] };
+}
+
+/** Moodle's reason on a notification it redirected with (`#user-notifications .alert-danger`), or undefined. */
+function refusalNotice(page: Page): Promise<string | undefined> {
+  return page.evaluate(() => {
+    const doc = (globalThis as unknown as {
+      document: { querySelector(s: string): { cloneNode(deep: boolean): { querySelectorAll(s: string): ArrayLike<{ remove(): void }>; textContent: string | null } } | null };
+    }).document;
+    const box = doc.querySelector("#user-notifications .alert-danger");
+    if (!box) return undefined;
+    const copy = box.cloneNode(true);
+    for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden"))) extra.remove();
+    return (copy.textContent ?? "").replace(/\s+/g, " ").trim() || undefined;
+  });
+}
+
+/** Moodle's message on the error page `path` answers with (its fatal error box), read over HTTP. */
+async function errorPageMessage(context: BrowserContext, siteUrl: string, path: string): Promise<string | undefined> {
+  const { html } = await fetchSitePage(context, siteUrl, path, { follow: false });
+  const message = /data-rel="fatalerror"[^>]*>\s*<p class="errormessage">([\s\S]*?)<\/p>/.exec(html)?.[1];
+  return message === undefined ? undefined : decodeEntities(message.replace(/<[^>]*>/g, "")).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Changes a post through Moodle's own post form (`post.php?edit=`), as its author (within the site's
+ * editing time) or a moderator: only what's given changes. Returns the post afterwards. Throws
+ * `ForumError` with Moodle's reason when it refuses.
+ */
+export async function editPost(context: BrowserContext, siteUrl: string, postId: number, changes: PostChanges): Promise<{ changed: string; post?: ForumPost }> {
+  const add = changes.files?.add ?? [];
+  const remove = changes.files?.remove ?? [];
+  if (changes.message !== undefined) checkMessage(changes.message);
+  if (changes.subject !== undefined && changes.subject.trim() === "") throw new MoodleError("The subject is empty: a post needs one.", "invalid-input");
+  if (changes.subject === undefined && changes.message === undefined && add.length === 0 && remove.length === 0) return { changed: "Nothing to change." };
+  if (add.length > 0) await checkLocalFiles(add);
+  const formPath = `mod/forum/post.php?edit=${postId}`;
+  let page: Page;
+  try {
+    page = await openForm(context, siteUrl, formPath);
+  } catch (error) {
+    // Moodle refuses with an error page, not a form: edit time over, someone else's post, no such post.
+    if (!(error instanceof FormError)) throw error;
+    throw new ForumError(`Post ${postId} can't be edited: ${(await errorPageMessage(context, siteUrl, formPath)) ?? "Moodle didn't show its form"}`);
+  }
+  let discussionId: number;
+  try {
+    discussionId = Number(await formValue(page, "discussion"));
+    if (add.length > 0 || remove.length > 0) {
+      const draft = await formValue(page, "attachments");
+      if (!draft) throw new MoodleError("This forum takes no attachments.", "not-available");
+      if (remove.length > 0) await removeFromDraft(page, draft, remove);
+      if (add.length > 0) await uploadToDraft(page, draft, add);
+    }
+    const values: Record<string, FieldValue> = {};
+    if (changes.subject !== undefined) values.subject = changes.subject;
+    if (changes.message !== undefined) values["message[text]"] = changes.message;
+    await setFields(page, values);
+    await submitForm(page, "submitbutton");
+    // A refusal after posting comes back as a notification on the discussion.
+    const refused = await refusalNotice(page);
+    if (refused) throw new ForumError(`Post ${postId} wasn't changed: ${refused}`);
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  const done = [
+    changes.subject !== undefined && "subject",
+    changes.message !== undefined && "message",
+    add.length > 0 && `${add.length} attachment(s) added`,
+    remove.length > 0 && `${remove.length} attachment(s) removed`,
+  ].filter(Boolean);
+  const post = discussionId ? (await discussion(context, siteUrl, discussionId)).posts.find((p) => p.id === postId) : undefined;
+  return { changed: `Edited post ${postId}: ${done.join(", ")}.`, post };
+}
+
+/**
+ * Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a
+ * discussion's first post takes the whole discussion. Only a moderator deletes a post with replies,
+ * or someone else's. `replies` says how many replies went with it. Throws `ForumError` with
+ * Moodle's reason when it refuses.
+ */
+export async function deletePost(
+  context: BrowserContext,
+  siteUrl: string,
+  postId: number,
+): Promise<{ changed: string; discussionId?: number; replies: number; discussionDeleted: boolean }> {
+  const page = await openSitePage(context, siteUrl, `mod/forum/post.php?delete=${postId}`);
+  try {
+    const fatal = await moodleErrorMessage(page);
+    if (fatal) throw new ForumError(`Post ${postId} can't be deleted: ${fatal}`);
+    // Moodle asks to confirm with a form posting `confirm`; a refusal redirects to the discussion with a notification.
+    const confirm = page.locator('form[action$="post.php"]:has(input[name="confirm"]) [type="submit"]');
+    if ((await confirm.count()) === 0) throw new ForumError(`Post ${postId} can't be deleted: ${(await refusalNotice(page)) ?? "Moodle didn't ask to confirm it"}`);
+    // The cancel button goes back to the discussion.
+    const discussionId = Number(await page.locator('form[action*="discuss.php"] input[name="d"]').first().getAttribute("value").catch(() => null)) || undefined;
+    let replies = 0;
+    let first = false;
+    if (discussionId) {
+      const { posts } = await discussionPosts(context, siteUrl, discussionId);
+      first = posts.find((p) => p.id === postId)?.parentid === null;
+      // Every post under it, at any depth.
+      const under = new Set([postId]);
+      for (let grew = true; grew; ) {
+        grew = false;
+        for (const p of posts) {
+          if (p.parentid !== null && under.has(p.parentid) && !under.has(p.id)) {
+            under.add(p.id);
+            grew = true;
+          }
+        }
+      }
+      replies = under.size - 1;
+    }
+    await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), confirm.first().click({ noWaitAfter: true })]);
+    const refused = await refusalNotice(page);
+    if (refused) throw new ForumError(`Post ${postId} wasn't deleted: ${refused}`);
+    const what = first ? `discussion ${discussionId} (its first post ${postId})` : `post ${postId}`;
+    const withReplies = replies === 0 ? "" : ` and ${replies} ${replies === 1 ? "reply" : "replies"} under it`;
+    return { changed: `Deleted ${what}${withReplies}.`, discussionId, replies, discussionDeleted: first };
+  } finally {
+    await page.close().catch(() => undefined);
+  }
 }

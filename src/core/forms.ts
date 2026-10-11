@@ -262,6 +262,18 @@ export async function uploadToDraft(page: Page, draftItemId: string, filePaths: 
 }
 
 /**
+ * Removes files by their path in a form's draft area (`"notes.pdf"`, `"week1/notes.pdf"`), as the
+ * file manager's delete does; the files the area had stay until the form is saved. Throws `FormError`
+ * naming the files the area doesn't have, before removing any.
+ */
+export async function removeFromDraft(page: Page, draftItemId: string, names: string[]): Promise<void> {
+  const present = (await draftFiles(page, draftItemId)).map((file) => file.name);
+  const missing = names.filter((name) => !present.includes(name));
+  if (missing.length > 0) throw new FormError("Removing files failed:", missing.map((name) => ({ field: "files", message: `${name}: not among the files (${present.join(", ") || "none"})` })));
+  for (const name of names) await deleteDraftFile(page, draftItemId, name);
+}
+
+/**
  * Submits the form with one of its buttons and waits for the next page. Throws `FormError` with
  * Moodle's messages by field (`#id_error_<field>`) when the form comes back with errors.
  */
@@ -281,10 +293,11 @@ export async function submitForm(page: Page, button: string): Promise<void> {
 /**
  * The values of a Moodle date selector's parts (`name[day]`, `[month]`, `[year]`, `[hour]`,
  * `[minute]`) for `date`, in the person's time zone (`M.cfg.usertimezone`), which is how Moodle
- * reads them. Its "enable" checkbox, when it has one, is the caller's to set first.
+ * reads them. Its "enable" checkbox, when it has one, is the caller's to set first. `timeZone` is for a
+ * form without Moodle's page around it (a fragment), which has no `M.cfg`: `readPageConfig()` gives it.
  */
-export async function dateSelectorValues(page: Page, name: string, date: Date): Promise<Record<string, FieldValue>> {
-  const timeZone = await page.evaluate(() => (globalThis as unknown as { M?: { cfg?: { usertimezone?: string } } }).M?.cfg?.usertimezone ?? "UTC");
+export async function dateSelectorValues(page: Page, name: string, date: Date, timeZone?: string): Promise<Record<string, FieldValue>> {
+  timeZone ??= await page.evaluate(() => (globalThis as unknown as { M?: { cfg?: { usertimezone?: string } } }).M?.cfg?.usertimezone ?? "UTC");
   return dateSelectorParts(name, date, timeZone);
 }
 
