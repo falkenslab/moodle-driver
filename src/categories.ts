@@ -178,6 +178,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   createGrouping: CONTENT,
   deleteGrouping: CONTENT,
   setGroupingGroups: CONTENT,
+  enrolmentMethods: CONTENT,
+  setEnrolmentMethod: CONTENT,
 
   // Completion: the person's own, deciding someone else's, everyone's report.
   setCompletion: OWN,

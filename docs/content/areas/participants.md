@@ -1,6 +1,6 @@
 # Participants
 
-This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`), giving or taking roles (`setUserRoles`), and making groups and groupings and choosing their members (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
+This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`), giving or taking roles (`setUserRoles`), making groups and groupings and choosing their members (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…), and setting how people get in: the course's enrolment methods (`enrolmentMethods`, `setEnrolmentMethod`). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
 
 **Terms:** [participant](../reference/glossary.md#participant), [role](../reference/glossary.md#role), [group](../reference/glossary.md#group).
 
@@ -164,6 +164,50 @@ interface Grouping {
 
 A group or grouping that doesn't exist, or that the person can't manage, throws a `MoodleError` (code `not-found`) with Moodle's message. `groups` reads groups with their members.
 
+## Enrolment methods
+
+How people get into a course: manual enrolment, self enrolment (with or without a key), guest access… read and set on the course's "Enrolment methods" page (`enrol/instances.php`) and each method's form (`enrol/editinstance.php`); no service for them is open to AJAX.
+
+```ts
+function enrolmentMethods(context: BrowserContext, siteUrl: string, courseId: number): Promise<EnrolmentMethod[]>;
+function setEnrolmentMethod(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  method: number | { type: string },
+  settings: EnrolmentMethodSettings,
+): Promise<{ changed: string; method: EnrolmentMethod }>;
+
+interface EnrolmentMethod {
+  id: number;
+  type: string; // "manual", "self", "guest", "cohort"…
+  name: string; // as the page names it, in the site's language
+  enabled: boolean;
+  users: number;
+  roleId?: number;
+  hasKey?: boolean; // self enrolment and guest access; the key itself is never returned
+  start?: string; // self enrolment: ISO dates
+  end?: string;
+  maxUsers?: number; // self enrolment
+}
+
+interface EnrolmentMethodSettings {
+  enabled?: boolean;
+  key?: string; // "" removes it
+  start?: Date | null; // null removes the date
+  end?: Date | null;
+  roleId?: number;
+  maxUsers?: number; // 0: no limit
+  welcome?: string | false; // self enrolment's welcome message; false sends none
+}
+```
+
+`enrolmentMethods` lists the methods in the order Moodle tries them, and opens each method's form for its role, key, dates and limit. What a form shows depends on the person's permissions: an editing teacher usually configures self enrolment and guest access but not manual enrolment, whose role then isn't returned.
+
+`setEnrolmentMethod` takes a method by id, or by type (`{ type: "self" }`: the course's first one of that type, added when the course has none and the page's "Add method" menu offers it). Only the settings given change; dates are in the person's time zone in Moodle. A welcome message turns sending on (from the course contact, unless another sender was chosen). It returns the method afterwards. It throws `EnrolmentError` for a method the course doesn't have and can't add, or when the person can't manage the course's methods; `FormError` with Moodle's reason when it refuses the form, or for a setting the person's form doesn't have.
+
+A student enrols with the key in Moodle itself (the course's "Enrol me"); the driver only sets the method up.
+
 ## Pseudonymizing
 
 The driver returns real names: it's a library for any program, and what a program does with names is its own choice. A program that hands participants' data to someone else (an AI model, say) pseudonymizes it itself; moodle-mcp, one consumer, does it with `@falkenslab/pseudonym`. User ids are stable within a site, so a program can keep a table from id to pseudonym and translate back before acting.
@@ -201,4 +245,5 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 - `potentialUsers`: `others-personal`.
 - `createGroup`, `updateGroup`, `deleteGroup`, `groupings`, `createGrouping`, `deleteGrouping`, `setGroupingGroups`: `course-content`.
 - `setGroupMembers`: `others-personal` and `others-write`.
+- `enrolmentMethods`, `setEnrolmentMethod`: `course-content`.
 - `enrolUsers`, `unenrolUser`, `setUserRoles`: `others-personal` and `others-write` (deciding who is in the course and with which role).

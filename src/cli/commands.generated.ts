@@ -1095,6 +1095,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "enrolmentMethods",
+    "description": "A course's enrolment methods, in the order Moodle tries them: each one's type, name, whether it's enabled and how many users it enrolled, and from its form the role it gives and, for self enrolment and guest access, whether it asks for a key (never the key), self enrolment's dates and limit. Throws `EnrolmentError` when the person can't manage the course's enrolment methods.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "finishQuizAttempt",
     "description": "Submits an attempt for grading, and gives its review when the quiz shows it.",
     "params": [
@@ -1955,6 +1969,96 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "boolean"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "setEnrolmentMethod",
+    "description": "Sets an enrolment method with its form: by id, or the course's first method of a type (`{ type: \"self\" }`), added when the course has none and the \"Add method\" menu offers it. Only what's given changes. Returns the method afterwards. Throws `EnrolmentError` for a method the course doesn't have or can't add, `FormError` with Moodle's reason when it refuses the form (a key required by the site, an end before the start).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "method",
+        "optional": false,
+        "type": "number | { type: string; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ],
+    "options": {
+      "name": "settings",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "enabled",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "key",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Self enrolment and guest access: the key to ask for; \"\" removes it."
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          },
+          "description": "Self enrolment: from when and until when students may enrol; `null` removes the limit."
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "roleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "The role it gives (manual and self enrolment)."
+        },
+        {
+          "name": "maxUsers",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Self enrolment: the most users it enrols; 0 for no limit."
+        },
+        {
+          "name": "welcome",
+          "optional": true,
+          "type": "string | false",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none."
         }
       ]
     }

@@ -486,6 +486,18 @@ moodle enrol-users <courseId> <userIds> [--options]
 | `--start` | `Date` |  |
 | `--end` | `Date` |  |
 
+## enrolmentMethods
+
+A course's enrolment methods, in the order Moodle tries them: each one's type, name, whether it's enabled and how many users it enrolled, and from its form the role it gives and, for self enrolment and guest access, whether it asks for a key (never the key), self enrolment's dates and limit. Throws `EnrolmentError` when the person can't manage the course's enrolment methods.
+
+```bash
+moodle enrolment-methods <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+
 ## finishQuizAttempt
 
 Submits an attempt for grading, and gives its review when the quiz shows it.
@@ -984,6 +996,26 @@ moodle set-discussion-state <activityId> <discussionId> --options
 | `discussionId` | `number` |  |
 | `--pinned` | `boolean` |  |
 | `--locked` | `boolean` |  |
+
+## setEnrolmentMethod
+
+Sets an enrolment method with its form: by id, or the course's first method of a type (`{ type: "self" }`), added when the course has none and the "Add method" menu offers it. Only what's given changes. Returns the method afterwards. Throws `EnrolmentError` for a method the course doesn't have or can't add, `FormError` with Moodle's reason when it refuses the form (a key required by the site, an end before the start).
+
+```bash
+moodle set-enrolment-method <courseId> <method> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `method` | `number \| { type: string; }` |  |
+| `--enabled` | `boolean` |  |
+| `--key` | `string` | Self enrolment and guest access: the key to ask for; "" removes it. |
+| `--start` | `Date` | Self enrolment: from when and until when students may enrol; `null` removes the limit. |
+| `--end` | `Date` |  |
+| `--role-id` | `number` | The role it gives (manual and self enrolment). |
+| `--max-users` | `number` | Self enrolment: the most users it enrols; 0 for no limit. |
+| `--welcome` | `string \| false` | Self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none. |
 
 ## setGroupMembers
 
