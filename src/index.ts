@@ -37,6 +37,8 @@ export {
   type PendingActivity,
 } from "./areas/courses/structure.js";
 export { activitiesOverview, deadlines, courseUpdates, type OverviewField } from "./areas/courses/overview.js";
+export { resetCourse, type ResetDeletions, type ResetStatus } from "./areas/courses/reset.js";
+export { copyCourse, backupCourse, restoreCourse, importActivities, BackupError, type CourseRef } from "./areas/backup/backup.js";
 
 // Activities: building them and viewing their content.
 export {
@@ -132,6 +134,19 @@ export {
 } from "./areas/grades/gradebook.js";
 export { setGrade, type GradebookGrade, type SetGradeOptions } from "./areas/grades/singleview.js";
 export { exportGrades, GRADE_EXPORT_FORMATS, type GradeExportFormat, type GradeExportDisplay, type ExportGradesOptions } from "./areas/grades/export.js";
+export {
+  courseLogs,
+  activityReport,
+  participationReport,
+  LOG_ACTIONS,
+  PARTICIPATION_ACTIONS,
+  ReportError,
+  type LogAction,
+  type LogEntry,
+  type ActivityViews,
+  type ParticipationAction,
+  type ActivityParticipant,
+} from "./areas/reports/reports.js";
 export { setCompletion, overrideCompletion, completionReport, CompletionError, type CompletionCell, type CompletionReport } from "./areas/completion/completion.js";
 export { participants, participantFilters, groups, NoParticipantsError, type Participant, type CourseGroup } from "./areas/participants/participants.js";
 export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, createGrouping, deleteGrouping, setGroupingGroups, type GroupSettings, type GroupingSettings, type Grouping } from "./areas/participants/groups.js";

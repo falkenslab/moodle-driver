@@ -25,6 +25,7 @@ export type MoodleErrorCode =
   | "moodle-service"
   | "form"
   | "activity-settings"
+  | "backup"
   | "not-viewable"
   | "not-an-assignment"
   | "grading"
@@ -43,6 +44,7 @@ export type MoodleErrorCode =
   | "no-participants"
   | "enrolment"
   | "question-bank"
+  | "report"
   | "quiz"
   | "choice"
   | "survey";

@@ -31,6 +31,20 @@ moodle activity-content <activityId> <type> [--options]
 | `type` | `"url" \| "page" \| "book" \| "label" \| "resource" \| "folder"` |  |
 | `--trail` | `"realistic" \| "fast"` |  |
 
+## activityReport
+
+A course's activity report: per activity, how many times it was viewed, by how many people, and when last, from the logs (between `from` and `until` when given). Activities nobody viewed come with zero views.
+
+```bash
+moodle activity-report <courseId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--from` | `Date` |  |
+| `--until` | `Date` |  |
+
 ## activitySettings
 
 An activity's settings as its form holds them, without submitting it: its module, name and description, every field by the name `updateActivity` takes in `settings`, the files of a resource, folder or SCORM, and its restrictions and completion in plain terms. Teachers only.
@@ -188,6 +202,22 @@ moodle assignment-submissions <activityId> [--options]
 | `activityId` | `number` |  |
 | `--include-content` | `boolean` |  |
 
+## backupCourse
+
+Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too.
+
+```bash
+moodle backup-course <courseId> <destDir> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `destDir` | `string` |  |
+| `--with-users` | `boolean` |  |
+| `--anonymize` | `boolean` |  |
+| `--timeout-ms` | `number` |  |
+
 ## calendarEvent
 
 One calendar event by its id, as `upcomingEvents` gives them.
@@ -246,6 +276,26 @@ The person's conversations, latest first, with their last message as text.
 moodle conversations
 ```
 
+## copyCourse
+
+Copies a course into a new one, as Moodle's "Copy course" does: its content (and its people's data and enrolments, `withUsers`), under a new full and short name, in a category (the course's unless given), with new dates. Goes through Moodle's copy service, then waits for the copy, which Moodle makes in its scheduled tasks, up to `timeoutMs` (ten minutes). Needs the rights to back up, restore and create courses (`moodle/backup:backupcourse`, `moodle/restore:restorecourse`, `moodle/course:create`); without them, `BackupError` says so.
+
+```bash
+moodle copy-course <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--full-name` (required) | `string` |  |
+| `--short-name` (required) | `string` |  |
+| `--category-id` | `number` |  |
+| `--start` | `Date` |  |
+| `--end` | `Date` |  |
+| `--with-users` | `boolean` |  |
+| `--visible` | `boolean` |  |
+| `--timeout-ms` | `number` |  |
+
 ## courseAbilities
 
 What the person can do in a course, asked of read-only services that need the capability: the activity types they can add (none without `moodle/course:manageactivities`) and the grader report's users (`nopermissions` without `gradereport/grader:view`). Nothing is changed.
@@ -270,6 +320,24 @@ moodle course-activity-types <courseId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` | `number` |  |
+
+## courseLogs
+
+A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format.
+
+```bash
+moodle course-logs <courseId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--user-id` | `number` |  |
+| `--activity-id` | `number` |  |
+| `--from` | `Date` |  |
+| `--until` | `Date` |  |
+| `--action` | `"create" \| "view" \| "update" \| "delete" \| "change"` |  |
+| `--limit` | `number` |  |
 
 ## courseRoles
 
@@ -851,6 +919,20 @@ moodle h5p-activity <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## importActivities
+
+Imports activities from another course into a course, as Moodle's "Import" does: every activity of `fromCourseId`, or only `activityIds`, added to `toCourseId`'s content (with their sections), without users' data. Needs `moodle/restore:restoretargetimport` in the course imported into and `moodle/backup:backuptargetimport` in the other. Returns the activities the course has afterwards that it didn't have before, by id.
+
+```bash
+moodle import-activities <fromCourseId> <toCourseId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `fromCourseId` | `number` |  |
+| `toCourseId` | `number` |  |
+| `--activity-ids` | `number[]` |  |
+
 ## importQuestions
 
 Imports questions into a bank from a GIFT or Moodle XML file (a local path) or text, through the bank's import form; returns the questions created. A file Moodle can't parse comes back as a `QuestionBankError` with its messages, and nothing is imported.
@@ -1009,6 +1091,22 @@ moodle participants <courseId> [--options]
 | `--role` | `number` |  |
 | `--group` | `number` |  |
 | `--inactive-since` | `Date` |  |
+
+## participationReport
+
+Who took part in an activity of a course, as its participation report counts it: everyone with the role (every role the report offers, unless `roleId`), with how many actions they made there (views or posts only, when `action`; since `since`, when given); those who did nothing come with 0.
+
+```bash
+moodle participation-report <courseId> <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `activityId` | `number` |  |
+| `--role-id` | `number` |  |
+| `--since` | `Date` |  |
+| `--action` | `"view" \| "post"` |  |
 
 ## pendingActivities
 
@@ -1178,6 +1276,41 @@ moodle reply-to-post <postId> <input>
 | --- | --- | --- |
 | `postId` | `number` |  |
 | `input` | `PostInput & { subject?: string; }` |  |
+
+## resetCourse
+
+Resets a course for a new year, as Moodle's reset form does: deletes only what's named in `delete` (in every module of the course that has it), unenrols the people with `unenrolRoles` (role ids), moves the course's start date to `start` (and its activities' dates with it), and sets any other of the form's fields by name (`fields`). Nothing is deleted unless asked: the form's own defaults are unticked first. It can't be undone. Returns Moodle's report: per component, what it did and its errors. Needs `moodle/course:reset`.
+
+```bash
+moodle reset-course <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--delete` | `ResetDeletions` |  |
+| `--unenrol-roles` | `number[]` |  |
+| `--start` | `Date` |  |
+| `--fields` | `Record<string, FieldValue>` |  |
+
+## restoreCourse
+
+Restores a backup file (`.mbz`) through Moodle's restore wizard: into a new course in a category (`into: "new"`, with `categoryId`, which needs `moodle/course:create` there), or into an existing course (`into: <course id>`), its content added to the course's (`mode: "merge"`, the default) or replacing it (`"replace"`: the course's content is deleted first). A new course takes the backup's names unless `fullName` and `shortName` are given. Users' data is restored when `withUsers` and the backup has it. An asynchronous restore is waited for up to `timeoutMs` (ten minutes). Needs `moodle/restore:restorecourse` where it restores.
+
+```bash
+moodle restore-course <file> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `file` | `string` |  |
+| `--into` (required) | `number \| "new"` |  |
+| `--category-id` | `number` |  |
+| `--mode` | `"merge" \| "replace"` |  |
+| `--full-name` | `string` |  |
+| `--short-name` | `string` |  |
+| `--with-users` | `boolean` |  |
+| `--timeout-ms` | `number` |  |
 
 ## rubric
 

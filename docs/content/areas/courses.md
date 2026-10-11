@@ -1,6 +1,6 @@
 # Courses
 
-The courses the person is enrolled in, a course's sections and activities, its assignments, what the person still has to do in it, and changing a course's settings. Reading works for anyone enrolled (student or teacher); `updateCourse` needs the right to edit the course's settings, which teachers with editing rights and managers have. Everything here is read through the services the course page itself uses (`core_course_get_enrolled_courses_by_timeline_classification`, `core_courseformat_get_state`), so it doesn't depend on the interface's language, except the details (activities' dates and restrictions, sections' descriptions), which are read from the course page as it shows them.
+The courses the person is enrolled in, a course's sections and activities, its assignments, what the person still has to do in it, changing a course's settings, and resetting it for a new year. Reading works for anyone enrolled (student or teacher); `updateCourse` needs the right to edit the course's settings, which teachers with editing rights and managers have. Everything here is read through the services the course page itself uses (`core_course_get_enrolled_courses_by_timeline_classification`, `core_courseformat_get_state`), so it doesn't depend on the interface's language, except the details (activities' dates and restrictions, sections' descriptions), which are read from the course page as it shows them.
 
 **Terms:** [section](../reference/glossary.md#section), [activity](../reference/glossary.md#activity), [module](../reference/glossary.md#module), [course module id](../reference/glossary.md#course-module-id), [completion](../reference/glossary.md#completion).
 
@@ -121,6 +121,49 @@ Errors:
 - `CourseError` when the form can't be opened: the course doesn't exist or the person isn't allowed.
 - `FormError` when Moodle refuses the form (a short name already taken), with `fields` holding Moodle's message per field, or when a field in `settings` isn't in the form or is disabled.
 
+## resetCourse
+
+Empties a course of its people's data for a new year, keeping its content, through Moodle's reset form. **It can't be undone.**
+
+```ts
+function resetCourse(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  options: { delete?: ResetDeletions; unenrolRoles?: number[]; start?: Date; fields?: Record<string, FieldValue> },
+): Promise<{ changed: string; report: ResetStatus[] }>;
+
+interface ResetDeletions {
+  submissions?: boolean; // assignments' submissions
+  attempts?: boolean; // quiz, lesson, SCORM and H5P attempts
+  posts?: boolean; // every forum post
+  grades?: boolean; // every grade in the gradebook
+  overrides?: boolean; // assignment, quiz and lesson overrides
+  choices?: boolean; // choice answers
+  events?: boolean; // the course's calendar events
+  groups?: boolean; // groups and groupings
+  completion?: boolean; // completion data
+  notes?: boolean;
+  comments?: boolean;
+}
+
+interface ResetStatus {
+  component: string;
+  item: string;
+  done: boolean;
+  error?: string;
+}
+```
+
+- Only what's named is reset: Moodle's form opens with its own defaults ticked (events, grades, every module's data…), and they're all unticked first. A call that names nothing throws `MoodleError` with code `invalid-input`.
+- `delete` names each kind of data, set in every module of the course that has it (the reset form's `reset_assign_submissions`, `reset_quiz_attempts`, `reset_lesson`, `reset_scorm`…); a kind no activity of the course has is left out, and `changed` says so.
+- `unenrolRoles` unenrols everyone with these roles (role ids, as in [Participants](participants.md); 5 is Student on a default site); a role the form doesn't offer is a `CourseError`.
+- `start` moves the course's start date, and its activities' dates with it, as the form's start date does.
+- `fields` sets any other of the form's fields by name (`reset_forum_subscriptions`, `reset_glossary_all`…).
+- `report` is the table Moodle shows afterwards: per component, each task, `done`, or its `error` in the site's language (a module without reset support comes as "Reset not supported").
+
+The reset button's confirmation dialog is skipped: the form is submitted as the dialog does once confirmed. A site that makes resets asynchronous queues it for cron, and `report` comes empty. Needs `moodle/course:reset` (editing teachers have it); without it, `CourseError`.
+
 ## Example
 
 ```ts
@@ -149,4 +192,4 @@ console.log(course?.fullname);
 
 ## Data categories
 
-`listCourses` is `own`. `courseState` and `courseStructure` are `course-content` and `own` (the state carries the person's completion), and so is `pendingActivities` (`own`). `activityDetails` and `listAssignments` are `course-content`. `updateCourse` is `course-content`. See [data categories](../concepts/data-categories.md).
+`listCourses` is `own`. `courseState` and `courseStructure` are `course-content` and `own` (the state carries the person's completion), and so is `pendingActivities` (`own`). `activityDetails` and `listAssignments` are `course-content`. `updateCourse` is `course-content`; `resetCourse` is `course-content` and `others-write` (it deletes people's work and enrolments). See [data categories](../concepts/data-categories.md).

@@ -106,6 +106,13 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   courseAbilities: OWN,
   listCourses: OWN,
   updateCourse: CONTENT,
+  // Copies, backups and restores carry the course's content, and its people's data when asked (withUsers).
+  copyCourse: ["course-content", "others-personal"],
+  backupCourse: ["course-content", "others-personal"],
+  restoreCourse: ["course-content", "others-personal"],
+  importActivities: CONTENT,
+  // Resetting deletes the course's people's work and enrolments: deciding about others.
+  resetCourse: ["course-content", "others-write"],
   myGrades: OWN,
   deadlines: OWN,
   pendingActivities: OWN,
@@ -203,6 +210,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   setCompletion: OWN,
   overrideCompletion: ["others-write"],
   completionReport: PERSONAL,
+
+  // Reports on what people did: the logs and each one's participation; the views per activity identify no one.
+  courseLogs: PERSONAL,
+  participationReport: PERSONAL,
+  activityReport: ["course-content", "others-aggregate"],
 
   // The gradebook: everyone's grades, and its setup (course content).
   graderReport: PERSONAL,

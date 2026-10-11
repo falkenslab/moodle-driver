@@ -23,7 +23,8 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 
 | Area | What a program can do |
 | --- | --- |
-| Courses | List the person's courses, read a course's sections and activities, what's pending, change a course's settings |
+| Courses | List the person's courses, read a course's sections and activities, what's pending, change a course's settings, reset it for a new year |
+| Copy, backup and restore | Copy a course into a new one, back it up to a file, restore a backup, import activities from another course |
 | Content | Read pages, books, labels, URLs, files and folders, with their media |
 | Building a course | Create, update, move, duplicate and delete activities and sections; read an activity's settings |
 | Assignments | Submit as a student; read everyone's submissions, grade (simple, rubrics, marking guides), grant extensions as a teacher |
@@ -35,6 +36,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Grades | The person's grades, the grader report and Moodle's grade exports, grading and overriding in the gradebook, the gradebook setup (manual items, categories, weights) |
 | Completion | Mark activities done, override completion, read the progress report |
 | People | Participants with roles and groups, inactivity, groups |
+| Logs and reports | A course's logs by user, activity, action and date; the views per activity; who took part in an activity |
 | Overview | The activities overview, deadlines, course updates |
 | Calendar and messages | Course events; notifications, conversations, private messages |
 | Session and site | Log in by hand, log out, who the person is, the site's public information |

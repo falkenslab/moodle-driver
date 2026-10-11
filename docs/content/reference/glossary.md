@@ -21,6 +21,10 @@ The activity where students hand in work for a teacher to grade: module `assign`
 
 One go at a quiz, from starting it to submitting it, with its answers, marks and grade; Moodle numbers attempts per person and identifies each by an attempt id (`mod/quiz/attempt.php?attempt=9`). The driver starts or continues one with `startQuizAttempt` (which returns `attemptId`), reads and answers it with `readAttempt` and `answerQuizQuestions`, finishes it with `finishQuizAttempt`, and lists everyone's with `quizResults` (`QuizAttemptResult`, with `id` and `userId`); `quizInfo` gives the person's own as `attempts`. H5P activities have attempts too (`h5pActivity`, `H5PAttempt`). See [Quizzes](../areas/quizzes.md) and [H5P](../areas/h5p.md).
 
+### Backup
+
+A course (its content, and its people's data when asked) saved as a `.mbz` file, which Moodle can restore into a new course or an existing one; a course copy and an import are a backup restored at once, without a file. Moodle makes them through wizards, and may make backups, restores and copies later, in its scheduled tasks (cron). The driver makes them with `backupCourse`, `restoreCourse`, `copyCourse` and `importActivities`, waiting for Moodle up to a timeout. See [Copy, backup and restore](../areas/copy-backup-restore.md).
+
 ### Calendar event
 
 An entry in Moodle's calendar: a course, group, user or site event, or one an activity creates for its dates (an assignment's due date, a quiz's close). The driver reads them as `CalendarEvent` (`id`, `type`, `start`, `courseId`, and for an activity's event `activity: { type, instance }`, with the [instance id](#instance-id)) with `upcomingEvents` (one with `calendarEvent`), creates course events with `createEvent`, changes one with `updateEvent` and removes one with `deleteEvent`; `deadlines` reads what the person has to do by a date from the same calendar. See [Calendar](../areas/calendar.md) and [Overview and deadlines](../areas/overview-and-deadlines.md).
@@ -82,6 +86,10 @@ The id of an activity in its module's own table (the quiz's id among quizzes, th
 ### Lesson page
 
 One page of a lesson activity (module `lesson`): a content page with buttons that jump elsewhere, or a question page with a form, after which Moodle may show feedback; Moodle keeps which page the person is on. The driver reads the current one with `lessonPage` (`LessonPage`, with `kind` `"content"`, `"question"`, `"feedback"` or `"end"`, `pageId`, `buttons[].jumpTo`, `fields`) and answers it with `answerLessonPage`, which returns the `page` that follows. See [Lessons](../areas/lessons.md).
+
+### Log
+
+Moodle's record of every event in a course: who did what, when, where, and about whom ("Course module viewed", "Submission graded"), kept by its log store and read by teachers in the logs, activity and participation reports. The driver reads them with `courseLogs` (`LogEntry`, with `time`, `userId`, `relatedUserId`, `activityId`, `event`, `description`), the views per activity with `activityReport`, and who took part in an activity with `participationReport`. Acting at a person's pace (the [trail](#trail)) keeps the log looking like a person's. See [Logs and reports](../areas/logs-and-reports.md).
 
 ### Marking workflow
 

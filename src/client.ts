@@ -7,9 +7,12 @@ import { activitySettings, addSection, createActivity, deleteActivity, deleteSec
 import { callService } from "./core/ajax.js";
 import { calendarEvent, createEvent, deleteEvent, updateEvent, upcomingEvents } from "./areas/calendar/calendar.js";
 import { answerChoice, getChoice } from "./areas/surveys/choice.js";
+import { activityReport, courseLogs, participationReport } from "./areas/reports/reports.js";
+import { backupCourse, copyCourse, importActivities, restoreCourse } from "./areas/backup/backup.js";
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
 import { listCourses, updateCourse } from "./areas/courses/list.js";
+import { resetCourse } from "./areas/courses/reset.js";
 import { downloadFile, type DownloadedFile } from "./core/files.js";
 import { openForm } from "./core/forms.js";
 import { deletePost, discussion, editPost, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
@@ -51,6 +54,7 @@ import { MoodleError } from "./core/errors.js";
  */
 const SITE_FUNCTIONS = {
   activitiesOverview,
+  activityReport,
   activitySettings,
   addGradeCategory,
   addGradeItem,
@@ -59,13 +63,16 @@ const SITE_FUNCTIONS = {
   addQuizSection,
   addSection,
   answerChoice,
+  backupCourse,
   assignmentSubmissions,
   calendarEvent,
   completionReport,
+  copyCourse,
   conversation,
   conversations,
   courseAbilities,
   courseActivityTypes,
+  courseLogs,
   courseRoles,
   courseStructure,
   courseUpdates,
@@ -99,6 +106,7 @@ const SITE_FUNCTIONS = {
   grantExtension,
   groups,
   h5pActivity,
+  importActivities,
   scorm,
   importQuestions,
   lessonPage,
@@ -127,6 +135,7 @@ const SITE_FUNCTIONS = {
   setGroupingGroups,
   enrolmentMethods,
   setEnrolmentMethod,
+  participationReport,
   pendingActivities,
   questionBanks,
   questions,
@@ -139,6 +148,8 @@ const SITE_FUNCTIONS = {
   readReview,
   removeQuizSlot,
   replyToPost,
+  resetCourse,
+  restoreCourse,
   rubric,
   saveSubmission,
   sendMessage,

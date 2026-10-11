@@ -69,6 +69,7 @@ const sidebars: SidebarsConfig = {
       label: "Moodle areas",
       items: [
         "areas/courses",
+        "areas/copy-backup-restore",
         "areas/content",
         "areas/activities",
         "areas/assignments",
@@ -83,6 +84,7 @@ const sidebars: SidebarsConfig = {
         "areas/grades-and-gradebook",
         "areas/completion",
         "areas/participants",
+        "areas/logs-and-reports",
         "areas/overview-and-deadlines",
         "areas/calendar",
         "areas/messages",

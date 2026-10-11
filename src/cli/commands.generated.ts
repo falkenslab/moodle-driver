@@ -75,6 +75,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "activityReport",
+    "description": "A course's activity report: per activity, how many times it was viewed, by how many people, and when last, from the logs (between `from` and `until` when given). Activities nobody viewed come with zero views.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "from",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "until",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "activitySettings",
     "description": "An activity's settings as its form holds them, without submitting it: its module, name and description, every field by the name `updateActivity` takes in `settings`, the files of a resource, folder or SCORM, and its restrictions and completion in plain terms. Teachers only.",
     "params": [
@@ -504,6 +541,59 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "backupCourse",
+    "description": "Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "destDir",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "withUsers",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "anonymize",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "timeoutMs",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "calendarEvent",
     "description": "One calendar event by its id, as `upcomingEvents` gives them.",
     "params": [
@@ -586,6 +676,91 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": []
   },
   {
+    "name": "copyCourse",
+    "description": "Copies a course into a new one, as Moodle's \"Copy course\" does: its content (and its people's data and enrolments, `withUsers`), under a new full and short name, in a category (the course's unless given), with new dates. Goes through Moodle's copy service, then waits for the copy, which Moodle makes in its scheduled tasks, up to `timeoutMs` (ten minutes). Needs the rights to back up, restore and create courses (`moodle/backup:backupcourse`, `moodle/restore:restorecourse`, `moodle/course:create`); without them, `BackupError` says so.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "fullName",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "shortName",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "categoryId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "withUsers",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "visible",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "timeoutMs",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "courseAbilities",
     "description": "What the person can do in a course, asked of read-only services that need the capability: the activity types they can add (none without `moodle/course:manageactivities`) and the grader report's users (`nopermissions` without `gradereport/grader:view`). Nothing is changed.",
     "params": [
@@ -620,6 +795,82 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "courseLogs",
+    "description": "A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "userId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "activityId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "from",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "until",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "action",
+          "optional": true,
+          "type": "\"create\" | \"view\" | \"update\" | \"delete\" | \"change\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "create",
+              "view",
+              "update",
+              "delete",
+              "change"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "courseRoles",
@@ -1968,6 +2219,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "importActivities",
+    "description": "Imports activities from another course into a course, as Moodle's \"Import\" does: every activity of `fromCourseId`, or only `activityIds`, added to `toCourseId`'s content (with their sections), without users' data. Needs `moodle/restore:restoretargetimport` in the course imported into and `moodle/backup:backuptargetimport` in the other. Returns the activities the course has afterwards that it didn't have before, by id.",
+    "params": [
+      {
+        "name": "fromCourseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "toCourseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "activityIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "importQuestions",
     "description": "Imports questions into a bank from a GIFT or Moodle XML file (a local path) or text, through the bank's import form; returns the questions created. A file Moodle can't parse comes back as a `QuestionBankError` with its messages, and nothing is imported.",
     "params": [
@@ -2269,6 +2557,63 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "participationReport",
+    "description": "Who took part in an activity of a course, as its participation report counts it: everyone with the role (every role the report offers, unless `roleId`), with how many actions they made there (views or posts only, when `action`; since `since`, when given); those who did nothing come with 0.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "roleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "since",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "action",
+          "optional": true,
+          "type": "\"view\" | \"post\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "view",
+              "post"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "pendingActivities",
     "description": "What the person still has to do in a course: activities whose completion is tracked and not complete or, where completion isn't tracked, graded activities without a grade yet.",
     "params": [
@@ -2501,6 +2846,140 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "resetCourse",
+    "description": "Resets a course for a new year, as Moodle's reset form does: deletes only what's named in `delete` (in every module of the course that has it), unenrols the people with `unenrolRoles` (role ids), moves the course's start date to `start` (and its activities' dates with it), and sets any other of the form's fields by name (`fields`). Nothing is deleted unless asked: the form's own defaults are unticked first. It can't be undone. Returns Moodle's report: per component, what it did and its errors. Needs `moodle/course:reset`.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "delete",
+          "optional": true,
+          "type": "ResetDeletions",
+          "value": {
+            "kind": "json"
+          }
+        },
+        {
+          "name": "unenrolRoles",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "restoreCourse",
+    "description": "Restores a backup file (`.mbz`) through Moodle's restore wizard: into a new course in a category (`into: \"new\"`, with `categoryId`, which needs `moodle/course:create` there), or into an existing course (`into: <course id>`), its content added to the course's (`mode: \"merge\"`, the default) or replacing it (`\"replace\"`: the course's content is deleted first). A new course takes the backup's names unless `fullName` and `shortName` are given. Users' data is restored when `withUsers` and the backup has it. An asynchronous restore is waited for up to `timeoutMs` (ten minutes). Needs `moodle/restore:restorecourse` where it restores.",
+    "params": [
+      {
+        "name": "file",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "into",
+          "optional": false,
+          "type": "number | \"new\"",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "categoryId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "mode",
+          "optional": true,
+          "type": "\"merge\" | \"replace\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "merge",
+              "replace"
+            ]
+          }
+        },
+        {
+          "name": "fullName",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "shortName",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "withUsers",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "timeoutMs",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "rubric",
