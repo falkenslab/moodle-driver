@@ -1,7 +1,7 @@
 // A course as sections and activities, and what follows from it: its assignments, what the person
 // still has to do.
 import type { BrowserContext } from "playwright-core";
-import { activityDetails, courseState, type ActivityDetails, type CourseState } from "./state.js";
+import { activityDetails, courseDetails, courseState, type ActivityDetails, type CourseState } from "./state.js";
 import { myGrades } from "../grades/user-report.js";
 import { decodeEntities } from "../../core/text.js";
 
@@ -36,13 +36,15 @@ export interface CourseSection {
   visible: boolean;
   restricted: boolean;
   url?: string;
+  /** With details: the section's description (HTML) as the course page renders it, when it has one. */
+  summary?: string;
   /** For a subsection, the section that holds it. */
   parentSectionId?: number;
   activities: CourseActivity[];
 }
 
 /** The state as sections with their activities, in the course's order; details merged when given. */
-export function structureOf(state: CourseState, details?: Map<number, ActivityDetails>): CourseSection[] {
+export function structureOf(state: CourseState, details?: Map<number, ActivityDetails>, summaries?: Map<number, string>): CourseSection[] {
   const cms = new Map(state.cm.map((cm) => [cm.id, cm]));
   return state.section.map((s) => {
     const ids = s.cmlist ?? state.cm.filter((cm) => cm.sectionid === s.id).map((cm) => cm.id);
@@ -73,17 +75,22 @@ export function structureOf(state: CourseState, details?: Map<number, ActivityDe
       visible: s.visible ?? true,
       restricted: s.hasrestrictions ?? false,
       url: s.sectionurl,
+      ...(summaries?.has(Number(s.id)) ? { summary: summaries.get(Number(s.id)) } : {}),
       parentSectionId: s.parentsectionid ? Number(s.parentsectionid) : undefined,
       activities,
     };
   });
 }
 
-/** A course's sections and activities; with `details`, each activity's dates and restriction from the course page (slower). */
+/**
+ * A course's sections and activities; with `details`, each activity's dates and restriction and each
+ * section's description, from the course page (slower).
+ */
 export async function courseStructure(context: BrowserContext, siteUrl: string, courseId: number, { details = false } = {}): Promise<CourseSection[]> {
   const state = await courseState(context, siteUrl, courseId);
-  const extra = details ? await activityDetails(context, siteUrl, courseId, state) : undefined;
-  return structureOf(state, extra);
+  if (!details) return structureOf(state);
+  const extra = await courseDetails(context, siteUrl, courseId, state);
+  return structureOf(state, extra.activities, extra.summaries);
 }
 
 export interface CourseAssignment {

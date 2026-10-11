@@ -1,6 +1,6 @@
 # Courses
 
-The courses the person is enrolled in, a course's sections and activities, its assignments, what the person still has to do in it, and changing a course's settings. Reading works for anyone enrolled (student or teacher); `updateCourse` needs the right to edit the course's settings, which teachers with editing rights and managers have. Everything here is read through the services the course page itself uses (`core_course_get_enrolled_courses_by_timeline_classification`, `core_courseformat_get_state`), so it doesn't depend on the interface's language, except the activity details (dates and restrictions), which are read from the course page as it shows them.
+The courses the person is enrolled in, a course's sections and activities, its assignments, what the person still has to do in it, and changing a course's settings. Reading works for anyone enrolled (student or teacher); `updateCourse` needs the right to edit the course's settings, which teachers with editing rights and managers have. Everything here is read through the services the course page itself uses (`core_course_get_enrolled_courses_by_timeline_classification`, `core_courseformat_get_state`), so it doesn't depend on the interface's language, except the details (activities' dates and restrictions, sections' descriptions), which are read from the course page as it shows them.
 
 **Terms:** [section](../reference/glossary.md#section), [activity](../reference/glossary.md#activity), [module](../reference/glossary.md#module), [course module id](../reference/glossary.md#course-module-id), [completion](../reference/glossary.md#completion).
 
@@ -44,9 +44,9 @@ function courseStructure(
 ): Promise<CourseSection[]>;
 ```
 
-With `details: false` (the default) it makes a single service call. With `details: true` it also opens the course page and reads each activity's dates and restriction as the page shows them; in a course with one section per page it then opens the section pages of the activities the course page doesn't show. That's slower, and the texts come in the site's language (for example `{ label: "Due", value: "Friday, 23 October 2026, 12:00 AM" }`).
+With `details: false` (the default) it makes a single service call. With `details: true` it also opens the course page and reads each activity's dates and restriction as the page shows them, and each section's description; in a course with one section per page it then opens the section pages of the activities the course page doesn't show. That's slower, and the texts come in the site's language (for example `{ label: "Due", value: "Friday, 23 October 2026, 12:00 AM" }`).
 
-Each `CourseSection` has `id`, `number` (0 is the general section), `title`, `visible`, `restricted` (it has access restrictions), `url`, `parentSectionId` (for a subsection, the section that holds it) and `activities`. Each `CourseActivity` has:
+Each `CourseSection` has `id`, `number` (0 is the general section), `title`, `visible`, `restricted` (it has access restrictions), `url`, `parentSectionId` (for a subsection, the section that holds it), `summary` (only with `details`: the section's description as HTML, as the course page renders it, when it has one; set it with [editSection](activities.md#addsection-editsection-and-deletesection)) and `activities`. Each `CourseActivity` has:
 
 - `id`: the course module id, which every activity function takes.
 - `name`, `type`: the module, such as `"page"`, `"assign"`, `"quiz"`, `"forum"` or `"resource"`.

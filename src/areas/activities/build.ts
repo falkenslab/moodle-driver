@@ -210,27 +210,54 @@ export async function deleteActivity(context: BrowserContext, siteUrl: string, c
   return afterChange(context, siteUrl, courseId, `Activity ${activityId} deleted.`);
 }
 
-/** Adds a section after another one (at the end without it), named when a name is given. */
-export async function addSection(context: BrowserContext, siteUrl: string, courseId: number, { name, afterSectionId }: { name?: string; afterSectionId?: number } = {}): Promise<CourseChange> {
+/**
+ * Saves fields of a section's own form (`course/editsection.php`): its description, its access
+ * restrictions. No service changes them (`core_course_edit_section` only shows, hides and moves).
+ */
+async function saveSectionForm(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number, values: Record<string, FieldValue>): Promise<void> {
+  const page = await openForm(context, siteUrl, `course/editsection.php?id=${sectionId}`);
+  try {
+    // The form edits any section by its id: one of another course is refused, as the course editor's service does.
+    if (Number(await formValue(page, "course")) !== courseId) throw new MoodleError(`Course ${courseId} has no section ${sectionId}. Take its id from the course structure.`, "not-found");
+    await setFields(page, values);
+    await submitForm(page, "submitbutton");
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+/** Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is. */
+export async function addSection(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  { name, afterSectionId, summary }: { name?: string; afterSectionId?: number; summary?: string } = {},
+): Promise<CourseChange> {
   const before = new Set((await courseState(context, siteUrl, courseId)).section.map((s) => s.id));
   await editCourse(context, siteUrl, courseId, "section_add", [], { sectionId: afterSectionId });
   const added = (await courseState(context, siteUrl, courseId)).section.find((s) => !before.has(s.id));
   if (added && name !== undefined) await renameSection(context, siteUrl, courseId, Number(added.id), name);
-  return afterChange(context, siteUrl, courseId, `Section ${added?.id ?? "?"} added${name !== undefined ? ` as "${name}"` : ""}.`, { sectionId: added ? Number(added.id) : undefined });
+  if (added && summary !== undefined) await saveSectionForm(context, siteUrl, courseId, Number(added.id), { "summary_editor[text]": summary });
+  const extras = `${name !== undefined ? ` as "${name}"` : ""}${summary !== undefined ? " with a description" : ""}`;
+  return afterChange(context, siteUrl, courseId, `Section ${added?.id ?? "?"} added${extras}.`, { sectionId: added ? Number(added.id) : undefined });
 }
 
-/** Renames, shows or hides, or moves a section after another one. */
+/** Renames, shows or hides, describes (`summary`, HTML) or moves a section after another one. */
 export async function editSection(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
   sectionId: number,
-  { name, visible, afterSectionId }: { name?: string; visible?: boolean; afterSectionId?: number },
+  { name, visible, summary, afterSectionId }: { name?: string; visible?: boolean; summary?: string; afterSectionId?: number },
 ): Promise<CourseChange> {
   const done: string[] = [];
   if (name !== undefined) {
     await renameSection(context, siteUrl, courseId, sectionId, name);
     done.push(`renamed to "${name}"`);
+  }
+  if (summary !== undefined) {
+    await saveSectionForm(context, siteUrl, courseId, sectionId, { "summary_editor[text]": summary });
+    done.push(summary === "" ? "description removed" : "description set");
   }
   if (visible !== undefined) {
     await editCourse(context, siteUrl, courseId, visible ? "section_show" : "section_hide", [sectionId]);

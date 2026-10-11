@@ -191,7 +191,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "addSection",
-    "description": "Adds a section after another one (at the end without it), named when a name is given.",
+    "description": "Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is.",
     "params": [
       {
         "name": "courseId",
@@ -221,6 +221,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
+          }
+        },
+        {
+          "name": "summary",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
           }
         }
       ]
@@ -487,7 +495,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "courseStructure",
-    "description": "A course's sections and activities; with `details`, each activity's dates and restriction from the course page (slower).",
+    "description": "A course's sections and activities; with `details`, each activity's dates and restriction and each section's description, from the course page (slower).",
     "params": [
       {
         "name": "courseId",
@@ -918,7 +926,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "editSection",
-    "description": "Renames, shows or hides, or moves a section after another one.",
+    "description": "Renames, shows or hides, describes (`summary`, HTML) or moves a section after another one.",
     "params": [
       {
         "name": "courseId",
@@ -956,6 +964,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "boolean",
           "value": {
             "kind": "boolean"
+          }
+        },
+        {
+          "name": "summary",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
           }
         },
         {

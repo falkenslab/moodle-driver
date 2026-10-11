@@ -73,7 +73,7 @@ moodle add-questions-to-quiz <activityId> --options
 
 ## addSection
 
-Adds a section after another one (at the end without it), named when a name is given.
+Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is.
 
 ```bash
 moodle add-section <courseId> [--options]
@@ -84,6 +84,7 @@ moodle add-section <courseId> [--options]
 | `courseId` | `number` |  |
 | `--name` | `string` |  |
 | `--after-section-id` | `number` |  |
+| `--summary` | `string` |  |
 
 ## answerChoice
 
@@ -225,7 +226,7 @@ moodle course-roles <userId> <courseId>
 
 ## courseStructure
 
-A course's sections and activities; with `details`, each activity's dates and restriction from the course page (slower).
+A course's sections and activities; with `details`, each activity's dates and restriction and each section's description, from the course page (slower).
 
 ```bash
 moodle course-structure <courseId> [--options]
@@ -406,7 +407,7 @@ moodle edit-activity <courseId> <activityId> --options
 
 ## editSection
 
-Renames, shows or hides, or moves a section after another one.
+Renames, shows or hides, describes (`summary`, HTML) or moves a section after another one.
 
 ```bash
 moodle edit-section <courseId> <sectionId> --options
@@ -418,6 +419,7 @@ moodle edit-section <courseId> <sectionId> --options
 | `sectionId` | `number` |  |
 | `--name` | `string` |  |
 | `--visible` | `boolean` |  |
+| `--summary` | `string` |  |
 | `--after-section-id` | `number` |  |
 
 ## finishQuizAttempt

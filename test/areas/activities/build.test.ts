@@ -322,6 +322,28 @@ describe("course layout", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("sets a section's description through its form, on adding it and after", async () => {
+    const context = await site(fakeCourse().state);
+    const posts: URLSearchParams[] = [];
+    // A section's form, reduced, as Moodle 5.2's course/editsection.php renders it (made up).
+    await context.route(`${SITE}course/editsection.php**`, (route: Route) => {
+      if (route.request().method() === "POST") posts.push(new URLSearchParams(route.request().postData() ?? ""));
+      const form = `<form class="mform" action="editsection.php" method="post"><input type="hidden" name="id" value="${new URL(route.request().url()).searchParams.get("id")}"><input type="hidden" name="course" value="5">
+<input type="text" name="name" value=""><textarea name="summary_editor[text]" id="id_summary_editor"></textarea><input type="hidden" name="summary_editor[format]" value="1">
+<textarea name="availabilityconditionsjson"></textarea><input type="submit" name="submitbutton" value="Save changes"></form>`;
+      return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, body: form }) });
+    });
+    const added = await addSection(context, SITE, 5, { name: "Unit 2", summary: "<p>Recursion.</p>" });
+    assert.equal(added.changed, 'Section 30 added as "Unit 2" with a description.');
+    const edited = await editSection(context, SITE, 5, 11, { summary: "<p>Loops, <em>again</em>.</p>" });
+    assert.equal(edited.changed, "Section 11 description set.");
+    assert.deepEqual(posts.map((p) => [p.get("summary_editor[text]"), p.get("name")]), [["<p>Recursion.</p>", ""], ["<p>Loops, <em>again</em>.</p>", ""]]);
+    // The form edits any section by id: one of another course is refused before saving.
+    await assert.rejects(editSection(context, SITE, 6, 11, { summary: "x" }), /Course 6 has no section 11/);
+    assert.equal(posts.length, 2);
+    await context.close();
+  });
+
   it("passes Moodle's error for an activity or section the course doesn't have", async () => {
     const context = await site(fakeCourse().state);
     const invalid = (error: unknown) => error instanceof MoodleServiceError && error.errorcode === "invalidrecord";

@@ -1,6 +1,6 @@
 # Activities and sections
 
-Building a course: creating activities and resources of any type through Moodle's own activity form, reading and changing their settings, and renaming, showing, hiding, moving, duplicating and deleting activities and sections as the course page's editor does. It's for teachers with editing rights (Moodle's `moodle/course:manageactivities`); for anyone else Moodle refuses. Every change returns the course's structure afterwards, so a program can check what happened without another call.
+Building a course: creating activities and resources of any type through Moodle's own activity form, reading and changing their settings, and renaming, describing, showing, hiding, moving, duplicating and deleting activities and sections as the course page's editor does. It's for teachers with editing rights (Moodle's `moodle/course:manageactivities`); for anyone else Moodle refuses. Every change returns the course's structure afterwards, so a program can check what happened without another call.
 
 **Terms:** [section](../reference/glossary.md#section), [activity](../reference/glossary.md#activity), [module](../reference/glossary.md#module), [course module id](../reference/glossary.md#course-module-id), [instance id](../reference/glossary.md#instance-id), [changed](../reference/glossary.md#changed).
 
@@ -131,7 +131,7 @@ Activities and sections are moved with `editActivity` and `editSection`, as the 
 
 - `editActivity(courseId, activityId, { beforeActivityId })` puts the activity right before another one, in that one's section.
 - `editActivity(courseId, activityId, { sectionId })` puts it at the end of a section.
-- `editSection(courseId, sectionId, { afterSectionId })` puts the section right after another one; after section 0 (General, the first in the structure) makes it the first section with a number.
+- `editSection(courseId, sectionId, { afterSectionId })` puts the section right after another one.
 
 Ids come from the course structure (a section's `id`, not its `number`), and every call returns the structure afterwards, so a program can check the new order.
 
@@ -171,19 +171,20 @@ function deleteActivity(context: BrowserContext, siteUrl: string, courseId: numb
 ## addSection, editSection and deleteSection
 
 ```ts
-function addSection(context: BrowserContext, siteUrl: string, courseId: number, options?: { name?: string; afterSectionId?: number }): Promise<CourseChange>;
+function addSection(context: BrowserContext, siteUrl: string, courseId: number, options?: { name?: string; afterSectionId?: number; summary?: string }): Promise<CourseChange>;
 function editSection(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
   sectionId: number,
-  changes: { name?: string; visible?: boolean; afterSectionId?: number },
+  changes: { name?: string; visible?: boolean; summary?: string; afterSectionId?: number },
 ): Promise<CourseChange>;
 function deleteSection(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number): Promise<CourseChange>;
 ```
 
-- `addSection` adds a section after `afterSectionId`, or at the end without it; with `name` it renames it afterwards. `sectionId` is the new section's id.
-- `editSection` renames, shows (`visible: true`) or hides it, or moves it after another section.
+- `addSection` adds a section after `afterSectionId`, or at the end without it; with `name` it renames it afterwards, and with `summary` it gives it a description. `sectionId` is the new section's id.
+- `editSection` renames, describes (`summary`), shows (`visible: true`) or hides it, or moves it after another section.
+- `summary` is the section's description, HTML as given (`""` removes it), shown on the course page under the section's name. No service changes it, so it's saved through the section's own form (`course/editsection.php`, its `summary_editor`), which only takes a section of the given course: another course's is a `MoodleError` (`not-found`), and Moodle's refusals of the form a `FormError`. [courseStructure](courses.md) with `details` reads it back as `summary`.
 - `deleteSection` deletes the section and every activity in it, with their participants' data.
 
 Sections are renamed through the course format's in-place editor (`format_topics`, `format_weeks`…): the driver reads the course's format once from the course page's classes and keeps it for the process.
