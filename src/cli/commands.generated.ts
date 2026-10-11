@@ -538,7 +538,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "createActivity",
-    "description": "Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder.",
+    "description": "Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder; a SCORM (`type: \"scorm\"`) takes the first as its package.",
     "params": [
       {
         "name": "input",
@@ -1694,6 +1694,20 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "scorm",
+    "description": "A SCORM activity as the person sees it: its attempts (allowed and made), the grading method, the grade reported and each attempt's, and its SCOs with the person's status and score in the last attempt. Moodle doesn't show a SCORM's version on its page: `openScorm` tells it.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
   },
   {
     "name": "sendMessage",

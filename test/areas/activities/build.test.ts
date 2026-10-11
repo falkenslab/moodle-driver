@@ -20,20 +20,20 @@ after(async () => {
 });
 
 /** An activity form reduced to what the driver touches, shaped like Moodle 5.2's `modedit.php`; made up. */
-function activityForm(values: { name?: string; error?: string } = {}): string {
+function activityForm(values: { name?: string; error?: string; fileField?: string } = {}): string {
   return `<form class="mform" action="modedit.php" method="post">
 <input type="hidden" name="course" value="5"><input type="hidden" name="modulename" value="resource"><input type="hidden" name="sesskey" value="s1">
 <input type="text" name="name" id="id_name" value="${values.name ?? ""}"><div id="id_error_name">${values.error ?? ""}</div>
 <textarea name="introeditor[text]" id="id_introeditor"></textarea>
 <input type="hidden" name="showdescription" value="0"><input type="checkbox" name="showdescription" value="1">
-<input type="hidden" name="files" value="777">
+<input type="hidden" name="${values.fileField ?? "files"}" value="777">
 <select name="visible"><option value="1">Show</option><option value="0">Hide</option></select>
 <input type="submit" name="submitbutton2" value="Save and return"></form>
 <script>var filepicker = {"repositories":{"5":{"id":"5","name":"Upload a file","type":"upload"}}};</script>`;
 }
 
 describe("createActivity and updateActivity", { skip: !browser && "no system browser" }, () => {
-  async function site(): Promise<{ context: BrowserContext; posts: URLSearchParams[]; uploads: string[]; course: CourseState }> {
+  async function site(fileField?: string): Promise<{ context: BrowserContext; posts: URLSearchParams[]; uploads: string[]; course: CourseState }> {
     const course: CourseState = { section: [{ id: "10", number: 0, title: "General", cmlist: [] }, { id: "11", number: 1, title: "Unit 1", cmlist: [] }], cm: [] };
     const posts: URLSearchParams[] = [];
     const uploads: string[] = [];
@@ -42,7 +42,7 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     const page = (body: string) => moodlePage({ userId: 3, body });
     await context.route(`${SITE}course/modedit.php**`, (route: Route) => {
       const request = route.request();
-      if (request.method() === "GET") return route.fulfill({ status: 200, contentType: "text/html", body: page(activityForm()) });
+      if (request.method() === "GET") return route.fulfill({ status: 200, contentType: "text/html", body: page(activityForm({ fileField })) });
       const form = new URLSearchParams(request.postData() ?? "");
       posts.push(form);
       // Moodle sends the form back with its error by field; else the activity is saved.
@@ -74,6 +74,15 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     assert.equal(sent.get("introeditor[text]"), "<p>Read it</p>");
     assert.equal(sent.get("visible"), "0");
     assert.deepEqual(sent.getAll("showdescription"), ["0", "1"]);
+    await context.close();
+  });
+
+  it("uploads a SCORM's package, the first file, to its packagefile field", async () => {
+    const { context, uploads } = await site("packagefile");
+    await writeFile(path.join(dir, "quiz.zip"), "PK");
+    const result = await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "scorm", name: "Check", files: [path.join(dir, "quiz.zip"), path.join(dir, "brief.txt")] });
+    assert.equal(result.activityId, 40);
+    assert.deepEqual(uploads, ["777:quiz.zip"]);
     await context.close();
   });
 

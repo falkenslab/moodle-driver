@@ -44,7 +44,7 @@ interface ActivityFields {
 - `url`: a URL resource's target (`externalurl`).
 - `visibility`: `"hidden"` by default, so a teacher publishes after checking; `"stealth"` hides it from the course page but keeps it available by link, where the site allows it.
 - `settings`: any other field of the form by its form name, such as `{ "duedate[enabled]": true, "duedate[day]": 23 }` or `{ completion: 1 }`. They're set after the common inputs, in the order given, and win over them for the same field.
-- `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)).
+- `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)); a SCORM takes the first as its package (see [SCORM](scorm.md)).
 
 `activityId` is the new activity's id, found by comparing the course before and after; when no new activity appears `changed` says so and `activityId` is undefined.
 

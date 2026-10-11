@@ -251,7 +251,7 @@ moodle course-updates <courseId> <since>
 
 ## createActivity
 
-Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder.
+Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder; a SCORM (`type: "scorm"`) takes the first as its package.
 
 ```bash
 moodle create-activity <input>
@@ -840,6 +840,18 @@ moodle save-submission <activityId> --options
 | `activityId` | `number` |  |
 | `--online-text` | `string` |  |
 | `--files` | `string[]` |  |
+
+## scorm
+
+A SCORM activity as the person sees it: its attempts (allowed and made), the grading method, the grade reported and each attempt's, and its SCOs with the person's status and score in the last attempt. Moodle doesn't show a SCORM's version on its page: `openScorm` tells it.
+
+```bash
+moodle scorm <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
 
 ## sendMessage
 

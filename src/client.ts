@@ -17,6 +17,7 @@ import { addGradeCategory, gradebookSetup, graderReport, updateGradeItem } from 
 import { myGrades } from "./areas/grades/user-report.js";
 import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./areas/assignments/grading.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
+import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
 import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, notifications, sendMessage } from "./areas/messages/messages.js";
@@ -77,6 +78,7 @@ const SITE_FUNCTIONS = {
   grantExtension,
   groups,
   h5pActivity,
+  scorm,
   importQuestions,
   lessonPage,
   listAssignments,
@@ -180,6 +182,8 @@ export interface Moodle extends MoodleMethods {
   downloadFile(url: string, destDir?: string): Promise<DownloadedFile>;
   /** The working tab a program drives itself (ADR-007). */
   tab(): Promise<Page>;
+  /** `openScorm`: a SCORM's player, on the working tab. */
+  openScorm(activityId: number, options?: { scoId?: number; newAttempt?: boolean }): Promise<OpenedScorm>;
   /** Whether the browser shows a window now. */
   visible(): boolean;
   /** Shows the browser and follows the pages methods open, or hides it. */
@@ -249,6 +253,7 @@ export function createMoodle(options: MoodleOptions): Moodle {
       return downloadFile(await browser.context(), site, url, folder);
     },
     tab: () => browser.tab(),
+    openScorm: (activityId, scormOptions) => openScorm(browser, site, activityId, scormOptions),
     visible: () => browser.visible(),
     setVisible: (visible) => browser.setVisible(visible),
     saveSession: () => browser.saveSession(),

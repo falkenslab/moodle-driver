@@ -45,6 +45,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 - `surveys/` — `surveys.ts`: questionnaire and feedback surveys; `choice.ts`: a choice read and answered on its page (its services aren't open to AJAX): options by id, whether answers can change, the answer.
 - `lessons/lessons.ts` — a lesson page by page as a student: content pages' buttons, question forms, the feedback after an answer and the end, read by their forms; Moodle's "resume where you left" is accepted.
 - `h5p/h5p.ts` — an H5P activity's content type (from its player page's settings) and the person's attempts (their report, by position and icon); playing it is the working tab's (ADR-007).
+- `scorm/scorm.ts` — a SCORM activity's attempt status (its page, by line position) and SCOs (the player's table of contents from `prereqs.php`, status by icon), and its player opened on the working tab; Moodle's SCORM services aren't open to AJAX.
 - `grades/` — `user-report.ts`: the user grade report; `gradebook.ts`: the grader report and the gradebook setup read by data attributes, categories and items changed through Moodle's dynamic forms (`core_form_dynamic_form`) and the setup page's move action.
 - `completion/completion.ts` — manual completion (the person's), overrides (a teacher's) through their services; the progress report read by its links and icon names.
 - `participants/participants.ts` — a course's participants and groups from the participants table's service, filtered by role, group and inactivity; roles and groups by id from the page's filters.

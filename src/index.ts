@@ -100,6 +100,7 @@ export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField
 export { getChoice, answerChoice, ChoiceError, type Choice } from "./areas/surveys/choice.js";
 export { lessonPage, answerLessonPage, LessonError, type LessonField, type LessonPage } from "./areas/lessons/lessons.js";
 export { h5pActivity, NotAnH5PActivityError, type H5PAttempt, type H5PActivity } from "./areas/h5p/h5p.js";
+export { scorm, openScorm, ScormError, type ScoStatus, type ScormSco, type ScormActivity, type OpenedScorm } from "./areas/scorm/scorm.js";
 
 // Grades, completion, participants, calendar, messages.
 export { myGrades, NoGradeReportError, type GradeRow } from "./areas/grades/user-report.js";

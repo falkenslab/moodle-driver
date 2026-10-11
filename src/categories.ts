@@ -38,6 +38,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   "Moodle.logIn": NONE,
   "Moodle.publicSiteInfo": NONE,
   "Moodle.callService": ANY,
+  "Moodle.openScorm": OWN,
   "Moodle.tab": ANY,
   "Moodle.visible": NONE,
   "Moodle.setVisible": NONE,
@@ -197,6 +198,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
 
   // H5P: the content (course content) and the person's own attempts.
   h5pActivity: ["course-content", "own"],
+  scorm: ["course-content", "own"],
+  openScorm: OWN,
 
   // Lessons: the person going through one.
   lessonPage: ["course-content", "own"],

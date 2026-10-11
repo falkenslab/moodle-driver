@@ -79,6 +79,7 @@ const sidebars: SidebarsConfig = {
         "areas/surveys-and-choices",
         "areas/lessons",
         "areas/h5p",
+        "areas/scorm",
         "areas/grades-and-gradebook",
         "areas/completion",
         "areas/participants",

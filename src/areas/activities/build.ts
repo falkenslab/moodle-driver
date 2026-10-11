@@ -63,7 +63,7 @@ async function afterChange(context: BrowserContext, siteUrl: string, courseId: n
 /**
  * Creates an activity or resource of any type at the end of a section, through Moodle's own form,
  * hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file
- * resource or folder.
+ * resource or folder; a SCORM (`type: "scorm"`) takes the first as its package.
  */
 export async function createActivity(
   context: BrowserContext,
@@ -78,9 +78,11 @@ export async function createActivity(
   const page = await openForm(context, siteUrl, `course/modedit.php?add=${input.type}&course=${input.courseId}&section=${target.number}&return=0`);
   try {
     if (input.files && input.files.length > 0) {
-      const draft = await formValue(page, "files");
+      // A SCORM takes one package, in a field of its own.
+      const scorm = input.type === "scorm";
+      const draft = await formValue(page, scorm ? "packagefile" : "files");
       if (!draft) throw new MoodleError(`A ${input.type} takes no files in its form.`, "not-available");
-      await uploadToDraft(page, draft, input.files);
+      await uploadToDraft(page, draft, scorm ? input.files.slice(0, 1) : input.files);
     }
     // Hidden unless asked: a teacher publishes after checking.
     await setFields(page, fieldsFor(input.type, { ...input, visibility: input.visibility ?? "hidden" }));

@@ -123,6 +123,10 @@ What a person may do in a context, a course for most: student, teacher (Moodle's
 
 A list of words used as grades instead of numbers ("Not yet, Competent, Excellent"), set as an activity's grade type. In the driver, an assignment graded with a scale has `method: "simple"` in `rubric`, and `gradeSubmission`'s `grade` takes the scale item's value. See [Grading](../areas/grading.md).
 
+### SCORM
+
+A standard for e-learning packages: a `.zip` of HTML and JavaScript with an `imsmanifest.xml`, whose parts (SCOs) report to Moodle through the SCORM API (status, score) while the person does them in Moodle's player; in a course it's a SCORM activity, module `scorm`, with attempts and a grade. The driver reads it with `scorm` (`ScormActivity`, with the attempts, `grade` and `scos` with their `status`), opens the player in the [working tab](#working-tab) with `openScorm`, and creates one with `createActivity({ type: "scorm", files: [package] })`; it never reports results for the person. See [SCORM](../areas/scorm.md).
+
 ### Section
 
 A part of a course page holding activities: a topic or a week depending on the course format, with section 0 being the general one at the top; a subsection is a section inside another. A section has an id (a database id) and a number (its position), and the driver always takes the id: `CourseSection` in `courseStructure` has `id`, `number`, `title`, `parentSectionId` and `activities`; `createActivity` takes `sectionId`, and `addSection`, `editSection` and `deleteSection` work them. See [Courses](../areas/courses.md) and [Activities and sections](../areas/activities.md).

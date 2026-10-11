@@ -51,7 +51,7 @@ Functions that take local files take them as absolute paths and upload them as t
 
 | Function | Option | Where the files go |
 | --- | --- | --- |
-| `createActivity` | `files` | A file resource's or folder's files ([activities](activities.md)). |
+| `createActivity` | `files` | A file resource's or folder's files, or a SCORM's package ([activities](activities.md), [SCORM](scorm.md)). |
 | `saveSubmission` | `files` | The person's submission, added to the files already there ([assignments](assignments.md)). |
 | `replyToPost`, `startDiscussion` | `files` | The post's attachments ([forums](forums.md)). |
 | `importQuestions` | `file` | The GIFT or Moodle XML file to import ([question banks](question-banks.md)). |

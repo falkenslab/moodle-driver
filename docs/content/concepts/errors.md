@@ -89,6 +89,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `SurveyError`, `ChoiceError` | [Surveys and choices](../areas/surveys-and-choices.md) |
 | `LessonError` | [Lessons](../areas/lessons.md) |
 | `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
+| `ScormError` | [SCORM](../areas/scorm.md) |
 | `NoGradeReportError`, `GradebookError` | [Grades and gradebook](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Completion](../areas/completion.md) |
 | `NoParticipantsError` | [Participants](../areas/participants.md) |
