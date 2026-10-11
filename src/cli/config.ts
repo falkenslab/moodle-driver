@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, w
 import os from "node:os";
 import path from "node:path";
 import { defaultHome, profileName, siteDir, siteProfileDir } from "../home.js";
+import { backgroundRunning } from "./background.js";
 
 export interface CliConfig {
   /** The site commands work on when none is given: the last one logged in to. */
@@ -79,6 +80,8 @@ export interface SiteProfile {
   default: boolean;
   /** The session file is there: Moodle may still have ended the session. */
   session: boolean;
+  /** A background browser (`moodle open`) is running on the profile. */
+  background: boolean;
   path: string;
 }
 
@@ -99,6 +102,7 @@ export function listSites(home: string): SiteProfile[] {
       profile,
       default: isDefaultSite && isDefault,
       session: existsSync(path.join(dir, "moodle-session.json")),
+      background: backgroundRunning(dir),
       path: dir,
     });
     for (const name of names) rows.push(row(name, siteProfileDir(record.url, { as: name, home }), record.default === name));

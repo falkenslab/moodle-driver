@@ -3,6 +3,7 @@
 // tests run it against the fake Moodle.
 import { mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
+import { backgroundBrowser, closeBackgroundBrowser, connectBrowserManager } from "../browser/background.js";
 import { ALL_DATA_CATEGORIES, DATA_CATEGORIES, type DataCategory } from "../categories.js";
 import type { Moodle, MoodleOptions } from "../client.js";
 import { MoodleError } from "../core/errors.js";
@@ -10,6 +11,7 @@ import { NotLoggedInError } from "../core/session.js";
 import { parseSiteUrl } from "../options.js";
 import { UsageError, commandName, findCommand, kebab, methodArguments, splitLine, type GlobalFlags } from "./args.js";
 import { COMMANDS } from "./commands.generated.js";
+import { lockBackground } from "./background.js";
 import { forgetSite, listSites, loadConfig, loadSite, nameProfile, pendingProfile, profileFor, saveConfig, saveSite } from "./config.js";
 import { render } from "./output.js";
 import type { CommandSpec } from "./spec.js";
@@ -31,6 +33,10 @@ export interface CliDeps {
   output?: NodeJS.WritableStream;
   /** Whether `input` is a terminal: a prompt, line editing, completion and Ctrl+C then. */
   terminal?: boolean;
+  /** Starts the background browser of `moodle open` on a profile, returning once commands can connect to it (ADR-014). */
+  startBackground?: (profileDir: string, headed: boolean) => Promise<void>;
+  /** How long a command waits for another one working on the background browser: 5 s unless given. */
+  lockWaitMs?: number;
 }
 
 /** What one `moodle` process keeps between its lines: one Moodle object, and what it was opened for. */
@@ -39,7 +45,13 @@ export interface CliSession {
   defaults: Partial<Pick<GlobalFlags, "site" | "as" | "profile" | "allow">> & { json?: boolean };
   /** Whether the browser shows a window (`--show`, `show`, `hide`). */
   show: boolean;
-  open?: { moodle: Moodle; site: string; profileDir: string };
+  open?: {
+    moodle: Moodle;
+    site: string;
+    profileDir: string;
+    /** On a background browser (ADR-014): releases the profile's lock. */
+    release?: () => void;
+  };
 }
 
 /** The site and profile a line works on. */
@@ -75,6 +87,8 @@ export function overview(): string {
     "",
     "The command's own:",
     `  ${"shell".padEnd(width)}  Types commands one after another on one browser, kept open (with --show, watch each act)`,
+    `  ${"open".padEnd(width)}  Leaves a browser open in the background (--show: a window) that every command connects to`,
+    `  ${"close".padEnd(width)}  Closes the background browser, saving the session`,
     `  ${"sites".padEnd(width)}  The sites and profiles logged in to, which is the default, and whether each has a session`,
     `  ${"forget".padEnd(width)}  Deletes a site and its sessions (forget <site>), or one account's profile (--as <name>)`,
     "",
@@ -138,7 +152,21 @@ async function moodleFor(deps: CliDeps, session: CliSession, site: string, profi
   if (open && open.site === site && open.profileDir === profileDir) return open.moodle;
   await closeSession(session);
   const progress = deps.interactive ? (elapsed: number, total?: number) => deps.stderr(`  reading… ${Math.round(elapsed)}${total ? `/${Math.round(total)}` : ""} s`) : undefined;
-  const moodle = deps.createMoodle({ site, profileDir, headless: true, downloadBrowser: true, downloadDir: deps.cwd, onProgress: progress });
+  const defaults = { downloadDir: deps.cwd, onProgress: progress };
+  // A browser `moodle open` left on the profile: connected to, one command at a time (ADR-014).
+  const background = await backgroundBrowser(profileDir);
+  if (background) {
+    const release = await lockBackground(profileDir, deps.lockWaitMs);
+    try {
+      const moodle = deps.createMoodle({ site, browser: connectBrowserManager({ ...background, profileDir }), ...defaults });
+      session.open = { moodle, site, profileDir, release };
+      return moodle;
+    } catch (error) {
+      release();
+      throw error;
+    }
+  }
+  const moodle = deps.createMoodle({ site, profileDir, headless: true, downloadBrowser: true, ...defaults });
   session.open = { moodle, site, profileDir };
   if (session.show) await moodle.setVisible(true);
   return moodle;
@@ -149,6 +177,7 @@ export async function closeSession(session: CliSession): Promise<void> {
   const open = session.open;
   session.open = undefined;
   await open?.moodle.close().catch(() => undefined);
+  open?.release?.();
 }
 
 /** Opens the session's browser now, for its site and profile (`--show` and `show` in the shell, `use`). */
@@ -189,7 +218,7 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
   let pending: string | undefined;
   try {
     const typed = commandName(argv);
-    const own = typed === "sites" || typed === "forget";
+    const own = typed === "sites" || typed === "forget" || typed === "open" || typed === "close";
     const command = typed && typed !== "help" && !own ? findCommand(COMMANDS, typed) : undefined;
     const { global, positionals, flags } = splitLine(argv, command);
     const json = global.json || Boolean(session.defaults.json) || !deps.interactive;
@@ -215,9 +244,11 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
     if (typed === "forget") {
       const target = positionals[0];
       if (!target) throw new UsageError("forget needs <site>: `moodle sites` lists them.");
-      // The browser may be on the profile going away.
+      // The browser may be on the profile going away, or a background one.
       await closeSession(session);
-      const gone = forgetSite(deps.home, parseSiteUrl(target), global.as);
+      const site = parseSiteUrl(target);
+      for (const row of listSites(deps.home)) if (row.site === site && (global.as === undefined || row.profile === global.as)) await closeBackgroundBrowser(row.path).catch(() => undefined);
+      const gone = forgetSite(deps.home, site, global.as);
       if (gone.length === 0) {
         deps.stderr(`not-found: ${target}${global.as ? ` has no profile ${global.as}` : " isn't a site logged in to"}; \`moodle sites\` lists them.`);
         return 1;
@@ -225,6 +256,7 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
       deps.stdout(`✔ Deleted ${gone.join(", ")}`);
       return 0;
     }
+    if (typed === "open" || typed === "close") return await background(typed, deps, session, global, positionals);
     if (!command) throw new UsageError(`There's no command "${typed}". \`moodle help\` lists them.`);
     if (global.help) {
       deps.stdout(commandHelp(command));
@@ -293,4 +325,35 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
       rmSync(pending, { recursive: true, force: true });
     }
   }
+}
+
+/** `moodle open [--show]` and `moodle close`: the profile's background browser (ADR-014). */
+async function background(typed: "open" | "close", deps: CliDeps, session: CliSession, global: GlobalFlags, positionals: string[]): Promise<number> {
+  if (positionals.length > 0) throw new UsageError(`${typed} takes no arguments, only the global options (--site, --as, --profile${typed === "open" ? ", --show" : ""}).`);
+  const site = siteOf(deps, session, global);
+  if (!site) throw new UsageError("No site yet: log in first with `moodle login --site https://campus.example.org/`, or give --site.");
+  const target = targetOf(deps, session, global);
+  if (!target) throw noProfile(deps, site);
+  const profile = target.name ? `profile "${target.name}"` : target.profileDir;
+  const json = global.json || Boolean(session.defaults.json) || !deps.interactive;
+  // A browser this session opened on the profile would hold it: closed first.
+  if (session.open?.profileDir === target.profileDir) await closeSession(session);
+  if (typed === "close") {
+    if (!(await closeBackgroundBrowser(target.profileDir))) {
+      deps.stderr(`not-found: there's no background browser on ${profile} of ${site}.`);
+      return 1;
+    }
+    deps.stdout(render({ changed: `Closed the background browser on ${profile} of ${site}, its session saved.` }, json));
+    return 0;
+  }
+  const running = await backgroundBrowser(target.profileDir);
+  if (running) {
+    deps.stdout(render({ changed: `Nothing: a background browser is already open on ${profile} of ${site}${running.headed ? ", with a window" : ""}.`, headed: running.headed }, json));
+    return 0;
+  }
+  if (!deps.startBackground) throw new MoodleError("This program can't start a background browser.", "not-available");
+  await deps.startBackground(target.profileDir, global.show || session.show);
+  const started = await backgroundBrowser(target.profileDir);
+  deps.stdout(render({ changed: `Opened a background browser on ${profile} of ${site}${started?.headed ? ", with a window" : ""}: commands on it work there until \`moodle close\`.`, headed: started?.headed ?? false }, json));
+  return 0;
 }

@@ -32,6 +32,8 @@ const ANY: readonly DataCategory[] = ["any"];
 export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> = {
   // The browser and the session.
   createBrowserManager: NONE,
+  connectBrowserManager: NONE,
+  backgroundBrowser: NONE,
   // The Moodle object: its bound methods are classified as their functions, of the same name.
   createMoodle: NONE,
   "Moodle.context": NONE,

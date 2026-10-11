@@ -11,6 +11,6 @@ The first version followed each system's custom: `~/.config/moodle-driver` (XDG)
 ## Consequences
 
 - Linux users who keep everything under XDG folders set `MOODLE_DRIVER_HOME`.
-- A program that wants to share the command's sessions passes `siteProfileDir(site)` as `profileDir`; one browser at a time per profile still holds, so the command and the program can't use it at once.
+- A program that wants to share the command's sessions passes `siteProfileDir(site)` as `profileDir`; one browser at a time per profile still holds, so the command and the program can't use it at once, unless both connect to the background browser `moodle open` leaves on it (ADR-014).
 - `--profile` and `MOODLE_PROFILE` still win over all of this; a folder given to `login --profile` is remembered in the site's `site.json`.
 - `moodle sites` says whether a profile has a session file, not whether Moodle still accepts it.

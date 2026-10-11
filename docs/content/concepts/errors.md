@@ -37,6 +37,8 @@ Errors with no class of their own are `MoodleError` with a generic code:
 | `unexpected-page` | A page doesn't have what the driver reads from it |
 | `logout-failed` | Moodle didn't end the session |
 | `chromium-install-failed` | Playwright's installer failed |
+| `background-browser` | A background browser (`moodle open`) didn't start, doesn't answer, or closed while in use |
+| `browser-busy` | Another command is working on the background browser of the profile: try again when it ends |
 
 ```ts
 import { MoodleError } from "@falkenslab/moodle-driver";

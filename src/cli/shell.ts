@@ -26,7 +26,7 @@ export function complete(line: string): [string[], string] {
   const words = line.trimStart().split(/\s+/);
   const word = words[words.length - 1]!;
   if (words.length === 1) {
-    const names = [...SHELL_WORDS, "help", "sites", "forget", ...COMMANDS.map((c) => kebab(c.name))].sort();
+    const names = [...SHELL_WORDS, "help", "sites", "forget", "open", "close", ...COMMANDS.map((c) => kebab(c.name))].sort();
     return [names.filter((n) => n.startsWith(word)), word];
   }
   if (word.startsWith("-")) {
@@ -129,6 +129,8 @@ export async function shell(argv: string[], deps: CliDeps): Promise<number> {
         session.show = false;
         report(deps, error);
       });
+      // A background browser is only held while a line runs (ADR-014).
+      if (session.open?.release) await closeSession(session);
     }
     for (;;) {
       if (terminal) {
@@ -149,6 +151,8 @@ export async function shell(argv: string[], deps: CliDeps): Promise<number> {
         if (await shellLine(line, deps, session)) break;
       } finally {
         busy = false;
+        // A background browser is shared (ADR-014): connected for one line at a time, so commands from elsewhere get their turn.
+        if (session.open?.release) await closeSession(session);
       }
     }
   } finally {

@@ -11,7 +11,7 @@
 - Covers, so far: courses (and their settings) and their structure, content activities, files, assignments (student and teacher), grading (rubrics and marking guides included), extensions and quiz overrides, quizzes (their results and questions), forums (and their moderation), grades, surveys (questionnaire, feedback, choice), the activities overview, deadlines, course updates, creating and editing activities and sections, participants and groups, activity completion and the progress report, the gradebook (grader report, categories, weights), question banks (listing, GIFT and XML imports, single questions), notifications and messages, calendar events, H5P activities (content type, attempts), SCORM activities (attempts, SCOs, the player), lessons, site information, logging in and out.
 - Offers every operation as a `moodle` command too, generated from the API (ADR-012).
 - Acts as a student at a person's pace when asked (the trail, ADR-005), so Moodle logs views and completion as for a person.
-- Shows the browser on demand and keeps one working tab a program can use (ADR-007).
+- Shows the browser on demand and keeps one working tab a program can use (ADR-007); `moodle open` keeps one in the background that separate commands and programs share, behind a token (ADR-014).
 
 ## What it doesn't do
 
