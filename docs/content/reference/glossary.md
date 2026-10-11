@@ -48,7 +48,7 @@ More time for one participant to submit an assignment, past its due date and cut
 
 ### Feedback
 
-See [survey](#survey): Moodle's `feedback` module is a survey activity, not the feedback comments a teacher writes when grading (those are `gradeSubmission`'s `feedback` input, see [grading method](#grading-method)).
+See [survey](#survey): Moodle's `feedback` module is a survey activity, not the feedback comments a teacher writes when grading (those are `gradeSubmission`'s `feedback` input, see [grading method](#grading-method)). Files a teacher attaches to that feedback (a corrected PDF, an audio comment) are an assignment's feedback files: `gradeSubmission`'s `feedbackFiles`, read by the student in `studentAssignment` and by the teacher in `assignmentSubmissions` ([Grading](../areas/grading.md)).
 
 ### Grade category
 

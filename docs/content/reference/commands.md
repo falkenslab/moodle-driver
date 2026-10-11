@@ -128,7 +128,7 @@ moodle answer-quiz-questions <attemptId> <answers> [--options]
 
 ## assignmentSubmissions
 
-Every participant's submission to an assignment, with its content unless `includeContent` is false.
+Every participant's submission to an assignment, with its content and the feedback files they have unless `includeContent` is false (both come from each participant's grading panel).
 
 ```bash
 moodle assignment-submissions <activityId> [--options]
@@ -471,7 +471,7 @@ moodle get-survey <activityId> [type]
 
 ## gradeSubmission
 
-Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion, feedback comments (HTML), whether to notify, and any other grading field by name. Returns the grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide.
+Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion, feedback comments (HTML), feedback files (local paths that replace the ones the participant has; `[]` removes them), whether to notify, and any other grading field by name. Returns the grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide, and the feedback files after saving when they were given. Throws `GradingError` when Moodle refuses the grade, or when files are given to an assignment without feedback files.
 
 ```bash
 moodle grade-submission <activityId> <userId> --options
@@ -486,6 +486,7 @@ moodle grade-submission <activityId> <userId> --options
 | `--guide` | `Record<number, number>` | Criterion id → score. |
 | `--remarks` | `Record<number, string>` | Criterion id → remark, for a rubric or a guide. |
 | `--feedback` | `string` |  |
+| `--feedback-files` | `string[]` | Local paths (absolute): the participant's feedback files afterwards. |
 | `--notify` | `boolean` |  |
 | `--fields` | `Record<string, FieldValue>` |  |
 

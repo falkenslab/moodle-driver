@@ -129,6 +129,23 @@ describe("studentAssignment, saveSubmission and submitForGrading", { skip: !brow
     await context.close();
   });
 
+  it("gives the feedback's files, not the other links in it", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, {
+      user: { id: 4, fullName: "Student" },
+      // Moodle 5.2's feedback table, reduced: a comment with an embedded file, and the feedback files plugin's block.
+      bodies: {
+        "/mod/assign/view.php": `<div class="feedback"><table class="generaltable"><tbody>
+<tr><th>Feedback comments</th><td><a href="${SITE}pluginfile.php/89/assignfeedback_comments/feedback/13/note.png">note.png</a></td></tr>
+<tr><th>Feedback files</th><td><div class="box plugincontentsummary summary_assignfeedback_file_13"><div class="fileuploadsubmission"><a target="_blank" href="${SITE}pluginfile.php/89/assignfeedback_file/feedback_files/13/corrected.pdf?forcedownload=1">corrected.pdf</a></div></div></td></tr>
+</tbody></table></div>`,
+      },
+    });
+    const assignment = await studentAssignment(context, SITE, 32);
+    assert.deepEqual(assignment.feedbackFiles, [{ name: "corrected.pdf", url: `${SITE}pluginfile.php/89/assignfeedback_file/feedback_files/13/corrected.pdf?forcedownload=1` }]);
+    await context.close();
+  });
+
   it("refuses an activity that isn't an assignment", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" } });

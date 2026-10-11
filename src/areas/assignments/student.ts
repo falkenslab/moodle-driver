@@ -23,6 +23,8 @@ export interface StudentAssignment {
   graded: boolean;
   submittedFiles: { name: string; url: string }[];
   feedback: { label: string; value: string }[];
+  /** The files the teacher attached to the feedback, for `downloadFile`. */
+  feedbackFiles: { name: string; url: string }[];
   canEdit: boolean;
   canSubmit: boolean;
 }
@@ -61,6 +63,8 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
         graded: doc.querySelector(".submissionstatustable td.submissiongraded") !== null,
         submittedFiles: links('.submissionstatustable a[href*="pluginfile.php"]'),
         feedback: rows(".feedback tr"),
+        // The feedback files plugin's block: summary_assignfeedback_file_<gradeid>.
+        feedbackFiles: links('.feedback [class*="summary_assignfeedback_file_"] a[href*="pluginfile.php"]'),
         canEdit: actions.includes("editsubmission"),
         canSubmit: actions.includes("submit"),
       };

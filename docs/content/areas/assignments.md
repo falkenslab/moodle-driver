@@ -22,6 +22,7 @@ interface StudentAssignment {
   graded: boolean;
   submittedFiles: { name: string; url: string }[];
   feedback: { label: string; value: string }[];
+  feedbackFiles: { name: string; url: string }[];
   canEdit: boolean;
   canSubmit: boolean;
 }
@@ -35,6 +36,7 @@ interface StudentAssignment {
 - `graded`: the grading status says it's graded.
 - `submittedFiles`: the files in the person's submission.
 - `feedback`: the feedback table, row by row (grade, graded on, graded by, feedback comments), when there's feedback.
+- `feedbackFiles`: the files the teacher attached to the feedback (a corrected PDF, an audio comment), `pluginfile.php` links for [downloadFile](files.md); read from the feedback files plugin's block, so links in the feedback comments aren't among them.
 - `canEdit`: the page offers to add or edit the submission now.
 - `canSubmit`: the page offers to submit it for grading now (a draft in an assignment that asks students to click submit).
 

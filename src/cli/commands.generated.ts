@@ -332,7 +332,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "assignmentSubmissions",
-    "description": "Every participant's submission to an assignment, with its content unless `includeContent` is false.",
+    "description": "Every participant's submission to an assignment, with its content and the feedback files they have unless `includeContent` is false (both come from each participant's grading panel).",
     "params": [
       {
         "name": "activityId",
@@ -1039,7 +1039,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "gradeSubmission",
-    "description": "Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion, feedback comments (HTML), whether to notify, and any other grading field by name. Returns the grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide.",
+    "description": "Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion, feedback comments (HTML), feedback files (local paths that replace the ones the participant has; `[]` removes them), whether to notify, and any other grading field by name. Returns the grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide, and the feedback files after saving when they were given. Throws `GradingError` when Moodle refuses the grade, or when files are given to an assignment without feedback files.",
     "params": [
       {
         "name": "activityId",
@@ -1105,6 +1105,15 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "string"
           }
+        },
+        {
+          "name": "feedbackFiles",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local paths (absolute): the participant's feedback files afterwards."
         },
         {
           "name": "notify",

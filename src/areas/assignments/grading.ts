@@ -1,7 +1,23 @@
 // A teacher's side of an assignment: everyone's submissions, and grading one participant as the
 // grader does (its panel's form, submitted through the grading service).
 import type { BrowserContext, Page } from "playwright-core";
-import { GradingError, NotAnAssignmentError, assignmentIds, fillGradingForm, gradingPanelHtml, listParticipants, panelGrade, participantDates, readSubmissionContent, submitGradingForm, type PluginContent } from "./grader.js";
+import {
+  GradingError,
+  NotAnAssignmentError,
+  assignmentIds,
+  draftAreaFiles,
+  fillGradingForm,
+  gradingPanelHtml,
+  listParticipants,
+  panelGrade,
+  participantDates,
+  readPanelFeedbackDraft,
+  readSubmissionContent,
+  replaceDraftFiles,
+  submitGradingForm,
+  type PluginContent,
+} from "./grader.js";
+import { checkLocalFiles } from "../../core/files.js";
 import { isoDate } from "../courses/list.js";
 import { dateSelectorDate, dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
 import { NotLoggedInError } from "../../core/session.js";
@@ -27,6 +43,11 @@ export interface Submission {
   cutoffDate?: string;
   /** Per submission plugin; only for submitted and draft submissions. */
   content?: PluginContent[];
+  /**
+   * The feedback files the participant has, where the assignment takes them: as the grader's file
+   * manager holds them, a working copy (`draftfile.php`) that `downloadFile` saves while the session lasts.
+   */
+  feedbackFiles?: { name: string; url: string }[];
 }
 
 /** An extension's date, as its form holds it (no service open to AJAX gives it). */
@@ -43,7 +64,10 @@ async function extensionDate(context: BrowserContext, siteUrl: string, activityI
   }
 }
 
-/** Every participant's submission to an assignment, with its content unless `includeContent` is false. */
+/**
+ * Every participant's submission to an assignment, with its content and the feedback files they
+ * have unless `includeContent` is false (both come from each participant's grading panel).
+ */
 export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, { includeContent = true } = {}): Promise<Submission[]> {
   const ids = await assignmentIds(context, siteUrl, activityId);
   const participants = await listParticipants(context, siteUrl, ids.instanceId);
@@ -55,7 +79,10 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
     for (const participant of participants) {
       const dates = await participantDates(context, siteUrl, ids.instanceId, participant.id);
       const status = participant.submissionstatus || "none";
-      const withContent = parser && (status === "submitted" || status === "draft");
+      // Everyone's panel: feedback files can come without a submission.
+      const panel = parser ? await gradingPanelHtml(context, siteUrl, ids.contextId, participant.id) : undefined;
+      const withContent = status === "submitted" || status === "draft";
+      const draft = parser && panel !== undefined ? await readPanelFeedbackDraft(parser, panel) : {};
       submissions.push({
         userId: participant.id,
         fullName: participant.fullname,
@@ -67,7 +94,8 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
         allowSubmissionsFrom: isoDate(dates.allowsubmissionsfromdate),
         dueDate: isoDate(dates.duedate),
         cutoffDate: isoDate(dates.cutoffdate),
-        content: withContent ? await readSubmissionContent(parser, await gradingPanelHtml(context, siteUrl, ids.contextId, participant.id)) : undefined,
+        content: parser && panel !== undefined && withContent ? await readSubmissionContent(parser, panel) : undefined,
+        feedbackFiles: draft.draftId && draft.sesskey ? await draftAreaFiles(context, siteUrl, draft.sesskey, draft.draftId) : undefined,
       });
     }
   } finally {
@@ -79,8 +107,11 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
 /**
  * Grades a participant as the grader does: a grade (simple grading), a rubric's level per criterion
  * or a marking guide's score per criterion (by their ids, from `rubric()`), remarks per criterion,
- * feedback comments (HTML), whether to notify, and any other grading field by name. Returns the
- * grade saved and the gradebook's grade, the total Moodle computes for a rubric or a guide.
+ * feedback comments (HTML), feedback files (local paths that replace the ones the participant has;
+ * `[]` removes them), whether to notify, and any other grading field by name. Returns the grade
+ * saved and the gradebook's grade, the total Moodle computes for a rubric or a guide, and the
+ * feedback files after saving when they were given. Throws `GradingError` when Moodle refuses the
+ * grade, or when files are given to an assignment without feedback files.
  */
 export async function gradeSubmission(
   context: BrowserContext,
@@ -93,6 +124,7 @@ export async function gradeSubmission(
     guide,
     remarks,
     feedback,
+    feedbackFiles,
     notify,
     fields,
   }: {
@@ -104,10 +136,13 @@ export async function gradeSubmission(
     /** Criterion id → remark, for a rubric or a guide. */
     remarks?: Record<number, string>;
     feedback?: string;
+    /** Local paths (absolute): the participant's feedback files afterwards. */
+    feedbackFiles?: string[];
     notify?: boolean;
     fields?: Record<string, FieldValue>;
   },
 ) {
+  if (feedbackFiles) await checkLocalFiles(feedbackFiles);
   const ids = await assignmentIds(context, siteUrl, activityId);
   const values: Record<string, FieldValue> = { ...fields };
   if (grade !== undefined) values.grade = String(grade);
@@ -119,15 +154,31 @@ export async function gradeSubmission(
   // A blank tab holds the panel's form: nothing of the grader's page needs to load.
   const page = await context.newPage();
   try {
-    const serialized = await fillGradingForm(page, await gradingPanelHtml(context, siteUrl, ids.contextId, userId), values).catch((error: Error) => {
+    const panel = await gradingPanelHtml(context, siteUrl, ids.contextId, userId);
+    const serialized = await fillGradingForm(page, panel, values).catch((error: Error) => {
       if (feedback !== undefined && error.message.includes(FEEDBACK_FIELD)) {
         throw new MoodleError("This assignment has no feedback comments: grade it without feedback, or turn feedback comments on in its settings.", "not-available");
       }
       throw error;
     });
+    if (feedbackFiles) {
+      // The panel's draft area is what the form saves as the feedback files: changed before submitting it.
+      const draft = await readPanelFeedbackDraft(page, panel);
+      if (!draft.draftId || !draft.sesskey) {
+        throw new GradingError(`Assignment ${activityId} has no feedback files: grade it without them, or turn "Feedback files" on in its settings.`);
+      }
+      await replaceDraftFiles(context, siteUrl, activityId, userId, draft.sesskey, draft.draftId, feedbackFiles);
+    }
     await submitGradingForm(context, siteUrl, ids.instanceId, userId, serialized);
-    const saved = await panelGrade(page, await gradingPanelHtml(context, siteUrl, ids.contextId, userId));
-    return { changed: `Graded user ${userId} in assignment ${activityId}${feedback !== undefined ? ", with feedback" : ""}.`, ...saved };
+    const after = await gradingPanelHtml(context, siteUrl, ids.contextId, userId);
+    const saved = await panelGrade(page, after);
+    const files = feedbackFiles ? await readPanelFeedbackDraft(page, after) : undefined;
+    const extras = [feedback !== undefined ? "feedback" : "", feedbackFiles ? `${feedbackFiles.length} feedback file${feedbackFiles.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
+    return {
+      changed: `Graded user ${userId} in assignment ${activityId}${extras ? `, with ${extras}` : ""}.`,
+      ...saved,
+      ...(files?.draftId && files.sesskey ? { feedbackFiles: await draftAreaFiles(context, siteUrl, files.sesskey, files.draftId) } : {}),
+    };
   } finally {
     await page.close().catch(() => undefined);
   }

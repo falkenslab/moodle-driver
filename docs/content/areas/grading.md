@@ -1,6 +1,6 @@
 # Grading
 
-The teacher's side of an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
+The teacher's side of an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions; feedback files go with the grade. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
 **Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale).
 
@@ -28,9 +28,10 @@ function assignmentSubmissions(
 - `extensionGranted`: the participant has an extension.
 - `extensionDueDate`: until when (ISO 8601), where an extension is granted.
 - `allowSubmissionsFrom`, `dueDate`, `cutoffDate`: for this participant, with their overrides and extensions applied (ISO 8601; absent when the assignment has none).
+- `feedbackFiles`: the files attached to the participant's feedback, `{ name, url }`, where the assignment has feedback files on. They're read as the grader's file manager holds them: `url` is the person's working copy (`draftfile.php`), which [downloadFile](files.md) saves while the session lasts; the student sees the saved files' own links (`studentAssignment`).
 - `content`: per submission plugin, `{ plugin, text, files }`: `plugin` is the plugin's name (`"onlinetext"`, `"file"`…), `text` its content as plain text with paragraphs and lists kept, `files` its `{ name, url }` links (for [downloadFile](files.md)). Only for submitted and draft submissions; the comments plugin isn't part of it.
 
-`includeContent` is `true` by default. Content comes from each participant's grading panel, one service call per participant with a submission; with `includeContent: false` none is loaded, which is much faster for a large course when only the statuses are needed. Participants are read one at a time; an extension's date comes from the extension form (no service open to AJAX gives it), one page per participant with an extension.
+`includeContent` is `true` by default. Content and feedback files come from each participant's grading panel, one service call per participant (and one listing of the panel's feedback files where the assignment has them); with `includeContent: false` neither is loaded, which is much faster for a large course when only the statuses are needed. Participants are read one at a time; an extension's date comes from the extension form (no service open to AJAX gives it), one page per participant with an extension.
 
 It throws `NotAnAssignmentError` when the id isn't an assignment the person can grade, and passes the services' refusals as `MoodleServiceError`.
 
@@ -50,10 +51,11 @@ function gradeSubmission(
     guide?: Record<number, number>; // criterion id -> score
     remarks?: Record<number, string>; // criterion id -> remark
     feedback?: string;
+    feedbackFiles?: string[];
     notify?: boolean;
     fields?: Record<string, FieldValue>;
   },
-): Promise<{ changed: string; grade?: string; gradebookGrade?: string; feedback?: string }>;
+): Promise<{ changed: string; grade?: string; gradebookGrade?: string; feedback?: string; feedbackFiles?: { name: string; url: string }[] }>;
 ```
 
 - `grade`: for simple grading, the grade as a number (`8.5`) or as the grader's field takes it (`"8.5"`, or `"8,5"` where the site writes decimals with a comma); for a scale, the scale item's value.
@@ -61,6 +63,7 @@ function gradeSubmission(
 - `guide`: for a marking guide, the score per criterion.
 - `remarks`: a rubric's or a guide's remark per criterion.
 - `feedback`: feedback comments (HTML), when the assignment has feedback comments on.
+- `feedbackFiles`: absolute local paths of files for the feedback (a corrected PDF, an audio comment), when the assignment has feedback files on. They replace the files the participant had: what the panel's file manager holds is deleted, then they're uploaded from Moodle's grading page for the participant (`mod/assign/view.php?action=grade`, whose file picker carries the upload repository), before the form is submitted. `[]` removes them all; without the option they stay as they are.
 - `notify`: whether Moodle notifies the student; the panel's default otherwise.
 - `fields`: any other field of the grading panel's form by name (another feedback plugin's, a workflow state…); the named options win for the same field.
 
@@ -70,12 +73,15 @@ It fills the panel's form in a blank tab (nothing of the grader's page loads), s
 - `grade`: the grade field's value now, for simple grading.
 - `gradebookGrade`: the "Current grade in gradebook" Moodle shows, which for a rubric or a guide is the total it computed from the levels or scores (`"75.00"`); absent when there's none.
 - `feedback`: the feedback comments now.
+- `feedbackFiles`: when files were given, the participant's feedback files now, as `assignmentSubmissions` gives them.
 
 Errors:
 
 - `NotAnAssignmentError` when the id isn't an assignment the person can grade.
 - `FormError` when a field isn't in the panel's form, such as a criterion or level id that doesn't exist (`advancedgrading[criteria][9][levelid]`), or `grade` on an assignment graded by rubric.
 - A `MoodleError` (`not-available`) when `feedback` is given and the assignment has no feedback comments; nothing is saved.
+- `GradingError` when `feedbackFiles` is given and the assignment has no feedback files; nothing is saved.
+- A `MoodleError` (`invalid-input`, `not-found`) when a file path isn't absolute or doesn't exist, checked before anything; `FormError` when the upload fails (no upload repository, a file too big).
 - `GradingError` when Moodle doesn't save the grade. Moodle's service only answers that it couldn't save, without the reason: usually a grade out of the assignment's range or scale, or a field's name.
 
 ## rubric
@@ -141,7 +147,8 @@ if (definition.method === "rubric") {
   });
   console.log(result.changed, result.gradebookGrade);
 } else {
-  await moodle.gradeSubmission(45, 7, { grade: "9", feedback: "<p>Well done, Ada.</p>" });
+  // A corrected copy of the work goes back with the grade.
+  await moodle.gradeSubmission(45, 7, { grade: "9", feedback: "<p>Well done, Ada.</p>", feedbackFiles: ["/home/teacher/corrected/ada.pdf"] });
 }
 
 await moodle.grantExtension(45, [4, 7], new Date("2026-11-06T22:59:00Z"));

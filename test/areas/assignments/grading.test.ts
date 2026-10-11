@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { after, describe, it } from "node:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { after, before, describe, it } from "node:test";
+import type { BrowserContext, Route } from "playwright-core";
 import { GradingError, NotAnAssignmentError, assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "../../../src/index.js";
 import { PANEL, SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 
@@ -213,6 +217,95 @@ ${select("day", range(1, 31), until?.day ?? 1)}${select("month", range(1, 12), 1
     assert.equal(submissions.find((s) => s.userId === 8)?.extensionDueDate, "2026-10-23T12:30:00.000Z");
     assert.equal(submissions.find((s) => s.userId === 7)?.extensionDueDate, undefined);
     await assert.rejects(grantExtension(context, SITE, 43, [], new Date()), /Give the participants/);
+    await context.close();
+  });
+});
+
+describe("feedback files", { skip: !browser && "no system browser" }, () => {
+  let dir: string;
+  before(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "moodle-driver-feedback-"));
+    await writeFile(path.join(dir, "corrected.pdf"), "%PDF-1.4\n");
+  });
+  after(() => rm(dir, { recursive: true, force: true }));
+
+  /**
+   * A made-up assignment (instance 510) whose grading panel has Moodle 5.2's feedback files manager
+   * (`files_<userid>_filemanager`), with the draft area behind it and the grading page that carries
+   * the upload repository; `withFiles` false is an assignment without feedback files.
+   */
+  async function feedbackSite(context: BrowserContext, withFiles = true) {
+    const saved: string[] = ["old.pdf"];
+    let draft: string[] = [];
+    const submitted: Record<string, unknown>[] = [];
+    const deleted: string[] = [];
+    const panel = () => {
+      // Each panel prepares a fresh draft area with the saved files, as Moodle's does.
+      draft = [...saved];
+      const files = withFiles ? `<input value="77" name="files_7_filemanager" type="hidden" id="id_files_7_filemanager" />` : "";
+      return `<form class="gradeform mform"><input type="hidden" name="sesskey" value="s1"><input type="hidden" name="action" value="submitgrade"><input type="text" name="grade" value="">${files}</form>`;
+    };
+    await serveFakeMoodle(context, {
+      user: { id: 3, fullName: "Teacher" },
+      bodies: { "/mod/assign/view.php": `<div data-assignmentid="510" data-contextid="5100"></div><script>var fp = {"repositories":{"5":{"id":"5","name":"Upload a file","type":"upload"}}};</script>` },
+      services: {
+        mod_assign_list_participants: () => [{ id: 7, fullname: "Ada Lovelace", submitted: false, requiregrading: false, grantedextension: false, submissionstatus: "" }],
+        mod_assign_get_participant: () => ({ allowsubmissionsfromdate: 0, duedate: 0, cutoffdate: 0 }),
+        core_get_fragment: () => ({ html: panel(), javascript: "" }),
+        mod_assign_submit_grading_form: (args) => {
+          submitted.push(args);
+          saved.splice(0, saved.length, ...draft);
+          return [];
+        },
+      },
+    });
+    await context.route(`${SITE}repository/draftfiles_ajax.php**`, (route: Route) => {
+      const form = new URLSearchParams(route.request().postData() ?? "");
+      const json = (body: unknown) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+      assert.deepEqual([form.get("sesskey"), form.get("itemid")], ["s1", "77"]);
+      const action = new URL(route.request().url()).searchParams.get("action");
+      if (action === "list") return json({ list: draft.map((name) => ({ filename: name, filepath: "/", type: "file", url: `${SITE}draftfile.php/13/user/draft/77/${name}` })) });
+      const selected = JSON.parse(form.get("selected") ?? "[]") as { filename: string }[];
+      deleted.push(...selected.map((file) => file.filename));
+      draft = draft.filter((name) => !selected.some((file) => file.filename === name));
+      return json(selected.map(() => "/"));
+    });
+    await context.route(`${SITE}repository/repository_ajax.php**`, (route: Route) => {
+      draft.push(/filename="([^"]+)"/.exec(route.request().postData() ?? "")?.[1] ?? "");
+      return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    });
+    return { saved, submitted, deleted };
+  }
+
+  it("replaces the participant's feedback files and gives them back", async () => {
+    const context = await browser!.newContext();
+    const { saved, deleted } = await feedbackSite(context);
+    const result = await gradeSubmission(context, SITE, 51, 7, { grade: "8", feedbackFiles: [path.join(dir, "corrected.pdf")] });
+    assert.equal(result.changed, "Graded user 7 in assignment 51, with 1 feedback file.");
+    assert.deepEqual(result.feedbackFiles, [{ name: "corrected.pdf", url: `${SITE}draftfile.php/13/user/draft/77/corrected.pdf` }]);
+    assert.deepEqual([saved, deleted], [["corrected.pdf"], ["old.pdf"]]);
+    const [ada] = await assignmentSubmissions(context, SITE, 51);
+    assert.deepEqual(ada?.feedbackFiles?.map((file) => file.name), ["corrected.pdf"]);
+    await context.close();
+  });
+
+  it("removes them all with an empty list, and leaves them without one", async () => {
+    const context = await browser!.newContext();
+    const { saved } = await feedbackSite(context);
+    await gradeSubmission(context, SITE, 52, 7, { grade: "8" });
+    assert.deepEqual(saved, ["old.pdf"]);
+    await gradeSubmission(context, SITE, 52, 7, { grade: "8", feedbackFiles: [] });
+    assert.deepEqual(saved, []);
+    await context.close();
+  });
+
+  it("refuses files for an assignment without feedback files, saving nothing", async () => {
+    const context = await browser!.newContext();
+    const { submitted } = await feedbackSite(context, false);
+    await assert.rejects(gradeSubmission(context, SITE, 53, 7, { grade: "8", feedbackFiles: [path.join(dir, "corrected.pdf")] }), (error: unknown) => error instanceof GradingError && /has no feedback files/.test(error.message));
+    assert.equal(submitted.length, 0);
+    const [ada] = await assignmentSubmissions(context, SITE, 53);
+    assert.equal(ada?.feedbackFiles, undefined);
     await context.close();
   });
 });
