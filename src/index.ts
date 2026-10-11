@@ -101,6 +101,8 @@ export {
 
 // Forums, surveys, choices, lessons, H5P.
 export { NotAForumError } from "./areas/forums/discussions.js";
+export { forumGrades, gradeForumUser, type ForumGrade, type ForumGrades } from "./areas/forums/grading.js";
+export { rate, type RateableItem } from "./areas/ratings/ratings.js";
 export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, type ForumDiscussion, type ForumPost, type PostInput } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";
 export { getChoice, answerChoice, ChoiceError, type Choice } from "./areas/surveys/choice.js";
@@ -115,6 +117,10 @@ export {
   gradebookSetup,
   updateGradeItem,
   addGradeCategory,
+  addGradeItem,
+  updateGradeCategory,
+  deleteGradeCategory,
+  deleteGradeItem,
   GRADE_AGGREGATIONS,
   GradebookError,
   type GradeAggregation,
@@ -123,6 +129,8 @@ export {
   type GradebookCategory,
   type GradebookItem,
 } from "./areas/grades/gradebook.js";
+export { setGrade, type GradebookGrade, type SetGradeOptions } from "./areas/grades/singleview.js";
+export { exportGrades, GRADE_EXPORT_FORMATS, type GradeExportFormat, type GradeExportDisplay, type ExportGradesOptions } from "./areas/grades/export.js";
 export { setCompletion, overrideCompletion, completionReport, CompletionError, type CompletionCell, type CompletionReport } from "./areas/completion/completion.js";
 export { participants, participantFilters, groups, NoParticipantsError, type Participant, type CourseGroup } from "./areas/participants/participants.js";
 export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, createGrouping, deleteGrouping, setGroupingGroups, type GroupSettings, type GroupingSettings, type Grouping } from "./areas/participants/groups.js";

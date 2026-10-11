@@ -25,7 +25,7 @@ export function fileNameFor(url: URL, disposition: string | undefined): string {
 }
 
 /** `dir/name`, or `dir/name (2).ext`… when it exists: a download never overwrites. */
-async function freePath(dir: string, name: string): Promise<string> {
+export async function freePath(dir: string, name: string): Promise<string> {
   const { name: stem, ext } = path.parse(name);
   for (let n = 1; ; n++) {
     const candidate = path.join(dir, n === 1 ? name : `${stem} (${n})${ext}`);

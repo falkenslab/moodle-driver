@@ -1,6 +1,6 @@
 # Grades and gradebook
 
-This area covers grades from both sides. A student (or anyone graded in a course) reads their own grade report with `myGrades`. A teacher reads everyone's grades with `graderReport`, reads how the gradebook is built with `gradebookSetup`, and changes it with `updateGradeItem` and `addGradeCategory`. Grading a single submission is in [Grading](grading.md); a quiz's attempts and marks are in [Quizzes](quizzes.md).
+This area covers grades from both sides. A student (or anyone graded in a course) reads their own grade report with `myGrades`. A teacher reads everyone's grades with `graderReport` (or saves Moodle's export file with `exportGrades`), grades in the gradebook with `setGrade` (a manual item's grade, or an override of an activity's), reads how the gradebook is built with `gradebookSetup`, and changes it with `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` and `deleteGradeCategory`. Grading a single submission is in [Grading](grading.md); a quiz's attempts and marks are in [Quizzes](quizzes.md).
 
 **Terms:** [gradebook](../reference/glossary.md#gradebook), [grade item](../reference/glossary.md#grade-item), [grade category](../reference/glossary.md#grade-category), [scale](../reference/glossary.md#scale).
 
@@ -144,13 +144,135 @@ function addGradeCategory(
 
 `GRADE_AGGREGATIONS` lists the aggregations by name, mapped to Moodle's constants: `mean`, `median`, `lowest`, `highest`, `mode`, `weighted-mean`, `simple-weighted-mean`, `mean-with-extra-credits`, `natural`. An administrator can hide aggregations from teachers: asking for one the site doesn't offer throws `GradebookError` naming the ones it offers ("The site doesn't offer the mean aggregation; it offers: natural."). Moodle's form errors come back as `GradebookError` too.
 
+## updateGradeCategory
+
+Changes a grade category: renames it, changes its aggregation, sets its weight in its parent, or moves it into another category. Returns a sentence saying what changed and the category afterwards.
+
+```ts
+function updateGradeCategory(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  categoryId: number,
+  changes: { name?: string; aggregation?: GradeAggregation; weight?: number; parentId?: number },
+): Promise<{ changed: string; category?: GradebookCategory }>;
+```
+
+- `weight`: in percent, overriding Natural's automatic weight, as `updateGradeItem` does for an item. A parent that doesn't aggregate with editable weights throws `GradebookError`.
+- `parentId`: moves the category to the start of that category.
+- `aggregation`: as in `addGradeCategory`, refused with the offered ones named when the site hides it.
+
+The course's own category (the one without `parentId`) has no weight and can't be moved: asking for either throws `GradebookError`. Name, aggregation and weight go through Moodle's dynamic form for categories, so its errors come back as `GradebookError` with each field.
+
+## deleteGradeCategory
+
+Deletes a grade category, as the setup page's "Delete" does. Moodle moves what it held (items and categories) into its parent, and the grades of its total go with it.
+
+```ts
+function deleteGradeCategory(context: BrowserContext, siteUrl: string, courseId: number, categoryId: number): Promise<{ changed: string }>;
+```
+
+The course's own category can't be deleted, and an id the setup doesn't have throws `GradebookError` before anything is sent.
+
+## addGradeItem
+
+Adds a manual grade item: one graded in the gradebook rather than by an activity (participation, an oral exam). Returns it as the setup shows it.
+
+```ts
+function addGradeItem(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  options: { name: string; maxGrade?: number; scaleId?: number; categoryId?: number; hidden?: boolean },
+): Promise<{ changed: string; item?: GradebookItem }>;
+```
+
+- `maxGrade`: out of how much; Moodle's default (100) when left out.
+- `scaleId`: graded on a scale instead (a scale the course can use; another one throws `GradebookError` naming those it offers). Not together with `maxGrade`.
+- `categoryId`: the category to put it in; at the course's top level without it.
+- `hidden`: hidden from students.
+
+It goes through Moodle's dynamic form for grade items, so Moodle's form errors come back as `GradebookError`. Grade it with `setGrade`.
+
+## deleteGradeItem
+
+Deletes a manual grade item and its grades.
+
+```ts
+function deleteGradeItem(context: BrowserContext, siteUrl: string, courseId: number, itemId: number): Promise<{ changed: string }>;
+```
+
+An activity's item goes with its activity (deleting it from the gradebook would only have Moodle make it again), so for one it throws `GradebookError` before sending anything; so does an id the setup doesn't have.
+
+## setGrade
+
+Sets a person's grade in one grade item as a teacher does in the gradebook's single view report (`grade/report/singleview/index.php`, the person's screen): a manual item takes the grade; an activity's or a category's item is overridden. Feedback and excluding the grade from the totals go the same way. Returns a sentence saying what changed and the grade afterwards.
+
+```ts
+function setGrade(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  itemId: number,
+  userId: number,
+  options: { grade?: number | string | null; feedback?: string; override?: boolean; excluded?: boolean },
+): Promise<{ changed: string; grade: GradebookGrade }>;
+
+interface GradebookGrade {
+  itemId: number;
+  userId: number;
+  grade?: string;
+  feedback?: string;
+  overridden: boolean;
+  excluded: boolean;
+}
+```
+
+- `itemId`: a grade item's id (a column of `graderReport`, an item of `gradebookSetup`); `userId`: a participant's, as `graderReport`'s rows give it.
+- `grade`: a number for a value item, or a scale item's name or value ("Good", `2`) for a scale; `null` empties it. An item's range comes with its field, so a grade out of it throws `GradebookError` naming the range before anything is sent ("takes grades from 0.00 to 10.00").
+- `feedback`: text; an empty string removes it.
+- `override`: for an activity's or category's item only. A grade or feedback there overrides the activity's (Moodle requires it, and keeps the override until it's taken off), so `override` can be left out; `override: false` alone gives the grade back to the activity. Feedback given with the override stays when it's taken off (confirmed empirically, Moodle 5.2): remove it first with `feedback: ""`. On a manual item it throws `GradebookError`.
+- `excluded`: leave the grade out of the category and course totals.
+
+At least one option must be given. When the grade already is as asked, nothing is sent and `changed` is "Nothing to change.". `grade` comes as the report shows it ("8.50", the scale item's name).
+
+The report's fields only show in editing mode: when the person's editing mode is off, it's turned on for the change through the page's own switch and back off afterwards. A locked grade, an item or person the course's gradebook doesn't have, and Moodle's warnings when saving (a grade out of range on a site with unlimited grades) throw `GradebookError`. Grading an assignment's submission, with its rubric and feedback files, is [`gradeSubmission`](grading.md); an override here is what Moodle shows in the gradebook over the assignment's own grade.
+
+## exportGrades
+
+Saves a course's grades as Moodle exports them for a teacher ("Export" in the gradebook): a spreadsheet, comma-separated text or XML, the file a secretariat or a spreadsheet expects. `graderReport` gives the same grades as data.
+
+```ts
+function exportGrades(context: BrowserContext, siteUrl: string, courseId: number, options: ExportGradesOptions): Promise<DownloadedFile>;
+
+interface ExportGradesOptions {
+  format: "xlsx" | "ods" | "csv" | "xml";
+  itemIds?: number[];
+  groupId?: number;
+  display?: ("real" | "percentage" | "letter")[];
+  feedback?: boolean;
+  destDir?: string;
+}
+```
+
+- `format`: `xlsx` (Moodle's "Excel spreadsheet" export), `ods`, `csv` (its plain text export, comma-separated) or `xml`; `GRADE_EXPORT_FORMATS` lists them.
+- `itemIds`: the grade items to include (ids from `graderReport` or `gradebookSetup`); all of them when left out. One the export doesn't offer throws `GradebookError` naming those it does.
+- `groupId`: only that group's members, as the export page's group menu chooses them (see `groups` in [Participants](participants.md)).
+- `display`: how each grade is written, one column per way; the site's default when left out. XML takes exactly one.
+- `feedback`: add each grade's feedback.
+- `destDir`: the folder to save the file in, an absolute path. The [Moodle object](../concepts/calling-functions.md) uses its `downloadDir` when it's left out; the function throws without one.
+
+It fills the export page's form (`grade/export/<plugin>/index.php`) and saves the file Moodle sends under Moodle's own name ("mcp-content Grades-20261011_1805-comma_separated.csv"), never overwriting one: `(2)` is added as `downloadFile` does. It returns the same `DownloadedFile` (`path`, `name`, `size`). Besides the grades, Moodle's export carries each person's first and last names, ID number, institution, department and email address.
+
+An administrator can disable export formats: asking for one the site doesn't offer throws `GradebookError` naming those it does ("The site doesn't export grades as xlsx; it exports as: csv, ods, xml."), read from the gradebook's navigation menu. Moodle's XML export takes only items with an ID number: when the course has none, or `itemIds` names one without, it throws `GradebookError` before sending anything. A course the person can't export (no permission) throws `GradebookError` with Moodle's reason.
+
 ## Recalculation
 
 Moodle recalculates a course's grades after some changes (a deleted activity, changed weights or aggregations). While it does, the grader report shows a progress bar instead of the table, and `graderReport` throws `GradebookError` saying so. Waiting a moment and calling again is enough; there is nothing to fix.
 
 ## Example
 
-A teacher moves the labs into a new category, weights the first one, and reads the course totals; a student reads their own grades.
+A teacher moves the labs into a new category, weights the first one, grades a manual item, overrides a quiz's grade, and reads the course totals; a student reads their own grades.
 
 ```ts
 import { GradebookError } from "@falkenslab/moodle-driver";
@@ -167,6 +289,12 @@ if (category) {
   // Inside the Natural "Labs" category, the first lab counts for 40%.
   if (labs[0]) await moodle.updateGradeItem(3, labs[0].id, { weight: 40 });
 }
+
+// A manual item graded in the gradebook, and an override of a quiz's grade for one student.
+const { item } = await moodle.addGradeItem(3, { name: "Participation", maxGrade: 10 });
+if (item) await moodle.setGrade(3, item.id, 5, { grade: 8.5, feedback: "Active in every class" });
+const quiz = setup.items.find((i) => i.type === "quiz");
+if (quiz) await moodle.setGrade(3, quiz.id, 5, { grade: 7 });
 
 try {
   const report = await moodle.graderReport(3);
@@ -189,5 +317,7 @@ console.log(mine.find((row) => row.kind === "courseTotal")?.grade);
 From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 
 - `myGrades`: `own`.
-- `graderReport`: `others-personal` (everyone's grades).
-- `gradebookSetup`, `updateGradeItem`, `addGradeCategory`: `course-content` (the gradebook's structure, nobody's grades).
+- `graderReport`, `exportGrades`: `others-personal` (everyone's grades; the export adds their emails).
+- `gradebookSetup`, `updateGradeItem`, `addGradeItem`, `addGradeCategory`, `updateGradeCategory`, `deleteGradeCategory`: `course-content` (the gradebook's structure, nobody's grades).
+- `deleteGradeItem`: `course-content` and `others-write` (a manual item's grades go with it).
+- `setGrade`: `others-personal` and `others-write` (reads and decides a person's grade).

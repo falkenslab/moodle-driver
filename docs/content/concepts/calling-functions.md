@@ -34,7 +34,7 @@ Settings a program would otherwise repeat on every call go to the object once; a
 | `trail` | `"realistic"` | `activityContent`, `answerQuizQuestions`, `answerLessonPage`: the [student's pace](student-pace.md) |
 | `onProgress(elapsed, total?)` | none | The same three, while they wait at a reader's pace |
 | `loginTimeoutMs` | 5 minutes | `logIn()`, how long it waits for the person |
-| `downloadDir` | none | `downloadFile(url)` without a folder |
+| `downloadDir` | none | `downloadFile(url)` without a folder, `exportGrades(courseId, options)` without `destDir` |
 
 ```ts
 import { createMoodle } from "@falkenslab/moodle-driver";

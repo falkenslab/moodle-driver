@@ -1,6 +1,6 @@
 # Grading
 
-The teacher's side of an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
+The teacher's side of an assignment, and of forums: whole-forum grades with `forumGrades` and `gradeForumUser`, and ratings on forum posts, glossary entries and database records with `rate`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
 **Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale).
 
@@ -117,6 +117,76 @@ Errors:
 
 `assignmentSubmissions` reports the granted date as `extensionDueDate`.
 
+## forumGrades
+
+Everyone's whole-forum grade in a forum graded as a whole ("Whole forum grading" in the forum's settings), as the forum's "Grade users" grader shows them.
+
+```ts
+function forumGrades(context: BrowserContext, siteUrl: string, activityId: number, options?: { groupId?: number }): Promise<ForumGrades>;
+
+interface ForumGrades {
+  activityId: number;
+  method: "point" | "scale";
+  maxGrade?: number;
+  scale?: { value: number; name: string }[];
+  grades: ForumGrade[];
+}
+
+interface ForumGrade {
+  userId: number;
+  fullName: string;
+  grade?: string;
+  value?: number;
+  gradedBy?: string;
+  gradedAt?: string;
+}
+```
+
+- `method`: out of points (`maxGrade`) or on a scale (`scale`, its items by value).
+- `grades`: one per person the grader can grade (the course's gradable users, only the active ones when the forum says so; one group's with `groupId`). `grade` is as Moodle shows it ("8.00 / 10.00", a scale item's name), `value` the number stored; both are left out when the person has no grade.
+
+It reads the ids from the forum page's grader button and goes through the grader's own services (`core_grades_get_gradable_users`, `core_grades_grader_gradingpanel_point_fetch` or `…_scale_fetch`), one call per person. It throws `NotAForumError` for another activity, and `GradingError` when the forum isn't graded as a whole (or the person can't grade it) or uses an advanced grading method (a rubric), which the driver doesn't fill for forums.
+
+## gradeForumUser
+
+Gives one person their whole-forum grade, as the grader's panel does.
+
+```ts
+function gradeForumUser(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  userId: number,
+  options: { grade: number | string | null; notify?: boolean },
+): Promise<{ changed: string; grade: Omit<ForumGrade, "fullName"> }>;
+```
+
+- `grade`: points (from 0 to the forum's maximum), or a scale item's name or value; `null` takes the grade away. A grade out of range or off the scale throws `GradingError` before anything is sent.
+- `notify`: send the person Moodle's grade notification, as the panel's checkbox does (off by default).
+
+Moodle's forum grader has no feedback text, so there's none to give. The grade goes to the gradebook as the forum's "whole forum" item, beside its "rating" item when the forum also uses [ratings](#rate).
+
+## rate
+
+Rates a forum post, a glossary entry or a database record as the person, as the rating menu under it does.
+
+```ts
+function rate(context: BrowserContext, siteUrl: string, item: RateableItem, rating: number | string | null): Promise<{ changed: string; aggregate?: string; count?: number }>;
+
+type RateableItem =
+  | { type: "forum-post"; id: number; discussionId: number }
+  | { type: "glossary-entry"; id: number }
+  | { type: "database-record"; id: number };
+```
+
+- `item`: a forum post by its id and its discussion's (from [`discussion`](forums.md#discussion)), a glossary entry, or a database record.
+- `rating`: a point scale's number, or a scale item's name or value; `null` takes the person's rating away.
+- `aggregate`, `count`: the item's aggregate afterwards, as the activity aggregates ratings (average, count, maximum…), and how many ratings it has; no `aggregate` once none is left.
+
+It opens the item's page (`mod/forum/discuss.php`, `mod/glossary/showentry.php`, `mod/data/view.php`), reads the item's rating form by its hidden fields and menu, and sends it to `rating/rate_ajax.php` as the page's own script does. It throws `GradingError` when the item has no rating menu for the person (the activity doesn't use ratings, it's their own, the rating period is over, or they aren't allowed to rate), when the rating isn't on the menu, and when Moodle refuses it. Ratings on forum posts were checked against Moodle 5.2; glossary entries and database records use the same rating form, on their own pages.
+
+A forum's ratings and its whole-forum grade are separate grade items in the gradebook, and both show in [`graderReport`](grades-and-gradebook.md#graderreport).
+
 ## Example
 
 ```ts
@@ -145,8 +215,15 @@ if (definition.method === "rubric") {
 }
 
 await moodle.grantExtension(45, [4, 7], new Date("2026-11-06T22:59:00Z"));
+
+// A forum graded as a whole: grade everyone without a grade yet, and rate a post.
+const forum = await moodle.forumGrades(54);
+for (const person of forum.grades.filter((g) => g.grade === undefined)) {
+  await moodle.gradeForumUser(54, person.userId, { grade: forum.method === "point" ? 7 : forum.scale![0]!.name });
+}
+await moodle.rate({ type: "forum-post", id: 11, discussionId: 6 }, 4);
 ```
 
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension` is `others-write`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension` is `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. See [data categories](../concepts/data-categories.md).

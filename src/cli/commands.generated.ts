@@ -145,6 +145,67 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addGradeItem",
+    "description": "Adds a manual grade item (one graded in the gradebook, not by an activity): out of `maxGrade` (Moodle's default, 100, when left out) or on a scale (`scaleId`), at the course's top level or in `categoryId`, hidden from students when asked. Returns it as the setup shows it.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "maxGrade",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "scaleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "categoryId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "hidden",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addQuestionsToQuiz",
     "description": "Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.",
     "params": [
@@ -868,6 +929,50 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteGradeCategory",
+    "description": "Deletes a grade category. Moodle moves what it held (items and categories) into its parent and deletes the grades of its total; the course's own category can't be deleted.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "categoryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteGradeItem",
+    "description": "Deletes a manual grade item and its grades. An activity's item goes with its activity (Moodle would make it again), so it's refused.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "itemId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "deleteGroup",
     "description": "Deletes a group, as the groups page's \"Delete selected group\" does once confirmed; its members stay in the course.",
     "params": [
@@ -1253,6 +1358,86 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "exportGrades",
+    "description": "Saves a course's grades into `destDir` as Moodle exports them for a teacher: a spreadsheet (`xlsx`, `ods`), comma-separated text (`csv`) or XML, with the items, group, display and feedback chosen as in the export form. Returns the file as `downloadFile` does (never overwriting one). Throws `GradebookError` when the site has that format's export plugin disabled (naming the ones it has), when an item isn't in the course, or when Moodle refuses the export.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "format",
+          "optional": false,
+          "type": "\"ods\" | \"xml\" | \"xlsx\" | \"csv\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "ods",
+              "xml",
+              "xlsx",
+              "csv"
+            ]
+          }
+        },
+        {
+          "name": "itemIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          },
+          "description": "The grade items to export (ids from `graderReport` or `gradebookSetup`); all of them when left out."
+        },
+        {
+          "name": "groupId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Only this group's members (a group id from `groups`)."
+        },
+        {
+          "name": "display",
+          "optional": true,
+          "type": "GradeExportDisplay[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "How grades are written; the site's default when left out. XML takes only one."
+        },
+        {
+          "name": "feedback",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Include each grade's feedback."
+        },
+        {
+          "name": "destDir",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The folder to save the file in (an absolute path); the `Moodle` object's `downloadDir` when left out there."
+        }
+      ]
+    }
+  },
+  {
     "name": "finishQuizAttempt",
     "description": "Submits an attempt for grading, and gives its review when the quiz shows it.",
     "params": [
@@ -1279,6 +1464,35 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "forumGrades",
+    "description": "Everyone's whole-forum grade in a forum graded as a whole, as its grader shows them: one per person it can grade (only the active ones when the forum says so), with how it's graded. One service call per person. Throws `NotAForumError` for another activity, and `GradingError` when the forum isn't graded as a whole or uses an advanced grading method.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "groupId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "getChoice",
@@ -1319,6 +1533,51 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "gradeForumUser",
+    "description": "Gives a person their whole-forum grade, as the forum's grader does: points (out of the forum's maximum), or a scale item by name or value; `null` takes the grade away. Moodle's forum grader has no feedback text. `notify` sends the person Moodle's notification, as the grader's checkbox does. Returns a sentence of what changed and the grade afterwards. Throws `GradingError` when the forum isn't graded as a whole, the grade is out of range or not on the scale, or Moodle refuses it.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "grade",
+          "optional": false,
+          "type": "string | number",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "notify",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "gradeQuizQuestion",
@@ -1589,12 +1848,12 @@ export const COMMANDS: readonly CommandSpec[] = [
         {
           "name": "format",
           "optional": false,
-          "type": "\"gift\" | \"xml\"",
+          "type": "\"xml\" | \"gift\"",
           "value": {
             "kind": "enum",
             "values": [
-              "gift",
-              "xml"
+              "xml",
+              "gift"
             ]
           }
         },
@@ -2010,6 +2269,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "rate",
+    "description": "Rates a forum post, a glossary entry or a database record as the person, as the rating menu under it does: by a scale item's name, or its number (the points of a point scale). `null` takes the person's rating away. Returns a sentence of what changed and the item's aggregate afterwards (as Moodle shows it, by the activity's aggregation) with the number of ratings. Throws `GradingError` when the item has no rating menu for the person (ratings off, their own item, outside the rating period, or no permission) or the rating isn't on its scale.",
+    "params": [
+      {
+        "name": "item",
+        "optional": false,
+        "type": "RateableItem",
+        "value": {
+          "kind": "json"
+        }
+      },
+      {
+        "name": "rating",
+        "optional": false,
+        "type": "string | number",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ]
+  },
+  {
     "name": "readAttempt",
     "description": "Every question of an attempt, page by page, with the page each is on.",
     "params": [
@@ -2321,6 +2602,79 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "json"
           },
           "description": "Self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none."
+        }
+      ]
+    }
+  },
+  {
+    "name": "setGrade",
+    "description": "Sets a person's grade in a grade item through the gradebook's single view report, as a teacher does there: a manual item takes the grade; an activity's or a category's is overridden (Moodle keeps the override until it's taken off with `override: false`). Feedback and excluding from the totals go the same way. Returns a sentence of what changed and the grade afterwards. Throws `GradebookError` when the item or the person isn't in the course's gradebook, the grade is locked, or Moodle refuses the value (out of range, a scale item it doesn't have).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "itemId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "grade",
+          "optional": true,
+          "type": "string | number",
+          "value": {
+            "kind": "string"
+          },
+          "description": "A number, or a scale item's name or value for a scale; `null` empties the grade."
+        },
+        {
+          "name": "feedback",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Feedback text; an empty string removes it."
+        },
+        {
+          "name": "override",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Override the activity's or category's grade. Giving a grade or feedback to an activity's or a category's item overrides it unless this says `false`; `false` alone gives the grade back to the activity."
+        },
+        {
+          "name": "excluded",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Leave the grade out of the totals."
         }
       ]
     }
@@ -2767,6 +3121,78 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "Record<string, FieldValue>",
           "value": {
             "kind": "json"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "updateGradeCategory",
+    "description": "Changes a grade category: its name, its aggregation, its weight in its parent (percent, overriding Natural's automatic one), or moves it into another category. Returns the category afterwards.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "categoryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "aggregation",
+          "optional": true,
+          "type": "\"mean\" | \"median\" | \"lowest\" | \"highest\" | \"mode\" | \"weighted-mean\" | \"simple-weighted-mean\" | \"mean-with-extra-credits\" | \"natural\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "mean",
+              "median",
+              "lowest",
+              "highest",
+              "mode",
+              "weighted-mean",
+              "simple-weighted-mean",
+              "mean-with-extra-credits",
+              "natural"
+            ]
+          }
+        },
+        {
+          "name": "weight",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "parentId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
           }
         }
       ]
