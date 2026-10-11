@@ -7,6 +7,7 @@ import { MoodleError } from "./errors.js";
 const POLL_MS = 1000;
 const LOGIN_TIMEOUT_MS = 5 * 60_000;
 
+/** Nobody logged in within the time `logIn` waits; the login window is closed. */
 export class LoginTimeoutError extends MoodleError {
   override name = "LoginTimeoutError";
   constructor(message: string) {
@@ -14,6 +15,7 @@ export class LoginTimeoutError extends MoodleError {
   }
 }
 
+/** The person closed the login window `logIn` opened before logging in. */
 export class LoginWindowClosedError extends MoodleError {
   override name = "LoginWindowClosedError";
   constructor() {
@@ -59,6 +61,7 @@ export async function waitForLogin(
   }
 }
 
+/** What `logIn` found: a session already there, or one the person just made; and whose it is. */
 export interface LoginResult {
   status: "already-logged-in" | "logged-in";
   userId: number;

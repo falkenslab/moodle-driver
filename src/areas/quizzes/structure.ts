@@ -7,6 +7,7 @@ import { QuizError } from "./attempts.js";
 import { callService } from "../../core/ajax.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 
+/** A place for a question in a quiz, as `quizStructure` reads it from the quiz's edit page. */
 export interface QuizSlot {
   /** Moodle's id for the slot. */
   id: number;

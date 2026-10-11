@@ -7,8 +7,10 @@ import { decodeEntities } from "../../core/text.js";
 
 /** Moodle's completion states (COMPLETION_INCOMPLETE … COMPLETION_COMPLETE_FAIL), by their value. */
 export const COMPLETION_STATES = ["incomplete", "complete", "complete-pass", "complete-fail"] as const;
+/** One of `COMPLETION_STATES`: the person's completion of an activity. */
 export type CompletionState = (typeof COMPLETION_STATES)[number];
 
+/** An activity of a course, as `courseStructure` lists it in its section. */
 export interface CourseActivity {
   /** The course module id, which every activity function takes. */
   id: number;
@@ -29,6 +31,7 @@ export interface CourseActivity {
   restriction?: string;
 }
 
+/** A section of a course with its activities, in the course's order. */
 export interface CourseSection {
   id: number;
   number: number;
@@ -93,6 +96,7 @@ export async function courseStructure(context: BrowserContext, siteUrl: string, 
   return structureOf(state, extra.activities, extra.summaries);
 }
 
+/** An assignment of a course, as `listAssignments` lists it, with the section it's in. */
 export interface CourseAssignment {
   /** The assignment's course module id. */
   id: number;
@@ -124,7 +128,9 @@ export async function listAssignments(context: BrowserContext, siteUrl: string, 
   return assignmentsOf(await courseState(context, siteUrl, courseId));
 }
 
+/** An activity the person still has to do, as `pendingActivities` finds it. */
 export interface PendingActivity {
+  /** The course module id. */
   activityId: number;
   name: string;
   type: string;
@@ -132,6 +138,7 @@ export interface PendingActivity {
   section: { number: number; title: string };
   /** Tracked and not complete, or (completion not tracked) graded and not graded yet. */
   reason: "incomplete" | "not-graded";
+  /** The person's completion state, when it's tracked (a `CompletionState`). */
   completion?: string;
   availableToMe: boolean;
   dates?: { label: string; value: string }[];

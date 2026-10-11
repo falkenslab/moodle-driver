@@ -16,6 +16,7 @@ export class MessageError extends MoodleError {
   }
 }
 
+/** A notification the site sent the person, as `notifications` lists it. */
 export interface Notification {
   id: number;
   subject: string;
@@ -86,12 +87,16 @@ interface MoodleMember {
   fullname: string;
 }
 
+/** One of the person's conversations, as `conversations` lists it, with its last message. */
 export interface ConversationSummary {
   id: number;
+  /** With one other person, a course group's, or the person's own (notes to self). */
   type: "private" | "group" | "self";
   /** A group conversation's name (its course group). */
   name?: string;
+  /** Everyone in it but the person. */
   members: { userId: number; fullName: string }[];
+  /** The person's unread messages in it. */
   unread: number;
   lastMessage?: { fromUserId: number; text: string; time?: string };
 }

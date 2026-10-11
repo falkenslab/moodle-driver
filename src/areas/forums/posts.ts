@@ -11,9 +11,11 @@ import { fetchSitePage, moodleErrorMessage, openSitePage } from "../../core/sess
 import { decodeEntities } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
 
+/** A discussion of a forum, as `forumDiscussions` lists it. */
 export interface ForumDiscussion {
   id: number;
   subject: string;
+  /** Who started it, by name. */
   author: string;
   started?: string;
   lastPost: { author: string; time?: string; postId?: number };
@@ -37,8 +39,10 @@ export async function forumDiscussions(context: BrowserContext, siteUrl: string,
   }));
 }
 
+/** A post of a discussion, as `discussion` reads it. */
 export interface ForumPost {
   id: number;
+  /** The post it replies to; none for the discussion's first. */
   parentId?: number;
   subject: string;
   author: { id: number; fullName: string };
@@ -78,6 +82,7 @@ export async function discussion(context: BrowserContext, siteUrl: string, discu
   };
 }
 
+/** A post to write, for `startDiscussion` and `replyToPost`. */
 export interface PostInput {
   /** The message (HTML). */
   message: string;

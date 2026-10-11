@@ -22,6 +22,11 @@ export interface SessionFacts {
   hasLoginLink: boolean;
 }
 
+/**
+ * What `page`, as it is now, says about its session: Moodle's body class, `M.cfg.userId` and its login
+ * and logout links, which mean the same in any interface language. Give them to `isLoggedIn`; a page
+ * fetched as HTML goes through `htmlSessionFacts` instead.
+ */
 export function readSessionFacts(page: Page): Promise<SessionFacts> {
   return page.evaluate(() => {
     // Runs in the page: Moodle's globals and the DOM, typed loosely on purpose (no DOM lib in Node).
@@ -39,7 +44,13 @@ export function readSessionFacts(page: Page): Promise<SessionFacts> {
   });
 }
 
-/** Whether a page at `url`, with these facts, belongs to the site and has a real user logged in. */
+/**
+ * Whether a page at `url`, with these facts (`readSessionFacts`, `htmlSessionFacts`), belongs to the
+ * site and has a real user logged in: `false` off the site (an SSO provider's page), on its login
+ * pages, for nobody logged in and for a guest. It decides from what it's given, opening nothing, so
+ * a program that reads pages its own way can tell an expired session (where the driver's functions
+ * throw `NotLoggedInError`) without asking Moodle again; `pageIsLoggedIn` does both steps on a page.
+ */
 export function isLoggedIn(url: string, siteUrl: string, facts: SessionFacts): boolean {
   if (!url.startsWith(siteUrl)) return false;
   if (url.startsWith(new URL("login/", siteUrl).href)) return false;

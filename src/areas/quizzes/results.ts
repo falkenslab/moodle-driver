@@ -6,6 +6,7 @@ import { inPage } from "../../core/inPage.js";
 import { QuizError } from "./attempts.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 
+/** An attempt at a quiz, as `quizResults` reads it from the quiz's reports. */
 export interface QuizAttemptResult {
   id: number;
   userId: number;

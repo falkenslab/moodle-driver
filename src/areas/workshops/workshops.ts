@@ -56,6 +56,7 @@ export interface WorkshopAssessment {
   weight: number;
 }
 
+/** A workshop's phase and, for those who can see them, its submissions and their assessments (`workshopInfo`). */
 export interface WorkshopInfo {
   activityId: number;
   phase: WorkshopPhase;

@@ -27,17 +27,23 @@ const AGGREGATION_CODES = {
   "mean-with-extra-credits": 12,
   natural: 13,
 } as const;
+/** How a grade category computes its total from what it holds (one of `GRADE_AGGREGATIONS`). */
 export type GradeAggregation = keyof typeof AGGREGATION_CODES;
+/** The aggregations a grade category can use, as the driver names Moodle's. */
 export const GRADE_AGGREGATIONS = Object.keys(AGGREGATION_CODES) as GradeAggregation[];
 
+/** A column of the grader report: a grade item, a category's total or the course's. */
 export interface GradeColumn {
+  /** The grade item's id. */
   id: number;
   name: string;
   kind: "item" | "category" | "course";
+  /** For an activity's item, the activity's course module id and module. */
   activityId?: number;
   activityType?: string;
 }
 
+/** Everyone's grades in a course, as `graderReport` reads them: a row per person, a grade per column. */
 export interface GraderReport {
   columns: GradeColumn[];
   /** Grades as the report shows them ("-" left out). */
@@ -115,6 +121,7 @@ export async function graderReport(context: BrowserContext, siteUrl: string, cou
   return report;
 }
 
+/** A grade category of a course's gradebook, as its setup shows it (`gradebookSetup`). */
 export interface GradebookCategory {
   id: number;
   /** The category's own grade item (its total). */
@@ -127,6 +134,7 @@ export interface GradebookCategory {
   weight?: number;
 }
 
+/** A grade item of a course's gradebook, as its setup shows it (`gradebookSetup`). */
 export interface GradebookItem {
   id: number;
   name: string;

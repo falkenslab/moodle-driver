@@ -1,6 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page, type Route } from "playwright-core";
 import { setTransport } from "../core/http.js";
 
+/** The fake Moodle's URL: the site URL to give the functions under test. */
 export const SITE = "http://moodle.test/";
 
 // The fake's own blank page, for requests the driver makes without a tab.
@@ -54,6 +55,10 @@ export class ServiceFailure extends Error {
   }
 }
 
+/**
+ * What the fake Moodle serves (`serveFakeMoodle`): the test sets it up and may change it while it
+ * runs (log someone in, change the sesskey); the fake records what it served in it.
+ */
 export interface FakeMoodleState {
   /** The logged-in user; none means every page is the login page. */
   user?: { id: number; fullName: string };

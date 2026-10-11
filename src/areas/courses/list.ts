@@ -7,10 +7,12 @@ import { MoodleError } from "../../core/errors.js";
 
 /** Which courses by their dates; "all" includes those the person hid from their dashboard. */
 export const COURSE_CLASSIFICATIONS = ["all", "inprogress", "future", "past"] as const;
+/** One of `COURSE_CLASSIFICATIONS`. */
 export type CourseClassification = (typeof COURSE_CLASSIFICATIONS)[number];
 
 const MOODLE_CLASSIFICATIONS: Record<CourseClassification, string> = { all: "allincludinghidden", inprogress: "inprogress", future: "future", past: "past" };
 
+/** A course the person is enrolled in, as `listCourses` lists it. */
 export interface Course {
   id: number;
   shortname: string;

@@ -6,7 +6,9 @@ import { openSitePage } from "../../core/session.js";
 import { readMedia, readTexts, type MediaItem } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
 
+/** The modules whose content `activityContent` reads. */
 export const CONTENT_TYPES = ["page", "book", "label", "url", "resource", "folder"] as const;
+/** One of `CONTENT_TYPES`. */
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
 // A book has a reasonable number of chapters; the bound stops a loop on a broken "next" link.
@@ -20,6 +22,7 @@ export class NotViewableError extends MoodleError {
   }
 }
 
+/** What `activityContent` read of an activity: only the fields of its type are present. */
 export interface ActivityContent {
   activity: { id: number; type: ContentType };
   /** Page and label content, as plain text with paragraphs and lists kept. */

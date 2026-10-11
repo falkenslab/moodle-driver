@@ -29,6 +29,7 @@ export interface ScormSco {
   score?: number;
 }
 
+/** A SCORM activity as the person sees it (`scorm`): its attempts, grades and SCOs. */
 export interface ScormActivity {
   id: number;
   name: string;

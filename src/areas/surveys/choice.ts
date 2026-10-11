@@ -13,9 +13,11 @@ export class ChoiceError extends MoodleError {
   }
 }
 
+/** A choice activity as the person sees it (`getChoice`). */
 export interface Choice {
   id: number;
   name: string;
+  /** The activity's description, as plain text. */
   intro: string;
   /** The options with the ids answers take; full ones can't be chosen. */
   options: { id: number; text: string; selected: boolean; full: boolean }[];

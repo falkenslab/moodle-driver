@@ -211,6 +211,7 @@ export async function panelGrade(page: Page, panelHtml: string): Promise<{ grade
 
 /** The marking workflow's states, as Moodle names them ("notmarked" is the grading form's empty choice). */
 export const WORKFLOW_STATES = ["notmarked", "inmarking", "readyforreview", "inreview", "readyforrelease", "released"] as const;
+/** One of `WORKFLOW_STATES`: where a submission is in the marking workflow. */
 export type WorkflowState = (typeof WORKFLOW_STATES)[number];
 
 /** What a grading panel's form says beyond the grade, read by field names. */

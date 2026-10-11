@@ -14,6 +14,7 @@
  * - `any`: generic primitives that reach whatever they're pointed at (services, pages, forms).
  */
 export const ALL_DATA_CATEGORIES = ["none", "own", "course-content", "others-aggregate", "others-personal", "others-write", "communication", "any"] as const;
+/** One of `ALL_DATA_CATEGORIES`: a kind of data a function reads or writes. */
 export type DataCategory = (typeof ALL_DATA_CATEGORIES)[number];
 
 const NONE: readonly DataCategory[] = ["none"];

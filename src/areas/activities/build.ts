@@ -15,6 +15,7 @@ import { completionValues, gradeItemsByActivity, hasGradeCondition, parseRestric
 
 /** "stealth": hidden from the course page but available by link, where the site allows it. */
 export const ACTIVITY_VISIBILITIES = ["shown", "hidden", "stealth"] as const;
+/** One of `ACTIVITY_VISIBILITIES`: how an activity shows to students. */
 export type ActivityVisibility = (typeof ACTIVITY_VISIBILITIES)[number];
 
 const FORM_VISIBILITY: Record<ActivityVisibility, number> = { shown: 1, hidden: 0, stealth: -1 };

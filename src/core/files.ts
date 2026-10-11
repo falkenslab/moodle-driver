@@ -33,9 +33,12 @@ export async function freePath(dir: string, name: string): Promise<string> {
   }
 }
 
+/** A file `downloadFile` saved. */
 export interface DownloadedFile {
+  /** Where it was saved: a free name in the destination folder, never an existing file. */
   path: string;
   name: string;
+  /** In bytes. */
   size: number;
   contentType?: string;
 }

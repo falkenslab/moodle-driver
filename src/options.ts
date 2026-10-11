@@ -6,10 +6,12 @@ import { MoodleError } from "./core/errors.js";
 export const SYSTEM_CHANNELS = ["msedge", "chrome"] as const;
 /** Every channel: the system browsers, and Playwright's Chromium (downloaded when missing). */
 export const CHANNELS = [...SYSTEM_CHANNELS, "chromium"] as const;
+/** A browser the driver can launch: Microsoft Edge, Google Chrome or Playwright's Chromium. */
 export type Channel = (typeof CHANNELS)[number];
 
 /** How student actions view and do things: through the real pages at a person's pace, or fast (ADR-005). */
 export const TRAILS = ["realistic", "fast"] as const;
+/** One of `TRAILS`: how a student action leaves its trail in Moodle's logs (ADR-005). */
 export type Trail = (typeof TRAILS)[number];
 
 /**

@@ -26,6 +26,7 @@ export interface BackgroundBrowser {
   headed: boolean;
 }
 
+/** The background browser `connectBrowserManager` connects to (`endpoint` and `token` as `backgroundBrowser` gives them), and how to use it. */
 export interface ConnectOptions {
   endpoint: string;
   token: string;

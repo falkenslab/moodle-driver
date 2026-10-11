@@ -21,6 +21,7 @@ export interface GradebookGrade {
   excluded: boolean;
 }
 
+/** What `setGrade` changes in a person's grade: only what's given. */
 export interface SetGradeOptions {
   /** A number, or a scale item's name or value for a scale; `null` empties the grade. */
   grade?: number | string | null;

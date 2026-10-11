@@ -45,6 +45,7 @@ export interface LogEntry {
 
 /** What the logs report filters by its "actions" menu: creating, viewing, updating, deleting, or any change (the three writes). */
 export const LOG_ACTIONS = ["create", "view", "update", "delete", "change"] as const;
+/** One of `LOG_ACTIONS`: the kind of action `courseLogs` keeps. */
 export type LogAction = (typeof LOG_ACTIONS)[number];
 const MODACTIONS: Record<LogAction, string> = { create: "c", view: "r", update: "u", delete: "d", change: "cud" };
 
@@ -286,6 +287,7 @@ export interface ActivityParticipant {
 
 /** The kinds of action the participation report counts: views, or posts (submitting, answering, posting). */
 export const PARTICIPATION_ACTIONS = ["view", "post"] as const;
+/** One of `PARTICIPATION_ACTIONS`: the kind of action `participationReport` counts. */
 export type ParticipationAction = (typeof PARTICIPATION_ACTIONS)[number];
 
 interface ParticipationPage {

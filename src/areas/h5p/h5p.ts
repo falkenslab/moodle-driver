@@ -14,6 +14,7 @@ export class NotAnH5PActivityError extends MoodleError {
   }
 }
 
+/** One of the person's attempts at an H5P activity, with its score where Moodle tracks it. */
 export interface H5PAttempt {
   /** Moodle's id for the attempt (its report's), and its number for the person. */
   id?: number;
@@ -24,6 +25,7 @@ export interface H5PAttempt {
   passed?: boolean;
 }
 
+/** An H5P activity as the person sees it (`h5pActivity`). */
 export interface H5PActivity {
   id: number;
   name: string;

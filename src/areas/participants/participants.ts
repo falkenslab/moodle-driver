@@ -6,6 +6,7 @@ import { callService } from "../../core/ajax.js";
 import { openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
 
+/** A participant of a course with their roles and groups, as `participants` lists them. */
 export interface Participant {
   userId: number;
   fullName: string;
@@ -13,6 +14,7 @@ export interface Participant {
   groups: { id: number; name: string }[];
 }
 
+/** A group of a course, as `groups` lists it. */
 export interface CourseGroup {
   id: number;
   name: string;

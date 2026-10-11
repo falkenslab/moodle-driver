@@ -55,14 +55,17 @@ export async function overrideCompletion(
   return { changed: `User ${userId}'s completion of activity ${activityId} set to ${now}.`, state: now, overridden: Boolean(saved.overrideby) };
 }
 
+/** A participant's completion of one activity in the progress report. */
 export interface CompletionCell {
   activityId: number;
   state: CompletionState;
+  /** Whether the person marks it complete themselves, or Moodle does by its conditions. */
   tracking: "manual" | "auto";
   /** A teacher set it, not the person or Moodle. */
   overridden: boolean;
 }
 
+/** A course's progress report (`completionReport`): the activities that track completion, and each participant's. */
 export interface CompletionReport {
   activities: { id: number; name: string; type: string }[];
   participants: { userId: number; fullName: string; completion: CompletionCell[] }[];

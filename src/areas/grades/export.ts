@@ -11,13 +11,16 @@ import { GradebookError } from "./gradebook.js";
 
 /** The export formats by the export plugin that makes each (Moodle's "Excel spreadsheet" is an .xlsx). */
 const PLUGINS = { xlsx: "xls", ods: "ods", csv: "txt", xml: "xml" } as const;
+/** A file format `exportGrades` saves grades in (one of `GRADE_EXPORT_FORMATS`). */
 export type GradeExportFormat = keyof typeof PLUGINS;
+/** The formats grades can be exported in, where the site has their export plugin enabled. */
 export const GRADE_EXPORT_FORMATS = Object.keys(PLUGINS) as GradeExportFormat[];
 
 /** How grades are written: the points, the percentage, the letter (several for every format but XML). */
 export type GradeExportDisplay = "real" | "percentage" | "letter";
 const DISPLAY_CODES: Record<GradeExportDisplay, number> = { real: 1, percentage: 2, letter: 3 };
 
+/** What `exportGrades` exports and where it saves it, as the export form chooses. */
 export interface ExportGradesOptions {
   format: GradeExportFormat;
   /** The grade items to export (ids from `graderReport` or `gradebookSetup`); all of them when left out. */

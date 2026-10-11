@@ -25,6 +25,7 @@ export interface LessonField {
   options?: { value: string; label: string }[];
 }
 
+/** The lesson page the person is on, as `lessonPage` and `answerLessonPage` read it. */
 export interface LessonPage {
   /** What the page is: content with buttons, a question, the feedback after an answer, or the lesson's end. */
   kind: "content" | "question" | "feedback" | "end";

@@ -26,6 +26,7 @@ export interface GroupingSettings {
   idNumber?: string;
 }
 
+/** A grouping of a course (a set of its groups), as `groupings` lists it. */
 export interface Grouping {
   id: number;
   name: string;

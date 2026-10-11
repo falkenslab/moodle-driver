@@ -86,6 +86,7 @@ export async function courseAbilities(context: BrowserContext, siteUrl: string, 
   return { canEdit: items.content_items.length > 0, canGrade };
 }
 
+/** The logged-in person, as `whoAmI` reads them. */
 export interface Me {
   userId: number;
   username?: string;

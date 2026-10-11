@@ -31,6 +31,7 @@ import { MoodleError } from "../../core/errors.js";
 /** The grader's feedback comments field, when the assignment has them on. */
 const FEEDBACK_FIELD = "assignfeedbackcomments_editor[text]";
 
+/** A participant's submission to an assignment, as `assignmentSubmissions` reads it for the grader. */
 export interface Submission {
   userId: number;
   fullName: string;
@@ -221,12 +222,14 @@ export async function gradeSubmission(
   }
 }
 
+/** A criterion of a rubric or a marking guide, with the ids grading takes. */
 export interface GradingCriterion {
   id: number;
   /** A rubric criterion's description; a guide criterion's short name. */
   description: string;
   /** A guide criterion's description for students and for markers. */
   details?: string;
+  /** A guide criterion's description for markers only. */
   markers?: string;
   /** A rubric criterion's levels, by the ids grading takes. */
   levels?: { id: number; definition: string; score: number }[];
@@ -234,6 +237,7 @@ export interface GradingCriterion {
   maxScore?: number;
 }
 
+/** How an assignment is graded: its method and, for advanced grading, its criteria. */
 export interface GradingDefinition {
   /** "simple" for a plain grade (or a scale), "rubric" or "guide" for advanced grading. */
   method: "simple" | "rubric" | "guide";

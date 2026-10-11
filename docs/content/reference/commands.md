@@ -462,9 +462,9 @@ moodle create-question <activityId> --options
 | `--type` (required) | `"multichoice" \| "truefalse" \| "shortanswer" \| "numerical" \| "essay"` |  |
 | `--name` (required) | `string` |  |
 | `--text` (required) | `string` | The question's text (HTML). |
-| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. |
+| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
 | `--correct` | `boolean` | True/false: the right answer. |
-| `--category-id` | `number` |  |
+| `--category-id` | `number` | The bank's category it goes in; a new question goes in the bank's default one when left out. |
 | `--default-mark` | `number` |  |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
 
@@ -1766,9 +1766,9 @@ moodle update-question <activityId> <questionId> --options
 | `--name` | `string` |  |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
 | `--text` | `string` | The question's text (HTML). |
-| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. |
+| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
 | `--correct` | `boolean` | True/false: the right answer. |
-| `--category-id` | `number` |  |
+| `--category-id` | `number` | The bank's category it goes in; a new question goes in the bank's default one when left out. |
 | `--default-mark` | `number` |  |
 
 ## userById

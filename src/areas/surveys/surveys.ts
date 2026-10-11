@@ -7,6 +7,7 @@ import { MoodleError } from "../../core/errors.js";
 /** The two survey modules: the questionnaire plugin (mod_questionnaire) and Moodle's feedback. */
 export type SurveyType = "questionnaire" | "feedback";
 
+/** The activity isn't a survey the person can open or answer now, or Moodle didn't take the answers. */
 export class SurveyError extends MoodleError {
   override name = "SurveyError";
   constructor(message: string) {
@@ -23,8 +24,10 @@ export interface SurveyField {
   value?: string;
 }
 
+/** A question of a survey, on its page, with the fields its answers go in (`getSurvey`). */
 export interface SurveyQuestion {
   page: number;
+  /** The question's number as shown, where the survey numbers them. */
   number?: string;
   text: string;
   required: boolean;

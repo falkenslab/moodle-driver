@@ -16,11 +16,13 @@ export class CalendarError extends MoodleError {
   }
 }
 
+/** An event of the person's calendar, as `upcomingEvents` lists it. */
 export interface CalendarEvent {
   id: number;
   name: string;
   /** The event's kind: "course", "group", "user", or an activity's ("due", "open"…). */
   type: string;
+  /** When it starts (ISO 8601). */
   start: string;
   durationMinutes?: number;
   courseId?: number;

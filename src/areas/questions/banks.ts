@@ -19,6 +19,7 @@ export class QuestionBankError extends MoodleError {
   }
 }
 
+/** A question bank of a course, as `questionBanks` lists it. */
 export interface QuestionBank {
   /** The bank's course module id: a qbank activity's, or the quiz's whose private bank it is. */
   id: number;
@@ -57,6 +58,7 @@ export async function questionBanks(context: BrowserContext, siteUrl: string, co
   }
 }
 
+/** A question in a bank, as `questions` lists it. */
 export interface BankQuestion {
   id: number;
   name: string;
@@ -68,6 +70,7 @@ export interface BankQuestion {
   categoryId: number;
 }
 
+/** A category of a bank's questions; the questions' `categoryId` refers to it. */
 export interface BankCategory {
   id: number;
   name: string;
@@ -230,18 +233,25 @@ export async function importQuestions(
   return { changed: `Imported ${created.length} question${created.length === 1 ? "" : "s"} into bank ${activityId}.`, questions: created };
 }
 
+/** The question types `createQuestion` makes through their form; others are imported (GIFT, Moodle XML). */
 export const QUESTION_TYPES = ["multichoice", "truefalse", "shortanswer", "numerical", "essay"] as const;
+/** One of `QUESTION_TYPES`. */
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
+/** A question for `createQuestion`, or the changes for `updateQuestion` (without its type). */
 export interface QuestionInput {
   type: QuestionType;
   name: string;
   /** The question's text (HTML). */
   text: string;
-  /** Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. */
+  /**
+   * Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers.
+   * A numerical answer's `tolerance` is the error accepted around it.
+   */
   answers?: { text: string; fraction: number; feedback?: string; tolerance?: number }[];
   /** True/false: the right answer. */
   correct?: boolean;
+  /** The bank's category it goes in; a new question goes in the bank's default one when left out. */
   categoryId?: number;
   defaultMark?: number;
   /** Any other field of the type's form, by name. */

@@ -64,6 +64,7 @@ export interface ForumGrade {
   gradedAt?: string;
 }
 
+/** A forum's whole-forum grades, as `forumGrades` reads them, with how the forum is graded. */
 export interface ForumGrades {
   activityId: number;
   /** "point" (out of `maxGrade`) or "scale" (one of `scale`'s items). */

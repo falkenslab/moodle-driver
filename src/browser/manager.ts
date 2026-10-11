@@ -8,6 +8,7 @@ import { MoodleError } from "../core/errors.js";
 
 type LaunchPersistentContext = typeof chromium.launchPersistentContext;
 
+/** What `BrowserManager.context()` is asked for. */
 export interface ContextOptions {
   /** A visible window, whatever the options say (logging in by hand). */
   headed?: boolean;
@@ -85,6 +86,14 @@ interface Open {
   headed: boolean;
 }
 
+/**
+ * A browser manager that launches the browser itself, in the persistent profile of `config`
+ * (ADR-002), on first use: nothing opens until a function needs the browser. It tries the
+ * installed browsers and, if allowed, downloads Chromium in the background (ADR-001). Its
+ * `context()` throws `BrowserNotFoundError` when no browser can be launched,
+ * `BrowserDownloadingError` while Chromium downloads, and `NoDisplayError` for a window without a
+ * screen. The other parameters are for tests.
+ */
 export function createBrowserManager(
   config: BrowserOptions,
   launch: LaunchPersistentContext = chromium.launchPersistentContext.bind(chromium),

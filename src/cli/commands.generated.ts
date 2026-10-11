@@ -1165,7 +1165,7 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "json"
           },
-          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers."
+          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it."
         },
         {
           "name": "correct",
@@ -1182,7 +1182,8 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
-          }
+          },
+          "description": "The bank's category it goes in; a new question goes in the bank's default one when left out."
         },
         {
           "name": "defaultMark",
@@ -4199,7 +4200,7 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "json"
           },
-          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers."
+          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it."
         },
         {
           "name": "correct",
@@ -4216,7 +4217,8 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
-          }
+          },
+          "description": "The bank's category it goes in; a new question goes in the bank's default one when left out."
         },
         {
           "name": "defaultMark",
