@@ -80,7 +80,7 @@ moodle grade-submission 35 7 --grade 8.5 --feedback "<p>Great work!</p>" --notif
 moodle my-grades 3 --json | jq '.[] | select(.grade) | .name'
 ```
 
-Tables at a terminal, JSON for scripts, errors with their code and an exit status. `moodle help` lists every command, generated from the API so none is missing; `--allow own,course-content` refuses anything touching other people's data. See [the command line](https://falkenslab.github.io/moodle-driver/getting-started/command-line).
+Tables at a terminal, JSON for scripts, errors with their code and an exit status. `moodle help` lists every command, generated from the API so none is missing; `--allow own,course-content` refuses anything touching other people's data. `moodle shell --show` keeps one browser open while you type commands, to watch each act. See [the command line](https://falkenslab.github.io/moodle-driver/getting-started/command-line).
 
 ## 💡 Why it's different
 

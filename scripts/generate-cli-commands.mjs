@@ -184,6 +184,8 @@ const md = [
   "",
   "Every method of the `Moodle` object as a command of `moodle`, generated from the driver's types: the same names (also in kebab-case), arguments and options. See [The command line](../getting-started/command-line.md) for installing it, logging in and the global options.",
   "",
+  "Each one can also be typed in `moodle shell`, without the `moodle` in front, on one browser kept open between commands (see [An interactive session](../getting-started/command-line.md#an-interactive-session)).",
+  "",
   ...commands.flatMap((c) => [
     `## ${c.name}`,
     "",

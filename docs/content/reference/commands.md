@@ -2,6 +2,8 @@
 
 Every method of the `Moodle` object as a command of `moodle`, generated from the driver's types: the same names (also in kebab-case), arguments and options. See [The command line](../getting-started/command-line.md) for installing it, logging in and the global options.
 
+Each one can also be typed in `moodle shell`, without the `moodle` in front, on one browser kept open between commands (see [An interactive session](../getting-started/command-line.md#an-interactive-session)).
+
 ## activitiesOverview
 
 Moodle 5's activities overview of a course for one type ("resource" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: "resource" first, which brings pages, books, files, folders and links at once, then each type still missing.

@@ -92,6 +92,31 @@ Errors go to standard error as `code: message` (the [error codes](../concepts/er
 | `--allow <categories>` | Refuse commands that touch other [data categories](../concepts/data-categories.md): `--allow own,course-content` reads your own data and the courses, nothing about others |
 | `--help`, `--version` | Help, and the driver's version |
 
+## An interactive session
+
+Each `moodle …` opens the browser, works and closes it, so with `--show` the window lives only while that command runs. `moodle shell` keeps one browser open while you type commands one after another, each as `moodle <command>` would run it, without the `moodle` in front:
+
+```text
+$ moodle shell --show
+moodle campus.example.org a.martin> list-courses
+id  shortname  fullname          …
+3   loops      Loops in Python   …
+moodle campus.example.org a.martin> course-structure 3
+…
+moodle campus.example.org a.martin> activity-settings 57
+…
+moodle campus.example.org a.martin> exit
+```
+
+- It takes the global options (`--site`, `--as`, `--profile`, `--show`, `--allow`, `--json`), which hold for every line; a line can still add its own, as `list-courses --json`.
+- With `--show` the window opens at once and stays open; every page a command opens comes to the front of its tab (see [The browser](../concepts/browser.md)). Commands that only call Moodle's services, as `list-courses` and `course-structure`, open no page. `show` and `hide` open and close the window during the session.
+- A failing command prints its error and the session goes on. `exit`, `quit` or Ctrl+D leave, closing the browser and saving the session; Ctrl+C clears the line being typed. The exit status is 0.
+- `help` lists the commands, and `help <command>` explains one. Tab completes command names and a command's options; the lines typed are kept in `~/.moodle-driver/history` for the arrow keys.
+- `sites`, `forget` and `login` work inside. `login --as <name>` goes on with the profile logged in with, and `use <site>` (or `use --as <name>`) works on another site or profile; either closes the browser and opens it on the new profile.
+- Lines are split as a shell splits them: quotes keep spaces and JSON together (`submit-survey 34 '{"textfield_12":"Clear"}'`), and a backslash only escapes a space, a quote or another backslash, so Windows paths go as typed.
+
+Lines can also come from a file or a pipe (`moodle shell < monday.txt`): no prompt then, and the session ends with the input.
+
 ## Several sites and accounts
 
 Log in to each site once; the last one is the default, and `--site` (or `MOODLE_SITE`) picks another for one command. `moodle login` on a site whose session is still alive opens no window: it only makes that site the default.
@@ -129,6 +154,7 @@ Everything is in `~/.moodle-driver`, the same on Windows, Linux and macOS (`MOOD
 ```text
 ~/.moodle-driver/
 ├── config.json                  the default site
+├── history                      the lines typed in `moodle shell`
 └── sites/<host>/                one folder per site (localhost:8080 is localhost_8080)
     ├── site.json                its URL, and its default profile by name
     └── profiles/<name>/         one browser profile per account, with its session (moodle-session.json),

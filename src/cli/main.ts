@@ -17,4 +17,7 @@ process.exitCode = await run(process.argv.slice(2), {
   home: cliHome(process.env),
   interactive: process.stdout.isTTY === true,
   version,
+  input: process.stdin,
+  output: process.stdout,
+  terminal: process.stdin.isTTY === true && process.stdout.isTTY === true,
 });
