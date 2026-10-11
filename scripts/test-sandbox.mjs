@@ -31,7 +31,7 @@ if (!student) {
 
 const work = mkdtempSync(path.join(tmpdir(), "moodle-driver-sandbox-"));
 let tasks;
-let status = 1;
+let status;
 try {
   chmodSync(work, 0o700);
   const accounts = { admin: sandbox.admin, teacher: sandbox.teacher, student, sandboxCourseId: sandbox.course.id };
