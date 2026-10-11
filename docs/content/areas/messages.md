@@ -86,7 +86,10 @@ function conversation(context: BrowserContext, siteUrl: string, conversationId: 
 }>;
 ```
 
-`conversationId` is an `id` from `conversations`, or the `conversationId` that `sendMessage` returns. It reads `core_message_get_conversation_messages`; the person must be a member, or Moodle refuses with a `MoodleServiceError` (see [Errors](../concepts/errors.md)).
+- `members`: everyone in the conversation but the person, whether they wrote in it or not, as `conversations` gives them (in the person's own conversation, the person).
+- `messages`: their sender, their text and when they were sent.
+
+`conversationId` is an `id` from `conversations`, or the `conversationId` that `sendMessage` returns. It reads `core_message_get_conversation_members` and `core_message_get_conversation_messages`; the person must be a member, or Moodle refuses with a `MoodleServiceError` (see [Errors](../concepts/errors.md)).
 
 ## sendMessage
 

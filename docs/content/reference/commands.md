@@ -167,7 +167,7 @@ moodle completion-report <courseId> [--options]
 
 ## conversation
 
-A conversation's members and messages, oldest first, as text.
+A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation).
 
 ```bash
 moodle conversation <conversationId>

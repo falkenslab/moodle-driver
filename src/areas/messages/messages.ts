@@ -118,10 +118,24 @@ export async function conversations(context: BrowserContext, siteUrl: string): P
   });
 }
 
-/** A conversation's members and messages, oldest first, as text. */
+/**
+ * A conversation's messages, oldest first, as text, and its members as `conversations()` gives them:
+ * everyone but the person, whether they wrote in it or not (the person alone in their own conversation).
+ */
 export async function conversation(context: BrowserContext, siteUrl: string, conversationId: number) {
   const { userId } = await readPageConfig(context, siteUrl);
-  const found = await callService<{ id: number; members: MoodleMember[]; messages: MoodleConversationMessage[] }>(context, siteUrl, "core_message_get_conversation_messages", {
+  // Every member, the person included.
+  const everyone = await callService<MoodleMember[]>(context, siteUrl, "core_message_get_conversation_members", {
+    userid: userId,
+    conversationid: conversationId,
+    includecontactrequests: false,
+    includeprivacyinfo: false,
+    limitfrom: 0,
+    limitnum: 0,
+  });
+  const others = everyone.filter((m) => m.id !== userId);
+  // Only the messages: this service's `members` are the messages' senders, not the conversation's.
+  const found = await callService<{ id: number; messages: MoodleConversationMessage[] }>(context, siteUrl, "core_message_get_conversation_messages", {
     currentuserid: userId,
     convid: conversationId,
     limitfrom: 0,
@@ -134,7 +148,7 @@ export async function conversation(context: BrowserContext, siteUrl: string, con
   );
   return {
     id: found.id,
-    members: found.members.map((m) => ({ userId: m.id, fullName: m.fullname })),
+    members: (others.length > 0 ? others : everyone).map((m) => ({ userId: m.id, fullName: m.fullname })),
     messages: found.messages.map((m, i) => ({ id: m.id, fromUserId: m.useridfrom, text: texts[i] ?? "", time: isoDate(m.timecreated) })),
   };
 }

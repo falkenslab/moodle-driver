@@ -28,14 +28,31 @@ function fakeMessaging(): FakeMoodleState {
       core_message_get_conversations: () => ({
         conversations: [{ id: 6, type: 1, name: null, members: [{ id: 3, fullname: "Teacher Uno" }], unreadcount: 1, messages: [{ id: 1, useridfrom: 3, text: "<p>Did you see <b>the reply</b>?</p>", timecreated: 1_790_000_200 }] }],
       }),
-      core_message_get_conversation_messages: ({ convid }) => ({
-        id: convid,
-        members: [{ id: 3, fullname: "Teacher Uno" }],
-        messages: [
-          { id: 1, useridfrom: 3, text: "<p>Did you see the reply?</p>", timecreated: 1_790_000_200 },
-          { id: 2, useridfrom: 4, text: "<p>Yes, thanks.</p>", timecreated: 1_790_000_300 },
-        ],
-      }),
+      // As Moodle's: its `members` are the messages' senders, not the conversation's.
+      core_message_get_conversation_messages: ({ convid }) =>
+        convid === 7
+          ? { id: 7, members: [{ id: 4, fullname: "Ana Student" }], messages: [{ id: 4, useridfrom: 4, text: "<p>A question</p>", timecreated: 1_790_000_400 }] }
+          : convid === 1
+            ? { id: 1, members: [], messages: [] }
+            : {
+                id: convid,
+                members: [
+                  { id: 3, fullname: "Teacher Uno" },
+                  { id: 4, fullname: "Ana Student" },
+                ],
+                messages: [
+                  { id: 1, useridfrom: 3, text: "<p>Did you see the reply?</p>", timecreated: 1_790_000_200 },
+                  { id: 2, useridfrom: 4, text: "<p>Yes, thanks.</p>", timecreated: 1_790_000_300 },
+                ],
+              },
+      // Every member, the person included; conversation 1 is the person's own.
+      core_message_get_conversation_members: ({ conversationid }) =>
+        conversationid === 1
+          ? [{ id: 4, fullname: "Ana Student" }]
+          : [
+              { id: 3, fullname: "Teacher Uno" },
+              { id: 4, fullname: "Ana Student" },
+            ],
       core_message_send_instant_messages: ({ messages }) => {
         const [message] = messages as { touserid: number }[];
         return message!.touserid === 9 ? [{ msgid: -1, errormessage: "This user has blocked you." }] : [{ msgid: 3, conversationid: 6, text: "x", timecreated: 1 }];
@@ -85,6 +102,16 @@ describe("conversations and messages", { skip: !browser && "no system browser" }
       [3, "Did you see the reply?"],
       [4, "Yes, thanks."],
     ]);
+    assert.deepEqual(read.members, [{ userId: 3, fullName: "Teacher Uno" }]);
+    await context.close();
+  });
+
+  it("gives every other member, also those who haven't written, and the person in their own conversation", async () => {
+    const state = fakeMessaging();
+    const context = await open(state);
+    assert.deepEqual((await conversation(context, SITE, 7)).members, [{ userId: 3, fullName: "Teacher Uno" }]);
+    assert.deepEqual(state.serviceCalls!.find((c) => c.methodname === "core_message_get_conversation_members")?.args, { userid: 4, conversationid: 7, includecontactrequests: false, includeprivacyinfo: false, limitfrom: 0, limitnum: 0 });
+    assert.deepEqual((await conversation(context, SITE, 1)).members, [{ userId: 4, fullName: "Ana Student" }]);
     await context.close();
   });
 

@@ -410,7 +410,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "conversation",
-    "description": "A conversation's members and messages, oldest first, as text.",
+    "description": "A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation).",
     "params": [
       {
         "name": "conversationId",
