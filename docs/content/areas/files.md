@@ -52,6 +52,7 @@ Functions that take local files take them as absolute paths and upload them as t
 | Function | Option | Where the files go |
 | --- | --- | --- |
 | `createActivity` | `files` | A file resource's or folder's files, or a SCORM's package ([activities](activities.md), [SCORM](scorm.md)). |
+| `updateActivity` | `files` | Files added to, removed from or replacing a file resource's or folder's ([activities](activities.md#changing-a-resources-or-folders-files)). |
 | `saveSubmission` | `files` | The person's submission, added to the files already there ([assignments](assignments.md)). |
 | `replyToPost`, `startDiscussion` | `files` | The post's attachments ([forums](forums.md)). |
 | `importQuestions` | `file` | The GIFT or Moodle XML file to import ([question banks](question-banks.md)). |
@@ -62,7 +63,7 @@ What can go wrong, besides `checkLocalFiles`' errors:
 - The upload fails: a `FormError` whose `fields` hold one `{ field: "files", message }` per file with Moodle's answer, such as a file over the size limit or of a type the activity doesn't accept, or `the site has no upload repository enabled` when the site turned the upload repository off.
 - Moodle refuses the form when it's saved: a `FormError` with Moodle's messages by field.
 
-`updateActivity` doesn't change an activity's files: the ones there stay. The low-level `uploadToDraft(page, draftItemId, filePaths)` uploads to any form opened with `openForm` (see [low-level access](../concepts/low-level.md)).
+`updateActivity` changes a file resource's or folder's files only when its `files` says what to add, remove or replace; otherwise the ones there stay. `activitySettings` lists them. The low-level `uploadToDraft`, `draftFiles` and `deleteDraftFile` work on any form opened with `openForm` (see [low-level access](../concepts/low-level.md)).
 
 ## Example
 
@@ -87,4 +88,4 @@ for (const file of assignment.descriptionFiles) {
 
 ## Data categories
 
-`downloadFile` is `course-content` and `others-personal`: the same function saves a course's files and a submission's or a post's, so a program that must not reach others' work checks where the URL came from. `checkLocalFiles` and `fileNameFor` are `none`; `uploadToDraft` is `any`. The uploading functions are classified by what they do: `createActivity` is `course-content`, `saveSubmission` is `own`, `replyToPost` and `startDiscussion` are `communication`, `importQuestions` is `course-content`. See [data categories](../concepts/data-categories.md).
+`downloadFile` is `course-content` and `others-personal`: the same function saves a course's files and a submission's or a post's, so a program that must not reach others' work checks where the URL came from. `checkLocalFiles` and `fileNameFor` are `none`; `uploadToDraft`, `draftFiles` and `deleteDraftFile` are `any`. The uploading functions are classified by what they do: `createActivity` and `updateActivity` are `course-content`, `saveSubmission` is `own`, `replyToPost` and `startDiscussion` are `communication`, `importQuestions` is `course-content`. See [data categories](../concepts/data-categories.md).

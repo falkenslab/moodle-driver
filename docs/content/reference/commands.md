@@ -31,7 +31,7 @@ moodle activity-content <activityId> <type> [--options]
 
 ## activitySettings
 
-An activity's settings as its form holds them, without submitting it: its module, name and description, and every field by the name `updateActivity` takes in `settings`. Teachers only.
+An activity's settings as its form holds them, without submitting it: its module, name and description, every field by the name `updateActivity` takes in `settings`, and the files of a resource, folder or SCORM. Teachers only.
 
 ```bash
 moodle activity-settings <activityId>
@@ -251,7 +251,7 @@ moodle course-updates <courseId> <since>
 
 ## createActivity
 
-Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder; a SCORM (`type: "scorm"`) takes the first as its package.
+Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) takes the first as its package.
 
 ```bash
 moodle create-activity <input>
@@ -259,7 +259,7 @@ moodle create-activity <input>
 
 | Argument | Type | Description |
 | --- | --- | --- |
-| `input` | `ActivityFields & { courseId: number; sectionId: number; type: string; files?: string[]; }` |  |
+| `input` | `ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string \| DraftUpload)[]; }` |  |
 
 ## createEvent
 
@@ -997,21 +997,16 @@ moodle upcoming-events [--options]
 
 ## updateActivity
 
-Changes an existing activity through its form: only what's given changes; files stay as they are.
+Changes an existing activity through its form: only what's given changes. A file resource's or folder's files stay as they are unless `files` says what to add, remove or replace.
 
 ```bash
-moodle update-activity <activityId> --options
+moodle update-activity <activityId> <input>
 ```
 
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
-| `--name` | `string` |  |
-| `--description` | `string` | The description (HTML), shown on the activity's page. |
-| `--content` | `string` | A page's content, or a label's text (HTML). |
-| `--url` | `string` | A URL resource's target. |
-| `--visibility` | `"shown" \| "hidden" \| "stealth"` |  |
-| `--settings` | `Record<string, FieldValue>` |  |
+| `input` | `ActivityFields & { files?: FileChanges; }` |  |
 
 ## updateCourse
 

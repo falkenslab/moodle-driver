@@ -134,16 +134,104 @@ function setField(page: Page, name: string, value: FieldValue, formSelector: str
   }, { name, value, formSelector });
 }
 
+/** A local file to upload under another name or into a subfolder of the draft area (`to`: `"week1/notes.pdf"`). */
+export interface DraftUpload {
+  from: string;
+  to: string;
+}
+
+/** A file in a form's draft area: its path in the area (`"notes.pdf"`, `"week1/notes.pdf"`) and size in bytes. */
+export interface DraftFile {
+  name: string;
+  size: number;
+}
+
+/** A draft area's path for a folder: `"week1/"` and `"/week1"` are `"/week1/"`, nothing is `"/"`. */
+function draftPath(folder: string): string {
+  const parts = folder.split("/").filter((part) => part !== "");
+  return parts.length === 0 ? "/" : `/${parts.join("/")}/`;
+}
+
+/** A file's folder in the draft area and its name, from its path (`"week1/notes.pdf"`). */
+function splitDraftName(name: string): { filepath: string; filename: string } {
+  const at = name.lastIndexOf("/");
+  return { filepath: draftPath(at < 0 ? "" : name.slice(0, at)), filename: at < 0 ? name : name.slice(at + 1) };
+}
+
+/** Calls the file manager's `repository/draftfiles_ajax.php` from the form's page, with its session. */
+function draftAction(page: Page, action: string, params: Record<string, string>): Promise<{ ok: boolean; body: string }> {
+  return page.evaluate(
+    async ({ action, params }) => {
+      const g = globalThis as unknown as {
+        M: { cfg: { wwwroot: string; sesskey: string } };
+        fetch(url: string, init: object): Promise<{ ok: boolean; text(): Promise<string> }>;
+        URLSearchParams: new (init: Record<string, string>) => unknown;
+      };
+      const response = await g.fetch(`${g.M.cfg.wwwroot}/repository/draftfiles_ajax.php?action=${action}`, {
+        method: "POST",
+        body: new g.URLSearchParams({ sesskey: g.M.cfg.sesskey, ...params }),
+        credentials: "same-origin",
+      });
+      return { ok: response.ok, body: await response.text() };
+    },
+    { action, params },
+  );
+}
+
+/**
+ * The files in a form's draft area, subfolders included, as the file manager lists them
+ * (`draftfiles_ajax.php?action=list`): what an activity holds while its form is open.
+ */
+export async function draftFiles(page: Page, draftItemId: string): Promise<DraftFile[]> {
+  const files: DraftFile[] = [];
+  const folders = ["/"];
+  while (folders.length > 0) {
+    const filepath = folders.shift()!;
+    const { body } = await draftAction(page, "list", { itemid: draftItemId, filepath });
+    let listing: { list?: { type: string; filepath: string; filename?: string; size?: number }[]; error?: string };
+    try {
+      listing = JSON.parse(body) as typeof listing;
+    } catch {
+      throw new FormError("The file area can't be read:", [{ field: "files", message: "Moodle's answer isn't JSON" }]);
+    }
+    if (listing.error) throw new FormError("The file area can't be read:", [{ field: "files", message: listing.error }]);
+    for (const entry of listing.list ?? []) {
+      if (entry.type === "folder") folders.push(entry.filepath);
+      else files.push({ name: `${entry.filepath}${entry.filename ?? ""}`.slice(1), size: entry.size ?? 0 });
+    }
+  }
+  return files;
+}
+
+/** Deletes a file from a form's draft area by its path in it (`"week1/notes.pdf"`); the activity changes when the form is saved. */
+export async function deleteDraftFile(page: Page, draftItemId: string, name: string): Promise<void> {
+  const { body } = await draftAction(page, "delete", { itemid: draftItemId, ...splitDraftName(name) });
+  if (body.trim() === "false" || body.includes('"error"')) throw new FormError("Deleting a file failed:", [{ field: "files", message: `${name}: ${body.trim()}` }]);
+}
+
 /**
  * Uploads local files to a form's draft area, as the file picker's "Upload a file" does: the
  * upload repository's id comes from the page's file picker settings, the context from `M.cfg`.
+ * A `DraftUpload` names the file in the area, in a subfolder when its `to` has one (created first).
+ * With `overwrite`, a file of the same name is replaced; without it, Moodle keeps both, renaming the new one.
  */
-export async function uploadToDraft(page: Page, draftItemId: string, filePaths: string[]): Promise<void> {
+export async function uploadToDraft(page: Page, draftItemId: string, filePaths: (string | DraftUpload)[], { overwrite = false }: { overwrite?: boolean } = {}): Promise<void> {
   const files = await Promise.all(
-    filePaths.map(async (filePath) => ({ name: path.basename(filePath), base64: (await readFile(filePath)).toString("base64") })),
+    filePaths.map(async (file) => {
+      const from = typeof file === "string" ? file : file.from;
+      const { filepath, filename } = splitDraftName(typeof file === "string" ? path.basename(file) : file.to);
+      return { name: filename, savepath: filepath, base64: (await readFile(from)).toString("base64") };
+    }),
   );
+  for (const folder of new Set(files.map((file) => file.savepath).filter((savepath) => savepath !== "/"))) {
+    // Each level, from the top: the file manager creates them one at a time.
+    const parts = folder.split("/").filter((part) => part !== "");
+    for (let i = 0; i < parts.length; i++) {
+      await draftAction(page, "mkdir", { itemid: draftItemId, filepath: draftPath(parts.slice(0, i).join("/")), newdirname: parts[i]! });
+    }
+  }
   const errors = await page.evaluate(
-    async ({ draftItemId, files }) => {
+    async ({ draftItemId, files, overwrite }) => {
       const g = globalThis as unknown as {
         document: { documentElement: { innerHTML: string } };
         M: { cfg: { wwwroot: string; sesskey: string; contextid: number } };
@@ -158,7 +246,8 @@ export async function uploadToDraft(page: Page, draftItemId: string, filePaths: 
       for (const file of files) {
         const body = new g.FormData();
         body.append("repo_upload_file", new g.Blob([Uint8Array.from(g.atob(file.base64), (c) => c.charCodeAt(0))]), file.name);
-        for (const [key, value] of Object.entries({ sesskey: g.M.cfg.sesskey, repo_id: repo, itemid: draftItemId, ctx_id: String(g.M.cfg.contextid), savepath: "/", title: file.name, env: "filemanager", author: "" })) {
+        const fields = { sesskey: g.M.cfg.sesskey, repo_id: repo, itemid: draftItemId, ctx_id: String(g.M.cfg.contextid), savepath: file.savepath, title: file.name, env: "filemanager", author: "" };
+        for (const [key, value] of Object.entries(overwrite ? { ...fields, overwrite: "1" } : fields)) {
           body.append(key, value);
         }
         const response = await g.fetch(`${g.M.cfg.wwwroot}/repository/repository_ajax.php?action=upload`, { method: "POST", body, credentials: "same-origin" });
@@ -167,7 +256,7 @@ export async function uploadToDraft(page: Page, draftItemId: string, filePaths: 
       }
       return failed;
     },
-    { draftItemId, files },
+    { draftItemId, files, overwrite },
   );
   if (errors.length > 0) throw new FormError("Uploading failed:", errors.map((message) => ({ field: "files", message })));
 }

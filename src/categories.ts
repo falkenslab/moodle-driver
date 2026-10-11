@@ -82,6 +82,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   formValue: ANY,
   setFields: ANY,
   uploadToDraft: ANY,
+  draftFiles: ANY,
+  deleteDraftFile: ANY,
   submitForm: ANY,
   editCourse: ANY,
 

@@ -14,6 +14,7 @@ Every function here except `activitySettings` and `courseActivityTypes` returns 
 - `activityId`: the activity created, updated or duplicated (the copy), when there is one.
 - `sectionId`: the section added, by `addSection`.
 - `url`: the activity's page, after creating or updating it.
+- `files`: a file resource's or folder's files, after `updateActivity` changed them (`DraftFile[]`, `{ name, size }`).
 - `sections`: the course's `CourseSection[]` after the change, as [courseStructure](courses.md) gives them (without details).
 
 ## createActivity
@@ -24,7 +25,7 @@ Creates an activity or resource of any type at the end of a section, through `co
 function createActivity(
   context: BrowserContext,
   siteUrl: string,
-  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: string[] },
+  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[] },
 ): Promise<CourseChange>;
 
 interface ActivityFields {
@@ -44,7 +45,7 @@ interface ActivityFields {
 - `url`: a URL resource's target (`externalurl`).
 - `visibility`: `"hidden"` by default, so a teacher publishes after checking; `"stealth"` hides it from the course page but keeps it available by link, where the site allows it.
 - `settings`: any other field of the form by its form name, such as `{ "duedate[enabled]": true, "duedate[day]": 23 }` or `{ completion: 1 }`. They're set after the common inputs, in the order given, and win over them for the same field.
-- `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)); a SCORM takes the first as its package (see [SCORM](scorm.md)).
+- `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)); a SCORM takes the first as its package (see [SCORM](scorm.md)). A `{ from, to }` (`DraftUpload`) gives a file another name or puts it in a folder's subfolder: `{ from: "/home/ada/notes.pdf", to: "week1/notes.pdf" }`.
 
 `activityId` is the new activity's id, found by comparing the course before and after; when no new activity appears `changed` says so and `activityId` is undefined.
 
@@ -56,13 +57,33 @@ Errors:
 
 ## updateActivity
 
-Changes an existing activity through its form: only what's given changes, and the files already there stay.
+Changes an existing activity through its form: only what's given changes, and the files already there stay unless `files` says otherwise.
 
 ```ts
-function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields): Promise<CourseChange>;
+function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields & { files?: FileChanges }): Promise<CourseChange>;
+
+interface FileChanges {
+  add?: (string | DraftUpload)[]; // local paths, or { from, to } for another name or a subfolder
+  remove?: string[]; // files by their path in the activity: "notes.pdf", "week1/notes.pdf"
+  replace?: (string | DraftUpload)[]; // the whole new set
+}
 ```
 
 It takes the same `ActivityFields` as `createActivity`, reading the activity's module and course from the form. Errors are the same `FormError` cases, and a `MoodleError` (`invalid-input`) for `content` on a type other than a page or label.
+
+### Changing a resource's or folder's files
+
+`files` changes a file resource's or folder's files (a SCORM's package too) in the form's draft area before it's saved, as the file manager does: `remove` deletes files by their path in the activity, as `activitySettings` lists them; `add` uploads local files, and a file with the name of one already there replaces it (a new version of a PDF keeps its name and its links); `replace` removes every file and uploads the given ones. Folders in a folder are paths: `"week1/notes.pdf"`, created when a file goes there. The result's `files` are the activity's files afterwards, and `changed` says what was removed and added.
+
+- A file to remove that the activity doesn't have: a `MoodleError` (`not-found`) naming the files it has, before anything is saved.
+- `replace` with `add` or `remove`: a `MoodleError` (`invalid-input`).
+- A type whose form has no files (a page, a quiz): a `MoodleError` (`not-available`).
+
+```ts fragment
+// A new version of the brief, and a folder that loses one file and gains another in a subfolder.
+await moodle.updateActivity(812, { files: { add: ["/home/ada/brief.pdf"] } });
+await moodle.updateActivity(815, { files: { remove: ["old-notes.pdf"], add: [{ from: "/home/ada/notes.pdf", to: "week1/notes.pdf" }] } });
+```
 
 ## activitySettings
 
@@ -73,7 +94,7 @@ function activitySettings(
   context: BrowserContext,
   siteUrl: string,
   activityId: number,
-): Promise<{ id: number; module: string; courseId: number; name: string; description: string; fields: FormField[] }>;
+): Promise<{ id: number; module: string; courseId: number; name: string; description: string; fields: FormField[]; files?: DraftFile[] }>;
 
 interface FormField {
   name: string;
@@ -86,7 +107,7 @@ interface FormField {
 }
 ```
 
-`description` is the description editor's HTML. Each field in `fields` has:
+`description` is the description editor's HTML. `files`, for a file resource, a folder or a SCORM (its package), are its files as `{ name, size }`: `name` is the path in the activity (`"week1/notes.pdf"`), as `updateActivity`'s `files.remove` takes it, and `size` is in bytes. Each field in `fields` has:
 
 - `name`: the form name `settings` takes.
 - `type`: a date selector's parts (`duedate[day]`, `[month]`, `[year]`, `[hour]`, `[minute]`) are `"date"`; text, URL and email inputs are `"text"`; anything else unrecognized is `"other"`.
@@ -103,6 +124,24 @@ Internal fields (the sesskey, ids, buttons, hidden fields) are left out, and so 
 Moodle disables some fields until another one enables them: a date until its "Enable" checkbox is checked, a maximum grade until "Rescale existing grades" is chosen once there are grades. Moodle doesn't send a disabled field, so the change would be lost: `createActivity`, `updateActivity` and every form the driver fills throw `FormError` for a field still disabled when it's set. Fields are set one at a time in the order given, so put the enabling field first in the same call, as in `{ "grade[modgrade_rescalegrades]": "no", "grade[modgrade_point]": 20 }`.
 
 `activitySettings` throws `ActivitySettingsError` when there's no form to read (not an activity, or not the person's to edit), with Moodle's own reason when its error page gives one (`Sorry, no permission (Manage activities).`).
+
+## Reordering
+
+Activities and sections are moved with `editActivity` and `editSection`, as the course page's "Move" does:
+
+- `editActivity(courseId, activityId, { beforeActivityId })` puts the activity right before another one, in that one's section.
+- `editActivity(courseId, activityId, { sectionId })` puts it at the end of a section.
+- `editSection(courseId, sectionId, { afterSectionId })` puts the section right after another one; after section 0 (General, the first in the structure) makes it the first section with a number.
+
+Ids come from the course structure (a section's `id`, not its `number`), and every call returns the structure afterwards, so a program can check the new order.
+
+```ts fragment
+// Course 3 is General (section 10), Unit 1 (11) with Intro (21) and Task (22), Unit 2 (12) with Quiz (23).
+await moodle.editActivity(3, 23, { beforeActivityId: 21 }); // Unit 1: [Quiz, Intro, Task]
+await moodle.editActivity(3, 21, { sectionId: 12 }); // Intro to the end of Unit 2
+const after = await moodle.editSection(3, 12, { afterSectionId: 10 }); // Unit 2 before Unit 1
+console.log(after.sections.map((s) => `${s.title}: ${s.activities.map((a) => a.name).join(", ")}`));
+```
 
 ## editActivity
 
