@@ -1,6 +1,11 @@
-// @falkenslab/moodle-driver/internals: the primitives the operations are built from, for a program
-// that goes lower level than them (a service the driver doesn't wrap, a form of its own, a page read
-// by hand). Stable as the main entry is, but closer to Moodle: they take pages and form names.
+/**
+ * The primitives the operations are built from, imported from `@falkenslab/moodle-driver/internals`,
+ * for a program that goes lower level than them: a service the driver doesn't wrap, a form of its
+ * own, a page read by hand. Stable as the main entry is, but closer to Moodle: they take pages and
+ * form field names.
+ *
+ * @packageDocumentation
+ */
 export { callService, readPageConfig, type PageConfig } from "./core/ajax.js";
 export { openSitePage, fetchSitePage, readSessionFacts, htmlSessionFacts, readMoodleConfig, isLoggedIn, pageIsLoggedIn, moodleErrorMessage, type SessionFacts } from "./core/session.js";
 export { readOwnProfile } from "./core/login.js";
