@@ -76,7 +76,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "activitySettings",
-    "description": "An activity's settings as its form holds them, without submitting it: its module, name and description, and every field by the name `updateActivity` takes in `settings`. Teachers only.",
+    "description": "An activity's settings as its form holds them, without submitting it: its module, name and description, every field by the name `updateActivity` takes in `settings`, the files of a resource, folder or SCORM, and its restrictions and completion in plain terms. Teachers only.",
     "params": [
       {
         "name": "activityId",
@@ -236,7 +236,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "addSection",
-    "description": "Adds a section after another one (at the end without it), named when a name is given.",
+    "description": "Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is.",
     "params": [
       {
         "name": "courseId",
@@ -266,6 +266,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
+          }
+        },
+        {
+          "name": "summary",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
           }
         }
       ]
@@ -532,7 +540,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "courseStructure",
-    "description": "A course's sections and activities; with `details`, each activity's dates and restriction from the course page (slower).",
+    "description": "A course's sections and activities; with `details`, each activity's dates and restriction and each section's description, from the course page (slower).",
     "params": [
       {
         "name": "courseId",
@@ -583,12 +591,12 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "createActivity",
-    "description": "Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder; a SCORM (`type: \"scorm\"`) takes the first as its package.",
+    "description": "Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: \"scorm\"`) takes the first as its package.",
     "params": [
       {
         "name": "input",
         "optional": false,
-        "type": "ActivityFields & { courseId: number; sectionId: number; type: string; files?: string[]; }",
+        "type": "ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[]; }",
         "value": {
           "kind": "json"
         }
@@ -1038,7 +1046,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "editSection",
-    "description": "Renames, shows or hides, or moves a section after another one.",
+    "description": "Renames, shows or hides, describes (`summary`, HTML), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.",
     "params": [
       {
         "name": "courseId",
@@ -1076,6 +1084,22 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "boolean",
           "value": {
             "kind": "boolean"
+          }
+        },
+        {
+          "name": "summary",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "restrictions",
+          "optional": true,
+          "type": "Restrictions",
+          "value": {
+            "kind": "json"
           }
         },
         {
@@ -2262,7 +2286,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "updateActivity",
-    "description": "Changes an existing activity through its form: only what's given changes; files stay as they are.",
+    "description": "Changes an existing activity through its form: only what's given changes. A file resource's or folder's files stay as they are unless `files` says what to add, remove or replace.",
     "params": [
       {
         "name": "activityId",
@@ -2271,71 +2295,16 @@ export const COMMANDS: readonly CommandSpec[] = [
         "value": {
           "kind": "number"
         }
-      }
-    ],
-    "options": {
-      "name": "input",
-      "optional": false,
-      "open": false,
-      "fields": [
-        {
-          "name": "name",
-          "optional": true,
-          "type": "string",
-          "value": {
-            "kind": "string"
-          }
-        },
-        {
-          "name": "description",
-          "optional": true,
-          "type": "string",
-          "value": {
-            "kind": "string"
-          },
-          "description": "The description (HTML), shown on the activity's page."
-        },
-        {
-          "name": "content",
-          "optional": true,
-          "type": "string",
-          "value": {
-            "kind": "string"
-          },
-          "description": "A page's content, or a label's text (HTML)."
-        },
-        {
-          "name": "url",
-          "optional": true,
-          "type": "string",
-          "value": {
-            "kind": "string"
-          },
-          "description": "A URL resource's target."
-        },
-        {
-          "name": "visibility",
-          "optional": true,
-          "type": "\"shown\" | \"hidden\" | \"stealth\"",
-          "value": {
-            "kind": "enum",
-            "values": [
-              "shown",
-              "hidden",
-              "stealth"
-            ]
-          }
-        },
-        {
-          "name": "settings",
-          "optional": true,
-          "type": "Record<string, FieldValue>",
-          "value": {
-            "kind": "json"
-          }
+      },
+      {
+        "name": "input",
+        "optional": false,
+        "type": "ActivityFields & { files?: FileChanges; }",
+        "value": {
+          "kind": "json"
         }
-      ]
-    }
+      }
+    ]
   },
   {
     "name": "updateCourse",

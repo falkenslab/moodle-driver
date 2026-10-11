@@ -33,10 +33,13 @@ function activityForm(values: { name?: string; error?: string; fileField?: strin
 }
 
 describe("createActivity and updateActivity", { skip: !browser && "no system browser" }, () => {
-  async function site(fileField?: string): Promise<{ context: BrowserContext; posts: URLSearchParams[]; uploads: string[]; course: CourseState }> {
+  async function site(fileField?: string): Promise<{ context: BrowserContext; posts: URLSearchParams[]; uploads: string[]; course: CourseState; draft: Map<string, number>; mkdirs: string[] }> {
     const course: CourseState = { section: [{ id: "10", number: 0, title: "General", cmlist: [] }, { id: "11", number: 1, title: "Unit 1", cmlist: [] }], cm: [] };
     const posts: URLSearchParams[] = [];
     const uploads: string[] = [];
+    // The activity's files while its form is open, by their path in the area (made up).
+    const draft = new Map<string, number>();
+    const mkdirs: string[] = [];
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: { core_courseformat_get_state: () => JSON.stringify(course) } });
     const page = (body: string) => moodlePage({ userId: 3, body });
@@ -57,10 +60,39 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     });
     await context.route(`${SITE}repository/repository_ajax.php**`, (route: Route) => {
       const body = route.request().postData() ?? "";
-      uploads.push(`${/name="itemid"\r\n\r\n(\d+)/.exec(body)?.[1]}:${/filename="([^"]+)"/.exec(body)?.[1]}`);
+      const field = (name: string) => new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]*)`).exec(body)?.[1];
+      uploads.push(`${field("itemid")}:${/filename="([^"]+)"/.exec(body)?.[1]}`);
+      const name = `${field("savepath")}${field("title")}`;
+      // Moodle keeps both, renaming the new one, unless asked to overwrite (Moodle 5.2's upload repository).
+      if (draft.has(name) && field("overwrite") !== "1") return route.fulfill({ status: 200, contentType: "application/json", body: '{"event":"fileexists"}' });
+      draft.set(name, /filename="[^"]+"\r\n(?:[^\r]+\r\n)*\r\n([^\r]*)/.exec(body)?.[1]?.length ?? 0);
       return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
     });
-    return { context, posts, uploads, course };
+    // The file manager's draft area, made up after Moodle 5.2's draftfiles_ajax.php: a listing per folder, deleting, creating folders.
+    await context.route(`${SITE}repository/draftfiles_ajax.php**`, (route: Route) => {
+      const action = new URL(route.request().url()).searchParams.get("action");
+      const form = new URLSearchParams(route.request().postData() ?? "");
+      const json = (body: unknown) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+      const filepath = form.get("filepath") ?? "/";
+      if (action === "list") {
+        const list: { type: string; filepath: string; filename?: string; size?: number }[] = [];
+        for (const [name, size] of draft) {
+          if (!name.startsWith(filepath)) continue;
+          const rest = name.slice(filepath.length);
+          const folder = `${filepath}${rest.split("/")[0]}/`;
+          if (!rest.includes("/")) list.push({ type: "file", filepath, filename: rest, size });
+          else if (!list.some((entry) => entry.filepath === folder)) list.push({ type: "folder", filepath: folder });
+        }
+        return json({ list, filecount: draft.size });
+      }
+      if (action === "delete") return json(draft.delete(`${filepath}${form.get("filename")}`) ? { filepath } : false);
+      if (action === "mkdir") {
+        mkdirs.push(`${filepath}${form.get("newdirname")}/`);
+        return json({ filepath });
+      }
+      return json(false);
+    });
+    return { context, posts, uploads, course, draft, mkdirs };
   }
 
   it("fills the form, uploads the files to its draft area, saves hidden and returns the new activity", async () => {
@@ -93,6 +125,40 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     assert.deepEqual([result.activityId, result.changed], [40, 'Updated activity 40 "Brief 2".']);
     // The form's own value stays: the update didn't ask to change it.
     assert.equal(posts[1]?.get("visible"), "1");
+    await context.close();
+  });
+
+  it("removes, adds (in subfolders) and overwrites a resource's files, and activitySettings lists them", async () => {
+    const { context, posts, draft, mkdirs } = await site();
+    draft.set("/brief.txt", 3).set("/old.txt", 4);
+    await writeFile(path.join(dir, "notes.txt"), "Notes.\n");
+    const result = await updateActivity(context, SITE, 40, { name: "Brief", files: { remove: ["old.txt"], add: [path.join(dir, "brief.txt"), { from: path.join(dir, "notes.txt"), to: "week1/day1/notes.txt" }] } });
+    assert.equal(result.changed, "Updated activity 40 \"Brief\": removed old.txt and added brief.txt, week1/day1/notes.txt.");
+    // brief.txt is overwritten (its new size), not kept beside the old one.
+    assert.deepEqual(result.files, [{ name: "brief.txt", size: 17 }, { name: "week1/day1/notes.txt", size: 7 }]);
+    assert.deepEqual(mkdirs, ["/week1/", "/week1/day1/"]);
+    assert.equal(posts.length, 1);
+    const settings = await activitySettings(context, SITE, 40);
+    assert.deepEqual(settings.files, result.files);
+    await context.close();
+  });
+
+  it("replaces the whole set of files", async () => {
+    const { context, draft } = await site();
+    draft.set("/a.txt", 1).set("/sub/b.txt", 2);
+    const result = await updateActivity(context, SITE, 40, { name: "Brief", files: { replace: [path.join(dir, "brief.txt")] } });
+    assert.deepEqual(result.files, [{ name: "brief.txt", size: 17 }]);
+    assert.match(result.changed, /removed a\.txt, sub\/b\.txt and added brief\.txt/);
+    await context.close();
+  });
+
+  it("refuses a file to remove that isn't there, and replace with add or remove, without saving", async () => {
+    const { context, posts, draft } = await site();
+    draft.set("/a.txt", 1);
+    await assert.rejects(updateActivity(context, SITE, 40, { files: { remove: ["b.txt"] } }), (error: Error & { code?: string }) => error.code === "not-found" && /no file "b\.txt"; it has "a\.txt"/.test(error.message));
+    await assert.rejects(updateActivity(context, SITE, 40, { files: { replace: [], remove: ["a.txt"] } }), (error: Error & { code?: string }) => error.code === "invalid-input");
+    assert.equal(posts.length, 0);
+    assert.deepEqual([...draft.keys()], ["/a.txt"]);
     await context.close();
   });
 
@@ -253,6 +319,28 @@ describe("course layout", { skip: !browser && "no system browser" }, () => {
     assert.equal(layout(await editSection(context, SITE, 5, 11, { name: "Unit A", visible: false, afterSectionId: 10 })), "General:News | Unit A(h):Notes,Task");
     assert.equal(layout(await deleteActivity(context, SITE, 5, 21)), "General:News | Unit A(h):Task");
     assert.equal(layout(await deleteSection(context, SITE, 5, 11)), "General:News");
+    await context.close();
+  });
+
+  it("sets a section's description through its form, on adding it and after", async () => {
+    const context = await site(fakeCourse().state);
+    const posts: URLSearchParams[] = [];
+    // A section's form, reduced, as Moodle 5.2's course/editsection.php renders it (made up).
+    await context.route(`${SITE}course/editsection.php**`, (route: Route) => {
+      if (route.request().method() === "POST") posts.push(new URLSearchParams(route.request().postData() ?? ""));
+      const form = `<form class="mform" action="editsection.php" method="post"><input type="hidden" name="id" value="${new URL(route.request().url()).searchParams.get("id")}"><input type="hidden" name="course" value="5">
+<input type="text" name="name" value=""><textarea name="summary_editor[text]" id="id_summary_editor"></textarea><input type="hidden" name="summary_editor[format]" value="1">
+<textarea name="availabilityconditionsjson"></textarea><input type="submit" name="submitbutton" value="Save changes"></form>`;
+      return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, body: form }) });
+    });
+    const added = await addSection(context, SITE, 5, { name: "Unit 2", summary: "<p>Recursion.</p>" });
+    assert.equal(added.changed, 'Section 30 added as "Unit 2" with a description.');
+    const edited = await editSection(context, SITE, 5, 11, { summary: "<p>Loops, <em>again</em>.</p>" });
+    assert.equal(edited.changed, "Section 11 description set.");
+    assert.deepEqual(posts.map((p) => [p.get("summary_editor[text]"), p.get("name")]), [["<p>Recursion.</p>", ""], ["<p>Loops, <em>again</em>.</p>", ""]]);
+    // The form edits any section by id: one of another course is refused before saving.
+    await assert.rejects(editSection(context, SITE, 6, 11, { summary: "x" }), /Course 6 has no section 11/);
+    assert.equal(posts.length, 2);
     await context.close();
   });
 

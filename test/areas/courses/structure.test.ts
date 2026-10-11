@@ -22,9 +22,13 @@ const STATE: CourseState = {
   ],
 };
 
-// The course page shows section 0's activities; section 1 has its own page.
-const COURSE_PAGE = `<ul><li class="activity" data-for="cmitem" data-id="20"></li>
-<li class="activity" data-for="cmitem" data-id="21"><div data-region="activity-dates"><div class="date-item"><span class="date-item-label">Opened:</span> Monday, 5 October</div><div class="date-item"><span class="date-item-label">Closes:</span> Friday, 9 October</div></div></li></ul>`;
+// The course page shows section 0's activities and the sections' descriptions, a subsection's inside its
+// section (as Moodle 5.2 renders them); section 1's activities have their own page.
+const COURSE_PAGE = `<ul><li class="section" data-for="section" data-id="10"><div data-for="sectioninfo"><div class="summarytext">
+<div class="no-overflow"><p>Welcome to <strong>the course</strong>.</p></div>
+</div></div><ul><li class="activity" data-for="cmitem" data-id="20"></li>
+<li class="activity" data-for="cmitem" data-id="21"><div data-region="activity-dates"><div class="date-item"><span class="date-item-label">Opened:</span> Monday, 5 October</div><div class="date-item"><span class="date-item-label">Closes:</span> Friday, 9 October</div></div></li></ul></li>
+<li class="section" data-for="section" data-id="11"><div class="summarytext"></div><ul><li class="activity" data-for="cmitem" data-id="30"><div data-for="section" data-id="12"><div class="summarytext"><div class="no-overflow"><p>Exercises.</p></div></div></div></li></ul></li></ul>`;
 const SECTION_PAGE = `<ul><li class="activity" data-for="cmitem" data-id="22"><div class="availabilityinfo">Not available unless: You achieve a pass in <a href="#">Quiz 1</a></div></li></ul>`;
 
 describe("structureOf", () => {
@@ -52,6 +56,7 @@ describe("readActivityDetails", { skip: !browser && "no system browser" }, () =>
     assert.deepEqual(await readActivityDetails(page), [
       { id: 20, dates: [], restriction: undefined },
       { id: 21, dates: [{ label: "Opened", value: "Monday, 5 October" }, { label: "Closes", value: "Friday, 9 October" }], restriction: undefined },
+      { id: 30, dates: [], restriction: undefined },
       { id: 22, dates: [], restriction: "Not available unless: You achieve a pass in Quiz 1" },
     ]);
     await page.close();
@@ -75,6 +80,9 @@ describe("courseStructure", { skip: !browser && "no system browser" }, () => {
     const sections = await courseStructure(context, SITE, 5, { details: true });
     assert.deepEqual(sections[0]?.activities[1]?.dates, [{ label: "Opened", value: "Monday, 5 October" }, { label: "Closes", value: "Friday, 9 October" }]);
     assert.equal(sections[1]?.activities[0]?.restriction, "Not available unless: You achieve a pass in Quiz 1");
+    // Each section's own description; none for a section without one, a subsection's not taken for its parent's.
+    assert.deepEqual(sections.map((s) => s.summary), ["<p>Welcome to <strong>the course</strong>.</p>", undefined, "<p>Exercises.</p>"]);
+    assert.ok(!("summary" in plain[0]!));
     assert.deepEqual(state.pagesServed!.filter((p) => p.startsWith("/course/")), ["/course/view.php", "/course/section.php"]);
     await context.close();
   });

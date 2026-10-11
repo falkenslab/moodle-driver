@@ -1,15 +1,17 @@
 // Building a course: activities through Moodle's own activity form, and the course page's editing
 // (rename, show, move, duplicate, delete) through its services. Every change answers with the
 // course's structure afterwards, to check it.
+import path from "node:path";
 import type { BrowserContext, Page } from "playwright-core";
 import { courseState } from "../courses/state.js";
 import { editCourse, renameActivity, renameSection } from "../../core/editor.js";
 import { checkLocalFiles } from "../../core/files.js";
-import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
+import { deleteDraftFile, draftFiles, formValue, openForm, setFields, submitForm, uploadToDraft, type DraftFile, type DraftUpload, type FieldValue } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { structureOf, type CourseSection } from "../courses/structure.js";
 import { MoodleError } from "../../core/errors.js";
+import { completionValues, gradeItemsByActivity, hasGradeCondition, parseRestrictions, readCompletion, restrictionsJson, type Completion, type Restrictions } from "./conditions.js";
 
 /** "stealth": hidden from the course page but available by link, where the site allows it. */
 export const ACTIVITY_VISIBILITIES = ["shown", "hidden", "stealth"] as const;
@@ -28,6 +30,10 @@ export interface ActivityFields {
   /** A URL resource's target. */
   url?: string;
   visibility?: ActivityVisibility;
+  /** When students can open it (`{ conditions: [] }` removes every restriction). */
+  restrictions?: Restrictions;
+  /** When it counts as complete. */
+  completion?: Completion;
   settings?: Record<string, FieldValue>;
 }
 
@@ -37,11 +43,37 @@ export interface CourseChange {
   activityId?: number;
   sectionId?: number;
   url?: string;
+  /** A file resource's or folder's files after `updateActivity` changed them. */
+  files?: DraftFile[];
   sections: CourseSection[];
 }
 
-/** The form values the common inputs stand for, given the activity's type. */
-function fieldsFor(type: string, input: ActivityFields): Record<string, FieldValue> {
+/** The availability field's value for `restrictions`, the gradebook read first when a grade condition needs it. */
+async function availabilityValue(context: BrowserContext, siteUrl: string, courseId: number, restrictions: Restrictions): Promise<string> {
+  const grades = restrictions.conditions.some((c) => c.type === "grade") ? await gradeItemsByActivity(context, siteUrl, courseId) : undefined;
+  // Moodle saves a condition on an id the course doesn't have without a word (a group's, confirmed empirically, 5.2): an activity's is checked here.
+  const completions = restrictions.conditions.flatMap((c) => (c.type === "completion" ? [c.activityId] : []));
+  if (completions.length > 0) {
+    const ids = new Set((await courseState(context, siteUrl, courseId)).cm.map((cm) => Number(cm.id)));
+    const unknown = completions.filter((id) => !ids.has(id));
+    if (unknown.length > 0) throw new MoodleError(`Course ${courseId} has no activity ${unknown.join(", ")} for a completion condition. Take its id from the course structure.`, "not-found");
+  }
+  return restrictionsJson(restrictions, grades);
+}
+
+/** The form values for an activity's restrictions and completion, refused when the form has no place for them. */
+async function conditionValues(context: BrowserContext, siteUrl: string, page: Page, courseId: number, input: ActivityFields): Promise<Record<string, FieldValue>> {
+  const values: Record<string, FieldValue> = {};
+  if (input.restrictions) {
+    if ((await formValue(page, "availabilityconditionsjson")) === undefined) throw new MoodleError("This form has no access restrictions: they're off on the site.", "not-available");
+    values.availabilityconditionsjson = await availabilityValue(context, siteUrl, courseId, input.restrictions);
+  }
+  if (input.completion !== undefined) Object.assign(values, await completionValues(page, input.completion));
+  return values;
+}
+
+/** The form values the common inputs stand for, given the activity's type, then `extra`, then `settings` (which win). */
+function fieldsFor(type: string, input: ActivityFields, extra: Record<string, FieldValue> = {}): Record<string, FieldValue> {
   const values: Record<string, FieldValue> = {};
   if (input.name !== undefined) values.name = input.name;
   if (input.description !== undefined) values["introeditor[text]"] = input.description;
@@ -53,7 +85,7 @@ function fieldsFor(type: string, input: ActivityFields): Record<string, FieldVal
   }
   if (input.url !== undefined) values.externalurl = input.url;
   if (input.visibility !== undefined) values.visible = FORM_VISIBILITY[input.visibility];
-  return { ...values, ...input.settings };
+  return { ...values, ...extra, ...input.settings };
 }
 
 async function afterChange(context: BrowserContext, siteUrl: string, courseId: number, changed: string, extra: Partial<CourseChange> = {}): Promise<CourseChange> {
@@ -61,16 +93,54 @@ async function afterChange(context: BrowserContext, siteUrl: string, courseId: n
 }
 
 /**
+ * Changes to a file resource's or folder's files: `add` local paths (a `DraftUpload` puts one under
+ * another name or in a subfolder, `"week1/notes.pdf"`), `remove` files by their path in the activity,
+ * or `replace` the whole set. A file added with the name of one already there replaces it.
+ */
+export interface FileChanges {
+  add?: (string | DraftUpload)[];
+  remove?: string[];
+  replace?: (string | DraftUpload)[];
+}
+
+const localPaths = (files: (string | DraftUpload)[] = []) => files.map((file) => (typeof file === "string" ? file : file.from));
+
+/** The form's file area: a SCORM's package, or the files of a resource or folder. */
+async function fileArea(page: Page, type: string): Promise<string | undefined> {
+  return formValue(page, type === "scorm" ? "packagefile" : "files");
+}
+
+/** Applies `changes` to the draft area `draft` and says what was done; refuses a file to remove that isn't there. */
+async function changeFiles(page: Page, draft: string, changes: FileChanges): Promise<{ done: string; files: DraftFile[] }> {
+  const done: string[] = [];
+  const current = await draftFiles(page, draft);
+  const removing = changes.replace ? current.map((file) => file.name) : (changes.remove ?? []);
+  const missing = removing.filter((name) => !current.some((file) => file.name === name));
+  if (missing.length > 0) {
+    throw new MoodleError(`The activity has no file ${missing.map((name) => `"${name}"`).join(", ")}; it has ${current.map((file) => `"${file.name}"`).join(", ") || "none"}.`, "not-found");
+  }
+  for (const name of removing) await deleteDraftFile(page, draft, name);
+  if (removing.length > 0) done.push(`removed ${removing.join(", ")}`);
+  const adding = changes.replace ?? changes.add ?? [];
+  if (adding.length > 0) {
+    await uploadToDraft(page, draft, adding, { overwrite: true });
+    done.push(`added ${adding.map((file) => (typeof file === "string" ? path.basename(file) : file.to)).join(", ")}`);
+  }
+  return { done: done.join(" and "), files: await draftFiles(page, draft) };
+}
+
+/**
  * Creates an activity or resource of any type at the end of a section, through Moodle's own form,
  * hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file
- * resource or folder; a SCORM (`type: "scorm"`) takes the first as its package.
+ * resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`)
+ * takes the first as its package.
  */
 export async function createActivity(
   context: BrowserContext,
   siteUrl: string,
-  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: string[] },
+  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[] },
 ): Promise<CourseChange> {
-  if (input.files) await checkLocalFiles(input.files);
+  if (input.files) await checkLocalFiles(localPaths(input.files));
   const before = await courseState(context, siteUrl, input.courseId);
   const target = before.section.find((s) => Number(s.id) === input.sectionId);
   if (!target) throw new MoodleError(`Course ${input.courseId} has no section ${input.sectionId}. Take its id from the course structure.`, "not-found");
@@ -80,12 +150,12 @@ export async function createActivity(
     if (input.files && input.files.length > 0) {
       // A SCORM takes one package, in a field of its own.
       const scorm = input.type === "scorm";
-      const draft = await formValue(page, scorm ? "packagefile" : "files");
+      const draft = await fileArea(page, input.type);
       if (!draft) throw new MoodleError(`A ${input.type} takes no files in its form.`, "not-available");
       await uploadToDraft(page, draft, scorm ? input.files.slice(0, 1) : input.files);
     }
     // Hidden unless asked: a teacher publishes after checking.
-    await setFields(page, fieldsFor(input.type, { ...input, visibility: input.visibility ?? "hidden" }));
+    await setFields(page, fieldsFor(input.type, { ...input, visibility: input.visibility ?? "hidden" }, await conditionValues(context, siteUrl, page, input.courseId, input)));
     await submitForm(page, "submitbutton2");
   } finally {
     await page.close().catch(() => undefined);
@@ -101,21 +171,34 @@ export async function createActivity(
   };
 }
 
-/** Changes an existing activity through its form: only what's given changes; files stay as they are. */
-export async function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields): Promise<CourseChange> {
+/**
+ * Changes an existing activity through its form: only what's given changes. A file resource's or
+ * folder's files stay as they are unless `files` says what to add, remove or replace.
+ */
+export async function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields & { files?: FileChanges }): Promise<CourseChange> {
+  const { files, ...fields } = input;
+  if (files?.replace && (files.add || files.remove)) throw new MoodleError("Give files.replace alone, or files.add and files.remove.", "invalid-input");
+  if (files) await checkLocalFiles([...localPaths(files.add), ...localPaths(files.replace)]);
   const page = await openForm(context, siteUrl, `course/modedit.php?update=${activityId}&return=0`);
   let courseId: number;
+  let filesDone: { done: string; files: DraftFile[] } | undefined;
   try {
     courseId = Number(await formValue(page, "course"));
     const type = (await formValue(page, "modulename")) ?? "";
-    await setFields(page, fieldsFor(type, input));
+    if (files) {
+      const draft = await fileArea(page, type);
+      if (!draft) throw new MoodleError(`A ${type} has no files in its form.`, "not-available");
+      filesDone = await changeFiles(page, draft, files);
+    }
+    await setFields(page, fieldsFor(type, fields, await conditionValues(context, siteUrl, page, courseId, fields)));
     await submitForm(page, "submitbutton2");
   } finally {
     await page.close().catch(() => undefined);
   }
   const after = await courseState(context, siteUrl, courseId);
   const cm = after.cm.find((c) => Number(c.id) === activityId);
-  return { changed: `Updated activity ${activityId}${cm ? ` "${cm.name}"` : ""}.`, activityId: activityId, url: cm?.url, sections: structureOf(after) };
+  const done = filesDone?.done ? `: ${filesDone.done}` : "";
+  return { changed: `Updated activity ${activityId}${cm ? ` "${cm.name}"` : ""}${done}.`, activityId: activityId, url: cm?.url, files: filesDone?.files, sections: structureOf(after) };
 }
 
 /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
@@ -156,27 +239,62 @@ export async function deleteActivity(context: BrowserContext, siteUrl: string, c
   return afterChange(context, siteUrl, courseId, `Activity ${activityId} deleted.`);
 }
 
-/** Adds a section after another one (at the end without it), named when a name is given. */
-export async function addSection(context: BrowserContext, siteUrl: string, courseId: number, { name, afterSectionId }: { name?: string; afterSectionId?: number } = {}): Promise<CourseChange> {
+/**
+ * Saves fields of a section's own form (`course/editsection.php`): its description, its access
+ * restrictions. No service changes them (`core_course_edit_section` only shows, hides and moves).
+ */
+async function saveSectionForm(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number, values: Record<string, FieldValue>): Promise<void> {
+  const page = await openForm(context, siteUrl, `course/editsection.php?id=${sectionId}`);
+  try {
+    // The form edits any section by its id: one of another course is refused, as the course editor's service does.
+    if (Number(await formValue(page, "course")) !== courseId) throw new MoodleError(`Course ${courseId} has no section ${sectionId}. Take its id from the course structure.`, "not-found");
+    await setFields(page, values);
+    await submitForm(page, "submitbutton");
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+/** Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is. */
+export async function addSection(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  { name, afterSectionId, summary }: { name?: string; afterSectionId?: number; summary?: string } = {},
+): Promise<CourseChange> {
   const before = new Set((await courseState(context, siteUrl, courseId)).section.map((s) => s.id));
   await editCourse(context, siteUrl, courseId, "section_add", [], { sectionId: afterSectionId });
   const added = (await courseState(context, siteUrl, courseId)).section.find((s) => !before.has(s.id));
   if (added && name !== undefined) await renameSection(context, siteUrl, courseId, Number(added.id), name);
-  return afterChange(context, siteUrl, courseId, `Section ${added?.id ?? "?"} added${name !== undefined ? ` as "${name}"` : ""}.`, { sectionId: added ? Number(added.id) : undefined });
+  if (added && summary !== undefined) await saveSectionForm(context, siteUrl, courseId, Number(added.id), { "summary_editor[text]": summary });
+  const extras = `${name !== undefined ? ` as "${name}"` : ""}${summary !== undefined ? " with a description" : ""}`;
+  return afterChange(context, siteUrl, courseId, `Section ${added?.id ?? "?"} added${extras}.`, { sectionId: added ? Number(added.id) : undefined });
 }
 
-/** Renames, shows or hides, or moves a section after another one. */
+/**
+ * Renames, shows or hides, describes (`summary`, HTML), restricts (`restrictions`; `{ conditions: [] }`
+ * removes them) or moves a section after another one.
+ */
 export async function editSection(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
   sectionId: number,
-  { name, visible, afterSectionId }: { name?: string; visible?: boolean; afterSectionId?: number },
+  { name, visible, summary, restrictions, afterSectionId }: { name?: string; visible?: boolean; summary?: string; restrictions?: Restrictions; afterSectionId?: number },
 ): Promise<CourseChange> {
   const done: string[] = [];
   if (name !== undefined) {
     await renameSection(context, siteUrl, courseId, sectionId, name);
     done.push(`renamed to "${name}"`);
+  }
+  if (summary !== undefined || restrictions !== undefined) {
+    // One save of the section's form for both.
+    const values: Record<string, FieldValue> = {};
+    if (summary !== undefined) values["summary_editor[text]"] = summary;
+    if (restrictions !== undefined) values.availabilityconditionsjson = await availabilityValue(context, siteUrl, courseId, restrictions);
+    await saveSectionForm(context, siteUrl, courseId, sectionId, values);
+    if (summary !== undefined) done.push(summary === "" ? "description removed" : "description set");
+    if (restrictions !== undefined) done.push(restrictions.conditions.length === 0 ? "restrictions removed" : "restrictions set");
   }
   if (visible !== undefined) {
     await editCourse(context, siteUrl, courseId, visible ? "section_show" : "section_hide", [sectionId]);
@@ -291,7 +409,8 @@ export class ActivitySettingsError extends MoodleError {
 
 /**
  * An activity's settings as its form holds them, without submitting it: its module, name and
- * description, and every field by the name `updateActivity` takes in `settings`. Teachers only.
+ * description, every field by the name `updateActivity` takes in `settings`, the files of a
+ * resource, folder or SCORM, and its restrictions and completion in plain terms. Teachers only.
  */
 export async function activitySettings(context: BrowserContext, siteUrl: string, activityId: number) {
   const page = await openSitePage(context, siteUrl, `course/modedit.php?update=${activityId}&return=0`);
@@ -302,13 +421,28 @@ export async function activitySettings(context: BrowserContext, siteUrl: string,
     await page.waitForLoadState("load");
     const fields = await readFormFields(page);
     const value = (name: string) => fields.find((f) => f.name === name)?.value as string | undefined;
+    const module = (await formValue(page, "modulename")) ?? "";
+    const draft = await fileArea(page, module);
+    const courseId = Number(await formValue(page, "course"));
+    const availability = value("availabilityconditionsjson");
+    // A grade condition names a grade item: its activity comes from the gradebook, when the person can read it.
+    const gradeActivities =
+      availability && hasGradeCondition(availability)
+        ? new Map([...(await gradeItemsByActivity(context, siteUrl, courseId).catch(() => new Map<number, number>()))].map(([activityId, itemId]) => [itemId, activityId]))
+        : undefined;
     return {
       id: activityId,
-      module: (await formValue(page, "modulename")) ?? "",
-      courseId: Number(await formValue(page, "course")),
+      module,
+      courseId,
       name: value("name") ?? "",
       description: value("introeditor[text]") ?? "",
       fields,
+      /** A file resource's, folder's or SCORM's files, by their path in it, as `updateActivity`'s `files.remove` takes them. */
+      files: draft ? await draftFiles(page, draft) : undefined,
+      /** When students can open it, in the terms `updateActivity` takes; undefined without restrictions. */
+      restrictions: parseRestrictions(availability, gradeActivities),
+      /** When it counts as complete, in the terms `updateActivity` takes; undefined when completion is off. */
+      completion: await readCompletion(page),
     };
   } finally {
     await page.close().catch(() => undefined);

@@ -15,7 +15,7 @@ export * from "./core/errors.js";
 export { logIn, LoginTimeoutError, LoginWindowClosedError, type LoginResult } from "./core/login.js";
 export { logOut, NotLoggedInError } from "./core/session.js";
 export { MoodleServiceError } from "./core/ajax.js";
-export { FormError, type FieldValue } from "./core/forms.js";
+export { FormError, type FieldValue, type DraftUpload, type DraftFile } from "./core/forms.js";
 export { findMoodleSite } from "./core/site.js";
 export { checkLocalFiles, downloadFile, type DownloadedFile } from "./core/files.js";
 export type { MediaItem } from "./core/text.js";
@@ -53,8 +53,10 @@ export {
   type ActivityVisibility,
   type ActivityFields,
   type CourseChange,
+  type FileChanges,
   type FormField,
 } from "./areas/activities/build.js";
+export type { Restriction, Restrictions, Completion } from "./areas/activities/conditions.js";
 export { activityContent, CONTENT_TYPES, NotViewableError, type ContentType, type ContentOptions, type ActivityContent } from "./areas/activities/content.js";
 
 // Assignments.

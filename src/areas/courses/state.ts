@@ -68,21 +68,63 @@ export function readActivityDetails(page: Page): Promise<ActivityDetails[]> {
 }
 
 /**
- * Details for the given activities: from the course page, then from the section pages of those it
+ * The sections' descriptions on a course or section page, by section id: the HTML Moodle renders
+ * (`.summarytext` in the section, without its `no-overflow` wrapper); sections without one left out.
+ */
+export function readSectionSummaries(page: Page): Promise<{ id: number; summary: string }[]> {
+  return page.evaluate(() => {
+    interface Element {
+      getAttribute(name: string): string | null;
+      closest(selector: string): Element | null;
+      querySelector(selector: string): Element | null;
+      querySelectorAll(selector: string): ArrayLike<Element>;
+      innerHTML: string;
+    }
+    const doc = (globalThis as unknown as { document: Element }).document;
+    const summaries: { id: number; summary: string }[] = [];
+    for (const section of Array.from(doc.querySelectorAll('[data-for="section"][data-id]'))) {
+      // The section's own summary, not a subsection's inside it.
+      const own = Array.from(section.querySelectorAll(".summarytext")).find((s) => s.closest('[data-for="section"]') === section);
+      if (!own) continue;
+      const summary = (own.querySelector(":scope > .no-overflow") ?? own).innerHTML.trim();
+      if (summary !== "") summaries.push({ id: Number(section.getAttribute("data-id")), summary });
+    }
+    return summaries;
+  });
+}
+
+/**
+ * What the course page shows beyond the course's state: each activity's dates and restriction, and
+ * each section's description. From the course page, then from the section pages of activities it
  * doesn't show (courses with one section per page).
  */
-export async function activityDetails(context: BrowserContext, siteUrl: string, courseId: number, state: CourseState): Promise<Map<number, ActivityDetails>> {
-  const details = new Map<number, ActivityDetails>();
+export async function courseDetails(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  state: CourseState,
+): Promise<{ activities: Map<number, ActivityDetails>; summaries: Map<number, string> }> {
+  const activities = new Map<number, ActivityDetails>();
+  const summaries = new Map<number, string>();
   const read = async (path: string) => {
     const page = await openSitePage(context, siteUrl, path);
     try {
-      for (const item of await readActivityDetails(page)) details.set(item.id, item);
+      for (const item of await readActivityDetails(page)) activities.set(item.id, item);
+      for (const { id, summary } of await readSectionSummaries(page)) summaries.set(id, summary);
     } finally {
       await page.close().catch(() => undefined);
     }
   };
   await read(`course/view.php?id=${courseId}`);
-  const missingSections = new Set(state.cm.filter((cm) => !details.has(Number(cm.id))).map((cm) => cm.sectionid));
+  const missingSections = new Set(state.cm.filter((cm) => !activities.has(Number(cm.id))).map((cm) => cm.sectionid));
   for (const sectionId of missingSections) await read(`course/section.php?id=${sectionId}`);
-  return details;
+  return { activities, summaries };
+}
+
+/**
+ * Details for the given activities: from the course page, then from the section pages of those it
+ * doesn't show (courses with one section per page).
+ */
+export async function activityDetails(context: BrowserContext, siteUrl: string, courseId: number, state: CourseState): Promise<Map<number, ActivityDetails>> {
+  return (await courseDetails(context, siteUrl, courseId, state)).activities;
 }

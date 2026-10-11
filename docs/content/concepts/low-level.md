@@ -42,7 +42,9 @@ To read a page's HTML without a tab, `fetchSitePage(context, siteUrl, path)` giv
 openForm(context, siteUrl, path): Promise<Page>; // waits for editors and Moodle's form dependencies
 formValue(page, name): Promise<string | undefined>; // a hidden field's value
 setFields(page, values, formSelector?): Promise<void>; // by field name, in order
-uploadToDraft(page, draftItemId, filePaths): Promise<void>; // as the file picker's upload does
+uploadToDraft(page, draftItemId, filePaths, { overwrite }?): Promise<void>; // as the file picker's upload does
+draftFiles(page, draftItemId): Promise<DraftFile[]>; // the files in a draft area, subfolders included
+deleteDraftFile(page, draftItemId, name): Promise<void>; // as the file manager's delete does
 submitForm(page, button): Promise<void>; // throws FormError with Moodle's messages
 dateSelectorValues(page, name, date); // a date selector's parts, in the person's time zone
 dateSelectorDate(page, name); // the date a selector holds
@@ -51,6 +53,7 @@ dateSelectorDate(page, name); // the date a selector holds
 - `setFields` sets text inputs and textareas (through TinyMCE where it edits them), selects (several values for a multiple one), checkboxes and radios, one field at a time so Moodle's handlers run in between. It throws `FormError` for fields the form doesn't have and for fields still disabled after the ones before them: Moodle wouldn't send them.
 - Date selectors (`duedate[day]`, `[month]`, `[year]`, `[hour]`, `[minute]`) are read in the person's time zone (`M.cfg.usertimezone`): build their values with `dateSelectorValues`, enabling the selector's `[enabled]` checkbox first when it has one.
 - `submitForm` waits for the next page and reads Moodle's validation messages by field.
+- A draft area holds a file area's files while its form is open (the files field's value is its id). `uploadToDraft` takes local paths, or `{ from, to }` to name a file in the area or put it in a subfolder (`to: "week1/notes.pdf"`, the folders created first); with `overwrite: true` a file of the same name is replaced, otherwise Moodle keeps both and renames the new one. `draftFiles` and `deleteDraftFile` name files by their path in the area, through the file manager's `repository/draftfiles_ajax.php`. Nothing changes in the activity until the form is saved.
 
 ```ts
 import { setFields, submitForm, dateSelectorValues } from "@falkenslab/moodle-driver/internals";
