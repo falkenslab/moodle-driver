@@ -111,6 +111,10 @@ A folder of questions inside a [question bank](#question-bank); each bank has a 
 
 The activity of questions a participant answers in [attempts](#attempt), graded automatically where it can be (module `quiz`). The driver covers the student's side (`quizInfo`, `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`, `readReview`) and the teacher's (`quizResults`, `quizStructure`, `addQuestionsToQuiz`, `setQuizOverride`); its errors are `QuizError`. See [Quizzes](../areas/quizzes.md).
 
+### Rating
+
+A participant's judgement of another's forum post, glossary entry or database record, on a scale or out of points, when the activity uses ratings; the activity aggregates them (average, count, maximum…) into a grade item of its own. Separately, a forum can be graded as a whole ("Whole forum grading"), one grade per person. The driver rates with `rate(item, rating)`, and reads and gives whole-forum grades with `forumGrades` and `gradeForumUser`. See [Grading](../areas/grading.md#rate).
+
 ### Review
 
 The page of a finished [attempt](#attempt) that shows its summary and questions with their state, mark, feedback and right answer, as far as the quiz's review options allow ("Review" in the interface). The driver reads it with `readReview(attemptId)` (`summary` and `questions`), and `finishQuizAttempt` returns it as `review` when the quiz shows it right away. See [Quizzes](../areas/quizzes.md).

@@ -505,6 +505,19 @@ moodle forum-discussions <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## forumGrades
+
+Everyone's whole-forum grade in a forum graded as a whole, as its grader shows them: one per person it can grade (only the active ones when the forum says so), with how it's graded. One service call per person. Throws `NotAForumError` for another activity, and `GradingError` when the forum isn't graded as a whole or uses an advanced grading method.
+
+```bash
+moodle forum-grades <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--group-id` | `number` |  |
+
 ## getChoice
 
 A choice: its options, whether it can be answered or changed, and the person's answer.
@@ -529,6 +542,21 @@ moodle get-survey <activityId> [type]
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `type` (optional) | `SurveyType` |  |
+
+## gradeForumUser
+
+Gives a person their whole-forum grade, as the forum's grader does: points (out of the forum's maximum), or a scale item by name or value; `null` takes the grade away. Moodle's forum grader has no feedback text. `notify` sends the person Moodle's notification, as the grader's checkbox does. Returns a sentence of what changed and the grade afterwards. Throws `GradingError` when the forum isn't graded as a whole, the grade is out of range or not on the scale, or Moodle refuses it.
+
+```bash
+moodle grade-forum-user <activityId> <userId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `userId` | `number` |  |
+| `--grade` (required) | `string \| number` |  |
+| `--notify` | `boolean` |  |
 
 ## gradeSubmission
 
@@ -838,6 +866,19 @@ moodle quiz-structure <activityId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
+
+## rate
+
+Rates a forum post, a glossary entry or a database record as the person, as the rating menu under it does: by a scale item's name, or its number (the points of a point scale). `null` takes the person's rating away. Returns a sentence of what changed and the item's aggregate afterwards (as Moodle shows it, by the activity's aggregation) with the number of ratings. Throws `GradingError` when the item has no rating menu for the person (ratings off, their own item, outside the rating period, or no permission) or the rating isn't on its scale.
+
+```bash
+moodle rate <item> <rating>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `item` | `RateableItem` |  |
+| `rating` | `string \| number` |  |
 
 ## readAttempt
 

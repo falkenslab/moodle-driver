@@ -95,6 +95,8 @@ export {
 
 // Forums, surveys, choices, lessons, H5P.
 export { NotAForumError } from "./areas/forums/discussions.js";
+export { forumGrades, gradeForumUser, type ForumGrade, type ForumGrades } from "./areas/forums/grading.js";
+export { rate, type RateableItem } from "./areas/ratings/ratings.js";
 export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, type ForumDiscussion, type ForumPost, type PostInput } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";
 export { getChoice, answerChoice, ChoiceError, type Choice } from "./areas/surveys/choice.js";

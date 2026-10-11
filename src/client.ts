@@ -15,6 +15,8 @@ import { openForm } from "./core/forms.js";
 import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
 import { addGradeCategory, addGradeItem, deleteGradeCategory, deleteGradeItem, gradebookSetup, graderReport, updateGradeCategory, updateGradeItem } from "./areas/grades/gradebook.js";
 import { setGrade } from "./areas/grades/singleview.js";
+import { forumGrades, gradeForumUser } from "./areas/forums/grading.js";
+import { rate } from "./areas/ratings/ratings.js";
 import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
 import { myGrades } from "./areas/grades/user-report.js";
 import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./areas/assignments/grading.js";
@@ -75,8 +77,10 @@ const SITE_FUNCTIONS = {
   editSection,
   finishQuizAttempt,
   forumDiscussions,
+  forumGrades,
   getChoice,
   getSurvey,
+  gradeForumUser,
   gradeSubmission,
   gradebookSetup,
   graderReport,
@@ -103,6 +107,7 @@ const SITE_FUNCTIONS = {
   quizInfo,
   quizResults,
   quizStructure,
+  rate,
   readAttempt,
   readReview,
   replyToPost,

@@ -184,6 +184,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   deleteGradeItem: ["course-content", "others-write"],
   // Grading in the gradebook: reads the grade it changes.
   setGrade: ["others-personal", "others-write"],
+  // Whole-forum grading: everyone's forum grade, and giving one.
+  forumGrades: PERSONAL,
+  gradeForumUser: ["others-personal", "others-write"],
+  // Rating someone's post, entry or record: a judgement of their work.
+  rate: ["others-write"],
   // Everyone's grades, as Moodle exports them.
   exportGrades: PERSONAL,
 

@@ -1,6 +1,6 @@
 # Forums
 
-A forum's discussions and their posts as plain data, posting as the person (replies and new discussions, with attachments), and a teacher's moderation (pinning and locking discussions). Students and teachers read and post alike, within what the forum allows them; pinning and locking need the moderation rights a teacher has.
+A forum's discussions and their posts as plain data, posting as the person (replies and new discussions, with attachments), and a teacher's moderation (pinning and locking discussions). Grading a forum as a whole and rating posts are in [Grading](grading.md#forumgrades). Students and teachers read and post alike, within what the forum allows them; pinning and locking need the moderation rights a teacher has.
 
 **Terms:** [participant](../reference/glossary.md#participant), [instance id](../reference/glossary.md#instance-id), [notification](../reference/glossary.md#notification).
 
