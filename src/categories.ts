@@ -152,6 +152,10 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   gradeQuizQuestion: ["others-personal", "others-write"],
   quizStructure: CONTENT,
   addQuestionsToQuiz: CONTENT,
+  editQuizSlot: CONTENT,
+  removeQuizSlot: CONTENT,
+  setQuizPages: CONTENT,
+  addQuizSection: CONTENT,
 
   // Forums.
   forumDiscussions: PERSONAL,

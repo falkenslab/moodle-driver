@@ -109,7 +109,7 @@ A folder of questions inside a [question bank](#question-bank); each bank has a 
 
 ### Quiz
 
-The activity of questions a participant answers in [attempts](#attempt), graded automatically where it can be (module `quiz`). The driver covers the student's side (`quizInfo`, `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`, `readReview`) and the teacher's (`quizResults`, `questionsToGrade`, `gradeQuizQuestion`, `quizStructure`, `addQuestionsToQuiz`, `setQuizOverride`); its errors are `QuizError`. See [Quizzes](../areas/quizzes.md).
+The activity of questions a participant answers in [attempts](#attempt), graded automatically where it can be (module `quiz`). The driver covers the student's side (`quizInfo`, `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`, `readReview`) and the teacher's (`quizResults`, `questionsToGrade`, `gradeQuizQuestion`, `quizStructure`, `addQuestionsToQuiz`, `editQuizSlot`, `removeQuizSlot`, `setQuizPages`, `addQuizSection`, `setQuizOverride`); its errors are `QuizError`. See [Quizzes](../areas/quizzes.md).
 
 ### Review
 
@@ -137,7 +137,7 @@ The token Moodle gives each session (`M.cfg.sesskey` in its pages) and expects w
 
 ### Slot
 
-A question's place in a quiz, numbered from 1 in the quiz's order; the interface shows question numbers instead, which skip descriptions. In an attempt, answers are given by slot: `Question.slot` in `startQuizAttempt`, `readAttempt` and `readReview`, and `answerQuizQuestions` takes `{ slot, responses }[]`, with field names such as `q9:1_answer` (`q<usage>:<slot>_<name>`); `quizStructure` lists a quiz's slots as `QuizSlot` (`id`, `page`, `questionId`, `type`, `mark`), and `quizResults` gives each attempt's marks per slot. See [Quizzes](../areas/quizzes.md).
+A question's place in a quiz, numbered from 1 in the quiz's order; the interface shows question numbers instead, which skip descriptions. In an attempt, answers are given by slot: `Question.slot` in `startQuizAttempt`, `readAttempt` and `readReview`, and `answerQuizQuestions` takes `{ slot, responses }[]`, with field names such as `q9:1_answer` (`q<usage>:<slot>_<name>`); `quizStructure` lists a quiz's slots as `QuizSlot` (`id`, `slot`, `page`, `questionId`, `type`, `mark`) and its sections (a heading before a group of pages, whose questions may be shuffled), `editQuizSlot` and `removeQuizSlot` take a slot, and `quizResults` gives each attempt's marks per slot. See [Quizzes](../areas/quizzes.md).
 `moodle.answerQuizQuestions(9, [{ slot: 1, responses: { "q9:1_answer": "1" } }])`
 
 ### Submission

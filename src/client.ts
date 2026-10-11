@@ -27,7 +27,7 @@ import { createQuestion, importQuestions, questionBanks, questions } from "./are
 import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
 import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
-import { addQuestionsToQuiz, quizStructure } from "./areas/quizzes/structure.js";
+import { addQuestionsToQuiz, addQuizSection, editQuizSlot, quizStructure, removeQuizSlot, setQuizPages } from "./areas/quizzes/structure.js";
 import { logOut, openSitePage } from "./core/session.js";
 import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
 import { courseStructure, listAssignments, pendingActivities } from "./areas/courses/structure.js";
@@ -47,6 +47,7 @@ const SITE_FUNCTIONS = {
   activitySettings,
   addGradeCategory,
   addQuestionsToQuiz,
+  addQuizSection,
   addSection,
   answerChoice,
   assignmentSubmissions,
@@ -68,6 +69,7 @@ const SITE_FUNCTIONS = {
   discussion,
   duplicateActivity,
   editActivity,
+  editQuizSlot,
   editSection,
   finishQuizAttempt,
   forumDiscussions,
@@ -103,6 +105,7 @@ const SITE_FUNCTIONS = {
   quizStructure,
   readAttempt,
   readReview,
+  removeQuizSlot,
   replyToPost,
   rubric,
   saveSubmission,
@@ -110,6 +113,7 @@ const SITE_FUNCTIONS = {
   setCompletion,
   setDiscussionState,
   setQuizOverride,
+  setQuizPages,
   siteName,
   startDiscussion,
   startQuizAttempt,

@@ -71,6 +71,21 @@ moodle add-questions-to-quiz <activityId> --options
 | `--random` | `{ categoryId: number; count: number; includeSubcategories?: boolean; }` |  |
 | `--page` | `number` |  |
 
+## addQuizSection
+
+Adds a section to a quiz starting at a slot, with its heading and whether its questions are shuffled, as the edit page's "Add a new section heading" and its heading and shuffle controls do. A section starts at a page: the slot must be the first of its page (see `setQuizPages`).
+
+```bash
+moodle add-quiz-section <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--first-slot` (required) | `number` |  |
+| `--heading` (required) | `string` |  |
+| `--shuffle` | `boolean` |  |
+
 ## addSection
 
 Adds a section after another one (at the end without it), named when a name is given.
@@ -403,6 +418,22 @@ moodle edit-activity <courseId> <activityId> --options
 | `--visibility` | `"shown" \| "hidden" \| "stealth"` |  |
 | `--section-id` | `number` |  |
 | `--before-activity-id` | `number` |  |
+
+## editQuizSlot
+
+Changes one slot of a quiz (by its place, from 1): its maximum mark, through the slots' service, and where it is, as dragging it on the edit page does: after another slot (`moveAfter`, 0 for first) and on a page. Moodle lets the mark change after attempts (it regrades them), not the rest.
+
+```bash
+moodle edit-quiz-slot <activityId> <slot> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `slot` | `number` |  |
+| `--max-mark` | `number` |  |
+| `--move-after` | `number` |  |
+| `--page` | `number` |  |
 
 ## editSection
 
@@ -795,7 +826,7 @@ moodle quiz-results <activityId> [--options]
 
 ## quizStructure
 
-A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark.
+A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark, and its sections.
 
 ```bash
 moodle quiz-structure <activityId>
@@ -828,6 +859,19 @@ moodle read-review <attemptId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `attemptId` | `number` |  |
+
+## removeQuizSlot
+
+Removes a slot (by its place, from 1) from a quiz, as the edit page's delete icon does; the question stays in its bank.
+
+```bash
+moodle remove-quiz-slot <activityId> <slot>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `slot` | `number` |  |
 
 ## replyToPost
 
@@ -937,6 +981,19 @@ moodle set-quiz-override <activityId> <userId> --options
 | `--close` | `Date` |  |
 | `--time-limit-minutes` | `number` |  |
 | `--attempts` | `number` |  |
+
+## setQuizPages
+
+Sets a quiz's pages: `perPage` questions a page (0 for all on one), as the edit page's "Repaginate" does, or page breaks exactly after the given slots (and nowhere else), as its page break icons do one by one.
+
+```bash
+moodle set-quiz-pages <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--per-page` (required) | `number` |  |
 
 ## siteName
 

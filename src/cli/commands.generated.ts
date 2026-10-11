@@ -190,6 +190,51 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addQuizSection",
+    "description": "Adds a section to a quiz starting at a slot, with its heading and whether its questions are shuffled, as the edit page's \"Add a new section heading\" and its heading and shuffle controls do. A section starts at a page: the slot must be the first of its page (see `setQuizPages`).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "firstSlot",
+          "optional": false,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "heading",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "shuffle",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addSection",
     "description": "Adds a section after another one (at the end without it), named when a name is given.",
     "params": [
@@ -907,6 +952,59 @@ export const COMMANDS: readonly CommandSpec[] = [
         },
         {
           "name": "beforeActivityId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "editQuizSlot",
+    "description": "Changes one slot of a quiz (by its place, from 1): its maximum mark, through the slots' service, and where it is, as dragging it on the edit page does: after another slot (`moveAfter`, 0 for first) and on a page. Moodle lets the mark change after attempts (it regrades them), not the rest.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "slot",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "maxMark",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "moveAfter",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "page",
           "optional": true,
           "type": "number",
           "value": {
@@ -1641,7 +1739,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "quizStructure",
-    "description": "A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark.",
+    "description": "A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark, and its sections.",
     "params": [
       {
         "name": "activityId",
@@ -1673,6 +1771,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "attemptId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "removeQuizSlot",
+    "description": "Removes a slot (by its place, from 1) from a quiz, as the edit page's delete icon does; the question stays in its bank.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "slot",
         "optional": false,
         "type": "number",
         "value": {
@@ -1910,6 +2030,35 @@ export const COMMANDS: readonly CommandSpec[] = [
         {
           "name": "attempts",
           "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "setQuizPages",
+    "description": "Sets a quiz's pages: `perPage` questions a page (0 for all on one), as the edit page's \"Repaginate\" does, or page breaks exactly after the given slots (and nowhere else), as its page break icons do one by one.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "pages",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "perPage",
+          "optional": false,
           "type": "number",
           "value": {
             "kind": "number"
