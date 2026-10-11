@@ -101,7 +101,7 @@ Someone enrolled in a course, with one or more roles (student, teacher…) and p
 
 ### Question bank
 
-Where a course keeps its questions for quizzes. Since Moodle 5 a shared bank is an activity of its own (module `qbank`), and each quiz has a private bank. The driver lists a course's with `questionBanks` (`QuestionBank`, whose `id` is the bank's course module id, with `type` and `shared`), reads one with `questions`, and adds to it with `importQuestions` (GIFT or Moodle XML) and `createQuestion`; `addQuestionsToQuiz` puts its questions in a quiz. See [Question banks](../areas/question-banks.md).
+Where a course keeps its questions for quizzes. Since Moodle 5 a shared bank is an activity of its own (module `qbank`), and each quiz has a private bank. The driver lists a course's with `questionBanks` (`QuestionBank`, whose `id` is the bank's course module id, with `type` and `shared`), reads one with `questions`, adds to it with `importQuestions` (GIFT or Moodle XML) and `createQuestion`, and changes it with `updateQuestion` (a new version), `setQuestionStatus` and `deleteQuestions` (a question in use is hidden instead); `addQuestionsToQuiz` puts its questions in a quiz. See [Question banks](../areas/question-banks.md).
 
 ### Question category
 

@@ -351,6 +351,19 @@ moodle delete-event <eventId>
 | --- | --- | --- |
 | `eventId` | `number` |  |
 
+## deleteQuestions
+
+Deletes questions from a bank, every version of each, as the bank's delete action does: asked, then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.
+
+```bash
+moodle delete-questions <activityId> <questionIds>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `questionIds` | `number[]` |  |
+
 ## deleteSection
 
 Deletes a section and every activity in it, with their participants' data.
@@ -965,6 +978,19 @@ moodle set-discussion-state <activityId> <discussionId> --options
 | `--pinned` | `boolean` |  |
 | `--locked` | `boolean` |  |
 
+## setQuestionStatus
+
+Sets a question ready (quizzes can use it) or draft, as the bank's status menu does, through its service.
+
+```bash
+moodle set-question-status <questionId> <status>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `questionId` | `number` |  |
+| `status` | `"ready" \| "draft"` |  |
+
 ## setQuizOverride
 
 Sets a user override on a quiz, through its override form: other opening and closing dates, a time limit in minutes, or a number of attempts (0 unlimited); what isn't given stays the quiz's.
@@ -1128,6 +1154,26 @@ moodle update-grade-item <courseId> <itemId> --options
 | `--category` | `number` |  |
 | `--weight` | `number` |  |
 | `--max-grade` | `number` |  |
+
+## updateQuestion
+
+Changes a question of a bank through its type's edit form, with the same inputs as `createQuestion` and only what's given (`answers` replaces them all). Saving makes a new version of the question, with an id of its own: the one returned, which quizzes using the latest version get from then on.
+
+```bash
+moodle update-question <activityId> <questionId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `questionId` | `number` |  |
+| `--name` | `string` |  |
+| `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
+| `--text` | `string` | The question's text (HTML). |
+| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. |
+| `--correct` | `boolean` | True/false: the right answer. |
+| `--category-id` | `number` |  |
+| `--default-mark` | `number` |  |
 
 ## userById
 

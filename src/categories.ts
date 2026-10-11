@@ -189,6 +189,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   questions: CONTENT,
   importQuestions: CONTENT,
   createQuestion: CONTENT,
+  updateQuestion: CONTENT,
+  deleteQuestions: CONTENT,
+  setQuestionStatus: CONTENT,
 
   // Messaging: the person's own notifications; conversations hold others' messages; sending is communication.
   notifications: OWN,

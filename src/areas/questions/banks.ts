@@ -8,6 +8,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { checkLocalFiles } from "../../core/files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
+import { callService } from "../../core/ajax.js";
 import { MoodleError } from "../../core/errors.js";
 
 /** The bank isn't there, or Moodle refused the questions. */
@@ -273,22 +274,7 @@ export async function createQuestion(context: BrowserContext, siteUrl: string, a
     throw new QuestionBankError(`Activity ${activityId} has no question bank you can add to, or category ${category} isn't in it.`);
   });
   try {
-    // The form comes with a few blank answers; "Blanks for more" adds three at a time.
-    for (let i = 0; i < 10 && answers.length > Number((await formValue(page, "noanswers")) ?? answers.length); i++) {
-      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click('form.mform [name="addanswers"]')]);
-    }
-    const values: Record<string, FieldValue> = { name: input.name, "questiontext[text]": input.text, ...(input.defaultMark !== undefined ? { defaultmark: input.defaultMark } : {}) };
-    const choice = await categoryOption(page, input.categoryId);
-    if (choice) values.category = choice;
-    if (input.type === "truefalse") values.correctanswer = input.correct ? 1 : 0;
-    if (input.type === "multichoice") values.single = answers.filter((a) => a.fraction > 0).length > 1 ? 0 : 1;
-    for (const [i, answer] of answers.entries()) {
-      values[input.type === "multichoice" ? `answer[${i}][text]` : `answer[${i}]`] = answer.text;
-      values[`fraction[${i}]`] = await nearestFraction(page, `fraction[${i}]`, answer.fraction);
-      if (answer.feedback !== undefined) values[`feedback[${i}][text]`] = answer.feedback;
-      if (answer.tolerance !== undefined) values[`tolerance[${i}]`] = answer.tolerance;
-    }
-    await setFields(page, { ...values, ...input.fields });
+    await fillQuestionForm(page, input.type, input, { blankRest: false });
     await submitForm(page, "submitbutton");
     // Moodle lands on the bank, naming the question it changed last.
     const id = Number(new URL(page.url()).searchParams.get("lastchanged")) || undefined;
@@ -296,4 +282,151 @@ export async function createQuestion(context: BrowserContext, siteUrl: string, a
   } finally {
     await page.close().catch(() => undefined);
   }
+}
+
+/**
+ * Fills a question's edit form with what's given: name, text, mark, category, the right answer of a
+ * true/false, the answers, and any other field by name. Editing (`blankRest`), the given answers
+ * replace them all: the form's other answer rows are blanked, and Moodle drops blank answers.
+ */
+async function fillQuestionForm(page: Page, type: string, input: Partial<QuestionInput>, { blankRest }: { blankRest: boolean }): Promise<void> {
+  const answers = input.answers;
+  if (answers) {
+    // The form comes with a few blank answers; "Blanks for more" adds three at a time.
+    for (let i = 0; i < 10 && answers.length > Number((await formValue(page, "noanswers")) ?? answers.length); i++) {
+      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click('form.mform [name="addanswers"]')]);
+    }
+  }
+  const values: Record<string, FieldValue> = {};
+  if (input.name !== undefined) values.name = input.name;
+  if (input.text !== undefined) values["questiontext[text]"] = input.text;
+  if (input.defaultMark !== undefined) values.defaultmark = input.defaultMark;
+  const choice = await categoryOption(page, input.categoryId);
+  if (choice) values.category = choice;
+  if (type === "truefalse" && input.correct !== undefined) values.correctanswer = input.correct ? 1 : 0;
+  if (answers) {
+    if (type === "multichoice") values.single = answers.filter((a) => a.fraction > 0).length > 1 ? 0 : 1;
+    const rows = blankRest ? Math.max(answers.length, Number((await formValue(page, "noanswers")) ?? 0)) : answers.length;
+    for (let i = 0; i < rows; i++) {
+      const answer = answers[i];
+      values[type === "multichoice" ? `answer[${i}][text]` : `answer[${i}]`] = answer?.text ?? "";
+      values[`fraction[${i}]`] = await nearestFraction(page, `fraction[${i}]`, answer?.fraction ?? 0);
+      if (answer?.feedback !== undefined) values[`feedback[${i}][text]`] = answer.feedback;
+      else if (!answer && (await formValue(page, `feedback[${i}][text]`)) !== undefined) values[`feedback[${i}][text]`] = "";
+      if (answer?.tolerance !== undefined) values[`tolerance[${i}]`] = answer.tolerance;
+    }
+  }
+  await setFields(page, { ...values, ...input.fields });
+}
+
+/**
+ * Changes a question of a bank through its type's edit form, with the same inputs as
+ * `createQuestion` and only what's given (`answers` replaces them all). Saving makes a new version
+ * of the question, with an id of its own: the one returned, which quizzes using the latest version
+ * get from then on.
+ */
+export async function updateQuestion(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  questionId: number,
+  input: Partial<Omit<QuestionInput, "type">>,
+): Promise<{ changed: string; questionId?: number }> {
+  if (Object.keys(input).length === 0) throw new QuestionBankError("Give what to change in the question: its name, text, answers, mark, category or fields.");
+  await checkBank(context, siteUrl, activityId);
+  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${activityId}&id=${questionId}`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
+    throw new QuestionBankError(`Bank ${activityId} has no question ${questionId} you can edit. Take its id from the bank's questions.`);
+  });
+  try {
+    const type = (await formValue(page, "qtype")) ?? "";
+    if (input.answers && !["multichoice", "shortanswer", "numerical"].includes(type)) {
+      throw new QuestionBankError(`A ${type || "question of this type"}'s answers aren't changed this way; give its form's fields instead.`);
+    }
+    await fillQuestionForm(page, type, input, { blankRest: true });
+    await submitForm(page, "submitbutton");
+    const id = Number(new URL(page.url()).searchParams.get("lastchanged")) || undefined;
+    return { changed: `Saved question ${questionId}${id && id !== questionId ? ` as a new version, question ${id},` : ""} in bank ${activityId}.`, questionId: id };
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+/** Whether a question can still be opened for editing: a deleted one can't, a hidden one can. */
+async function questionExists(context: BrowserContext, siteUrl: string, activityId: number, questionId: number): Promise<boolean> {
+  const page = await openSitePage(context, siteUrl, `question/bank/editquestion/question.php?cmid=${activityId}&id=${questionId}`);
+  try {
+    return (await page.locator('form.mform [name="qtype"]').count()) > 0;
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+/** The delete page's answer: its fatal error, if any, and the confirmation it asks for (its own `confirm`). */
+async function postDelete(page: Page, fields: Record<string, string>): Promise<{ error?: string; confirm?: string }> {
+  return page.evaluate(async (fields) => {
+    const g = globalThis as unknown as {
+      M: { cfg: { wwwroot: string; sesskey: string } };
+      fetch(url: string, init: object): Promise<{ text(): Promise<string> }>;
+      URLSearchParams: new (init: Record<string, string>) => unknown;
+      DOMParser: new () => { parseFromString(html: string, type: string): { querySelector(s: string): { textContent: string | null; value?: string } | null } };
+    };
+    const response = await g.fetch(`${g.M.cfg.wwwroot}/question/bank/deletequestion/delete.php`, {
+      method: "POST",
+      credentials: "same-origin",
+      body: new g.URLSearchParams({ ...fields, sesskey: g.M.cfg.sesskey }),
+    });
+    const html = await response.text();
+    const doc = new g.DOMParser().parseFromString(html, "text/html");
+    const error = (doc.querySelector('[data-rel="fatalerror"] .errormessage')?.textContent ?? "").replace(/\s+/g, " ").trim();
+    // The confirmation's Delete button: a form with the value as a hidden field, or a link carrying it.
+    const confirm = doc.querySelector('form input[name="confirm"]')?.value || /[?&;]confirm=([0-9a-f]{32})/.exec(html)?.[1];
+    return { ...(error ? { error } : {}), ...(confirm ? { confirm } : {}) };
+  }, fields);
+}
+
+/**
+ * Deletes questions from a bank, every version of each, as the bank's delete action does: asked,
+ * then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.
+ */
+export async function deleteQuestions(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  questionIds: number[],
+): Promise<{ changed: string; deleted: number[]; hidden: number[] }> {
+  if (questionIds.length === 0) throw new QuestionBankError("Give the ids of the questions to delete.");
+  await checkBank(context, siteUrl, activityId);
+  const page = await openSitePage(context, siteUrl, `question/edit.php?cmid=${activityId}`);
+  try {
+    if ((await page.locator("body#page-question-edit .questionbankwindow").count()) === 0) {
+      throw new QuestionBankError(`Activity ${activityId} has no question bank you can see. Take a bank's id from the course's question banks.`);
+    }
+    const list = questionIds.join(",");
+    const common = { deleteselected: list, deleteall: "1", cmid: String(activityId), returnurl: `/question/edit.php?cmid=${activityId}` };
+    const asked = await postDelete(page, { ...common, ...Object.fromEntries(questionIds.map((id) => [`q${id}`, "1"])) });
+    if (asked.error || !asked.confirm) throw new QuestionBankError(`Moodle didn't delete the questions from bank ${activityId}: ${(asked.error ?? "its delete page didn't ask to confirm").replace(/\.$/, "")}.`);
+    const done = await postDelete(page, { ...common, confirm: asked.confirm });
+    if (done.error) throw new QuestionBankError(`Moodle didn't delete the questions from bank ${activityId}: ${done.error.replace(/\.$/, "")}.`);
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  const deleted: number[] = [];
+  const hidden: number[] = [];
+  for (const id of questionIds) ((await questionExists(context, siteUrl, activityId, id)) ? hidden : deleted).push(id);
+  const parts = [deleted.length > 0 && `deleted question${deleted.length === 1 ? "" : "s"} ${deleted.join(", ")}`, hidden.length > 0 && `hid ${hidden.join(", ")}, in use`].filter(Boolean);
+  return { changed: `In bank ${activityId}: ${parts.join("; ")}.`, deleted, hidden };
+}
+
+/** Sets a question ready (quizzes can use it) or draft, as the bank's status menu does, through its service. */
+export async function setQuestionStatus(
+  context: BrowserContext,
+  siteUrl: string,
+  questionId: number,
+  status: "ready" | "draft",
+): Promise<{ changed: string; questionId: number; status: "ready" | "draft" }> {
+  if (status !== "ready" && status !== "draft") throw new QuestionBankError(`A question's status is "ready" or "draft", not "${String(status)}".`);
+  const answer = await callService<{ status: boolean; error?: string }>(context, siteUrl, "qbank_editquestion_set_status", { questionid: questionId, status });
+  if (!answer.status) throw new QuestionBankError(`Moodle didn't change question ${questionId}'s status: ${answer.error || "no reason given"}.`);
+  return { changed: `Question ${questionId} is now ${status}.`, questionId, status };
 }
