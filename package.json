@@ -41,6 +41,7 @@
     "lint": "eslint .",
     "test": "tsx --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "test:docker": "node scripts/in-docker.mjs npm test",
+    "test:sandbox": "node scripts/test-sandbox.mjs",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run lint && npm run docs:check && npm run test:docker",
     "docs:install": "npm --prefix docs ci",
