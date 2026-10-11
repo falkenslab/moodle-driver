@@ -49,7 +49,7 @@ On Linux a window needs `DISPLAY` or `WAYLAND_DISPLAY`; without them (a server, 
 
 ## The working tab
 
-Some things can't be done through a function: playing an H5P activity, a page the driver doesn't cover, something a person should see. `tab()` gives the browser's working tab, a Playwright `Page` the program drives as it likes, logged in. It's the same tab following uses while the browser is shown, so the person sees it.
+Some things can't be done through a function: playing an H5P activity, doing a SCORM package (`openScorm` opens its player here), a page the driver doesn't cover, something a person should see. `tab()` gives the browser's working tab, a Playwright `Page` the program drives as it likes, logged in. It's the same tab following uses while the browser is shown, so the person sees it.
 
 ```ts
 const tab = await moodle.tab();
