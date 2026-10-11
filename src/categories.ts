@@ -219,6 +219,10 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   gradeForumUser: ["others-personal", "others-write"],
   // Rating someone's post, entry or record: a judgement of their work.
   rate: ["others-write"],
+  // Workshops: everyone's submissions and assessments; switching the phase opens or closes their work; assessing judges it.
+  workshopInfo: PERSONAL,
+  setWorkshopPhase: ["others-write"],
+  assessWorkshopSubmission: ["others-personal", "others-write"],
   // Everyone's grades, as Moodle exports them.
   exportGrades: PERSONAL,
 
