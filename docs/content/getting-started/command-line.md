@@ -9,18 +9,14 @@ Every operation of the driver is also a command of `moodle`, for trying it, scri
 Everywhere, as a command of your system:
 
 ```bash
-# Once it's on npm
 npm i -g @falkenslab/moodle-driver
-
-# Meanwhile, from a GitHub release's package
-npm i -g https://github.com/falkenslab/moodle-driver/releases/download/v0.3.1/falkenslab-moodle-driver-0.3.1.tgz
 
 # Or from a clone, to follow main
 git clone https://github.com/falkenslab/moodle-driver.git
 cd moodle-driver && npm install && npm link
 ```
 
-`npm i -g github:falkenslab/moodle-driver` doesn't work: npm builds a package installed from git with its development dependencies, and a global install puts those in the wrong place (an npm bug, not the driver's). A release's package comes built, and `npm link` from a clone builds it where it is. npm 11 may warn about the package's scripts (`install-scripts`) when installing a release's package: nothing needs to run, the command works as is.
+`npm i -g github:falkenslab/moodle-driver` doesn't work: npm builds a package installed from git with its development dependencies, and a global install puts those in the wrong place (an npm bug, not the driver's). `npm link` from a clone builds it where it is. npm 11 may warn about the package's scripts (`install-scripts`): nothing needs to run, the command works as is.
 
 In a project that already uses the library, it's there too: `npx moodle …` runs it from `node_modules/.bin`, handy to look at what a function returns while you write your program. Without installing anything: `npx -p @falkenslab/moodle-driver moodle …`.
 

@@ -11,13 +11,13 @@ The driver is a Node.js library with one peer dependency, `playwright-core`, whi
 
 ## Install
 
-The package isn't on npm yet: install it from a GitHub release or from a clone. Each [release](https://github.com/falkenslab/moodle-driver/releases) carries the package, built, as a `.tgz`:
+From npm, with its one peer dependency:
 
 ```bash
-npm install https://github.com/falkenslab/moodle-driver/releases/download/v0.3.1/falkenslab-moodle-driver-0.3.1.tgz playwright-core
+npm install @falkenslab/moodle-driver playwright-core
 ```
 
-Or from a clone, to follow `main` or change the driver:
+Each [GitHub release](https://github.com/falkenslab/moodle-driver/releases) also carries the package, built, as a `.tgz` (`npm install <its URL>`). Or from a clone, to follow `main` or change the driver:
 
 ```bash
 # From a clone, next to your program's folder
@@ -35,12 +35,6 @@ cd moodle-driver && npm install && npm run build
 ```
 
 `npm install` builds the library (`prepare` runs `npm run build`), so a `file:` dependency works as is. After changing the driver's sources, run `npm run build` in it again before your program sees the change.
-
-Once it's published on npm:
-
-```bash
-npm install @falkenslab/moodle-driver playwright-core
-```
 
 ## The browser
 

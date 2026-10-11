@@ -72,7 +72,7 @@ More, complete and commented: [📖 use-case examples](https://falkenslab.github
 Every method is also a command of `moodle`, which comes with the package: no project, no code.
 
 ```bash
-npm i -g https://github.com/falkenslab/moodle-driver/releases/download/v0.3.1/falkenslab-moodle-driver-0.3.1.tgz
+npm i -g @falkenslab/moodle-driver
 moodle login --site https://campus.example.org/   # 🔑 once: a window opens, you log in
 moodle list-courses
 moodle deadlines --days 7
@@ -95,11 +95,9 @@ Tables at a terminal, JSON for scripts, errors with their code and an exit statu
 
 ## 📦 Install
 
-Not on npm yet: each [release](https://github.com/falkenslab/moodle-driver/releases) carries the package, built.
-
 ```bash
-npm install https://github.com/falkenslab/moodle-driver/releases/download/v0.3.1/falkenslab-moodle-driver-0.3.1.tgz playwright-core   # the library, in your project
-npm i -g https://github.com/falkenslab/moodle-driver/releases/download/v0.3.1/falkenslab-moodle-driver-0.3.1.tgz                      # the moodle command, everywhere
+npm install @falkenslab/moodle-driver playwright-core   # the library, in your project
+npm i -g @falkenslab/moodle-driver                      # the moodle command, everywhere
 ```
 
 You need Node.js 20+, a Moodle 4.x or 5.x site, and Edge or Chrome (or let it download Chromium). See [installation](https://falkenslab.github.io/moodle-driver/getting-started/installation).

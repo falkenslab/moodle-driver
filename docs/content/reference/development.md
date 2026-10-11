@@ -17,6 +17,8 @@ npm run docs:check    # every program in the guides compiles against the code
 npm run docs:build    # the site, as published
 ```
 
+`npm publish` runs the typecheck, the lint, the examples' check and the tests in Docker first (`prepublishOnly`): nothing is published unless they pass, so Docker has to be running.
+
 ## Tests run in Docker
 
 The tests launch real browsers against the fake Moodle, one file at a time. They run only in Docker (`scripts/in-docker.mjs`, Playwright's image), never on the developer's desktop, where they'd open windows. One file:

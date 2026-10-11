@@ -42,6 +42,7 @@
     "test": "tsx --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "test:docker": "node scripts/in-docker.mjs npm test",
     "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm run docs:check && npm run test:docker",
     "docs:install": "npm --prefix docs ci",
     "docs:start": "npm --prefix docs start",
     "docs:build": "npm --prefix docs run build",
