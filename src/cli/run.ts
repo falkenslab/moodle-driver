@@ -1,6 +1,7 @@
 // The `moodle` command (ADR-012): every method of the Moodle object from a terminal. `run` takes its
 // surroundings as arguments, so tests run it against the fake Moodle.
 import { mkdirSync, rmSync } from "node:fs";
+import path from "node:path";
 import { ALL_DATA_CATEGORIES, DATA_CATEGORIES, type DataCategory } from "../categories.js";
 import type { Moodle, MoodleOptions } from "../client.js";
 import { MoodleError } from "../core/errors.js";
@@ -129,12 +130,15 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
     const chosen = profileFor(deps.home, site, { profile: ownProfile, as: global.as ?? deps.env.MOODLE_AS });
     // A first login with no name for its profile: a provisional folder, named after the person's username once in.
     pending = !chosen && loggingIn ? pendingProfile(deps.home, site) : undefined;
-    if (!chosen && !pending) {
+    // What anyone can ask without logging in needs no browser, so no profile either.
+    const browserless = command.name === "publicSiteInfo";
+    if (!chosen && !pending && !browserless) {
       const names = listSites(deps.home).filter((p) => p.site === site).map((p) => p.profile);
       if (names.length > 0) throw new UsageError(`${site} has no default profile: pick one with --as (${names.join(", ")}), or make one the default with \`moodle login --as <name>\`.`);
       throw new UsageError(`No profile for ${site} yet: log in with \`moodle login --site ${site}\`.`);
     }
-    const profileDir = chosen?.profileDir ?? pending!;
+    // A browserless command never opens this folder: the object launches no browser until it needs one.
+    const profileDir = chosen?.profileDir ?? pending ?? path.join(deps.home, "sites", ".none");
     // A profile logged in to for the first time has its folder from now on, browser or not.
     if (loggingIn) mkdirSync(profileDir, { recursive: true });
 

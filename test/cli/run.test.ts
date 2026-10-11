@@ -62,6 +62,9 @@ describe("the moodle command", () => {
   it("asks for a site before anything that needs one, and explains a wrong line", async () => {
     const noSite = await moodle(undefined, ["list-courses"]);
     assert.deepEqual([noSite.status, /moodle login --site/.test(noSite.err)], [2, true]);
+    // What anyone can ask needs no profile (the fake site isn't reachable without a browser: any error but that one).
+    const open = await moodle(undefined, ["--site", SITE, "public-site-info"]);
+    assert.doesNotMatch(open.err, /No profile/);
     const unknown = await moodle(undefined, ["--site", SITE, "list-cursos"]);
     assert.deepEqual([unknown.status, /no command "list-cursos"/.test(unknown.err)], [2, true]);
   });
