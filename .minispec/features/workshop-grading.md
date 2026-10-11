@@ -1,6 +1,6 @@
 # Run a workshop's phases and assess its submissions
 
-Issue: none yet (split from [#46](https://github.com/falkenslab/moodle-driver/issues/46), whose forum grading and ratings are done)
+Issue: [#48](https://github.com/falkenslab/moodle-driver/issues/48) (split from [#46](https://github.com/falkenslab/moodle-driver/issues/46))
 
 ## Goal
 
