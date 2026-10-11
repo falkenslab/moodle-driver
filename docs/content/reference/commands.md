@@ -56,6 +56,23 @@ moodle add-grade-category <courseId> --options
 | `--aggregation` | `"mean" \| "median" \| "lowest" \| "highest" \| "mode" \| "weighted-mean" \| "simple-weighted-mean" \| "mean-with-extra-credits" \| "natural"` |  |
 | `--parent-id` | `number` |  |
 
+## addGradeItem
+
+Adds a manual grade item (one graded in the gradebook, not by an activity): out of `maxGrade` (Moodle's default, 100, when left out) or on a scale (`scaleId`), at the course's top level or in `categoryId`, hidden from students when asked. Returns it as the setup shows it.
+
+```bash
+moodle add-grade-item <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--name` (required) | `string` |  |
+| `--max-grade` | `number` |  |
+| `--scale-id` | `number` |  |
+| `--category-id` | `number` |  |
+| `--hidden` | `boolean` |  |
+
 ## addQuestionsToQuiz
 
 Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.
@@ -335,6 +352,32 @@ moodle delete-event <eventId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `eventId` | `number` |  |
+
+## deleteGradeCategory
+
+Deletes a grade category. Moodle moves what it held (items and categories) into its parent and deletes the grades of its total; the course's own category can't be deleted.
+
+```bash
+moodle delete-grade-category <courseId> <categoryId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `categoryId` | `number` |  |
+
+## deleteGradeItem
+
+Deletes a manual grade item and its grades. An activity's item goes with its activity (Moodle would make it again), so it's refused.
+
+```bash
+moodle delete-grade-item <courseId> <itemId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `itemId` | `number` |  |
 
 ## deleteSection
 
@@ -894,6 +937,24 @@ moodle set-discussion-state <activityId> <discussionId> --options
 | `--pinned` | `boolean` |  |
 | `--locked` | `boolean` |  |
 
+## setGrade
+
+Sets a person's grade in a grade item through the gradebook's single view report, as a teacher does there: a manual item takes the grade; an activity's or a category's is overridden (Moodle keeps the override until it's taken off with `override: false`). Feedback and excluding from the totals go the same way. Returns a sentence of what changed and the grade afterwards. Throws `GradebookError` when the item or the person isn't in the course's gradebook, the grade is locked, or Moodle refuses the value (out of range, a scale item it doesn't have).
+
+```bash
+moodle set-grade <courseId> <itemId> <userId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `itemId` | `number` |  |
+| `userId` | `number` |  |
+| `--grade` | `string \| number` | A number, or a scale item's name or value for a scale; `null` empties the grade. |
+| `--feedback` | `string` | Feedback text; an empty string removes it. |
+| `--override` | `boolean` | Override the activity's or category's grade. Giving a grade or feedback to an activity's or a category's item overrides it unless this says `false`; `false` alone gives the grade back to the activity. |
+| `--excluded` | `boolean` | Leave the grade out of the totals. |
+
 ## setQuizOverride
 
 Sets a user override on a quiz, through its override form: other opening and closing dates, a time limit in minutes, or a number of attempts (0 unlimited); what isn't given stays the quiz's.
@@ -1028,6 +1089,23 @@ moodle update-course <courseId> --options
 | `--short-name` | `string` |  |
 | `--summary` | `string` |  |
 | `--settings` | `Record<string, FieldValue>` |  |
+
+## updateGradeCategory
+
+Changes a grade category: its name, its aggregation, its weight in its parent (percent, overriding Natural's automatic one), or moves it into another category. Returns the category afterwards.
+
+```bash
+moodle update-grade-category <courseId> <categoryId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `categoryId` | `number` |  |
+| `--name` | `string` |  |
+| `--aggregation` | `"mean" \| "median" \| "lowest" \| "highest" \| "mode" \| "weighted-mean" \| "simple-weighted-mean" \| "mean-with-extra-credits" \| "natural"` |  |
+| `--weight` | `number` |  |
+| `--parent-id` | `number` |  |
 
 ## updateGradeItem
 

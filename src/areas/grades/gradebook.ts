@@ -327,3 +327,123 @@ export async function addGradeCategory(
   }
   return { changed: `Grade category ${created?.id ?? "?"} "${name}" added${parentId !== undefined ? ` in category ${parentId}` : ""}.`, category: created };
 }
+
+/**
+ * Adds a manual grade item (one graded in the gradebook, not by an activity): out of `maxGrade`
+ * (Moodle's default, 100, when left out) or on a scale (`scaleId`), at the course's top level or in
+ * `categoryId`, hidden from students when asked. Returns it as the setup shows it.
+ */
+export async function addGradeItem(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  { name, maxGrade, scaleId, categoryId, hidden }: { name: string; maxGrade?: number; scaleId?: number; categoryId?: number; hidden?: boolean },
+): Promise<{ changed: string; item?: GradebookItem }> {
+  if (name.trim() === "") throw new MoodleError("Give the grade item a name.", "invalid-input");
+  if (maxGrade !== undefined && scaleId !== undefined) throw new MoodleError("A grade item is out of a maximum grade or on a scale, not both.", "invalid-input");
+  const before = new Set((await gradebookSetup(context, siteUrl, courseId)).items.map((i) => i.id));
+  const values: Record<string, FieldValue> = { itemname: name };
+  if (scaleId !== undefined) Object.assign(values, { gradetype: 2, scaleid: scaleId });
+  if (maxGrade !== undefined) values.grademax = maxGrade;
+  if (hidden !== undefined) values.hidden = hidden;
+  await submitDynamicForm(context, siteUrl, "core_grades\\form\\add_item", { courseid: courseId }, values, async (page) => {
+    if (scaleId === undefined) return;
+    const offered = await page.evaluate(() =>
+      Array.from((globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<{ value: string }> } }).document.querySelectorAll('[name="scaleid"] option')).map((o) => o.value),
+    );
+    if (scaleId === 0 || !offered.includes(String(scaleId))) {
+      throw new GradebookError(`Course ${courseId} can't use scale ${scaleId}; it offers scales ${offered.filter((v) => v !== "0").join(", ") || "none"}.`);
+    }
+  });
+  let created = (await gradebookSetup(context, siteUrl, courseId)).items.find((i) => !before.has(i.id));
+  if (created && categoryId !== undefined) {
+    await moveIntoCategory(context, siteUrl, courseId, `ig${created.id}`, categoryId);
+    created = (await gradebookSetup(context, siteUrl, courseId)).items.find((i) => i.id === created!.id);
+  }
+  return { changed: `Grade item ${created?.id ?? "?"} "${name}" added${categoryId !== undefined ? ` in category ${categoryId}` : ""}.`, item: created };
+}
+
+/**
+ * Changes a grade category: its name, its aggregation, its weight in its parent (percent, overriding
+ * Natural's automatic one), or moves it into another category. Returns the category afterwards.
+ */
+export async function updateGradeCategory(
+  context: BrowserContext,
+  siteUrl: string,
+  courseId: number,
+  categoryId: number,
+  { name, aggregation, weight, parentId }: { name?: string; aggregation?: GradeAggregation; weight?: number; parentId?: number },
+): Promise<{ changed: string; category?: GradebookCategory }> {
+  const current = (await gradebookSetup(context, siteUrl, courseId)).categories.find((c) => c.id === categoryId);
+  if (!current) throw new GradebookError(`Course ${courseId}'s gradebook has no category ${categoryId}: check the id in gradebookSetup.`);
+  if (current.parentId === undefined && (weight !== undefined || parentId !== undefined)) {
+    throw new GradebookError(`Category ${categoryId} is the course's own: it has no weight and can't be moved.`);
+  }
+  if (parentId !== undefined) await moveIntoCategory(context, siteUrl, courseId, `cg${categoryId}`, parentId);
+  if (name !== undefined || aggregation !== undefined || weight !== undefined) {
+    const values: Record<string, FieldValue> = {};
+    if (name !== undefined) values.fullname = name;
+    if (aggregation !== undefined) values.aggregation = AGGREGATION_CODES[aggregation];
+    if (weight !== undefined) Object.assign(values, { grade_item_weightoverride: 1, grade_item_aggregationcoef2: weight });
+    await submitDynamicForm(context, siteUrl, "core_grades\\form\\add_category", { courseid: courseId, category: categoryId }, values, async (page) => {
+      const fields = await page.evaluate(() => {
+        const doc = (globalThis as unknown as { document: { querySelector(s: string): unknown; querySelectorAll(s: string): ArrayLike<{ value: string }> } }).document;
+        return { offered: Array.from(doc.querySelectorAll('[name="aggregation"] option')).map((o) => o.value), weight: doc.querySelector('[name="grade_item_aggregationcoef2"]') !== null };
+      });
+      if (aggregation !== undefined && !fields.offered.includes(String(AGGREGATION_CODES[aggregation]))) {
+        const available = GRADE_AGGREGATIONS.filter((a) => fields.offered.includes(String(AGGREGATION_CODES[a])));
+        throw new GradebookError(`The site doesn't offer the ${aggregation} aggregation; it offers: ${available.join(", ")}.`);
+      }
+      if (weight !== undefined && !fields.weight) throw new GradebookError(`Category ${categoryId}'s parent doesn't aggregate with weights that can be set (Natural): change its aggregation first.`);
+    });
+  }
+  const done = [
+    parentId !== undefined && `moved into category ${parentId}`,
+    name !== undefined && `renamed "${name}"`,
+    aggregation !== undefined && `aggregated by ${aggregation}`,
+    weight !== undefined && `weighted ${weight}%`,
+  ].filter(Boolean);
+  const category = (await gradebookSetup(context, siteUrl, courseId)).categories.find((c) => c.id === categoryId);
+  return { changed: done.length > 0 ? `Grade category ${categoryId} ${done.join(", ")}.` : "Nothing to change.", category };
+}
+
+/** Deletes an element of the setup (`ig<id>`, `cg<id>`) as the setup page's "Delete" does, confirmed. */
+async function deleteElement(context: BrowserContext, siteUrl: string, courseId: number, element: string): Promise<void> {
+  const page = await openSitePage(context, siteUrl, `grade/edit/tree/index.php?id=${courseId}`);
+  try {
+    const sesskey = await page.evaluate(() => (globalThis as unknown as { M: { cfg: { sesskey: string } } }).M.cfg.sesskey);
+    await page.goto(new URL(`grade/edit/tree/index.php?id=${courseId}&action=delete&eid=${element}&confirm=1&sesskey=${sesskey}`, siteUrl).href, { waitUntil: "domcontentloaded" });
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+/**
+ * Deletes a grade category. Moodle moves what it held (items and categories) into its parent and
+ * deletes the grades of its total; the course's own category can't be deleted.
+ */
+export async function deleteGradeCategory(context: BrowserContext, siteUrl: string, courseId: number, categoryId: number): Promise<{ changed: string }> {
+  const category = (await gradebookSetup(context, siteUrl, courseId)).categories.find((c) => c.id === categoryId);
+  if (!category) throw new GradebookError(`Course ${courseId}'s gradebook has no category ${categoryId}: check the id in gradebookSetup.`);
+  if (category.parentId === undefined) throw new GradebookError(`Category ${categoryId} is the course's own: it can't be deleted.`);
+  await deleteElement(context, siteUrl, courseId, `cg${categoryId}`);
+  if ((await gradebookSetup(context, siteUrl, courseId)).categories.some((c) => c.id === categoryId)) {
+    throw new GradebookError(`Moodle didn't delete category ${categoryId}: check you can manage course ${courseId}'s grades.`);
+  }
+  return { changed: `Grade category ${categoryId} "${category.name}" deleted; what it held moved into category ${category.parentId}.` };
+}
+
+/**
+ * Deletes a manual grade item and its grades. An activity's item goes with its activity (Moodle
+ * would make it again), so it's refused.
+ */
+export async function deleteGradeItem(context: BrowserContext, siteUrl: string, courseId: number, itemId: number): Promise<{ changed: string }> {
+  const item = (await gradebookSetup(context, siteUrl, courseId)).items.find((i) => i.id === itemId);
+  if (!item) throw new GradebookError(`Course ${courseId}'s gradebook has no grade item ${itemId}: check the id in gradebookSetup.`);
+  if (item.type !== "manual") throw new GradebookError(`Grade item ${itemId} belongs to an activity (${item.type}): it goes when the activity is deleted, not from the gradebook.`);
+  await deleteElement(context, siteUrl, courseId, `ig${itemId}`);
+  if ((await gradebookSetup(context, siteUrl, courseId)).items.some((i) => i.id === itemId)) {
+    throw new GradebookError(`Moodle didn't delete grade item ${itemId}: check you can manage course ${courseId}'s grades.`);
+  }
+  return { changed: `Grade item ${itemId} "${item.name}" deleted, with its grades.` };
+}

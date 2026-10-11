@@ -13,7 +13,8 @@ import { listCourses, updateCourse } from "./areas/courses/list.js";
 import { downloadFile, type DownloadedFile } from "./core/files.js";
 import { openForm } from "./core/forms.js";
 import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
-import { addGradeCategory, gradebookSetup, graderReport, updateGradeItem } from "./areas/grades/gradebook.js";
+import { addGradeCategory, addGradeItem, deleteGradeCategory, deleteGradeItem, gradebookSetup, graderReport, updateGradeCategory, updateGradeItem } from "./areas/grades/gradebook.js";
+import { setGrade } from "./areas/grades/singleview.js";
 import { myGrades } from "./areas/grades/user-report.js";
 import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./areas/assignments/grading.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
@@ -45,6 +46,7 @@ const SITE_FUNCTIONS = {
   activitiesOverview,
   activitySettings,
   addGradeCategory,
+  addGradeItem,
   addQuestionsToQuiz,
   addSection,
   answerChoice,
@@ -63,6 +65,8 @@ const SITE_FUNCTIONS = {
   deadlines,
   deleteActivity,
   deleteEvent,
+  deleteGradeCategory,
+  deleteGradeItem,
   deleteSection,
   discussion,
   duplicateActivity,
@@ -106,6 +110,7 @@ const SITE_FUNCTIONS = {
   sendMessage,
   setCompletion,
   setDiscussionState,
+  setGrade,
   setQuizOverride,
   siteName,
   startDiscussion,
@@ -116,6 +121,7 @@ const SITE_FUNCTIONS = {
   upcomingEvents,
   updateActivity,
   updateCourse,
+  updateGradeCategory,
   updateGradeItem,
   userById,
   whoAmI,

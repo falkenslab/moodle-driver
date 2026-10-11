@@ -52,15 +52,15 @@ See [survey](#survey): Moodle's `feedback` module is a survey activity, not the 
 
 ### Grade category
 
-A group of grade items in the gradebook that combines its children's grades into a total, with an aggregation method (natural, mean, highest…); the course itself is the top category. The driver reads them with `gradebookSetup` (`GradebookCategory`, with `id`, `itemId` for its total's grade item, `parentId`, `aggregation`, `weight`), creates one with `addGradeCategory` (`aggregation` one of `GRADE_AGGREGATIONS`), and moves items into one with `updateGradeItem`; `myGrades` rows of `kind` `"category"` and `"categoryTotal"` show them. See [Grades and gradebook](../areas/grades-and-gradebook.md).
+A group of grade items in the gradebook that combines its children's grades into a total, with an aggregation method (natural, mean, highest…); the course itself is the top category. The driver reads them with `gradebookSetup` (`GradebookCategory`, with `id`, `itemId` for its total's grade item, `parentId`, `aggregation`, `weight`), creates one with `addGradeCategory` (`aggregation` one of `GRADE_AGGREGATIONS`), changes or deletes one with `updateGradeCategory` and `deleteGradeCategory`, and moves items into one with `updateGradeItem`; `myGrades` rows of `kind` `"category"` and `"categoryTotal"` show them. See [Grades and gradebook](../areas/grades-and-gradebook.md).
 
 ### Grade item
 
-One column of the gradebook: an activity's grade, a manual item, or a category's or the course's total. The driver reads them with `gradebookSetup` (`GradebookItem`, with `id`, `categoryId`, `maxGrade`, `weight`, `weightOverridden`), changes one with `updateGradeItem(courseId, itemId, changes)`, and `graderReport` gives one `GradeColumn` per item and each grade as `{ itemId, grade }`. See [Grades and gradebook](../areas/grades-and-gradebook.md).
+One column of the gradebook: an activity's grade, a manual item, or a category's or the course's total. The driver reads them with `gradebookSetup` (`GradebookItem`, with `id`, `categoryId`, `maxGrade`, `weight`, `weightOverridden`), changes one with `updateGradeItem(courseId, itemId, changes)`, adds and deletes manual ones with `addGradeItem` and `deleteGradeItem`, grades a person in one with `setGrade` (an activity's grade is overridden), and `graderReport` gives one `GradeColumn` per item and each grade as `{ itemId, grade }`. See [Grades and gradebook](../areas/grades-and-gradebook.md).
 
 ### Gradebook
 
-A course's grades and how they're built: its [grade items](#grade-item) and [grade categories](#grade-category), shown as reports ("Grades" in the interface: the user report a participant sees, the grader report a teacher sees, and "Gradebook setup"). The driver reads the user report with `myGrades` (`GradeRow`), everyone's with `graderReport`, the setup with `gradebookSetup`, and changes it with `updateGradeItem` and `addGradeCategory`; the errors are `NoGradeReportError` and `GradebookError`. See [Grades and gradebook](../areas/grades-and-gradebook.md).
+A course's grades and how they're built: its [grade items](#grade-item) and [grade categories](#grade-category), shown as reports ("Grades" in the interface: the user report a participant sees, the grader report a teacher sees, and "Gradebook setup"). The driver reads the user report with `myGrades` (`GradeRow`), everyone's with `graderReport`, the setup with `gradebookSetup`, grades in it with `setGrade`, and changes it with `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` and `deleteGradeCategory`; the errors are `NoGradeReportError` and `GradebookError`. See [Grades and gradebook](../areas/grades-and-gradebook.md).
 
 ### Grading method
 

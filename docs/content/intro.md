@@ -32,7 +32,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Forums | Read discussions and posts, reply, start discussions, pin and lock |
 | Surveys and choices | Answer questionnaires, feedback activities and choices |
 | Lessons, H5P and SCORM | Go through a lesson page by page; read an H5P activity's type and attempts; read a SCORM's attempts and SCOs, open its player, create one from a package |
-| Grades | The person's grades, the grader report, the gradebook setup (categories, weights) |
+| Grades | The person's grades, the grader report, grading and overriding in the gradebook, the gradebook setup (manual items, categories, weights) |
 | Completion | Mark activities done, override completion, read the progress report |
 | People | Participants with roles and groups, inactivity, groups |
 | Overview | The activities overview, deadlines, course updates |

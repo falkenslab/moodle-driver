@@ -145,6 +145,67 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addGradeItem",
+    "description": "Adds a manual grade item (one graded in the gradebook, not by an activity): out of `maxGrade` (Moodle's default, 100, when left out) or on a scale (`scaleId`), at the course's top level or in `categoryId`, hidden from students when asked. Returns it as the setup shows it.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "maxGrade",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "scaleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "categoryId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "hidden",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addQuestionsToQuiz",
     "description": "Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.",
     "params": [
@@ -762,6 +823,50 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "eventId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteGradeCategory",
+    "description": "Deletes a grade category. Moodle moves what it held (items and categories) into its parent and deletes the grades of its total; the course's own category can't be deleted.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "categoryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteGradeItem",
+    "description": "Deletes a manual grade item and its grades. An activity's item goes with its activity (Moodle would make it again), so it's refused.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "itemId",
         "optional": false,
         "type": "number",
         "value": {
@@ -1799,6 +1904,79 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "setGrade",
+    "description": "Sets a person's grade in a grade item through the gradebook's single view report, as a teacher does there: a manual item takes the grade; an activity's or a category's is overridden (Moodle keeps the override until it's taken off with `override: false`). Feedback and excluding from the totals go the same way. Returns a sentence of what changed and the grade afterwards. Throws `GradebookError` when the item or the person isn't in the course's gradebook, the grade is locked, or Moodle refuses the value (out of range, a scale item it doesn't have).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "itemId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "grade",
+          "optional": true,
+          "type": "string | number",
+          "value": {
+            "kind": "string"
+          },
+          "description": "A number, or a scale item's name or value for a scale; `null` empties the grade."
+        },
+        {
+          "name": "feedback",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Feedback text; an empty string removes it."
+        },
+        {
+          "name": "override",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Override the activity's or category's grade. Giving a grade or feedback to an activity's or a category's item overrides it unless this says `false`; `false` alone gives the grade back to the activity."
+        },
+        {
+          "name": "excluded",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Leave the grade out of the totals."
+        }
+      ]
+    }
+  },
+  {
     "name": "setQuizOverride",
     "description": "Sets a user override on a quiz, through its override form: other opening and closing dates, a time limit in minutes, or a number of attempts (0 unlimited); what isn't given stays the quiz's.",
     "params": [
@@ -2129,6 +2307,78 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "Record<string, FieldValue>",
           "value": {
             "kind": "json"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "updateGradeCategory",
+    "description": "Changes a grade category: its name, its aggregation, its weight in its parent (percent, overriding Natural's automatic one), or moves it into another category. Returns the category afterwards.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "categoryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "aggregation",
+          "optional": true,
+          "type": "\"mean\" | \"median\" | \"lowest\" | \"highest\" | \"mode\" | \"weighted-mean\" | \"simple-weighted-mean\" | \"mean-with-extra-credits\" | \"natural\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "mean",
+              "median",
+              "lowest",
+              "highest",
+              "mode",
+              "weighted-mean",
+              "simple-weighted-mean",
+              "mean-with-extra-credits",
+              "natural"
+            ]
+          }
+        },
+        {
+          "name": "weight",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "parentId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
           }
         }
       ]

@@ -177,6 +177,13 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   gradebookSetup: CONTENT,
   updateGradeItem: CONTENT,
   addGradeCategory: CONTENT,
+  addGradeItem: CONTENT,
+  updateGradeCategory: CONTENT,
+  deleteGradeCategory: CONTENT,
+  // Deleting a manual item deletes its grades too.
+  deleteGradeItem: ["course-content", "others-write"],
+  // Grading in the gradebook: reads the grade it changes.
+  setGrade: ["others-personal", "others-write"],
 
   // Question banks: what teachers write.
   questionBanks: CONTENT,
