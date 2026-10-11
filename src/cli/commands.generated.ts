@@ -1075,6 +1075,86 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "exportGrades",
+    "description": "Saves a course's grades into `destDir` as Moodle exports them for a teacher: a spreadsheet (`xlsx`, `ods`), comma-separated text (`csv`) or XML, with the items, group, display and feedback chosen as in the export form. Returns the file as `downloadFile` does (never overwriting one). Throws `GradebookError` when the site has that format's export plugin disabled (naming the ones it has), when an item isn't in the course, or when Moodle refuses the export.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "format",
+          "optional": false,
+          "type": "\"ods\" | \"xml\" | \"xlsx\" | \"csv\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "ods",
+              "xml",
+              "xlsx",
+              "csv"
+            ]
+          }
+        },
+        {
+          "name": "itemIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          },
+          "description": "The grade items to export (ids from `graderReport` or `gradebookSetup`); all of them when left out."
+        },
+        {
+          "name": "groupId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Only this group's members (a group id from `groups`)."
+        },
+        {
+          "name": "display",
+          "optional": true,
+          "type": "GradeExportDisplay[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "How grades are written; the site's default when left out. XML takes only one."
+        },
+        {
+          "name": "feedback",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Include each grade's feedback."
+        },
+        {
+          "name": "destDir",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The folder to save the file in (an absolute path); the `Moodle` object's `downloadDir` when left out there."
+        }
+      ]
+    }
+  },
+  {
     "name": "finishQuizAttempt",
     "description": "Submits an attempt for grading, and gives its review when the quiz shows it.",
     "params": [
@@ -1352,12 +1432,12 @@ export const COMMANDS: readonly CommandSpec[] = [
         {
           "name": "format",
           "optional": false,
-          "type": "\"gift\" | \"xml\"",
+          "type": "\"xml\" | \"gift\"",
           "value": {
             "kind": "enum",
             "values": [
-              "gift",
-              "xml"
+              "xml",
+              "gift"
             ]
           }
         },

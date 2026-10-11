@@ -15,6 +15,7 @@ import { openForm } from "./core/forms.js";
 import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
 import { addGradeCategory, addGradeItem, deleteGradeCategory, deleteGradeItem, gradebookSetup, graderReport, updateGradeCategory, updateGradeItem } from "./areas/grades/gradebook.js";
 import { setGrade } from "./areas/grades/singleview.js";
+import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
 import { myGrades } from "./areas/grades/user-report.js";
 import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./areas/assignments/grading.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
@@ -136,7 +137,7 @@ type Bound<F> = F extends (context: BrowserContext, siteUrl: string, ...rest: in
 export type MoodleMethods = { [K in keyof SiteFunctions]: Bound<SiteFunctions[K]> };
 
 // Functions bound by hand, with the object's defaults: methods of the same name all the same.
-const DEFAULTED = ["activityContent", "answerQuizQuestions", "answerLessonPage", "downloadFile"] as const;
+const DEFAULTED = ["activityContent", "answerQuizQuestions", "answerLessonPage", "downloadFile", "exportGrades"] as const;
 
 /** The names of the methods a `Moodle` has from the driver's functions, one per function of that name. */
 export const MOODLE_METHODS: readonly string[] = [...Object.keys(SITE_FUNCTIONS), ...DEFAULTED];
@@ -149,7 +150,7 @@ export interface MoodleDefaults {
   onProgress?: (elapsedSeconds: number, totalSeconds?: number) => void;
   /** How long `logIn` waits for the person to log in, in milliseconds: five minutes unless given. */
   loginTimeoutMs?: number;
-  /** Where `downloadFile` saves files when not given a folder (an absolute path). */
+  /** Where `downloadFile` and `exportGrades` save files when not given a folder (an absolute path). */
   downloadDir?: string;
 }
 
@@ -186,6 +187,8 @@ export interface Moodle extends MoodleMethods {
   answerLessonPage(activityId: number, answer: Parameters<typeof answerLessonPage>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ changed: string; feedback?: LessonPage; page: LessonPage }>;
   /** `downloadFile`, into the object's `downloadDir` unless given a folder. */
   downloadFile(url: string, destDir?: string): Promise<DownloadedFile>;
+  /** `exportGrades`, into the object's `downloadDir` unless given a folder. */
+  exportGrades(courseId: number, options: ExportGradesOptions): Promise<DownloadedFile>;
   /** The working tab a program drives itself (ADR-007). */
   tab(): Promise<Page>;
   /** `openScorm`: a SCORM's player, on the working tab. */
@@ -257,6 +260,11 @@ export function createMoodle(options: MoodleOptions): Moodle {
       const folder = destDir ?? defaults.downloadDir;
       if (!folder) throw new MoodleError("Give downloadFile a folder, or createMoodle a downloadDir.", "invalid-input");
       return downloadFile(await browser.context(), site, url, folder);
+    },
+    exportGrades: async (courseId, exportOptions) => {
+      const folder = exportOptions.destDir ?? defaults.downloadDir;
+      if (!folder) throw new MoodleError("Give exportGrades a destDir, or createMoodle a downloadDir.", "invalid-input");
+      return exportGrades(await browser.context(), site, courseId, { ...exportOptions, destDir: folder });
     },
     tab: () => browser.tab(),
     openScorm: (activityId, scormOptions) => openScorm(browser, site, activityId, scormOptions),

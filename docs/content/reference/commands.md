@@ -463,6 +463,24 @@ moodle edit-section <courseId> <sectionId> --options
 | `--visible` | `boolean` |  |
 | `--after-section-id` | `number` |  |
 
+## exportGrades
+
+Saves a course's grades into `destDir` as Moodle exports them for a teacher: a spreadsheet (`xlsx`, `ods`), comma-separated text (`csv`) or XML, with the items, group, display and feedback chosen as in the export form. Returns the file as `downloadFile` does (never overwriting one). Throws `GradebookError` when the site has that format's export plugin disabled (naming the ones it has), when an item isn't in the course, or when Moodle refuses the export.
+
+```bash
+moodle export-grades <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--format` (required) | `"ods" \| "xml" \| "xlsx" \| "csv"` |  |
+| `--item-ids` | `number[]` | The grade items to export (ids from `graderReport` or `gradebookSetup`); all of them when left out. |
+| `--group-id` | `number` | Only this group's members (a group id from `groups`). |
+| `--display` | `GradeExportDisplay[]` | How grades are written; the site's default when left out. XML takes only one. |
+| `--feedback` | `boolean` | Include each grade's feedback. |
+| `--dest-dir` | `string` | The folder to save the file in (an absolute path); the `Moodle` object's `downloadDir` when left out there. |
+
 ## finishQuizAttempt
 
 Submits an attempt for grading, and gives its review when the quiz shows it.
@@ -606,7 +624,7 @@ moodle import-questions <activityId> --options
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
-| `--format` (required) | `"gift" \| "xml"` |  |
+| `--format` (required) | `"xml" \| "gift"` |  |
 | `--file` | `string` |  |
 | `--text` | `string` |  |
 | `--category-id` | `number` |  |

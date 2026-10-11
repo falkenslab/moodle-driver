@@ -1,6 +1,6 @@
 # Grades and gradebook
 
-This area covers grades from both sides. A student (or anyone graded in a course) reads their own grade report with `myGrades`. A teacher reads everyone's grades with `graderReport`, grades in the gradebook with `setGrade` (a manual item's grade, or an override of an activity's), reads how the gradebook is built with `gradebookSetup`, and changes it with `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` and `deleteGradeCategory`. Grading a single submission is in [Grading](grading.md); a quiz's attempts and marks are in [Quizzes](quizzes.md).
+This area covers grades from both sides. A student (or anyone graded in a course) reads their own grade report with `myGrades`. A teacher reads everyone's grades with `graderReport` (or saves Moodle's export file with `exportGrades`), grades in the gradebook with `setGrade` (a manual item's grade, or an override of an activity's), reads how the gradebook is built with `gradebookSetup`, and changes it with `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` and `deleteGradeCategory`. Grading a single submission is in [Grading](grading.md); a quiz's attempts and marks are in [Quizzes](quizzes.md).
 
 **Terms:** [gradebook](../reference/glossary.md#gradebook), [grade item](../reference/glossary.md#grade-item), [grade category](../reference/glossary.md#grade-category), [scale](../reference/glossary.md#scale).
 
@@ -238,6 +238,34 @@ At least one option must be given. When the grade already is as asked, nothing i
 
 The report's fields only show in editing mode: when the person's editing mode is off, it's turned on for the change through the page's own switch and back off afterwards. A locked grade, an item or person the course's gradebook doesn't have, and Moodle's warnings when saving (a grade out of range on a site with unlimited grades) throw `GradebookError`. Grading an assignment's submission, with its rubric and feedback files, is [`gradeSubmission`](grading.md); an override here is what Moodle shows in the gradebook over the assignment's own grade.
 
+## exportGrades
+
+Saves a course's grades as Moodle exports them for a teacher ("Export" in the gradebook): a spreadsheet, comma-separated text or XML, the file a secretariat or a spreadsheet expects. `graderReport` gives the same grades as data.
+
+```ts
+function exportGrades(context: BrowserContext, siteUrl: string, courseId: number, options: ExportGradesOptions): Promise<DownloadedFile>;
+
+interface ExportGradesOptions {
+  format: "xlsx" | "ods" | "csv" | "xml";
+  itemIds?: number[];
+  groupId?: number;
+  display?: ("real" | "percentage" | "letter")[];
+  feedback?: boolean;
+  destDir?: string;
+}
+```
+
+- `format`: `xlsx` (Moodle's "Excel spreadsheet" export), `ods`, `csv` (its plain text export, comma-separated) or `xml`; `GRADE_EXPORT_FORMATS` lists them.
+- `itemIds`: the grade items to include (ids from `graderReport` or `gradebookSetup`); all of them when left out. One the export doesn't offer throws `GradebookError` naming those it does.
+- `groupId`: only that group's members, as the export page's group menu chooses them (see `groups` in [Participants](participants.md)).
+- `display`: how each grade is written, one column per way; the site's default when left out. XML takes exactly one.
+- `feedback`: add each grade's feedback.
+- `destDir`: the folder to save the file in, an absolute path. The [Moodle object](../concepts/calling-functions.md) uses its `downloadDir` when it's left out; the function throws without one.
+
+It fills the export page's form (`grade/export/<plugin>/index.php`) and saves the file Moodle sends under Moodle's own name ("mcp-content Grades-20261011_1805-comma_separated.csv"), never overwriting one: `(2)` is added as `downloadFile` does. It returns the same `DownloadedFile` (`path`, `name`, `size`). Besides the grades, Moodle's export carries each person's first and last names, ID number, institution, department and email address.
+
+An administrator can disable export formats: asking for one the site doesn't offer throws `GradebookError` naming those it does ("The site doesn't export grades as xlsx; it exports as: csv, ods, xml."), read from the gradebook's navigation menu. Moodle's XML export takes only items with an ID number: when the course has none, or `itemIds` names one without, it throws `GradebookError` before sending anything. A course the person can't export (no permission) throws `GradebookError` with Moodle's reason.
+
 ## Recalculation
 
 Moodle recalculates a course's grades after some changes (a deleted activity, changed weights or aggregations). While it does, the grader report shows a progress bar instead of the table, and `graderReport` throws `GradebookError` saying so. Waiting a moment and calling again is enough; there is nothing to fix.
@@ -289,7 +317,7 @@ console.log(mine.find((row) => row.kind === "courseTotal")?.grade);
 From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 
 - `myGrades`: `own`.
-- `graderReport`: `others-personal` (everyone's grades).
+- `graderReport`, `exportGrades`: `others-personal` (everyone's grades; the export adds their emails).
 - `gradebookSetup`, `updateGradeItem`, `addGradeItem`, `addGradeCategory`, `updateGradeCategory`, `deleteGradeCategory`: `course-content` (the gradebook's structure, nobody's grades).
 - `deleteGradeItem`: `course-content` and `others-write` (a manual item's grades go with it).
 - `setGrade`: `others-personal` and `others-write` (reads and decides a person's grade).
