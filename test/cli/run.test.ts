@@ -74,7 +74,8 @@ describe("the moodle command", () => {
     assert.match(login.out, /status +already-logged-in/);
     const saved = JSON.parse(await readFile(path.join(home, "config.json"), "utf8")) as { site: string };
     assert.equal(saved.site, SITE);
-    assert.deepEqual(JSON.parse(await readFile(path.join(home, "sites", "moodle.test", "site.json"), "utf8")), { url: SITE });
+    // The fake gives no username: the profile is named by the user's id.
+    assert.deepEqual(JSON.parse(await readFile(path.join(home, "sites", "moodle.test", "site.json"), "utf8")), { url: SITE, default: "user-4" });
 
     // The site comes from the config now.
     const table = await moodle(context, ["list-courses"]);

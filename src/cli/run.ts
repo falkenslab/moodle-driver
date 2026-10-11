@@ -1,6 +1,6 @@
 // The `moodle` command (ADR-012): every method of the Moodle object from a terminal. `run` takes its
 // surroundings as arguments, so tests run it against the fake Moodle.
-import { mkdirSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { ALL_DATA_CATEGORIES, DATA_CATEGORIES, type DataCategory } from "../categories.js";
 import type { Moodle, MoodleOptions } from "../client.js";
 import { MoodleError } from "../core/errors.js";
@@ -8,7 +8,7 @@ import { NotLoggedInError } from "../core/session.js";
 import { parseSiteUrl } from "../options.js";
 import { UsageError, commandName, findCommand, kebab, methodArguments, splitLine } from "./args.js";
 import { COMMANDS } from "./commands.generated.js";
-import { forgetSite, listSites, loadConfig, loadSite, migrate, profileFor, saveConfig, saveSite, tidy } from "./config.js";
+import { forgetSite, listSites, loadConfig, loadSite, nameProfile, pendingProfile, profileFor, saveConfig, saveSite } from "./config.js";
 import { render } from "./output.js";
 import type { CommandSpec } from "./spec.js";
 
@@ -20,8 +20,6 @@ export interface CliDeps {
   cwd: string;
   /** The command's home: the default site, and a folder per site with its profiles (ADR-013). */
   home: string;
-  /** Where an older version kept them, moved into `home` on first run. */
-  legacyHome?: string;
   /** Whether stdout is a terminal: progress and readable output then, JSON to a pipe. */
   interactive: boolean;
   version: string;
@@ -41,7 +39,7 @@ function overview(): string {
     "",
     "Global options:",
     "  --site <url>       The Moodle site (remembered after login; or MOODLE_SITE)",
-    "  --as <name>        The account on the site: its own profile (or MOODLE_AS; \"default\" unless told)",
+    "  --as <name>        The profile on the site, by name (or MOODLE_AS; the site's default unless told)",
     "  --profile <dir>    A browser profile folder of your own (or MOODLE_PROFILE)",
     "  --json             Print JSON (the default when the output isn't a terminal)",
     "  --show             Show the browser while the command works",
@@ -79,6 +77,8 @@ const categoriesOf = (name: string): readonly DataCategory[] | undefined => DATA
 /** Runs one command line; returns the exit status (0 done, 1 failed, 2 a command line that doesn't fit). */
 export async function run(argv: string[], deps: CliDeps): Promise<number> {
   let moodle: Moodle | undefined;
+  // A first login's provisional profile, removed if the login doesn't get to name it.
+  let pending: string | undefined;
   try {
     const typed = commandName(argv);
     const own = typed === "sites" || typed === "forget";
@@ -98,9 +98,6 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
       deps.stdout(overview());
       return global.help ? 0 : 2;
     }
-    const notice = deps.legacyHome ? migrate(deps.home, deps.legacyHome) : undefined;
-    if (notice) deps.stderr(notice);
-    tidy(deps.home);
     if (typed === "sites") {
       const text = render(listSites(deps.home), global.json || !deps.interactive);
       deps.stdout(text === "(none)" ? "No sites yet: `moodle login --site https://campus.example.org/`." : text);
@@ -128,7 +125,18 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
     if (!rawSite) throw new UsageError("No site yet: log in first with `moodle login --site https://campus.example.org/`, or give --site.");
     const site = parseSiteUrl(rawSite);
     const ownProfile = global.profile ?? deps.env.MOODLE_PROFILE;
-    const { profileDir, as } = profileFor(deps.home, site, { profile: ownProfile, as: global.as ?? deps.env.MOODLE_AS });
+    const loggingIn = command.name === "logIn";
+    const chosen = profileFor(deps.home, site, { profile: ownProfile, as: global.as ?? deps.env.MOODLE_AS });
+    // A first login with no name for its profile: a provisional folder, named after the person's username once in.
+    pending = !chosen && loggingIn ? pendingProfile(deps.home, site) : undefined;
+    if (!chosen && !pending) {
+      const names = listSites(deps.home).filter((p) => p.site === site).map((p) => p.profile);
+      if (names.length > 0) throw new UsageError(`${site} has no default profile: pick one with --as (${names.join(", ")}), or make one the default with \`moodle login --as <name>\`.`);
+      throw new UsageError(`No profile for ${site} yet: log in with \`moodle login --site ${site}\`.`);
+    }
+    const profileDir = chosen?.profileDir ?? pending!;
+    // A profile logged in to for the first time has its folder from now on, browser or not.
+    if (loggingIn) mkdirSync(profileDir, { recursive: true });
 
     if (global.allow) {
       const allowed = global.allow.split(",").map((c) => c.trim()) as DataCategory[];
@@ -147,16 +155,20 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
     if (global.show) await moodle.setVisible(true);
     const method = (moodle as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>)[command.name]!;
     const result = await method.apply(moodle, args);
-    if (command.name === "logIn") {
-      // The site becomes the default; the profile used is remembered for it.
+    if (loggingIn) {
+      // The site becomes the default, and the profile logged in with becomes the site's.
+      let name = chosen?.name;
+      if (pending) {
+        const userId = (result as { userId: number }).userId;
+        const username = await moodle.whoAmI().then((me) => me.username).catch(() => undefined);
+        await moodle.close();
+        name = nameProfile(deps.home, site, pending, username ?? `user-${userId}`);
+        pending = undefined;
+      }
       const record = loadSite(deps.home, site);
-      mkdirSync(profileDir, { recursive: true });
-      saveSite(deps.home, {
-        url: site,
-        as: as === "default" ? undefined : as,
-        profileDir: ownProfile ?? record?.profileDir,
-      });
+      saveSite(deps.home, { url: site, default: ownProfile ? undefined : name, profileDir: ownProfile ?? record?.profileDir });
       saveConfig(deps.home, { ...config, site });
+      if (name && deps.interactive) deps.stderr(`Profile "${name}" is the default for ${site}.`);
     }
     const text = render(result, global.json || !deps.interactive);
     if (text) deps.stdout(text);
@@ -178,6 +190,7 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
     return 1;
   } finally {
     await moodle?.close().catch(() => undefined);
+    if (pending) rmSync(pending, { recursive: true, force: true });
   }
 }
 

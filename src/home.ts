@@ -1,6 +1,7 @@
-// Where the `moodle` command keeps each site's browser profile (ADR-013): `~/.moodle-driver` on every
-// system, a folder per site. The library still chooses no folder by itself; a program that wants to
-// share the command's sessions asks for one here.
+// Where the `moodle` command keeps each site's browser profiles (ADR-013): `~/.moodle-driver` on every
+// system, a folder per site, a named profile per account. The library still chooses no folder by
+// itself; a program that wants to share the command's sessions asks for one here.
+import { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { MoodleError } from "./core/errors.js";
@@ -21,16 +22,34 @@ export function siteDir(site: string, home = defaultHome()): string {
   return path.join(home, "sites", siteFolderName(site));
 }
 
-/** The name of a site's own account: the profile used without `--as`. */
-export const DEFAULT_PROFILE = "default";
+/** A profile's name from a Moodle username: anything but letters, digits, dots, hyphens and underscores as `_`. */
+export function profileName(username: string): string {
+  const name = username.trim().replace(/[^\w.-]/g, "_").replace(/^\.+/, "");
+  return name === "" ? "user" : name;
+}
 
 /**
  * The browser profile folder the `moodle` command uses for an account on a site:
- * `sites/<host>/profiles/<as>`, `default` unless named (another account on the same site has a
- * name of its own). Pass it as `profileDir` to share the command's session; `home` is
- * `~/.moodle-driver` unless given.
+ * `sites/<host>/profiles/<as>`. Without `as`, the site's default (the account last logged in with,
+ * named in its `site.json`); `MoodleError` with code `not-found` when the command hasn't logged in to
+ * the site. Pass it as `profileDir` to share the command's session; `home` is `~/.moodle-driver`
+ * unless given.
  */
-export function siteProfileDir(site: string, { as = DEFAULT_PROFILE, home = defaultHome() }: { as?: string; home?: string } = {}): string {
-  if (!/^[\w.-]+$/.test(as) || as === "." || as === "..") throw new MoodleError(`A profile's name is letters, digits, dots, hyphens and underscores: "${as}".`, "invalid-input");
+export function siteProfileDir(site: string, { as, home = defaultHome() }: { as?: string; home?: string } = {}): string {
+  if (as === undefined) {
+    let record: { default?: string; profileDir?: string } | undefined;
+    try {
+      record = JSON.parse(readFileSync(path.join(siteDir(site, home), "site.json"), "utf8")) as typeof record;
+    } catch {
+      // No site.json: the command hasn't logged in to this site.
+    }
+    if (record?.default) return siteProfileDir(site, { as: record.default, home });
+    if (record?.profileDir) return record.profileDir;
+    const url = parseSiteUrl(site);
+    throw new MoodleError(`There's no profile for ${url} yet: log in with \`moodle login --site ${url}\`, or name one with \`as\`.`, "not-found");
+  }
+  if (!/^[\w.-]+$/.test(as) || as.startsWith(".")) {
+    throw new MoodleError(`A profile's name is letters, digits, dots, hyphens and underscores, not starting with a dot: "${as}".`, "invalid-input");
+  }
   return path.join(siteDir(site, home), "profiles", as);
 }

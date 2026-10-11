@@ -86,7 +86,7 @@ Errors go to standard error as `code: message` (the [error codes](../concepts/er
 | Option | What it does |
 | --- | --- |
 | `--site <url>` | The Moodle site; or `MOODLE_SITE`; remembered after `moodle login` |
-| `--as <name>` | The account on the site, each with its own profile; or `MOODLE_AS`; `default` unless told |
+| `--as <name>` | The profile on the site, by name; or `MOODLE_AS`; the site's default unless told |
 | `--profile <dir>` | A browser profile folder of your own, over everything else; or `MOODLE_PROFILE` |
 | `--json` | Print JSON even at a terminal |
 | `--show` | Show the browser while the command works (see [The browser](../concepts/browser.md)) |
@@ -103,22 +103,23 @@ moodle login --site https://aulavirtual.uni-b.es/
 moodle --site https://campus.uni-a.es/ list-courses
 ```
 
-Every account on a site has a name and a profile of its own, with its own session: the first one, logged in without `--as`, is `default`. For another account on the same site (a teacher and a student, say), give it a name. The site remembers the name last logged in with; `--as` (or `MOODLE_AS`) picks another for one command.
+Every account on a site has a profile of its own, with its own session, and a name: the first login names it after the person's Moodle username (`profiles/a.martin/`). The profile last logged in with is the site's default, named in its `site.json`. For another account on the same site (a teacher and a student, say), log in again with a name of your choice; `--as` (or `MOODLE_AS`) picks one for a command.
 
 ```bash
-moodle login --site https://campus.uni-a.es/ --as student
-moodle --as student my-grades 3
-moodle --as default who-am-i
+moodle login --site https://campus.uni-a.es/            # profile "a.martin", the default
+moodle login --site https://campus.uni-a.es/ --as student   # profile "student", now the default
+moodle --as a.martin who-am-i
+moodle login --as a.martin                               # back to a.martin as the default
 ```
 
-`moodle sites` lists every site and profile: which is the default and whether it has a session file (Moodle may still have ended the session). `moodle forget <site>` deletes a site with its profiles and sessions, and `moodle forget <site> --as <name>` one profile.
+`moodle sites` lists every site and profile: which is the default and whether it has a session file (Moodle may still have ended the session). `moodle forget <site>` deletes a site with its profiles and sessions, and `moodle forget <site> --as <name>` one profile; forgetting the default leaves the site without one until the next `login` (or an `--as`).
 
 ```text
 $ moodle sites
 site                            profile  default  session  path
 ------------------------------  -------  -------  -------  --------------------------------------------------------------
-https://aulavirtual.uni-b.es/   default  true     true     /home/ada/.moodle-driver/sites/aulavirtual.uni-b.es/profiles/default
-https://campus.uni-a.es/        default  false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/default
+https://aulavirtual.uni-b.es/   ada      true     true     /home/ada/.moodle-driver/sites/aulavirtual.uni-b.es/profiles/ada
+https://campus.uni-a.es/        a.martin false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/a.martin
 https://campus.uni-a.es/        student  false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/student
 ```
 
@@ -130,16 +131,14 @@ Everything is in `~/.moodle-driver`, the same on Windows, Linux and macOS (`MOOD
 ~/.moodle-driver/
 ├── config.json                  the default site
 └── sites/<host>/                one folder per site (localhost:8080 is localhost_8080)
-    ├── site.json                its URL, and the account it uses unless told
-    └── profiles/<name>/         one browser profile per account, with its session (moodle-session.json):
-                                 default/, and one per --as name
+    ├── site.json                its URL, and its default profile by name
+    └── profiles/<name>/         one browser profile per account, with its session (moodle-session.json),
+                                 named after the Moodle username or by --as
 ```
 
 Treat `~/.moodle-driver` as you'd treat a logged-in browser: its profiles hold the sessions. On Linux and macOS its files are readable only by you.
 
-Earlier versions kept these in `~/.config/moodle-driver` (`%APPDATA%\moodle-driver` on Windows); the first run of this one moves them, and says so once.
-
-A program using the library can share the command's sessions: `siteProfileDir(site)` (or `siteProfileDir(site, { as: "student" })`) gives the same folder, to pass as `profileDir`. One browser uses a profile at a time, so not while a command runs on it.
+A program using the library can share the command's sessions: `siteProfileDir(site)` gives the site's default profile (or `siteProfileDir(site, { as: "student" })` a named one), to pass as `profileDir`. One browser uses a profile at a time, so not while a command runs on it.
 
 ## As a student, as a teacher
 
