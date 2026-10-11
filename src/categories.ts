@@ -197,7 +197,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
 
   // The calendar: the person's upcoming events; course events are what teachers set.
   upcomingEvents: ["own", "course-content"],
+  calendarEvent: ["own", "course-content"],
   createEvent: CONTENT,
+  updateEvent: CONTENT,
   deleteEvent: CONTENT,
 
   // H5P: the content (course content) and the person's own attempts.

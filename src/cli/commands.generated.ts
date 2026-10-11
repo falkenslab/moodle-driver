@@ -360,6 +360,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "calendarEvent",
+    "description": "One calendar event by its id, as `upcomingEvents` gives them.",
+    "params": [
+      {
+        "name": "eventId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "callService",
     "description": "Calls one of Moodle's AJAX services as the logged-in person.",
     "params": [
@@ -2191,6 +2205,87 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "json"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "updateEvent",
+    "description": "Changes a calendar event through the calendar's own form, opened on it: only what's given changes. A new start keeps the event's length unless a new one is given. Returns the event as the calendar has it afterwards.",
+    "params": [
+      {
+        "name": "eventId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "HTML, sent as written."
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          }
+        },
+        {
+          "name": "durationMinutes",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "The new length in minutes; 0 leaves the event without one."
+        },
+        {
+          "name": "until",
+          "optional": true,
+          "type": "Date",
+          "value": {
+            "kind": "date"
+          },
+          "description": "The new end, instead of a length in minutes."
+        },
+        {
+          "name": "location",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "wholeSeries",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "For an event of a repeated series: change every event of the series (Moodle's default), or only this one."
         }
       ]
     }

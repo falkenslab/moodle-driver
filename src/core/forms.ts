@@ -229,10 +229,11 @@ export async function submitForm(page: Page, button: string): Promise<void> {
 /**
  * The values of a Moodle date selector's parts (`name[day]`, `[month]`, `[year]`, `[hour]`,
  * `[minute]`) for `date`, in the person's time zone (`M.cfg.usertimezone`), which is how Moodle
- * reads them. Its "enable" checkbox, when it has one, is the caller's to set first.
+ * reads them. Its "enable" checkbox, when it has one, is the caller's to set first. `timeZone` is for a
+ * form without Moodle's page around it (a fragment), which has no `M.cfg`: `readPageConfig()` gives it.
  */
-export async function dateSelectorValues(page: Page, name: string, date: Date): Promise<Record<string, FieldValue>> {
-  const timeZone = await page.evaluate(() => (globalThis as unknown as { M?: { cfg?: { usertimezone?: string } } }).M?.cfg?.usertimezone ?? "UTC");
+export async function dateSelectorValues(page: Page, name: string, date: Date, timeZone?: string): Promise<Record<string, FieldValue>> {
+  timeZone ??= await page.evaluate(() => (globalThis as unknown as { M?: { cfg?: { usertimezone?: string } } }).M?.cfg?.usertimezone ?? "UTC");
   let parts: Intl.DateTimeFormatPart[];
   try {
     parts = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(date);

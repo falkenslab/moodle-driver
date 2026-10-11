@@ -139,6 +139,18 @@ moodle assignment-submissions <activityId> [--options]
 | `activityId` | `number` |  |
 | `--include-content` | `boolean` |  |
 
+## calendarEvent
+
+One calendar event by its id, as `upcomingEvents` gives them.
+
+```bash
+moodle calendar-event <eventId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `eventId` | `number` |  |
+
 ## callService
 
 Calls one of Moodle's AJAX services as the logged-in person.
@@ -1055,6 +1067,25 @@ moodle update-course <courseId> --options
 | `--short-name` | `string` |  |
 | `--summary` | `string` |  |
 | `--settings` | `Record<string, FieldValue>` |  |
+
+## updateEvent
+
+Changes a calendar event through the calendar's own form, opened on it: only what's given changes. A new start keeps the event's length unless a new one is given. Returns the event as the calendar has it afterwards.
+
+```bash
+moodle update-event <eventId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `eventId` | `number` |  |
+| `--name` | `string` |  |
+| `--description` | `string` | HTML, sent as written. |
+| `--start` | `Date` |  |
+| `--duration-minutes` | `number` | The new length in minutes; 0 leaves the event without one. |
+| `--until` | `Date` | The new end, instead of a length in minutes. |
+| `--location` | `string` |  |
+| `--whole-series` | `boolean` | For an event of a repeated series: change every event of the series (Moodle's default), or only this one. |
 
 ## updateGradeItem
 

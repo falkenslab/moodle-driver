@@ -45,7 +45,7 @@ setFields(page, values, formSelector?): Promise<void>; // by field name, in orde
 uploadToDraft(page, draftItemId, filePaths): Promise<void>; // as the file picker's upload does
 removeFromDraft(page, draftItemId, names): Promise<void>; // as the file manager's delete does, by name
 submitForm(page, button): Promise<void>; // throws FormError with Moodle's messages
-dateSelectorValues(page, name, date); // a date selector's parts, in the person's time zone
+dateSelectorValues(page, name, date, timeZone?); // a date selector's parts, in the person's time zone (the page's, or the one given)
 dateSelectorDate(page, name); // the date a selector holds
 ```
 

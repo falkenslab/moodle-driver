@@ -5,7 +5,7 @@ import { createBrowserManager, type BrowserManager } from "./browser/manager.js"
 import { parseSiteUrl, type BrowserOptions, type Trail } from "./options.js";
 import { activitySettings, addSection, createActivity, deleteActivity, deleteSection, duplicateActivity, editActivity, editSection, updateActivity } from "./areas/activities/build.js";
 import { callService } from "./core/ajax.js";
-import { createEvent, deleteEvent, upcomingEvents } from "./areas/calendar/calendar.js";
+import { calendarEvent, createEvent, deleteEvent, updateEvent, upcomingEvents } from "./areas/calendar/calendar.js";
 import { answerChoice, getChoice } from "./areas/surveys/choice.js";
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
@@ -49,6 +49,7 @@ const SITE_FUNCTIONS = {
   addSection,
   answerChoice,
   assignmentSubmissions,
+  calendarEvent,
   completionReport,
   conversation,
   conversations,
@@ -118,6 +119,7 @@ const SITE_FUNCTIONS = {
   upcomingEvents,
   updateActivity,
   updateCourse,
+  updateEvent,
   updateGradeItem,
   userById,
   whoAmI,
