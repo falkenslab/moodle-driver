@@ -12,6 +12,17 @@ export class NotAForumError extends MoodleError {
   }
 }
 
+/**
+ * Moodle refused to change or delete a post: the editing time is over, the person is neither its
+ * author nor a moderator, or it has replies a student can't delete. The message is Moodle's reason.
+ */
+export class ForumError extends MoodleError {
+  override name = "ForumError";
+  constructor(message: string) {
+    super(message, "forum");
+  }
+}
+
 /** A discussion as the forum page lists it. */
 export interface DiscussionRow {
   id: number;

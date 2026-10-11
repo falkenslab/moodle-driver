@@ -43,6 +43,7 @@ openForm(context, siteUrl, path): Promise<Page>; // waits for editors and Moodle
 formValue(page, name): Promise<string | undefined>; // a hidden field's value
 setFields(page, values, formSelector?): Promise<void>; // by field name, in order
 uploadToDraft(page, draftItemId, filePaths): Promise<void>; // as the file picker's upload does
+removeFromDraft(page, draftItemId, names): Promise<void>; // as the file manager's delete does, by name
 submitForm(page, button): Promise<void>; // throws FormError with Moodle's messages
 dateSelectorValues(page, name, date); // a date selector's parts, in the person's time zone
 dateSelectorDate(page, name); // the date a selector holds

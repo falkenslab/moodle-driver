@@ -12,7 +12,7 @@ import { activityContent, type ActivityContent, type ContentType } from "./areas
 import { listCourses, updateCourse } from "./areas/courses/list.js";
 import { downloadFile, type DownloadedFile } from "./core/files.js";
 import { openForm } from "./core/forms.js";
-import { discussion, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
+import { deletePost, discussion, editPost, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
 import { addGradeCategory, gradebookSetup, graderReport, updateGradeItem } from "./areas/grades/gradebook.js";
 import { myGrades } from "./areas/grades/user-report.js";
 import { assignmentSubmissions, gradeSubmission, grantExtension, rubric } from "./areas/assignments/grading.js";
@@ -63,10 +63,12 @@ const SITE_FUNCTIONS = {
   deadlines,
   deleteActivity,
   deleteEvent,
+  deletePost,
   deleteSection,
   discussion,
   duplicateActivity,
   editActivity,
+  editPost,
   editSection,
   finishQuizAttempt,
   forumDiscussions,

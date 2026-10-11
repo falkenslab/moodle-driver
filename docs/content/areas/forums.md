@@ -1,6 +1,6 @@
 # Forums
 
-A forum's discussions and their posts as plain data, posting as the person (replies and new discussions, with attachments), and a teacher's moderation (pinning and locking discussions). Students and teachers read and post alike, within what the forum allows them; pinning and locking need the moderation rights a teacher has.
+A forum's discussions and their posts as plain data, posting as the person (replies and new discussions, with attachments), editing and deleting posts, and a teacher's moderation (pinning and locking discussions, changing or removing anyone's posts). Students and teachers read and post alike, within what the forum allows them; pinning and locking need the moderation rights a teacher has.
 
 **Terms:** [participant](../reference/glossary.md#participant), [instance id](../reference/glossary.md#instance-id), [notification](../reference/glossary.md#notification).
 
@@ -125,14 +125,59 @@ function setDiscussionState(
 
 It's idempotent: what's already so is left alone, and a call that changes nothing calls no service and answers `"Nothing to change."`. A state not given isn't touched. Throws `NotAForumError` when the forum has no such discussion, and `MoodleServiceError` when Moodle refuses (the person can't pin or lock discussions).
 
+## editPost
+
+Changes a post through Moodle's own post form (`post.php?edit=`), as its author or a moderator: only what's given changes. Returns the post afterwards, as `discussion` reads it.
+
+```ts
+function editPost(context: BrowserContext, siteUrl: string, postId: number, changes: PostChanges): Promise<{
+  changed: string;
+  post?: ForumPost;
+}>;
+
+interface PostChanges {
+  subject?: string;
+  message?: string;
+  files?: { add?: string[]; remove?: string[] };
+}
+```
+
+- `message`: the new message as HTML, replacing the old one.
+- `files.add`: absolute paths of local files to attach; `files.remove`: attachments to remove, by name (as `discussion` lists them in `attachments`).
+- With nothing to change, it opens no form and answers `"Nothing to change."`.
+
+Moodle lets the author edit a post only within the site's editing time (30 minutes by default) and a moderator (a teacher, `mod/forum:editanypost`) edit any post at any time. Errors before anything is saved: a `MoodleError` when the message or the subject is empty (`invalid-input`), when a file path isn't absolute or doesn't exist, or when the forum takes no attachments (`not-available`); `FormError` when the post has no attachment by a name to remove. `ForumError` with Moodle's reason when it refuses: the editing time is over, the post is someone else's, or there's no such post.
+
+## deletePost
+
+Deletes a post and every reply under it, through Moodle's own confirmation (`post.php?delete=`). A discussion's first post takes the whole discussion.
+
+```ts
+function deletePost(context: BrowserContext, siteUrl: string, postId: number): Promise<{
+  changed: string;
+  discussionId?: number;
+  replies: number;
+  discussionDeleted: boolean;
+}>;
+```
+
+- `replies`: how many replies went with it, at any depth.
+- `discussionDeleted`: the post was the discussion's first, so the discussion is gone.
+
+The author deletes their own post within the editing time and while it has no replies; a moderator (`mod/forum:deleteanypost`) deletes any post, replies included. Throws `ForumError` with Moodle's reason when it refuses (someone else's post, a post with replies, the editing time over, no such post).
+
 ## NotAForumError
 
 The class every forum function throws when the id isn't a forum's course module, the person can't view it, or a discussion isn't there. Its message says where to take the right id from (the course structure, the forum's discussions). Catch it with `instanceof NotAForumError`.
 
+## ForumError
+
+What `editPost` and `deletePost` throw when Moodle refuses to change or delete a post; its message ends with Moodle's own reason, in the site's language. Code `forum`.
+
 ## Example
 
 ```ts
-import { NotAForumError } from "@falkenslab/moodle-driver";
+import { ForumError, NotAForumError } from "@falkenslab/moodle-driver";
 
 // `moodle` is the object from createMoodle(), as in the getting-started pages.
 const forumId = 37;
@@ -146,7 +191,9 @@ try {
     const { posts } = await moodle.discussion(first.id);
     const opening = posts[0]!;
     console.log(`${opening.author.fullName}: ${opening.text}`);
-    await moodle.replyToPost(opening.id, { message: "<p>Thanks, Ada. The loop ends at 2.</p>", subscribe: false });
+    const reply = await moodle.replyToPost(opening.id, { message: "<p>Thanks, Ada. The loop ends at 2.</p>", subscribe: false });
+    // A second thought, within the editing time.
+    if (reply.postId) await moodle.editPost(reply.postId, { message: "<p>Thanks, Ada. The loop ends at 3.</p>" });
   }
 
   const started = await moodle.startDiscussion(forumId, {
@@ -158,7 +205,7 @@ try {
   // As a teacher: keep it on top and closed to replies.
   if (started.discussionId) await moodle.setDiscussionState(forumId, started.discussionId, { pinned: true, locked: true });
 } catch (error) {
-  if (error instanceof NotAForumError) console.error(error.message);
+  if (error instanceof NotAForumError || error instanceof ForumError) console.error(error.message);
   else throw error;
 }
 ```
@@ -168,5 +215,6 @@ try {
 - `forumDiscussions`, `discussion`: `others-personal` (others' names and posts).
 - `replyToPost`, `startDiscussion`: `communication` (writing before others).
 - `setDiscussionState`: `others-personal` and `communication`.
+- `editPost`, `deletePost`: `communication` (one's own posts) and `others-write` (a moderator changing or removing someone else's).
 
 See [Data categories](../concepts/data-categories.md).

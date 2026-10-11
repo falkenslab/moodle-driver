@@ -771,6 +771,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deletePost",
+    "description": "Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a discussion's first post takes the whole discussion. Only a moderator deletes a post with replies, or someone else's. `replies` says how many replies went with it. Throws `ForumError` with Moodle's reason when it refuses.",
+    "params": [
+      {
+        "name": "postId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "deleteSection",
     "description": "Deletes a section and every activity in it, with their participants' data.",
     "params": [
@@ -912,6 +926,53 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "number"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "editPost",
+    "description": "Changes a post through Moodle's own post form (`post.php?edit=`), as its author (within the site's editing time) or a moderator: only what's given changes. Returns the post afterwards. Throws `ForumError` with Moodle's reason when it refuses.",
+    "params": [
+      {
+        "name": "postId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "subject",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "message",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The new message (HTML), replacing the old one."
+        },
+        {
+          "name": "files",
+          "optional": true,
+          "type": "{ add?: string[]; remove?: string[]; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Attachments to add (absolute local paths) and to remove (by name, as the post lists them)."
         }
       ]
     }

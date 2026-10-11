@@ -62,7 +62,7 @@ What can go wrong, besides `checkLocalFiles`' errors:
 - The upload fails: a `FormError` whose `fields` hold one `{ field: "files", message }` per file with Moodle's answer, such as a file over the size limit or of a type the activity doesn't accept, or `the site has no upload repository enabled` when the site turned the upload repository off.
 - Moodle refuses the form when it's saved: a `FormError` with Moodle's messages by field.
 
-`updateActivity` doesn't change an activity's files: the ones there stay. The low-level `uploadToDraft(page, draftItemId, filePaths)` uploads to any form opened with `openForm` (see [low-level access](../concepts/low-level.md)).
+`updateActivity` doesn't change an activity's files: the ones there stay. The low-level `uploadToDraft(page, draftItemId, filePaths)` uploads to any form opened with `openForm`, and `removeFromDraft(page, draftItemId, names)` removes files from it by name (see [low-level access](../concepts/low-level.md)).
 
 ## Example
 
@@ -87,4 +87,4 @@ for (const file of assignment.descriptionFiles) {
 
 ## Data categories
 
-`downloadFile` is `course-content` and `others-personal`: the same function saves a course's files and a submission's or a post's, so a program that must not reach others' work checks where the URL came from. `checkLocalFiles` and `fileNameFor` are `none`; `uploadToDraft` is `any`. The uploading functions are classified by what they do: `createActivity` is `course-content`, `saveSubmission` is `own`, `replyToPost` and `startDiscussion` are `communication`, `importQuestions` is `course-content`. See [data categories](../concepts/data-categories.md).
+`downloadFile` is `course-content` and `others-personal`: the same function saves a course's files and a submission's or a post's, so a program that must not reach others' work checks where the URL came from. `checkLocalFiles` and `fileNameFor` are `none`; `uploadToDraft` and `removeFromDraft` are `any`. The uploading functions are classified by what they do: `createActivity` is `course-content`, `saveSubmission` is `own`, `replyToPost`, `startDiscussion` and `editPost` are `communication` (`editPost` also `others-write`, a moderator's edit), `importQuestions` is `course-content`. See [data categories](../concepts/data-categories.md).

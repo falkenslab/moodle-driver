@@ -94,8 +94,8 @@ export {
 } from "./areas/questions/banks.js";
 
 // Forums, surveys, choices, lessons, H5P.
-export { NotAForumError } from "./areas/forums/discussions.js";
-export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, type ForumDiscussion, type ForumPost, type PostInput } from "./areas/forums/posts.js";
+export { NotAForumError, ForumError } from "./areas/forums/discussions.js";
+export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, editPost, deletePost, type ForumDiscussion, type ForumPost, type PostInput, type PostChanges } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";
 export { getChoice, answerChoice, ChoiceError, type Choice } from "./areas/surveys/choice.js";
 export { lessonPage, answerLessonPage, LessonError, type LessonField, type LessonPage } from "./areas/lessons/lessons.js";

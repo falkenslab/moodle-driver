@@ -31,6 +31,7 @@ export type MoodleErrorCode =
   | "completion"
   | "course"
   | "not-a-forum"
+  | "forum"
   | "gradebook"
   | "no-grade-report"
   | "not-an-h5p-activity"

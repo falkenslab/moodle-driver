@@ -3,6 +3,7 @@ import path from "node:path";
 import type { BrowserContext, Page } from "playwright-core";
 import { openSitePage } from "./session.js";
 import { MoodleError } from "./errors.js";
+import { inPage } from "./inPage.js";
 
 /** A form field's value: text, a number, a checkbox, or a multiple select's values. */
 export type FieldValue = string | number | boolean | string[];
@@ -170,6 +171,42 @@ export async function uploadToDraft(page: Page, draftItemId: string, filePaths: 
     { draftItemId, files },
   );
   if (errors.length > 0) throw new FormError("Uploading failed:", errors.map((message) => ({ field: "files", message })));
+}
+
+/**
+ * Removes files by name from a form's draft area (its top folder), as the file manager's delete
+ * does; the files the area had stay until the form is saved. Throws `FormError` naming the files the
+ * area doesn't have, before removing any.
+ */
+export async function removeFromDraft(page: Page, draftItemId: string, names: string[]): Promise<void> {
+  // Through inPage(): the page code has a helper of its own.
+  const errors = await inPage(
+    page,
+    async ({ draftItemId, names }: { draftItemId: string; names: string[] }) => {
+      const g = globalThis as unknown as {
+        M: { cfg: { wwwroot: string; sesskey: string } };
+        fetch(url: string, init: object): Promise<{ json(): Promise<unknown> }>;
+        URLSearchParams: new (init: Record<string, string>) => unknown;
+      };
+      const ask = async (action: string, extra: Record<string, string> = {}) => {
+        const body = new g.URLSearchParams({ sesskey: g.M.cfg.sesskey, itemid: draftItemId, filepath: "/", ...extra });
+        const response = await g.fetch(`${g.M.cfg.wwwroot}/repository/draftfiles_ajax.php?action=${action}`, { method: "POST", body, credentials: "same-origin" });
+        return response.json().catch(() => null);
+      };
+      const listing = (await ask("list")) as { list?: { filename?: string; type?: string }[] } | null;
+      const present = (listing?.list ?? []).filter((item) => item.type !== "folder").map((item) => item.filename);
+      const missing = names.filter((name) => !present.includes(name));
+      if (missing.length > 0) return missing.map((name) => `${name}: not among the files (${present.join(", ") || "none"})`);
+      const failed: string[] = [];
+      for (const name of names) {
+        // Moodle answers the folder the file was in, or false when nothing was deleted.
+        if (!(await ask("delete", { filename: name }))) failed.push(`${name}: Moodle didn't delete it`);
+      }
+      return failed;
+    },
+    { draftItemId, names },
+  );
+  if (errors.length > 0) throw new FormError("Removing files failed:", errors.map((message) => ({ field: "files", message })));
 }
 
 /**

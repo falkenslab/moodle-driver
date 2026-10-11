@@ -336,6 +336,18 @@ moodle delete-event <eventId>
 | --- | --- | --- |
 | `eventId` | `number` |  |
 
+## deletePost
+
+Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a discussion's first post takes the whole discussion. Only a moderator deletes a post with replies, or someone else's. `replies` says how many replies went with it. Throws `ForumError` with Moodle's reason when it refuses.
+
+```bash
+moodle delete-post <postId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `postId` | `number` |  |
+
 ## deleteSection
 
 Deletes a section and every activity in it, with their participants' data.
@@ -403,6 +415,21 @@ moodle edit-activity <courseId> <activityId> --options
 | `--visibility` | `"shown" \| "hidden" \| "stealth"` |  |
 | `--section-id` | `number` |  |
 | `--before-activity-id` | `number` |  |
+
+## editPost
+
+Changes a post through Moodle's own post form (`post.php?edit=`), as its author (within the site's editing time) or a moderator: only what's given changes. Returns the post afterwards. Throws `ForumError` with Moodle's reason when it refuses.
+
+```bash
+moodle edit-post <postId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `postId` | `number` |  |
+| `--subject` | `string` |  |
+| `--message` | `string` | The new message (HTML), replacing the old one. |
+| `--files` | `{ add?: string[]; remove?: string[]; }` | Attachments to add (absolute local paths) and to remove (by name, as the post lists them). |
 
 ## editSection
 

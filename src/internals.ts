@@ -4,7 +4,7 @@
 export { callService, readPageConfig, type PageConfig } from "./core/ajax.js";
 export { openSitePage, fetchSitePage, readSessionFacts, htmlSessionFacts, readMoodleConfig, isLoggedIn, pageIsLoggedIn, moodleErrorMessage, type SessionFacts } from "./core/session.js";
 export { readOwnProfile } from "./core/login.js";
-export { openForm, formValue, setFields, submitForm, uploadToDraft, dateSelectorValues, dateSelectorDate } from "./core/forms.js";
+export { openForm, formValue, setFields, submitForm, uploadToDraft, removeFromDraft, dateSelectorValues, dateSelectorDate } from "./core/forms.js";
 export { inPage } from "./core/inPage.js";
 export { decodeEntities, readTexts, readMedia } from "./core/text.js";
 export { readingSeconds, pause } from "./core/pace.js";
