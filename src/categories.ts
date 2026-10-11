@@ -148,8 +148,14 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   readReview: ["own", "others-personal"],
   setQuizOverride: ["others-write"],
   quizResults: PERSONAL,
+  questionsToGrade: PERSONAL,
+  gradeQuizQuestion: ["others-personal", "others-write"],
   quizStructure: CONTENT,
   addQuestionsToQuiz: CONTENT,
+  editQuizSlot: CONTENT,
+  removeQuizSlot: CONTENT,
+  setQuizPages: CONTENT,
+  addQuizSection: CONTENT,
 
   // Forums.
   forumDiscussions: PERSONAL,
@@ -183,6 +189,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   questions: CONTENT,
   importQuestions: CONTENT,
   createQuestion: CONTENT,
+  updateQuestion: CONTENT,
+  deleteQuestions: CONTENT,
+  setQuestionStatus: CONTENT,
 
   // Messaging: the person's own notifications; conversations hold others' messages; sending is communication.
   notifications: OWN,

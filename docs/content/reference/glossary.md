@@ -101,7 +101,7 @@ Someone enrolled in a course, with one or more roles (student, teacher…) and p
 
 ### Question bank
 
-Where a course keeps its questions for quizzes. Since Moodle 5 a shared bank is an activity of its own (module `qbank`), and each quiz has a private bank. The driver lists a course's with `questionBanks` (`QuestionBank`, whose `id` is the bank's course module id, with `type` and `shared`), reads one with `questions`, and adds to it with `importQuestions` (GIFT or Moodle XML) and `createQuestion`; `addQuestionsToQuiz` puts its questions in a quiz. See [Question banks](../areas/question-banks.md).
+Where a course keeps its questions for quizzes. Since Moodle 5 a shared bank is an activity of its own (module `qbank`), and each quiz has a private bank. The driver lists a course's with `questionBanks` (`QuestionBank`, whose `id` is the bank's course module id, with `type` and `shared`), reads one with `questions`, adds to it with `importQuestions` (GIFT or Moodle XML) and `createQuestion`, and changes it with `updateQuestion` (a new version), `setQuestionStatus` and `deleteQuestions` (a question in use is hidden instead); `addQuestionsToQuiz` puts its questions in a quiz. See [Question banks](../areas/question-banks.md).
 
 ### Question category
 
@@ -109,11 +109,11 @@ A folder of questions inside a [question bank](#question-bank); each bank has a 
 
 ### Quiz
 
-The activity of questions a participant answers in [attempts](#attempt), graded automatically where it can be (module `quiz`). The driver covers the student's side (`quizInfo`, `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`, `readReview`) and the teacher's (`quizResults`, `quizStructure`, `addQuestionsToQuiz`, `setQuizOverride`); its errors are `QuizError`. See [Quizzes](../areas/quizzes.md).
+The activity of questions a participant answers in [attempts](#attempt), graded automatically where it can be (module `quiz`). The driver covers the student's side (`quizInfo`, `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`, `readReview`) and the teacher's (`quizResults`, `questionsToGrade`, `gradeQuizQuestion`, `quizStructure`, `addQuestionsToQuiz`, `editQuizSlot`, `removeQuizSlot`, `setQuizPages`, `addQuizSection`, `setQuizOverride`); its errors are `QuizError`. See [Quizzes](../areas/quizzes.md).
 
 ### Review
 
-The page of a finished [attempt](#attempt) that shows its summary and questions with their state, mark, feedback and right answer, as far as the quiz's review options allow ("Review" in the interface). The driver reads it with `readReview(attemptId)` (`summary` and `questions`), and `finishQuizAttempt` returns it as `review` when the quiz shows it right away. See [Quizzes](../areas/quizzes.md).
+The page of a finished [attempt](#attempt) that shows its summary and questions with their state, mark, feedback and right answer, as far as the quiz's review options allow ("Review" in the interface). The driver reads it with `readReview(attemptId)` (`summary` and `questions`, with the teacher's `comment` on a question graded by hand), and `finishQuizAttempt` returns it as `review` when the quiz shows it right away. See [Quizzes](../areas/quizzes.md).
 
 ### Role
 
@@ -137,7 +137,7 @@ The token Moodle gives each session (`M.cfg.sesskey` in its pages) and expects w
 
 ### Slot
 
-A question's place in a quiz, numbered from 1 in the quiz's order; the interface shows question numbers instead, which skip descriptions. In an attempt, answers are given by slot: `Question.slot` in `startQuizAttempt`, `readAttempt` and `readReview`, and `answerQuizQuestions` takes `{ slot, responses }[]`, with field names such as `q9:1_answer` (`q<usage>:<slot>_<name>`); `quizStructure` lists a quiz's slots as `QuizSlot` (`id`, `page`, `questionId`, `type`, `mark`), and `quizResults` gives each attempt's marks per slot. See [Quizzes](../areas/quizzes.md).
+A question's place in a quiz, numbered from 1 in the quiz's order; the interface shows question numbers instead, which skip descriptions. In an attempt, answers are given by slot: `Question.slot` in `startQuizAttempt`, `readAttempt` and `readReview`, and `answerQuizQuestions` takes `{ slot, responses }[]`, with field names such as `q9:1_answer` (`q<usage>:<slot>_<name>`); `quizStructure` lists a quiz's slots as `QuizSlot` (`id`, `slot`, `page`, `questionId`, `type`, `mark`) and its sections (a heading before a group of pages, whose questions may be shuffled), `editQuizSlot` and `removeQuizSlot` take a slot, and `quizResults` gives each attempt's marks per slot. See [Quizzes](../areas/quizzes.md).
 `moodle.answerQuizQuestions(9, [{ slot: 1, responses: { "q9:1_answer": "1" } }])`
 
 ### Submission

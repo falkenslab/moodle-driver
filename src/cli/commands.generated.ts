@@ -190,6 +190,51 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addQuizSection",
+    "description": "Adds a section to a quiz starting at a slot, with its heading and whether its questions are shuffled, as the edit page's \"Add a new section heading\" and its heading and shuffle controls do. A section starts at a page: the slot must be the first of its page (see `setQuizPages`).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "firstSlot",
+          "optional": false,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "heading",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "shuffle",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addSection",
     "description": "Adds a section after another one (at the end without it), named when a name is given.",
     "params": [
@@ -771,6 +816,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteQuestions",
+    "description": "Deletes questions from a bank, every version of each, as the bank's delete action does: asked, then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "questionIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      }
+    ]
+  },
+  {
     "name": "deleteSection",
     "description": "Deletes a section and every activity in it, with their participants' data.",
     "params": [
@@ -917,6 +984,59 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "editQuizSlot",
+    "description": "Changes one slot of a quiz (by its place, from 1): its maximum mark, through the slots' service, and where it is, as dragging it on the edit page does: after another slot (`moveAfter`, 0 for first) and on a page. Moodle lets the mark change after attempts (it regrades them), not the rest.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "slot",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "maxMark",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "moveAfter",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "page",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "editSection",
     "description": "Renames, shows or hides, or moves a section after another one.",
     "params": [
@@ -1036,6 +1156,51 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "gradeQuizQuestion",
+    "description": "Grades one question of a finished attempt by hand, with a comment, through Moodle's comment form (the review's \"Make comment or override mark\"): an essay waiting for grading, or any question whose mark the teacher overrides. The mark is in the question's points (0 to its maximum in the quiz). Returns the attempt's grade afterwards when the results report shows it.",
+    "params": [
+      {
+        "name": "attemptId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "slot",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "mark",
+          "optional": false,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "comment",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "gradeSubmission",
@@ -1538,6 +1703,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "questionsToGrade",
+    "description": "The questions of a quiz that wait for grading by hand (essays…), as its manual grading report lists them, each with the finished attempts whose answer requires grading (from the results report). People as user id and full name.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "quizInfo",
     "description": "A quiz's page as the person sees it: its description and dates, the person's attempts with their summary, and whether they can start one.",
     "params": [
@@ -1582,7 +1761,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "quizStructure",
-    "description": "A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark.",
+    "description": "A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark, and its sections.",
     "params": [
       {
         "name": "activityId",
@@ -1614,6 +1793,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "attemptId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "removeQuizSlot",
+    "description": "Removes a slot (by its place, from 1) from a quiz, as the edit page's delete icon does; the question stays in its bank.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "slot",
         "optional": false,
         "type": "number",
         "value": {
@@ -1799,6 +2000,32 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "setQuestionStatus",
+    "description": "Sets a question ready (quizzes can use it) or draft, as the bank's status menu does, through its service.",
+    "params": [
+      {
+        "name": "questionId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "status",
+        "optional": false,
+        "type": "\"ready\" | \"draft\"",
+        "value": {
+          "kind": "enum",
+          "values": [
+            "ready",
+            "draft"
+          ]
+        }
+      }
+    ]
+  },
+  {
     "name": "setQuizOverride",
     "description": "Sets a user override on a quiz, through its override form: other opening and closing dates, a time limit in minutes, or a number of attempts (0 unlimited); what isn't given stays the quiz's.",
     "params": [
@@ -1851,6 +2078,35 @@ export const COMMANDS: readonly CommandSpec[] = [
         {
           "name": "attempts",
           "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "setQuizPages",
+    "description": "Sets a quiz's pages: `perPage` questions a page (0 for all on one), as the edit page's \"Repaginate\" does, or page breaks exactly after the given slots (and nowhere else), as its page break icons do one by one.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "pages",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "perPage",
+          "optional": false,
           "type": "number",
           "value": {
             "kind": "number"
@@ -2178,6 +2434,95 @@ export const COMMANDS: readonly CommandSpec[] = [
         },
         {
           "name": "maxGrade",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "updateQuestion",
+    "description": "Changes a question of a bank through its type's edit form, with the same inputs as `createQuestion` and only what's given (`answers` replaces them all). Saving makes a new version of the question, with an id of its own: the one returned, which quizzes using the latest version get from then on.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "questionId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "input",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Any other field of the type's form, by name."
+        },
+        {
+          "name": "text",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The question's text (HTML)."
+        },
+        {
+          "name": "answers",
+          "optional": true,
+          "type": "{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers."
+        },
+        {
+          "name": "correct",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "True/false: the right answer."
+        },
+        {
+          "name": "categoryId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "defaultMark",
           "optional": true,
           "type": "number",
           "value": {

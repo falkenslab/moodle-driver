@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { QuestionBankError, createQuestion, importQuestions, questionBanks, questions } from "../../../src/index.js";
+import { QuestionBankError, createQuestion, deleteQuestions, importQuestions, questionBanks, questions, setQuestionStatus, updateQuestion } from "../../../src/index.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -13,7 +13,8 @@ after(() => browser?.close());
 /**
  * A made-up course 3 with a shared bank (cmid 36: categories 13 and 14, context 70) and a quiz's own
  * (cmid 27), shaped like Moodle 5.2's pages: the banks page, the bank page per category, the import
- * form with its upload repository, and the multichoice edit form.
+ * form with its upload repository, the multichoice edit form (new, or question 20 with three answers,
+ * saved as a new version), and the delete page (asking, then confirming; question 20 is in use).
  */
 function fakeBanks() {
   const bank = new Map<number, { id: number; name: string; type: string }[]>([
@@ -23,6 +24,8 @@ function fakeBanks() {
   let nextId = 30;
   const uploads: string[] = [];
   const posted: URLSearchParams[] = [];
+  const deleted = new Set<number>();
+  const hidden = new Set<number>();
   const page = (bodyId: string, body: string) => moodlePage({ userId: 3, bodyId, body });
   const html = (route: Route, body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
   const go = (route: Route, to: string) => html(route, `<script>location.replace("${SITE}${to}")</script>`);
@@ -88,32 +91,49 @@ function fakeBanks() {
             const form = new URLSearchParams(route.request().postData() ?? "");
             posted.push(form);
             const id = nextId++;
+            // Editing saves a new version in the old one's place.
+            const old = bank.get(14)!.findIndex((q) => q.id === Number(form.get("id")));
+            if (old >= 0) bank.get(14)!.splice(old, 1);
             bank.get(14)!.push({ id, name: form.get("name")!, type: form.get("qtype")! });
             return go(route, `question/edit.php?cmid=36&lastchanged=${id}`);
           }
           const fractions = `<option value="0.0">None</option><option value="1.0">100%</option><option value="0.5">50%</option><option value="0.3333333">33.33333%</option><option value="-0.5">-50%</option>`;
-          const answers = [0, 1].map((i) => `<textarea name="answer[${i}][text]"></textarea><select name="fraction[${i}]">${fractions}</select><textarea name="feedback[${i}][text]"></textarea>`).join("");
+          const editing = Number(url.searchParams.get("id"));
+          if (editing && deleted.has(editing)) return html(route, page("page-question-bank-editquestion-question", `<div data-rel="fatalerror"><p class="errormessage">This question does not exist</p></div>`));
+          const rows = editing ? ["while", "do", "for"] : ["", ""];
+          const answers = rows.map((text, i) => `<textarea name="answer[${i}][text]">${text}</textarea><select name="fraction[${i}]">${fractions}</select><textarea name="feedback[${i}][text]"></textarea>`).join("");
           return html(
             route,
             page(
               "page-question-type-multichoice",
-              `<form class="mform" method="post" action="${SITE}question/bank/editquestion/question.php"><input type="hidden" name="qtype" value="multichoice"><input type="hidden" name="noanswers" value="2">
-<select name="category"><option value="14,70">Default</option></select><input name="name"><textarea name="questiontext[text]"></textarea>
+              `<form class="mform" method="post" action="${SITE}question/bank/editquestion/question.php"><input type="hidden" name="qtype" value="multichoice"><input type="hidden" name="noanswers" value="${rows.length}">${editing ? `<input type="hidden" name="id" value="${editing}">` : ""}
+<select name="category"><option value="14,70">Default</option></select><input name="name" value="${editing ? "Loop" : ""}"><textarea name="questiontext[text]"></textarea>
 <select name="single"><option value="0">Multiple</option><option value="1">One</option></select>${answers}<input type="submit" name="submitbutton" value="Save"></form>`,
             ),
           );
+        }
+        case "/question/bank/deletequestion/delete.php": {
+          const form = new URLSearchParams(route.request().postData() ?? "");
+          posted.push(form);
+          const ids = (form.get("deleteselected") ?? "").split(",").map(Number);
+          if (!form.get("confirm")) {
+            return html(route, page("page-question-bank-deletequestion-delete", `<form method="post" action="${SITE}question/bank/deletequestion/delete.php"><input type="hidden" name="deleteselected" value="${ids.join(",")}"><input type="hidden" name="confirm" value="0123456789abcdef0123456789abcdef"><button type="submit">Delete</button></form>`));
+          }
+          for (const id of ids) (id === 20 ? hidden : deleted).add(id);
+          return go(route, "question/edit.php?cmid=36");
         }
         default:
           return route.fallback();
       }
     });
   };
-  return { routes, uploads, posted };
+  return { routes, uploads, posted, deleted, hidden };
 }
 
 async function open(fake: ReturnType<typeof fakeBanks>): Promise<BrowserContext> {
   const context = await browser!.newContext();
-  await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+  const statuses = (args: Record<string, unknown>) => (args.status === "ready" || args.status === "draft" ? { status: true, statusname: String(args.status) } : { status: false, statusname: "", error: "Unrecognised status" });
+  await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: { qbank_editquestion_set_status: statuses } });
   await fake.routes(context);
   return context;
 }
@@ -183,6 +203,39 @@ describe("createQuestion", { skip: !browser && "no system browser" }, () => {
     const form = fake.posted[0]!;
     assert.deepEqual([form.get("name"), form.get("single"), form.get("fraction[0]"), form.get("fraction[1]"), form.get("feedback[0][text]")], ["Infinite loop", "1", "1.0", "-0.5", "Right."]);
     await assert.rejects(createQuestion(context, SITE, 36, { type: "truefalse", name: "X", text: "X" }), /needs its right answer/);
+    await context.close();
+  });
+});
+
+describe("updateQuestion, deleteQuestions and setQuestionStatus", { skip: !browser && "no system browser" }, () => {
+  it("changes only what's given, replaces the answers, and returns the new version's id", async () => {
+    const fake = fakeBanks();
+    const context = await open(fake);
+    const result = await updateQuestion(context, SITE, 36, 20, { text: "<p>Which checks first?</p>", answers: [{ text: "while", fraction: 1 }, { text: "do", fraction: 0 }] });
+    assert.deepEqual(result, { changed: "Saved question 20 as a new version, question 30, in bank 36.", questionId: 30 });
+    const form = fake.posted[0]!;
+    assert.deepEqual([form.get("name"), form.get("questiontext[text]"), form.get("answer[1][text]"), form.get("answer[2][text]"), form.get("fraction[0]"), form.get("single")], ["Loop", "<p>Which checks first?</p>", "do", "", "1.0", "1"]);
+    assert.deepEqual((await questions(context, SITE, 36)).questions.map((q) => q.id), [30]);
+    await assert.rejects(updateQuestion(context, SITE, 36, 20, {}), /Give what to change/);
+    await context.close();
+  });
+
+  it("deletes questions, telling those Moodle hid because they're in use", async () => {
+    const fake = fakeBanks();
+    const context = await open(fake);
+    const result = await deleteQuestions(context, SITE, 36, [20, 25]);
+    assert.deepEqual(result, { changed: "In bank 36: deleted question 25; hid 20, in use.", deleted: [25], hidden: [20] });
+    const [ask, confirm] = fake.posted;
+    assert.deepEqual([ask?.get("deleteselected"), ask?.get("q25"), ask?.get("deleteall"), ask?.get("confirm"), ask?.get("sesskey")], ["20,25", "1", "1", null, "s1"]);
+    assert.deepEqual([confirm?.get("deleteselected"), confirm?.get("confirm"), confirm?.get("cmid")], ["20,25", "0123456789abcdef0123456789abcdef", "36"]);
+    await assert.rejects(deleteQuestions(context, SITE, 36, []), /Give the ids/);
+    await context.close();
+  });
+
+  it("sets a question ready or draft through the bank's service", async () => {
+    const context = await open(fakeBanks());
+    assert.deepEqual(await setQuestionStatus(context, SITE, 20, "draft"), { changed: "Question 20 is now draft.", questionId: 20, status: "draft" });
+    await assert.rejects(setQuestionStatus(context, SITE, 20, "hidden" as "ready"), /"ready" or "draft"/);
     await context.close();
   });
 });

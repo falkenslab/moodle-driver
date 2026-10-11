@@ -1,6 +1,6 @@
 # Question banks
 
-A course's question banks as Moodle 5 organizes them: shared banks are activities of their own (module `qbank`), and every quiz keeps a private bank. A teacher (anyone who can manage the course's questions) lists the banks, reads a bank's categories and questions, imports questions from GIFT or Moodle XML (a file or text), and creates single questions through their type's form. Students have no access to banks. Questions in a bank are what [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) puts in a quiz.
+A course's question banks as Moodle 5 organizes them: shared banks are activities of their own (module `qbank`), and every quiz keeps a private bank. A teacher (anyone who can manage the course's questions) lists the banks, reads a bank's categories and questions, imports questions from GIFT or Moodle XML (a file or text), creates single questions through their type's form, edits them, sets them ready or draft, and deletes them. Students have no access to banks. Questions in a bank are what [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) puts in a quiz.
 
 **Terms:** [question bank](../reference/glossary.md#question-bank), [question category](../reference/glossary.md#question-category), [slot](../reference/glossary.md#slot).
 
@@ -10,7 +10,7 @@ A bank is identified by its activity id (`activityId`, a course module id): a qb
 
 ## The bank's module is checked first
 
-Before opening a bank page, `questions`, `importQuestions` and `createQuestion` check that the course module keeps questions (a `qbank` or a `quiz`), reading its module from its settings form, which changes nothing. This matters: Moodle creates a bank's default categories for any activity whose bank page is opened, so opening the bank of a page or a forum by mistake would leave categories behind. A module that keeps no questions throws `QuestionBankError` ("Activity 5 is a page, which has no question bank") without touching it; a module the person can't edit, or that doesn't exist, throws too. The module found is remembered per site and id for the rest of the program.
+Before opening a bank page, `questions`, `importQuestions`, `createQuestion`, `updateQuestion` and `deleteQuestions` check that the course module keeps questions (a `qbank` or a `quiz`), reading its module from its settings form, which changes nothing. This matters: Moodle creates a bank's default categories for any activity whose bank page is opened, so opening the bank of a page or a forum by mistake would leave categories behind. A module that keeps no questions throws `QuestionBankError` ("Activity 5 is a page, which has no question bank") without touching it; a module the person can't edit, or that doesn't exist, throws too. The module found is remembered per site and id for the rest of the program.
 
 ## questionBanks
 
@@ -112,6 +112,46 @@ interface QuestionInput {
 
 A multichoice question with more than one answer whose fraction is above 0 is created as multiple-answer (checkboxes), otherwise as single-answer. `questionId` is the id Moodle names after saving; it can be missing if Moodle lands elsewhere. Errors: `QuestionBankError` for a type it doesn't create, missing answers or right answer, a bank that keeps no questions or can't be added to, or a category not in the bank; `FormError` when the form has no field by a name in `fields` or Moodle refuses the values.
 
+## updateQuestion
+
+Changes a question of a bank through its type's edit form, with the inputs of `createQuestion`, only what's given.
+
+```ts
+function updateQuestion(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  questionId: number,
+  input: Partial<Omit<QuestionInput, "type">>,
+): Promise<{ changed: string; questionId?: number }>;
+```
+
+- `activityId`: the bank the question is in: Moodle's edit page works within a bank (its course module id).
+- `input`: as in `createQuestion`, without `type` (a question keeps its type); what isn't given stays as it is.
+- `answers`: for `multichoice`, `shortanswer` and `numerical`, the question's answers from now on: the form's other answers are blanked, and Moodle drops blank ones. A multichoice question becomes multiple-answer or single-answer as in `createQuestion`. Other types change their answers through `fields`.
+
+Saving makes a new version of the question, with an id of its own: `questionId` is that new id, the one `questions` lists from then on (with its `version` one higher). Quizzes using the question's latest version get the new one; a quiz pinned to a version keeps it. Errors: `QuestionBankError` when nothing is given, the bank keeps no questions, or the question isn't one the person can edit there; `FormError` as in `createQuestion`.
+
+## deleteQuestions
+
+Deletes questions from a bank, every version of each, as the bank's delete action does (asking, then confirming).
+
+```ts
+function deleteQuestions(context: BrowserContext, siteUrl: string, activityId: number, questionIds: number[]): Promise<{ changed: string; deleted: number[]; hidden: number[] }>;
+```
+
+Moodle doesn't delete a question a quiz uses: it hides it instead (it disappears from the bank's list, and the quizzes keep it). `deleted` and `hidden` say what became of each id, checked afterwards by whether the question can still be opened. Throws `QuestionBankError` with Moodle's message when it refuses (a question that doesn't exist, or the person can't edit it), and when no ids are given.
+
+## setQuestionStatus
+
+Sets a question ready (quizzes can use it) or draft, as the bank's status menu does, through Moodle's `qbank_editquestion_set_status` service.
+
+```ts
+function setQuestionStatus(context: BrowserContext, siteUrl: string, questionId: number, status: "ready" | "draft"): Promise<{ changed: string; questionId: number; status: "ready" | "draft" }>;
+```
+
+Throws `QuestionBankError` for another status, or with Moodle's reason when it refuses; `MoodleServiceError` when the service fails (the question doesn't exist, or the person can't edit it).
+
 ## Example
 
 ```ts
@@ -144,10 +184,18 @@ const created = await moodle.createQuestion(bank.id, {
   defaultMark: 2,
 });
 console.log(created.changed);
+
+// A new version with a clearer text, kept as a draft until checked; and two old questions gone.
+if (created.questionId) {
+  const updated = await moodle.updateQuestion(bank.id, created.questionId, { text: "<p>Which of these loops never ends?</p>" });
+  if (updated.questionId) await moodle.setQuestionStatus(updated.questionId, "draft");
+}
+const removed = await moodle.deleteQuestions(bank.id, imported.questions.map((q) => q.id));
+console.log(removed.deleted, removed.hidden);
 ```
 
 ## Data categories
 
-- `questionBanks`, `questions`, `importQuestions`, `createQuestion`: `course-content` (what teachers write).
+- `questionBanks`, `questions`, `importQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions`, `setQuestionStatus`: `course-content` (what teachers write).
 
 See [Data categories](../concepts/data-categories.md).

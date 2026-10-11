@@ -71,6 +71,21 @@ moodle add-questions-to-quiz <activityId> --options
 | `--random` | `{ categoryId: number; count: number; includeSubcategories?: boolean; }` |  |
 | `--page` | `number` |  |
 
+## addQuizSection
+
+Adds a section to a quiz starting at a slot, with its heading and whether its questions are shuffled, as the edit page's "Add a new section heading" and its heading and shuffle controls do. A section starts at a page: the slot must be the first of its page (see `setQuizPages`).
+
+```bash
+moodle add-quiz-section <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--first-slot` (required) | `number` |  |
+| `--heading` (required) | `string` |  |
+| `--shuffle` | `boolean` |  |
+
 ## addSection
 
 Adds a section after another one (at the end without it), named when a name is given.
@@ -336,6 +351,19 @@ moodle delete-event <eventId>
 | --- | --- | --- |
 | `eventId` | `number` |  |
 
+## deleteQuestions
+
+Deletes questions from a bank, every version of each, as the bank's delete action does: asked, then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.
+
+```bash
+moodle delete-questions <activityId> <questionIds>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `questionIds` | `number[]` |  |
+
 ## deleteSection
 
 Deletes a section and every activity in it, with their participants' data.
@@ -404,6 +432,22 @@ moodle edit-activity <courseId> <activityId> --options
 | `--section-id` | `number` |  |
 | `--before-activity-id` | `number` |  |
 
+## editQuizSlot
+
+Changes one slot of a quiz (by its place, from 1): its maximum mark, through the slots' service, and where it is, as dragging it on the edit page does: after another slot (`moveAfter`, 0 for first) and on a page. Moodle lets the mark change after attempts (it regrades them), not the rest.
+
+```bash
+moodle edit-quiz-slot <activityId> <slot> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `slot` | `number` |  |
+| `--max-mark` | `number` |  |
+| `--move-after` | `number` |  |
+| `--page` | `number` |  |
+
 ## editSection
 
 Renames, shows or hides, or moves a section after another one.
@@ -468,6 +512,21 @@ moodle get-survey <activityId> [type]
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `type` (optional) | `SurveyType` |  |
+
+## gradeQuizQuestion
+
+Grades one question of a finished attempt by hand, with a comment, through Moodle's comment form (the review's "Make comment or override mark"): an essay waiting for grading, or any question whose mark the teacher overrides. The mark is in the question's points (0 to its maximum in the quiz). Returns the attempt's grade afterwards when the results report shows it.
+
+```bash
+moodle grade-quiz-question <attemptId> <slot> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `attemptId` | `number` |  |
+| `slot` | `number` |  |
+| `--mark` (required) | `number` |  |
+| `--comment` | `string` |  |
 
 ## gradeSubmission
 
@@ -741,6 +800,18 @@ moodle questions <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## questionsToGrade
+
+The questions of a quiz that wait for grading by hand (essays…), as its manual grading report lists them, each with the finished attempts whose answer requires grading (from the results report). People as user id and full name.
+
+```bash
+moodle questions-to-grade <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
 ## quizInfo
 
 A quiz's page as the person sees it: its description and dates, the person's attempts with their summary, and whether they can start one.
@@ -768,7 +839,7 @@ moodle quiz-results <activityId> [--options]
 
 ## quizStructure
 
-A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark.
+A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark, and its sections.
 
 ```bash
 moodle quiz-structure <activityId>
@@ -801,6 +872,19 @@ moodle read-review <attemptId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `attemptId` | `number` |  |
+
+## removeQuizSlot
+
+Removes a slot (by its place, from 1) from a quiz, as the edit page's delete icon does; the question stays in its bank.
+
+```bash
+moodle remove-quiz-slot <activityId> <slot>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `slot` | `number` |  |
 
 ## replyToPost
 
@@ -894,6 +978,19 @@ moodle set-discussion-state <activityId> <discussionId> --options
 | `--pinned` | `boolean` |  |
 | `--locked` | `boolean` |  |
 
+## setQuestionStatus
+
+Sets a question ready (quizzes can use it) or draft, as the bank's status menu does, through its service.
+
+```bash
+moodle set-question-status <questionId> <status>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `questionId` | `number` |  |
+| `status` | `"ready" \| "draft"` |  |
+
 ## setQuizOverride
 
 Sets a user override on a quiz, through its override form: other opening and closing dates, a time limit in minutes, or a number of attempts (0 unlimited); what isn't given stays the quiz's.
@@ -910,6 +1007,19 @@ moodle set-quiz-override <activityId> <userId> --options
 | `--close` | `Date` |  |
 | `--time-limit-minutes` | `number` |  |
 | `--attempts` | `number` |  |
+
+## setQuizPages
+
+Sets a quiz's pages: `perPage` questions a page (0 for all on one), as the edit page's "Repaginate" does, or page breaks exactly after the given slots (and nowhere else), as its page break icons do one by one.
+
+```bash
+moodle set-quiz-pages <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--per-page` (required) | `number` |  |
 
 ## siteName
 
@@ -1044,6 +1154,26 @@ moodle update-grade-item <courseId> <itemId> --options
 | `--category` | `number` |  |
 | `--weight` | `number` |  |
 | `--max-grade` | `number` |  |
+
+## updateQuestion
+
+Changes a question of a bank through its type's edit form, with the same inputs as `createQuestion` and only what's given (`answers` replaces them all). Saving makes a new version of the question, with an id of its own: the one returned, which quizzes using the latest version get from then on.
+
+```bash
+moodle update-question <activityId> <questionId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `questionId` | `number` |  |
+| `--name` | `string` |  |
+| `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
+| `--text` | `string` | The question's text (HTML). |
+| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. |
+| `--correct` | `boolean` | True/false: the right answer. |
+| `--category-id` | `number` |  |
+| `--default-mark` | `number` |  |
 
 ## userById
 

@@ -86,7 +86,8 @@ export function readQuizReport(page: Page, mode: "overview" | "responses"): Prom
 
 const MAX_PAGES = 100;
 
-async function readReport(context: BrowserContext, siteUrl: string, activityId: number, mode: "overview" | "responses"): Promise<QuizAttemptResult[]> {
+/** Every page of one of a quiz's reports, its attempts once each. */
+export async function readReport(context: BrowserContext, siteUrl: string, activityId: number, mode: "overview" | "responses"): Promise<QuizAttemptResult[]> {
   const all = new Map<number, QuizAttemptResult>();
   for (let p = 0; p < MAX_PAGES; p++) {
     const page = await openSitePage(context, siteUrl, `mod/quiz/report.php?id=${activityId}&mode=${mode}&attempts=enrolled_with&page=${p}`);

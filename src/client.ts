@@ -23,10 +23,11 @@ import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
 import { groups, participantFilters, participants } from "./areas/participants/participants.js";
-import { createQuestion, importQuestions, questionBanks, questions } from "./areas/questions/banks.js";
+import { createQuestion, deleteQuestions, importQuestions, questionBanks, questions, setQuestionStatus, updateQuestion } from "./areas/questions/banks.js";
 import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
-import { addQuestionsToQuiz, quizStructure } from "./areas/quizzes/structure.js";
+import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
+import { addQuestionsToQuiz, addQuizSection, editQuizSlot, quizStructure, removeQuizSlot, setQuizPages } from "./areas/quizzes/structure.js";
 import { logOut, openSitePage } from "./core/session.js";
 import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
 import { courseStructure, listAssignments, pendingActivities } from "./areas/courses/structure.js";
@@ -46,6 +47,7 @@ const SITE_FUNCTIONS = {
   activitySettings,
   addGradeCategory,
   addQuestionsToQuiz,
+  addQuizSection,
   addSection,
   answerChoice,
   assignmentSubmissions,
@@ -63,15 +65,18 @@ const SITE_FUNCTIONS = {
   deadlines,
   deleteActivity,
   deleteEvent,
+  deleteQuestions,
   deleteSection,
   discussion,
   duplicateActivity,
   editActivity,
+  editQuizSlot,
   editSection,
   finishQuizAttempt,
   forumDiscussions,
   getChoice,
   getSurvey,
+  gradeQuizQuestion,
   gradeSubmission,
   gradebookSetup,
   graderReport,
@@ -95,11 +100,13 @@ const SITE_FUNCTIONS = {
   pendingActivities,
   questionBanks,
   questions,
+  questionsToGrade,
   quizInfo,
   quizResults,
   quizStructure,
   readAttempt,
   readReview,
+  removeQuizSlot,
   replyToPost,
   rubric,
   saveSubmission,
@@ -107,6 +114,8 @@ const SITE_FUNCTIONS = {
   setCompletion,
   setDiscussionState,
   setQuizOverride,
+  setQuizPages,
+  setQuestionStatus,
   siteName,
   startDiscussion,
   startQuizAttempt,
@@ -117,6 +126,7 @@ const SITE_FUNCTIONS = {
   updateActivity,
   updateCourse,
   updateGradeItem,
+  updateQuestion,
   userById,
   whoAmI,
 };

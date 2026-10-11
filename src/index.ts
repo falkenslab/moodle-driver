@@ -78,12 +78,16 @@ export {
   type Question,
 } from "./areas/quizzes/attempts.js";
 export { quizResults, type QuizAttemptResult } from "./areas/quizzes/results.js";
-export { quizStructure, addQuestionsToQuiz, type QuizSlot } from "./areas/quizzes/structure.js";
+export { questionsToGrade, gradeQuizQuestion, type QuestionToGrade } from "./areas/quizzes/grading.js";
+export { quizStructure, addQuestionsToQuiz, editQuizSlot, removeQuizSlot, setQuizPages, addQuizSection, type QuizSlot, type QuizSection } from "./areas/quizzes/structure.js";
 export {
   questionBanks,
   questions,
   importQuestions,
   createQuestion,
+  updateQuestion,
+  deleteQuestions,
+  setQuestionStatus,
   QUESTION_TYPES,
   QuestionBankError,
   type QuestionBank,

@@ -53,6 +53,8 @@ export interface Question {
   fields: QuestionField[];
   feedback?: string;
   rightAnswer?: string;
+  /** In a review, the teacher's comment (when graded by hand), as its paragraphs' text. */
+  comment?: string;
 }
 
 const NOT_A_QUIZ = (id: number) => new QuizError(`Activity ${id} isn't a quiz you can open. Take the id of a quiz (module "quiz") from the course structure.`);
@@ -103,6 +105,7 @@ export function readQuestions(page: Page): Promise<Question[]> {
       checked: boolean;
       tagName: string;
       src: string;
+      children: ArrayLike<El>;
       options: ArrayLike<{ value: string; text: string; selected: boolean }>;
       querySelector(s: string): El | null;
       querySelectorAll(s: string): ArrayLike<El>;
@@ -156,6 +159,14 @@ export function readQuestions(page: Page): Promise<Question[]> {
           fields.push({ name: input.name, kind: "text", value: input.value || undefined });
         }
       }
+      // A teacher's comment: "Comment: <the comment's HTML>", the label in the site's language; its
+      // paragraphs' text without it, or all of it for a comment without elements (confirmed empirically, 5.2).
+      const commentBox = q.querySelector(".comment");
+      let comment: string | undefined;
+      if (commentBox && !commentBox.querySelector("textarea, input")) {
+        const parts = Array.from(commentBox.children).filter((child) => !/^H\d$/.test(child.tagName));
+        comment = (parts.length > 0 ? parts.map((part) => text(part)).filter(Boolean).join("\n") : text(commentBox)) || undefined;
+      }
       return [
         {
           slot: Number(match[1]),
@@ -168,6 +179,7 @@ export function readQuestions(page: Page): Promise<Question[]> {
           fields,
           feedback: [text(q.querySelector(".specificfeedback")), text(q.querySelector(".generalfeedback"))].filter(Boolean).join("\n") || undefined,
           rightAnswer: text(q.querySelector(".rightanswer")) || undefined,
+          ...(comment ? { comment } : {}),
         },
       ];
     });
