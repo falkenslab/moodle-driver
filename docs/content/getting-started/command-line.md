@@ -29,7 +29,7 @@ The npm package `moodle-cli` (another project) also installs a command named `mo
 moodle login --site https://campus.example.org/
 ```
 
-A browser window opens at the site's login page; log in there as you always do (single sign-on and two-factor included). The command remembers the site, and keeps the session in a browser profile of its own, one per site. From then on, no window and no `--site`:
+A browser window opens at the site's login page; log in there as you always do (single sign-on and two-factor included). The command remembers the site, and keeps the session in a browser profile of its own, one per site, in `~/.moodle-driver` (see [Where things are](#where-things-are)). From then on, no window and no `--site`:
 
 ```bash
 moodle who-am-i
@@ -86,13 +86,60 @@ Errors go to standard error as `code: message` (the [error codes](../concepts/er
 | Option | What it does |
 | --- | --- |
 | `--site <url>` | The Moodle site; or `MOODLE_SITE`; remembered after `moodle login` |
-| `--profile <dir>` | The browser profile folder; or `MOODLE_PROFILE`; one per site by default |
+| `--as <name>` | A named profile on the site, for another account; or `MOODLE_AS`; `--as default` is the site's own |
+| `--profile <dir>` | A browser profile folder of your own, over everything else; or `MOODLE_PROFILE` |
 | `--json` | Print JSON even at a terminal |
 | `--show` | Show the browser while the command works (see [The browser](../concepts/browser.md)) |
 | `--allow <categories>` | Refuse commands that touch other [data categories](../concepts/data-categories.md): `--allow own,course-content` reads your own data and the courses, nothing about others |
 | `--help`, `--version` | Help, and the driver's version |
 
-The site, the profile of each site and nothing else are kept in `config.json` under `~/.config/moodle-driver/` (`%APPDATA%\moodle-driver\` on Windows, `$XDG_CONFIG_HOME/moodle-driver/` when set); the profiles are under `profiles/` there. Treat the profiles as you'd treat a logged-in browser: they hold the session.
+## Several sites and accounts
+
+Log in to each site once; the last one is the default, and `--site` (or `MOODLE_SITE`) picks another for one command. `moodle login` on a site whose session is still alive opens no window: it only makes that site the default.
+
+```bash
+moodle login --site https://campus.uni-a.es/
+moodle login --site https://aulavirtual.uni-b.es/
+moodle --site https://campus.uni-a.es/ list-courses
+```
+
+For another account on the same site (a teacher and a student, say), give it a name: each name is a profile of its own, with its own session. The site remembers the name last logged in with; `--as` (or `MOODLE_AS`) picks another, and `--as default` is the site's own profile.
+
+```bash
+moodle login --site https://campus.uni-a.es/ --as student
+moodle --as student my-grades 3
+moodle --as default who-am-i
+```
+
+`moodle sites` lists every site and profile: which is the default and whether it has a session file (Moodle may still have ended the session). `moodle forget <site>` deletes a site with its profiles and sessions, and `moodle forget <site> --as <name>` one profile.
+
+```text
+$ moodle sites
+site                            profile  default  session  path
+------------------------------  -------  -------  -------  -----------------------------------------------------------
+https://aulavirtual.uni-b.es/   default  true     true     /home/ada/.moodle-driver/sites/aulavirtual.uni-b.es/profile
+https://campus.uni-a.es/        default  false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profile
+https://campus.uni-a.es/        student  false    true     /home/ada/.moodle-driver/sites/campus.uni-a.es/profiles/student
+```
+
+## Where things are
+
+Everything is in `~/.moodle-driver`, the same on Windows, Linux and macOS (`MOODLE_DRIVER_HOME` moves it, for instance to keep it under `~/.config` or on a server's data disk):
+
+```text
+~/.moodle-driver/
+├── config.json                  the default site
+└── sites/<host>/                one folder per site (localhost:8080 is localhost_8080)
+    ├── site.json                its URL, and the account it uses unless told
+    ├── profile/                 its browser profile, with the session (moodle-session.json)
+    └── profiles/<name>/         the profiles of other accounts on it
+```
+
+Treat `~/.moodle-driver` as you'd treat a logged-in browser: its profiles hold the sessions. On Linux and macOS its files are readable only by you.
+
+Earlier versions kept these in `~/.config/moodle-driver` (`%APPDATA%\moodle-driver` on Windows); the first run of this one moves them, and says so once.
+
+A program using the library can share the command's sessions: `siteProfileDir(site)` (or `siteProfileDir(site, { as: "student" })`) gives the same folder, to pass as `profileDir`. One browser uses a profile at a time, so not while a command runs on it.
 
 ## As a student, as a teacher
 

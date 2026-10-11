@@ -12,6 +12,8 @@ export class UsageError extends Error {
 export interface GlobalFlags {
   site?: string;
   profile?: string;
+  /** A named profile on the site (another account). */
+  as?: string;
   allow?: string;
   json: boolean;
   show: boolean;
@@ -19,7 +21,7 @@ export interface GlobalFlags {
   version: boolean;
 }
 
-const GLOBAL_VALUES = new Set(["site", "profile", "allow"]);
+const GLOBAL_VALUES = new Set(["site", "profile", "as", "allow"]);
 const GLOBAL_SWITCHES = new Set(["json", "show", "help", "version"]);
 // Fields that name local files or folders: relative paths are taken from the current folder.
 const PATH_FIELDS = new Set(["files", "file", "destDir"]);

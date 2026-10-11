@@ -11,7 +11,7 @@ People want to try the driver, script it from a shell or check something on thei
 ## Consequences
 
 - The npm package `moodle-cli` (another author) also installs a `moodle` command: with both installed globally npm refuses the second unless forced. Accepted by the owner.
-- The command is a program on the library: it prints and reads its environment (`MOODLE_SITE`, `MOODLE_PROFILE`) and keeps a config file (`~/.config/moodle-driver/config.json`, `%APPDATA%\moodle-driver` on Windows); the library still does neither (ADR-006).
+- The command is a program on the library: it prints and reads its environment (`MOODLE_SITE`, `MOODLE_PROFILE`) and keeps its sites and profiles in its home (`~/.moodle-driver`, ADR-013); the library still does neither (ADR-006).
 - Methods that give a browser tab (`openSitePage`, `openForm`) have no command: a tab means nothing once the command exits.
 - A new method needs `npm run cli:generate`; `npm run build` checks the table first.
 - Output is a table or key-value lines at a terminal, JSON otherwise (`--json`); exit status 0, 1 (an error, its code printed), 2 (a command line that doesn't fit).

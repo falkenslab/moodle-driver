@@ -11,11 +11,11 @@ import { SITE, fakeBrowserManager, launchTestBrowser, serveFakeMoodle, type Fake
 const browser = await launchTestBrowser();
 after(() => browser?.close());
 
-let configDir: string;
+let home: string;
 before(async () => {
-  configDir = await mkdtemp(path.join(tmpdir(), "moodle-driver-cli-"));
+  home = await mkdtemp(path.join(tmpdir(), "moodle-driver-cli-"));
 });
-after(() => rm(configDir, { recursive: true, force: true }));
+after(() => rm(home, { recursive: true, force: true }));
 
 /** Runs a command line against `context`, collecting what it prints. */
 async function moodle(context: BrowserContext | undefined, argv: string[], { interactive = true } = {}) {
@@ -27,7 +27,7 @@ async function moodle(context: BrowserContext | undefined, argv: string[], { int
     stderr: (text) => err.push(text),
     env: {},
     cwd: "/home/ada",
-    configDir,
+    home,
     interactive,
     version: "9.9.9",
   };
@@ -72,9 +72,9 @@ describe("the moodle command", () => {
     const login = await moodle(context, ["login", "--site", SITE]);
     assert.equal(login.status, 0, login.err);
     assert.match(login.out, /status +already-logged-in/);
-    const saved = JSON.parse(await readFile(path.join(configDir, "config.json"), "utf8")) as { site: string; profiles: Record<string, string> };
+    const saved = JSON.parse(await readFile(path.join(home, "config.json"), "utf8")) as { site: string };
     assert.equal(saved.site, SITE);
-    assert.equal(saved.profiles[SITE], path.join(configDir, "profiles", "moodle.test"));
+    assert.deepEqual(JSON.parse(await readFile(path.join(home, "sites", "moodle.test", "site.json"), "utf8")), { url: SITE });
 
     // The site comes from the config now.
     const table = await moodle(context, ["list-courses"]);

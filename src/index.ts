@@ -7,6 +7,7 @@ export * from "./client.js";
 export * from "./options.js";
 export { createBrowserManager, canShowWindow, BrowserNotFoundError, BrowserDownloadingError, NoDisplayError, type BrowserManager, type ContextOptions } from "./browser/manager.js";
 export { SESSION_COOKIES_FILE } from "./browser/cookies.js";
+export { siteProfileDir } from "./home.js";
 export * from "./categories.js";
 export * from "./core/errors.js";
 

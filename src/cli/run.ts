@@ -1,5 +1,6 @@
 // The `moodle` command (ADR-012): every method of the Moodle object from a terminal. `run` takes its
 // surroundings as arguments, so tests run it against the fake Moodle.
+import { mkdirSync } from "node:fs";
 import { ALL_DATA_CATEGORIES, DATA_CATEGORIES, type DataCategory } from "../categories.js";
 import type { Moodle, MoodleOptions } from "../client.js";
 import { MoodleError } from "../core/errors.js";
@@ -7,7 +8,7 @@ import { NotLoggedInError } from "../core/session.js";
 import { parseSiteUrl } from "../options.js";
 import { UsageError, commandName, findCommand, kebab, methodArguments, splitLine } from "./args.js";
 import { COMMANDS } from "./commands.generated.js";
-import { defaultProfile, loadConfig, saveConfig } from "./config.js";
+import { forgetSite, listSites, loadConfig, loadSite, migrate, profileFor, saveConfig, saveSite } from "./config.js";
 import { render } from "./output.js";
 import type { CommandSpec } from "./spec.js";
 
@@ -17,8 +18,10 @@ export interface CliDeps {
   stderr: (text: string) => void;
   env: NodeJS.ProcessEnv;
   cwd: string;
-  /** Where the command keeps its config and, by default, the browser profiles. */
-  configDir: string;
+  /** The command's home: the default site, and a folder per site with its profiles (ADR-013). */
+  home: string;
+  /** Where an older version kept them, moved into `home` on first run. */
+  legacyHome?: string;
   /** Whether stdout is a terminal: progress and readable output then, JSON to a pipe. */
   interactive: boolean;
   version: string;
@@ -38,11 +41,16 @@ function overview(): string {
     "",
     "Global options:",
     "  --site <url>       The Moodle site (remembered after login; or MOODLE_SITE)",
-    "  --profile <dir>    The browser profile folder (one per site by default; or MOODLE_PROFILE)",
+    "  --as <name>        A named profile on the site, for another account (or MOODLE_AS)",
+    "  --profile <dir>    A browser profile folder of your own (or MOODLE_PROFILE)",
     "  --json             Print JSON (the default when the output isn't a terminal)",
     "  --show             Show the browser while the command works",
     "  --allow <list>     Refuse commands that touch other data categories (own,course-content,…)",
     "  --help, --version",
+    "",
+    "The command's own:",
+    `  ${"sites".padEnd(width)}  The sites and profiles logged in to, which is the default, and whether each has a session`,
+    `  ${"forget".padEnd(width)}  Deletes a site and its sessions (forget <site>), or one profile (--as <name>)`,
     "",
     "Commands:",
     ...COMMANDS.map((c) => `  ${kebab(c.name).padEnd(width)}  ${firstSentence(c.description).slice(0, 90)}`),
@@ -73,7 +81,8 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
   let moodle: Moodle | undefined;
   try {
     const typed = commandName(argv);
-    const command = typed && typed !== "help" ? findCommand(COMMANDS, typed) : undefined;
+    const own = typed === "sites" || typed === "forget";
+    const command = typed && typed !== "help" && !own ? findCommand(COMMANDS, typed) : undefined;
     const { global, positionals, flags } = splitLine(argv, command);
     if (global.version) {
       deps.stdout(deps.version);
@@ -89,17 +98,36 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
       deps.stdout(overview());
       return global.help ? 0 : 2;
     }
+    const notice = deps.legacyHome ? migrate(deps.home, deps.legacyHome) : undefined;
+    if (notice) deps.stderr(notice);
+    if (typed === "sites") {
+      const text = render(listSites(deps.home), global.json || !deps.interactive);
+      deps.stdout(text === "(none)" ? "No sites yet: `moodle login --site https://campus.example.org/`." : text);
+      return 0;
+    }
+    if (typed === "forget") {
+      const target = positionals[0];
+      if (!target) throw new UsageError("forget needs <site>: `moodle sites` lists them.");
+      const gone = forgetSite(deps.home, parseSiteUrl(target), global.as);
+      if (gone.length === 0) {
+        deps.stderr(`not-found: ${target}${global.as ? ` has no profile ${global.as}` : " isn't a site logged in to"}; \`moodle sites\` lists them.`);
+        return 1;
+      }
+      deps.stdout(`✔ Deleted ${gone.join(", ")}`);
+      return 0;
+    }
     if (!command) throw new UsageError(`There's no command "${typed}". \`moodle help\` lists them.`);
     if (global.help) {
       deps.stdout(commandHelp(command));
       return 0;
     }
 
-    const config = loadConfig(deps.configDir);
+    const config = loadConfig(deps.home);
     const rawSite = global.site ?? deps.env.MOODLE_SITE ?? config.site;
     if (!rawSite) throw new UsageError("No site yet: log in first with `moodle login --site https://campus.example.org/`, or give --site.");
     const site = parseSiteUrl(rawSite);
-    const profileDir = global.profile ?? deps.env.MOODLE_PROFILE ?? config.profiles?.[site] ?? defaultProfile(deps.configDir, site);
+    const ownProfile = global.profile ?? deps.env.MOODLE_PROFILE;
+    const { profileDir, as } = profileFor(deps.home, site, { profile: ownProfile, as: global.as ?? deps.env.MOODLE_AS });
 
     if (global.allow) {
       const allowed = global.allow.split(",").map((c) => c.trim()) as DataCategory[];
@@ -118,7 +146,17 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
     if (global.show) await moodle.setVisible(true);
     const method = (moodle as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>)[command.name]!;
     const result = await method.apply(moodle, args);
-    if (command.name === "logIn") saveConfig(deps.configDir, { ...config, site, profiles: { ...config.profiles, [site]: profileDir } });
+    if (command.name === "logIn") {
+      // The site becomes the default; the profile used is remembered for it.
+      const record = loadSite(deps.home, site);
+      mkdirSync(profileDir, { recursive: true });
+      saveSite(deps.home, {
+        url: site,
+        as: as === undefined || as === "default" ? undefined : as,
+        profileDir: ownProfile ?? record?.profileDir,
+      });
+      saveConfig(deps.home, { ...config, site });
+    }
     const text = render(result, global.json || !deps.interactive);
     if (text) deps.stdout(text);
     return 0;

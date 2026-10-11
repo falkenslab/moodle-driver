@@ -55,6 +55,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   "BrowserManager.close": NONE,
   canShowWindow: NONE,
   parseSiteUrl: NONE,
+  siteProfileDir: NONE,
   findMoodleSite: NONE,
   readWwwroot: NONE,
   publicSiteInfo: NONE,

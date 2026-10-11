@@ -167,7 +167,7 @@ The entry point `@falkenslab/moodle-driver/internals`, with the primitives the o
 
 ### Profile
 
-The browser's persistent user-data folder (`profileDir`), where it keeps the person's cookies and storage, so the session survives between runs; the driver also writes Moodle's session cookies there (`SESSION_COOKIES_FILE`). One per person and site, used by one browser at a time, and as sensitive as a password. See [Logging in](../getting-started/logging-in.md) and [The browser](../concepts/browser.md).
+The browser's persistent user-data folder (`profileDir`), where it keeps the person's cookies and storage, so the session survives between runs; the driver also writes Moodle's session cookies there (`SESSION_COOKIES_FILE`). One per person and site, used by one browser at a time, and as sensitive as a password. The `moodle` command keeps one per site and account in `~/.moodle-driver/sites/<host>/`, and `siteProfileDir(site, { as })` gives the same folder to a program. See [Logging in](../getting-started/logging-in.md), [The browser](../concepts/browser.md) and [The command line](../getting-started/command-line.md#where-things-are).
 
 ### Session
 

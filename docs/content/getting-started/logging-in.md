@@ -6,7 +6,7 @@ The driver never handles a password. The person logs in by hand, in a browser wi
 
 ## The profile
 
-A profile is a folder where the browser keeps its cookies and storage, the same as a browser's user profile. Choose one per person and per site, outside your program's folder and outside any repository: it holds a live session, as sensitive as a password.
+A profile is a folder where the browser keeps its cookies and storage, the same as a browser's user profile. Choose one per person and per site, outside your program's folder and outside any repository: it holds a live session, as sensitive as a password. To share the session the [`moodle` command](command-line.md) logged in with, use its folder: `siteProfileDir(site)` (or `siteProfileDir(site, { as: "student" })` for a named account) gives it.
 
 ```ts
 import { createMoodle } from "@falkenslab/moodle-driver";
