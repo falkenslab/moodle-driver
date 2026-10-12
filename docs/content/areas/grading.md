@@ -130,7 +130,7 @@ The date is written into the form's date selector in the person's time zone in M
 Errors:
 
 - `GradingError` when `userIds` is empty.
-- `NotAnAssignmentError` when the extension form can't be opened: the activity isn't an assignment, or the person isn't allowed.
+- `NotAnAssignmentError` when the extension form can't be opened (the activity isn't an assignment), or when Moodle refuses to save it with its error page (the person isn't allowed to grant extensions: Moodle opens the form for anyone and checks only on saving), with Moodle's reason.
 - `FormError` when Moodle refuses the form, with its message by field: a date before the assignment's due date, for one. Also when the person's time zone in Moodle isn't one the driver knows.
 
 `assignmentSubmissions` reports the granted date as `extensionDueDate`.

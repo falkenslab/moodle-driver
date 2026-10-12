@@ -23,7 +23,7 @@ import {
 import { checkLocalFiles } from "../../core/files.js";
 import { isoDate } from "../courses/list.js";
 import { FormError, dateSelectorDate, dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
-import { NotLoggedInError, fetchSitePage } from "../../core/session.js";
+import { NotLoggedInError, fetchSitePage, moodleErrorMessage } from "../../core/session.js";
 import { decodeEntities } from "../../core/text.js";
 import { inPage } from "../../core/inPage.js";
 import { MoodleError } from "../../core/errors.js";
@@ -298,7 +298,9 @@ export async function rubric(context: BrowserContext, siteUrl: string, activityI
 
 /**
  * Grants participants an extension until a date, through the assignment's extension form (several at
- * once as its bulk action does). Moodle refuses a date before the assignment's due date.
+ * once as its bulk action does). Moodle refuses a date before the assignment's due date, and a person
+ * without its "grant extension" capability only on saving (the form opens for anyone, confirmed
+ * empirically on the sandbox, 5.2): both throw.
  */
 export async function grantExtension(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], until: Date): Promise<{ changed: string }> {
   if (userIds.length === 0) throw new GradingError("Give the participants to grant the extension to.");
@@ -309,6 +311,9 @@ export async function grantExtension(context: BrowserContext, siteUrl: string, a
   try {
     await setFields(page, { selectedusers: userIds.join(","), "extensionduedate[enabled]": true, ...(await dateSelectorValues(page, "extensionduedate", until)) });
     await submitForm(page, "submitbutton");
+    // Moodle shows the form to anyone and checks the capability on saving, answering with its error page.
+    const refused = await moodleErrorMessage(page);
+    if (refused !== undefined) throw new NotAnAssignmentError(`Moodle didn't grant the extension in activity ${activityId}: ${refused}`);
   } finally {
     await page.close().catch(() => undefined);
   }

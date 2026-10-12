@@ -219,6 +219,22 @@ ${select("day", range(1, 31), until?.day ?? 1)}${select("month", range(1, 12), 1
     await assert.rejects(grantExtension(context, SITE, 43, [], new Date()), /Give the participants/);
     await context.close();
   });
+
+  it("throws when Moodle refuses to save it, as it does for someone without the capability", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, submissionsSite(44));
+    // Moodle 5.2 opens the form for a student and answers the save with its error page.
+    await context.route(`${SITE}mod/assign/view.php**`, (route) => {
+      if (route.request().method() === "POST") {
+        const error = `<div data-rel="fatalerror"><p class="errormessage">Sorry, but you do not currently have permissions to do that (Grant extension).</p></div>`;
+        return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-assign-view", body: error }) });
+      }
+      if (new URL(route.request().url()).searchParams.get("action") === "grantextension") return route.fulfill({ status: 200, contentType: "text/html", body: extensionForm() });
+      return route.fallback();
+    });
+    await assert.rejects(grantExtension(context, SITE, 44, [7], new Date("2026-10-23T12:30:00Z")), (error: unknown) => error instanceof NotAnAssignmentError && /do not currently have permissions/.test(error.message));
+    await context.close();
+  });
 });
 
 describe("group submissions and the marking workflow", { skip: !browser && "no system browser" }, () => {
