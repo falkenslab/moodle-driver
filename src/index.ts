@@ -1,6 +1,13 @@
-// The public API of @falkenslab/moodle-driver: everything a program needs to work a Moodle site with
-// the person's own session. The primitives the operations are built from are in ./internals.ts
-// (`@falkenslab/moodle-driver/internals`); what neither exports is internal.
+/**
+ * The public API: everything a program needs to work a Moodle site with the person's own session,
+ * imported from `@falkenslab/moodle-driver`. Start with `createMoodle`, whose methods are the
+ * driver's operations; each is also a function taking the browser's context and the site.
+ *
+ * The primitives the operations are built from are in `@falkenslab/moodle-driver/internals`; what
+ * neither exports is internal.
+ *
+ * @packageDocumentation
+ */
 
 // The Moodle object, the browser and what a program chooses.
 export * from "./client.js";
