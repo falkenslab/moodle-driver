@@ -8,7 +8,7 @@
 // - Test names start with the function they exercise, "<function>: <what>"; summary.ts checks every
 //   function of src/index.ts appears in one (passed, failed, or skipped with the reason).
 import { readFileSync } from "node:fs";
-import { after } from "node:test";
+import { after, beforeEach } from "node:test";
 import type { Page } from "playwright-core";
 import { createMoodle, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
@@ -27,6 +27,12 @@ export const FORBIDDEN_COURSE = accounts.sandboxCourseId;
 
 const open = new Map<Role, Promise<Moodle>>();
 
+// Each test says when it starts (the reporter speaks only when it ends), so a slow or hung run
+// shows where it is while it runs.
+beforeEach((t) => {
+  console.error(`[${new Date().toISOString().slice(11, 19)}] ▶ ${t.name}`);
+});
+
 /** A Moodle object logged in as the account, its profile kept for the run; closed after the file. */
 export function as(role: Role): Promise<Moodle> {
   let moodle = open.get(role);
@@ -40,6 +46,10 @@ export function as(role: Role): Promise<Moodle> {
 async function logIn(role: Role): Promise<Moodle> {
   const moodle = createMoodle({ site: SITE, profileDir: `/sandbox/profiles/${role}`, channel: "chromium", headless: true, downloadBrowser: false, trail: "fast" });
   const context = await moodle.context();
+  // A sandbox busy with other runs can take minutes to answer: Playwright's 30 s defaults would fail
+  // checks that are only slow. The driver's own waits follow these defaults too.
+  context.setDefaultTimeout(120_000);
+  context.setDefaultNavigationTimeout(300_000);
   const page = await context.newPage();
   try {
     await page.goto(`${SITE}login/index.php`, { waitUntil: "domcontentloaded" });
@@ -48,7 +58,7 @@ async function logIn(role: Role): Promise<Moodle> {
       const { username, password } = accounts[role];
       await page.fill("#username", username);
       await page.fill("#password", password);
-      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 120_000 }), page.click("#loginbtn")]);
+      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click("#loginbtn")]);
       if ((await page.locator("#username").count()) > 0) throw new Error(`The sandbox's ${role} account couldn't log in.`);
     }
   } finally {
