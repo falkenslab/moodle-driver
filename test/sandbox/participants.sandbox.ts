@@ -229,6 +229,38 @@ describe("participants and groups", () => {
     await assert.rejects(teacher.setEnrolmentMethod(scratch.id, NO_COURSE, { enabled: true }), EnrolmentError);
   });
 
+  it("setEnrolmentMethod: manual, self and guest disabled and enabled again by whom Moodle lets, read back with enrolmentMethods", SLOW, async () => {
+    const teacher = await as("teacher");
+    const admin = await as("admin");
+    const original = await admin.enrolmentMethods(scratch.id);
+    // Whatever happens, each method ends as it was.
+    cleanup(() => quietly(async () => {
+      for (const m of original) await admin.setEnrolmentMethod(scratch.id, m.id, { enabled: m.enabled });
+    }));
+    const state = async (id: number) => (await admin.enrolmentMethods(scratch.id)).find((m) => m.id === id)?.enabled;
+    for (const type of ["manual", "self", "guest"]) {
+      const method = original.find((m) => m.type === type);
+      assert.ok(method, `the scratch course has a ${type} method: ${JSON.stringify(original)}`);
+      // The admin switches every one; the editing teacher self enrolment and guest access only (enrol/manual:config).
+      const switchers = type === "manual" ? [admin] : [admin, teacher];
+      for (const moodle of switchers) {
+        const flipped = await moodle.setEnrolmentMethod(scratch.id, method.id, { enabled: !method.enabled });
+        assert.equal(flipped.method.enabled, !method.enabled, `${type} switched`);
+        assert.equal(await state(method.id), !method.enabled);
+        const back = await moodle.setEnrolmentMethod(scratch.id, { type }, { enabled: method.enabled });
+        assert.equal(back.method.enabled, method.enabled, `${type} switched back`);
+        assert.equal(await state(method.id), method.enabled);
+      }
+    }
+    // The teacher on manual enrolment: its state as it is is no change, switching it and its role are refused, nothing saved.
+    const manual = original.find((m) => m.type === "manual")!;
+    assert.equal((await teacher.setEnrolmentMethod(scratch.id, { type: "manual" }, { enabled: manual.enabled })).method.enabled, manual.enabled);
+    await assert.rejects(teacher.setEnrolmentMethod(scratch.id, manual.id, { enabled: !manual.enabled }), (e: Error) => e instanceof EnrolmentError && /enrol\/manual:config/.test(e.message));
+    await assert.rejects(teacher.setEnrolmentMethod(scratch.id, manual.id, { roleId: TEACHER_ROLE }), (e: Error) => e instanceof EnrolmentError && /roleId/.test(e.message));
+    const after = (await admin.enrolmentMethods(scratch.id)).find((m) => m.id === manual.id);
+    assert.deepEqual([after?.enabled, after?.roleId], [manual.enabled, manual.roleId]);
+  });
+
   it("unenrolUser: the other student leaves the scratch course", SLOW, async () => {
     assert.ok(otherId, "potentialUsers found the user");
     const teacher = await as("teacher");

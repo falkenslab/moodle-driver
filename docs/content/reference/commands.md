@@ -1411,7 +1411,7 @@ moodle set-discussion-state <activityId> <discussionId> --options
 
 ## setEnrolmentMethod
 
-Sets an enrolment method with its form: by id, or the course's first method of a type (`{ type: "self" }`), added when the course has none and the "Add method" menu offers it. Only what's given changes. Returns the method afterwards. Throws `EnrolmentError` for a method the course doesn't have or can't add, `FormError` with Moodle's reason when it refuses the form (a key required by the site, an end before the start).
+Sets an enrolment method: by id, or the course's first method of a type (`{ type: "self" }`), added when the course has none and the "Add method" menu offers it. Only what's given changes. `enabled` goes through the methods page's enable and disable icons, the rest through the method's form: what Moodle lets the person change differs by method (an editing teacher can't configure manual enrolment, enrol/manual:config, so neither switch it nor set its role). Returns the method afterwards. Throws `EnrolmentError` for a method the course doesn't have or can't add, and for a setting Moodle doesn't let the person change (naming it); `FormError` with Moodle's reason when it refuses the form (a key required by the site, an end before the start).
 
 ```bash
 moodle set-enrolment-method <courseId> <method> --options
@@ -1427,7 +1427,7 @@ moodle set-enrolment-method <courseId> <method> --options
 | `--end` | `Date` |  |
 | `--role-id` | `number` | The role it gives (manual and self enrolment). |
 | `--max-users` | `number` | Self enrolment: the most users it enrols; 0 for no limit. |
-| `--welcome` | `string \| false` | Self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none. |
+| `--welcome` | `string \| false` | Manual and self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none. |
 
 ## setGrade
 
