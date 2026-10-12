@@ -4,7 +4,7 @@ Issue: [#49](https://github.com/falkenslab/moodle-driver/issues/49)
 
 ## Goal
 
-`npm run test:sandbox` checks every function of the driver against a real Moodle (the sandbox), as a student, a teacher and an admin, so a release is known to work on Moodle and not only on the fake one.
+`npm run test:sandbox` checks every function of the driver against a real Moodle (the sandbox), as a student, a teacher and an admin, on demand, to know the driver works on Moodle and not only on the fake one (it takes hours: no release waits for it).
 
 ## Context
 
@@ -19,7 +19,7 @@ Issue: [#49](https://github.com/falkenslab/moodle-driver/issues/49)
 - `test/sandbox/harness.ts`: `as("student" | "teacher" | "admin")` gives a logged-in Moodle object (profiles in the temporary folder, logged in by the login form the first time); `scratchCourse()` creates a course "Driver check suite <time>" as admin with the teacher and the student enrolled, and deletes it after the file's tests; course 3 is only read.
 - One file per area under `test/sandbox/`: every exported function (and `moodle` command families) called against the sandbox, reads on course 3, writes on the scratch course, each test cleaning up what it creates. What the sandbox can't show (a site setting it lacks, a capability nobody has) is skipped with the reason, not left out.
 - A summary at the end: per function, passed, failed or skipped (why).
-- Docs: the development page and the release skill (run it before a release); `README.md`'s development section.
+- Docs: the development page and the release skill (on demand, never part of a release: it takes hours); `README.md`'s development section.
 
 ## Acceptance
 
