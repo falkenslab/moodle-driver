@@ -1,7 +1,7 @@
 // Ratings on forum posts, glossary entries and database records: the rating form Moodle renders under
-// each rateable item (form.postratingform, its hidden fields and its `rating` menu), sent to
+// each rateable item (its .ratingform: the hidden fields and the `rating` menu), sent to
 // rating/rate_ajax.php as the page's own script does.
-import type { BrowserContext } from "playwright-core";
+import type { BrowserContext, Page } from "playwright-core";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
 import { GradingError } from "../assignments/grader.js";
@@ -15,12 +15,27 @@ function itemPage(item: RateableItem): string {
     case "forum-post":
       return `mod/forum/discuss.php?d=${item.discussionId}`;
     case "glossary-entry":
+      // The entry's own page, which says its glossary: the rating form is only on the glossary's (openItem).
       return `mod/glossary/showentry.php?eid=${item.id}`;
     case "database-record":
       return `mod/data/view.php?rid=${item.id}`;
     default:
       throw new MoodleError(`Ratings are on forum posts, glossary entries and database records, not "${(item as { type: string }).type}".`, "invalid-input");
   }
+}
+
+/**
+ * Opens the page with the item's rating form. A glossary entry's own page (showentry.php) loads no
+ * ratings: only the glossary's page does, so the entry is shown there, in its glossary (the `cmid-`
+ * body class of its own page), as Moodle's own link to an entry does (confirmed empirically, 5.2).
+ */
+async function openItem(context: BrowserContext, siteUrl: string, item: RateableItem): Promise<Page> {
+  const page = await openSitePage(context, siteUrl, itemPage(item));
+  if (item.type !== "glossary-entry" || (await moodleErrorMessage(page)) !== undefined) return page;
+  const cm = await page.evaluate(() => /\bcmid-(\d+)\b/.exec((globalThis as unknown as { document: { body: { className: string } } }).document.body.className)?.[1]);
+  if (!cm) return page;
+  await page.close().catch(() => undefined);
+  return openSitePage(context, siteUrl, `mod/glossary/view.php?id=${cm}&mode=entry&hook=${item.id}`);
 }
 
 /** Moodle's "Rate..." option: no rating (RATING_UNSET_RATING). */
@@ -35,7 +50,7 @@ const UNSET = "-999";
  * rating period, or no permission) or the rating isn't on its scale.
  */
 export async function rate(context: BrowserContext, siteUrl: string, item: RateableItem, rating: number | string | null): Promise<{ changed: string; aggregate?: string; count?: number }> {
-  const page = await openSitePage(context, siteUrl, itemPage(item));
+  const page = await openItem(context, siteUrl, item);
   try {
     const refused = await moodleErrorMessage(page);
     if (refused !== undefined) throw new GradingError(`You can't see ${item.type} ${item.id}: ${refused}`);
@@ -48,7 +63,10 @@ export async function rate(context: BrowserContext, siteUrl: string, item: Ratea
         querySelector(s: string): El | null;
       }
       const doc = (globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<El> } }).document;
-      const found = Array.from(doc.querySelectorAll("form.postratingform")).find((f) => f.querySelector(`input[name="itemid"][value="${itemId}"]`) !== null);
+      // The .ratingform, not its form.postratingform: a database's single view renders the rating form
+      // inside a form of its own, and the browser drops the nested form, keeping its fields (confirmed
+      // empirically, 5.2).
+      const found = Array.from(doc.querySelectorAll(".ratingform")).find((f) => f.querySelector(`input[name="itemid"][value="${itemId}"]`) !== null);
       if (!found) return undefined;
       return {
         fields: Array.from(found.querySelectorAll('input[type="hidden"]')).map((input): [string, string] => [input.name, input.value]),
