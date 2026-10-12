@@ -120,6 +120,37 @@ Results are plain data you can serialize as JSON:
 - a thing's own id is `id`, and the ids of others it refers to are `<thing>Id` (`courseId`, `userId`, `activityId`): an attempt is `{ id, userId, … }`, a grade `{ itemId, grade }`;
 - no Playwright objects, nothing to close.
 
+## Long lists
+
+Functions whose lists grow without bound on a real site (notifications, conversations and their messages, a forum's discussions and a discussion's posts, an assignment's submissions, a quiz's attempts, a bank's questions, a course's participants and logs) read them a page at a time, all the same way:
+
+- `limit`: how many items to return (1 or more), and `offset`: how many to skip first (0 unless given), counted in the function's own items and in its own order (newest first for notifications and messages, as Moodle lists the rest);
+- without `limit`, the function returns everything, as a plain list, as it always did (`offset` alone skips the first ones);
+- with `limit`, the list comes as a `ListPage`, `{ items, more }`: the page's items, and whether there are more after them. Ask for the next page with `offset` moved by `limit` until `more` is `false`.
+
+```ts
+interface ListPage<T> {
+  items: T[];
+  more: boolean;
+}
+```
+
+The types follow the call: TypeScript gives `ListPage<Notification>` for `notifications({ limit: 20 })` and `Notification[]` for `notifications()`. Where the list is part of a larger result, the list itself becomes the page: `discussion(id, { limit })` gives `{ discussion, posts: { items, more } }`.
+
+```ts
+let offset = 0;
+for (;;) {
+  const page = await moodle.notifications({ unreadOnly: true, limit: 20, offset });
+  for (const notification of page.items) console.log(notification.subject);
+  if (!page.more) break;
+  offset += 20;
+}
+```
+
+A page costs less than the whole list wherever Moodle allows: the driver asks Moodle's service for the page only, or opens only the page of Moodle's own paging that holds it. Where Moodle has no paging (a discussion's posts, a bank's questions within a category), the driver reads the list and cuts it, but still converts only the page's items; each function's section says which. A `limit` below 1 or an `offset` below 0 is a `MoodleError` with the code `invalid-input`. Pages are read when asked: when something is added meanwhile, a later page may repeat an item or miss one.
+
+The `moodle` command takes them as `--limit` and `--offset`, shows a page as its items, and says when there are more.
+
 ## Writes answer with the state afterwards
 
 Every operation that changes something returns an object with a short `changed` sentence saying what it did, beside the state afterwards where it's cheap to read: the course's structure after creating an activity, the assignment after submitting, the choice after answering it, the discussion after pinning it, the ids of what it created. Check it instead of reading again.

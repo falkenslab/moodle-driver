@@ -201,9 +201,9 @@ try {
 A quiz's attempts as its results report (the overview) shows them to a teacher: per attempt the user, state, dates, grade and the mark per question; with `responses`, also the answer per question from the responses report. Every page of the report is read.
 
 ```ts
-function quizResults(context: BrowserContext, siteUrl: string, activityId: number, options?: { responses?: boolean }): Promise<{
+function quizResults(context: BrowserContext, siteUrl: string, activityId: number, options?: { responses?: boolean; limit?: number; offset?: number }): Promise<{
   quiz: { id: number };
-  attempts: QuizAttemptResult[];
+  attempts: QuizAttemptResult[]; // ListPage<QuizAttemptResult> with limit
 }>;
 
 interface QuizAttemptResult {
@@ -220,6 +220,7 @@ interface QuizAttemptResult {
 ```
 
 - `responses` (default `false`): also read the responses report and add each question's `response`, which costs a second pass over the report.
+- `limit`, `offset`: `attempts` as a page in the report's order (see [Long lists](../concepts/calling-functions.md#long-lists)), read from the one page of the report's own paging (`pagesize`, not saved as the person's preference) that holds it; with `responses`, the same page of the responses report (every page of it if the person sorted the two reports differently).
 - `state`, `started`, `completed`, `duration` and `grade` are as the report shows them, in the site's language ("Finished", "9 Oct 1:30 PM", "50 secs", "5.00"); a missing grade ("-") is left out.
 - `questions[].mark`: the mark as shown ("-" left out); `result`: how it was marked ("correct", "incorrect", "partiallycorrect", "notanswered", "requiresgrading"...).
 

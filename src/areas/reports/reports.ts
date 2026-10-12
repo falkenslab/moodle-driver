@@ -6,6 +6,7 @@ import { openSitePage } from "../../core/session.js";
 import { inPage } from "../../core/inPage.js";
 import { MoodleError } from "../../core/errors.js";
 import { decodeEntities } from "../../core/text.js";
+import { pageWindow, toPage, type ListPage, type PageOptions, type WithLimit, type WithoutLimit } from "../../core/paging.js";
 import { languageFormats, parseMoodleDate, type DateFormat } from "./dates.js";
 
 /** A report the person can't see: the course or activity isn't there, or they aren't allowed (`report/log:view`…). */
@@ -145,17 +146,47 @@ const MAX_PAGES = 200;
  * A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of
  * action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity
  * and action; the span is read page by page, stopping at the first entry older than `from`. Every
- * entry's time comes as an ISO date, read back with the site language's own format.
+ * entry's time comes as an ISO date, read back with the site language's own format. Without `limit`,
+ * the first 100 entries (from `offset`) as a list; with it, a page of them (see "Long lists" in the
+ * docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the
+ * first page, since only the driver filters by it).
  */
-export async function courseLogs(
-  context: BrowserContext,
-  siteUrl: string,
-  courseId: number,
-  { userId, activityId, from, until, action, limit = 100 }: { userId?: number; activityId?: number; from?: Date; until?: Date; action?: LogAction; limit?: number } = {},
-): Promise<LogEntry[]> {
+export function courseLogs(context: BrowserContext, siteUrl: string, courseId: number, options: WithLimit<CourseLogOptions>): Promise<ListPage<LogEntry>>;
+export function courseLogs(context: BrowserContext, siteUrl: string, courseId: number, options?: WithoutLimit<CourseLogOptions>): Promise<LogEntry[]>;
+export function courseLogs(context: BrowserContext, siteUrl: string, courseId: number, options?: CourseLogOptions): Promise<LogEntry[] | ListPage<LogEntry>>;
+export async function courseLogs(context: BrowserContext, siteUrl: string, courseId: number, options: CourseLogOptions = {}): Promise<LogEntry[] | ListPage<LogEntry>> {
+  const { offset } = pageWindow(options);
+  const { action } = options;
   if (action !== undefined && !LOG_ACTIONS.includes(action)) throw new MoodleError(`Unknown log action "${action}": use one of ${LOG_ACTIONS.join(", ")}.`, "invalid-input");
+  // Without a limit, the first 100 as always; with one, one more to tell whether there are more.
+  const wanted = options.limit === undefined ? 100 : options.limit + 1;
+  return toPage(await readLogs(context, siteUrl, courseId, options, offset, wanted), options.limit);
+}
+
+/** What `courseLogs` takes: whose, where, what and when, and a page of them. */
+export interface CourseLogOptions extends PageOptions {
+  /** Only this user's actions. */
+  userId?: number;
+  /** Only in this activity (its course module id). */
+  activityId?: number;
+  /** Only from this date on. */
+  from?: Date;
+  /** Only until this date. */
+  until?: Date;
+  /** Only this kind of action. */
+  action?: LogAction;
+  /** How many entries (1 or more): with it, the entries come as a `ListPage`; without it, the first 100, as a plain list. */
+  limit?: number;
+}
+
+/** The log entries from the `offset`th, at most `wanted`, newest first. */
+async function readLogs(context: BrowserContext, siteUrl: string, courseId: number, { userId, activityId, from, until, action }: CourseLogOptions, offset: number, wanted: number): Promise<LogEntry[]> {
+  const limit = offset + wanted;
   // Fewer, longer pages for more entries: each page is a page load.
   const perPage = Math.min(Math.max(limit, 20), 500);
+  // Moodle pages the report as filtered, except `until`: without it, start at the page holding `offset`.
+  const firstPage = until ? 0 : Math.floor(offset / perPage);
+  let skip = until ? offset : offset - firstPage * perPage;
   const query = new URLSearchParams({ id: String(courseId), chooselog: "1", edulevel: "-1", perpage: String(perPage) });
   if (userId !== undefined) query.set("user", String(userId));
   if (activityId !== undefined) query.set("modid", String(activityId));
@@ -164,7 +195,7 @@ export async function courseLogs(
   let format: DateFormat | undefined;
   // Viewing the report logs an event, and others act meanwhile: a page may begin with the previous one's last rows.
   let previous = new Set<string>();
-  for (let p = 0; p < MAX_PAGES && entries.length < limit; p++) {
+  for (let p = firstPage; p < firstPage + MAX_PAGES && entries.length < wanted; p++) {
     query.set("page", String(p));
     const page = await openSitePage(context, siteUrl, `report/log/index.php?${query}`);
     let read: { form: boolean; rows: RawLogRow[] };
@@ -185,8 +216,12 @@ export async function courseLogs(
       }
       if (until && time! > until.getTime()) continue;
       if (from && time! < from.getTime()) return entries;
+      if (skip > 0) {
+        skip--;
+        continue;
+      }
       entries.push(entry);
-      if (entries.length >= limit) return entries;
+      if (entries.length >= wanted) return entries;
     }
     if (read.rows.length < perPage) break;
     previous = keys;

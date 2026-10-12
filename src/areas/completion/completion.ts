@@ -106,11 +106,15 @@ const MAX_PAGES = 100;
 
 /**
  * A course's progress report: every participant's completion of every activity that tracks it, page
- * by page, in one group when given. People come as user id and full name only.
+ * by page, in one group when given, only some people's when given their `userIds` (the report has
+ * no filter by user: its pages are read until all of them are found). People come as user id and
+ * full name only.
  */
-export async function completionReport(context: BrowserContext, siteUrl: string, courseId: number, { group }: { group?: number } = {}): Promise<CompletionReport> {
+export async function completionReport(context: BrowserContext, siteUrl: string, courseId: number, { group, userIds }: { group?: number; userIds?: number[] } = {}): Promise<CompletionReport> {
   const report: CompletionReport = { activities: [], participants: [] };
   const seen = new Set<number>();
+  const wanted = userIds ? new Set(userIds) : undefined;
+  if (wanted?.size === 0) throw new MoodleError("userIds is empty: give at least one user, or leave it out for everyone.", "invalid-input");
   let start = 0;
   for (let p = 0; p < MAX_PAGES; p++) {
     const page = await openSitePage(context, siteUrl, `report/progress/index.php?course=${courseId}&start=${start}${group ? `&group=${group}` : ""}`);
@@ -128,7 +132,8 @@ export async function completionReport(context: BrowserContext, siteUrl: string,
       const fresh = read.participants.filter((row) => !seen.has(row.userId));
       if (fresh.length === 0) break;
       for (const row of fresh) seen.add(row.userId);
-      report.participants.push(...fresh);
+      report.participants.push(...fresh.filter((row) => !wanted || wanted.has(row.userId)));
+      if (wanted && report.participants.length === wanted.size) break;
       start += read.participants.length;
     } finally {
       await page.close().catch(() => undefined);

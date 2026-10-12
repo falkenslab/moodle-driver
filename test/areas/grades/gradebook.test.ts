@@ -30,6 +30,14 @@ const GRADER = `<table id="user-grades"><tbody>
 </tbody></table>`;
 
 describe("graderReport", { skip: !browser && "no system browser" }, () => {
+  it("keeps only the people asked for", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, bodies: { "/grade/report/grader/index.php": GRADER } });
+    const report = await graderReport(context, SITE, 3, { userIds: [5] });
+    assert.deepEqual([report.columns.length, report.rows.map((row) => row.userId)], [3, [5]]);
+    await context.close();
+  });
+
   it("reads columns by item id and link, and rows by user id, without empty grades", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, bodies: { "/grade/report/grader/index.php": GRADER } });

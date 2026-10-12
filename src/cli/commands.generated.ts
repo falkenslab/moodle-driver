@@ -574,7 +574,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "assignmentSubmissions",
-    "description": "Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel). Those come only for participants with a submission: Moodle's grading panel creates an empty one for a participant who has none, so reading leaves them at \"none\", without the panel's details (confirmed empirically on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves an empty grade (-1, not graded) and a \"Grading form viewed\" event, as Moodle's grader does.",
+    "description": "Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel). Those come only for participants with a submission: Moodle's grading panel creates an empty one for a participant who has none, so reading leaves them at \"none\", without the panel's details (confirmed empirically on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves an empty grade (-1, not graded) and a \"Grading form viewed\" event, as Moodle's grader does. Only some participants when given their `userIds`; with `limit`, a page of them in the grader's order (see \"Long lists\" in the docs' concepts): Moodle's service lists every participant at once, cut to the page, and only the page's participants are read further (their dates, their panels).",
     "params": [
       {
         "name": "activityId",
@@ -596,7 +596,35 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "boolean",
           "value": {
             "kind": "boolean"
-          }
+          },
+          "description": "Also each submission's content, feedback files, workflow state and markers, from the grading panels: true unless given."
+        },
+        {
+          "name": "userIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          },
+          "description": "Only these participants (their user ids)."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
         }
       ]
     }
@@ -690,7 +718,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "completionReport",
-    "description": "A course's progress report: every participant's completion of every activity that tracks it, page by page, in one group when given. People come as user id and full name only.",
+    "description": "A course's progress report: every participant's completion of every activity that tracks it, page by page, in one group when given, only some people's when given their `userIds` (the report has no filter by user: its pages are read until all of them are found). People come as user id and full name only.",
     "params": [
       {
         "name": "courseId",
@@ -713,13 +741,21 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "number"
           }
+        },
+        {
+          "name": "userIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
         }
       ]
     }
   },
   {
     "name": "conversation",
-    "description": "A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation).",
+    "description": "A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation). With `limit`, `messages` is a page of them (see \"Long lists\" in the docs' concepts) counted from the newest: the first page is the latest messages, `more` says there are older ones, and each page's messages still come oldest first. Moodle's service returns only the page.",
     "params": [
       {
         "name": "conversationId",
@@ -729,12 +765,62 @@ export const COMMANDS: readonly CommandSpec[] = [
           "kind": "number"
         }
       }
-    ]
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
+        }
+      ]
+    }
   },
   {
     "name": "conversations",
-    "description": "The person's conversations, latest first, with their last message as text.",
-    "params": []
+    "description": "The person's conversations, latest first, with their last message as text. With `limit`, a page of them (see \"Long lists\" in the docs' concepts), the only ones Moodle's service returns.",
+    "params": [],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
+        }
+      ]
+    }
   },
   {
     "name": "copyCourse",
@@ -859,7 +945,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "courseLogs",
-    "description": "A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format.",
+    "description": "A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format. Without `limit`, the first 100 entries (from `offset`) as a list; with it, a page of them (see \"Long lists\" in the docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the first page, since only the driver filters by it).",
     "params": [
       {
         "name": "courseId",
@@ -881,7 +967,8 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
-          }
+          },
+          "description": "Only this user's actions."
         },
         {
           "name": "activityId",
@@ -889,7 +976,8 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
-          }
+          },
+          "description": "Only in this activity (its course module id)."
         },
         {
           "name": "from",
@@ -897,7 +985,8 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "Date",
           "value": {
             "kind": "date"
-          }
+          },
+          "description": "Only from this date on."
         },
         {
           "name": "until",
@@ -905,7 +994,8 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "Date",
           "value": {
             "kind": "date"
-          }
+          },
+          "description": "Only until this date."
         },
         {
           "name": "action",
@@ -920,7 +1010,8 @@ export const COMMANDS: readonly CommandSpec[] = [
               "delete",
               "change"
             ]
-          }
+          },
+          "description": "Only this kind of action."
         },
         {
           "name": "limit",
@@ -928,7 +1019,17 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
-          }
+          },
+          "description": "How many entries (1 or more): with it, the entries come as a `ListPage`; without it, the first 100, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
         }
       ]
     }
@@ -1417,7 +1518,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "discussion",
-    "description": "A discussion's posts, oldest first, with their messages as text, and whether the person is subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced).",
+    "description": "A discussion's posts, oldest first, with their messages as text, and whether the person is subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced). With `limit`, `posts` is a page of them (see \"Long lists\" in the docs' concepts): Moodle's service has no paging, so every post is read and cut, but only the page's messages are turned into text.",
     "params": [
       {
         "name": "discussionId",
@@ -1427,7 +1528,32 @@ export const COMMANDS: readonly CommandSpec[] = [
           "kind": "number"
         }
       }
-    ]
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
+        }
+      ]
+    }
   },
   {
     "name": "downloadFile",
@@ -1888,7 +2014,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "forumDiscussions",
-    "description": "A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription.",
+    "description": "A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription. With `limit`, a page of them in the forum's order (see \"Long lists\" in the docs' concepts), read from the one page of the forum's own paging that holds it.",
     "params": [
       {
         "name": "activityId",
@@ -1898,7 +2024,32 @@ export const COMMANDS: readonly CommandSpec[] = [
           "kind": "number"
         }
       }
-    ]
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
+        }
+      ]
+    }
   },
   {
     "name": "forumGrades",
@@ -2198,7 +2349,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "graderReport",
-    "description": "Everyone's grades in a course as the grader report shows them, page by page, in one group when given. People come as user id and full name only.",
+    "description": "Everyone's grades in a course as the grader report shows them, page by page, in one group when given, only some people's rows when given their `userIds` (the report has no filter by user: its pages are read until all of them are found). People come as user id and full name only.",
     "params": [
       {
         "name": "courseId",
@@ -2220,6 +2371,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
+          }
+        },
+        {
+          "name": "userIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
           }
         }
       ]
@@ -2522,7 +2681,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "notifications",
-    "description": "The person's notifications, newest first, only the unread ones when asked.",
+    "description": "The person's notifications, newest first, only the unread ones when asked. With `limit`, a page of them (see \"Long lists\" in the docs' concepts): Moodle's service gives only the page, or, for the unread ones, batches until the page is full (it has no unread filter).",
     "params": [],
     "options": {
       "name": "options",
@@ -2535,7 +2694,26 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "boolean",
           "value": {
             "kind": "boolean"
-          }
+          },
+          "description": "Only the unread ones; `offset` then counts unread ones."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
         }
       ]
     }
@@ -2592,7 +2770,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "participants",
-    "description": "A course's participants with their roles and groups, as the participants page lists them: only those with a role (its id), in a group, or (`inactiveSince`) who haven't accessed the course since that date, when asked. Each role and group is a filter of its own, so ids come in any language.",
+    "description": "A course's participants with their roles and groups, as the participants page lists them: only those with a role (its id), in a group, or (`inactiveSince`) who haven't accessed the course since that date, when asked. Each role and group is a filter of its own, so ids come in any language. With `limit`, a page of them in the page's order, by last name (see \"Long lists\" in the docs' concepts): the one page of the table's own paging that holds it; the roles' and groups' members are still read whole, to tell each one's.",
     "params": [
       {
         "name": "courseId",
@@ -2614,7 +2792,8 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
-          }
+          },
+          "description": "Only those with this role (its id)."
         },
         {
           "name": "group",
@@ -2622,7 +2801,8 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
-          }
+          },
+          "description": "Only those in this group (its id)."
         },
         {
           "name": "inactiveSince",
@@ -2630,7 +2810,26 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "Date",
           "value": {
             "kind": "date"
-          }
+          },
+          "description": "Only those who haven't accessed the course since this date."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
         }
       ]
     }
@@ -2749,7 +2948,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "questions",
-    "description": "A bank's categories and every question in them, category by category.",
+    "description": "A bank's categories and every question in them, category by category. With `limit`, `questions` is a page of them in that order (see \"Long lists\" in the docs' concepts), the categories all: the bank is read category by category until the page is full, each category whole and cut (its page counts aren't reliable enough to skip by).",
     "params": [
       {
         "name": "activityId",
@@ -2759,7 +2958,32 @@ export const COMMANDS: readonly CommandSpec[] = [
           "kind": "number"
         }
       }
-    ]
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
+        }
+      ]
+    }
   },
   {
     "name": "questionsToGrade",
@@ -2791,7 +3015,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "quizResults",
-    "description": "A quiz's attempts as its grades report shows them: per attempt the user, state, dates, grade and the mark per question; with `responses`, also the answer per question from the responses report. Every page of the report.",
+    "description": "A quiz's attempts as its grades report shows them: per attempt the user, state, dates, grade and the mark per question; with `responses`, also the answer per question from the responses report. Every page of the report; with `limit`, `attempts` is a page of them in the report's order (see \"Long lists\" in the docs' concepts), read from the one page of the report's own paging that holds it.",
     "params": [
       {
         "name": "activityId",
@@ -2813,7 +3037,26 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "boolean",
           "value": {
             "kind": "boolean"
-          }
+          },
+          "description": "Also the answer per question, from the responses report."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
         }
       ]
     }

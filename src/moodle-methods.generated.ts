@@ -79,8 +79,37 @@ export interface MoodleMethods {
    * who has none, so reading leaves them at "none", without the panel's details (confirmed empirically
    * on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves
    * an empty grade (-1, not graded) and a "Grading form viewed" event, as Moodle's grader does.
+   * Only some participants when given their `userIds`; with `limit`, a page of them in the grader's
+   * order (see "Long lists" in the docs' concepts): Moodle's service lists every participant at once,
+   * cut to the page, and only the page's participants are read further (their dates, their panels).
    */
-  assignmentSubmissions(activityId: number, options?: { includeContent?: boolean | undefined; }): Promise<import("./areas/assignments/grading.js").Submission[]>;
+  assignmentSubmissions(activityId: number, options: import("./core/paging.js").WithLimit<import("./areas/assignments/grading.js").SubmissionOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/assignments/grading.js").Submission>>;
+  /**
+   * Every participant's submission to an assignment, with the group they submit for (group
+   * submissions), and, unless `includeContent` is false, its content, the feedback files they have,
+   * its marking workflow state and markers (all from each participant's grading panel). Those come only
+   * for participants with a submission: Moodle's grading panel creates an empty one for a participant
+   * who has none, so reading leaves them at "none", without the panel's details (confirmed empirically
+   * on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves
+   * an empty grade (-1, not graded) and a "Grading form viewed" event, as Moodle's grader does.
+   * Only some participants when given their `userIds`; with `limit`, a page of them in the grader's
+   * order (see "Long lists" in the docs' concepts): Moodle's service lists every participant at once,
+   * cut to the page, and only the page's participants are read further (their dates, their panels).
+   */
+  assignmentSubmissions(activityId: number, options?: import("./core/paging.js").WithoutLimit<import("./areas/assignments/grading.js").SubmissionOptions>): Promise<import("./areas/assignments/grading.js").Submission[]>;
+  /**
+   * Every participant's submission to an assignment, with the group they submit for (group
+   * submissions), and, unless `includeContent` is false, its content, the feedback files they have,
+   * its marking workflow state and markers (all from each participant's grading panel). Those come only
+   * for participants with a submission: Moodle's grading panel creates an empty one for a participant
+   * who has none, so reading leaves them at "none", without the panel's details (confirmed empirically
+   * on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves
+   * an empty grade (-1, not graded) and a "Grading form viewed" event, as Moodle's grader does.
+   * Only some participants when given their `userIds`; with `limit`, a page of them in the grader's
+   * order (see "Long lists" in the docs' concepts): Moodle's service lists every participant at once,
+   * cut to the page, and only the page's participants are read further (their dates, their panels).
+   */
+  assignmentSubmissions(activityId: number, options?: import("./areas/assignments/grading.js").SubmissionOptions): Promise<import("./areas/assignments/grading.js").Submission[] | import("./core/paging.js").ListPage<import("./areas/assignments/grading.js").Submission>>;
   /**
    * Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema,
    * confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which
@@ -93,16 +122,50 @@ export interface MoodleMethods {
   calendarEvent(eventId: number): Promise<import("./areas/calendar/calendar.js").CalendarEvent>;
   /**
    * A course's progress report: every participant's completion of every activity that tracks it, page
-   * by page, in one group when given. People come as user id and full name only.
+   * by page, in one group when given, only some people's when given their `userIds` (the report has
+   * no filter by user: its pages are read until all of them are found). People come as user id and
+   * full name only.
    */
-  completionReport(courseId: number, options?: { group?: number | undefined; }): Promise<import("./areas/completion/completion.js").CompletionReport>;
+  completionReport(courseId: number, options?: { group?: number | undefined; userIds?: number[] | undefined; }): Promise<import("./areas/completion/completion.js").CompletionReport>;
   /**
    * A conversation's messages, oldest first, as text, and its members as `conversations()` gives them:
    * everyone but the person, whether they wrote in it or not (the person alone in their own conversation).
+   * With `limit`, `messages` is a page of them (see "Long lists" in the docs' concepts) counted from
+   * the newest: the first page is the latest messages, `more` says there are older ones, and each
+   * page's messages still come oldest first. Moodle's service returns only the page.
    */
-  conversation(conversationId: number): Promise<{ id: number; members: { userId: number; fullName: string; }[]; messages: { id: number; fromUserId: number; text: string; time: string | undefined; }[]; }>;
-  /** The person's conversations, latest first, with their last message as text. */
-  conversations(): Promise<import("./areas/messages/messages.js").ConversationSummary[]>;
+  conversation(conversationId: number, options: import("./core/paging.js").WithLimit<import("./core/paging.js").PageOptions>): Promise<import("./areas/messages/messages.js").Conversation<import("./core/paging.js").ListPage<import("./areas/messages/messages.js").ConversationMessage>>>;
+  /**
+   * A conversation's messages, oldest first, as text, and its members as `conversations()` gives them:
+   * everyone but the person, whether they wrote in it or not (the person alone in their own conversation).
+   * With `limit`, `messages` is a page of them (see "Long lists" in the docs' concepts) counted from
+   * the newest: the first page is the latest messages, `more` says there are older ones, and each
+   * page's messages still come oldest first. Moodle's service returns only the page.
+   */
+  conversation(conversationId: number, options?: import("./core/paging.js").WithoutLimit<import("./core/paging.js").PageOptions>): Promise<import("./areas/messages/messages.js").Conversation<import("./areas/messages/messages.js").ConversationMessage[]>>;
+  /**
+   * A conversation's messages, oldest first, as text, and its members as `conversations()` gives them:
+   * everyone but the person, whether they wrote in it or not (the person alone in their own conversation).
+   * With `limit`, `messages` is a page of them (see "Long lists" in the docs' concepts) counted from
+   * the newest: the first page is the latest messages, `more` says there are older ones, and each
+   * page's messages still come oldest first. Moodle's service returns only the page.
+   */
+  conversation(conversationId: number, options?: import("./core/paging.js").PageOptions): Promise<import("./areas/messages/messages.js").Conversation<import("./areas/messages/messages.js").ConversationMessage[] | import("./core/paging.js").ListPage<import("./areas/messages/messages.js").ConversationMessage>>>;
+  /**
+   * The person's conversations, latest first, with their last message as text. With `limit`, a page of
+   * them (see "Long lists" in the docs' concepts), the only ones Moodle's service returns.
+   */
+  conversations(options: import("./core/paging.js").WithLimit<import("./core/paging.js").PageOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/messages/messages.js").ConversationSummary>>;
+  /**
+   * The person's conversations, latest first, with their last message as text. With `limit`, a page of
+   * them (see "Long lists" in the docs' concepts), the only ones Moodle's service returns.
+   */
+  conversations(options?: import("./core/paging.js").WithoutLimit<import("./core/paging.js").PageOptions>): Promise<import("./areas/messages/messages.js").ConversationSummary[]>;
+  /**
+   * The person's conversations, latest first, with their last message as text. With `limit`, a page of
+   * them (see "Long lists" in the docs' concepts), the only ones Moodle's service returns.
+   */
+  conversations(options?: import("./core/paging.js").PageOptions): Promise<import("./areas/messages/messages.js").ConversationSummary[] | import("./core/paging.js").ListPage<import("./areas/messages/messages.js").ConversationSummary>>;
   /**
    * Copies a course into a new one, as Moodle's "Copy course" does: its content (and its people's
    * data and enrolments, `withUsers`), under a new full and short name, in a category (the course's
@@ -124,9 +187,32 @@ export interface MoodleMethods {
    * A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of
    * action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity
    * and action; the span is read page by page, stopping at the first entry older than `from`. Every
-   * entry's time comes as an ISO date, read back with the site language's own format.
+   * entry's time comes as an ISO date, read back with the site language's own format. Without `limit`,
+   * the first 100 entries (from `offset`) as a list; with it, a page of them (see "Long lists" in the
+   * docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the
+   * first page, since only the driver filters by it).
    */
-  courseLogs(courseId: number, options?: { userId?: number | undefined; activityId?: number | undefined; from?: Date | undefined; until?: Date | undefined; action?: "create" | "view" | "update" | "delete" | "change" | undefined; limit?: number | undefined; }): Promise<import("./areas/reports/reports.js").LogEntry[]>;
+  courseLogs(courseId: number, options: import("./core/paging.js").WithLimit<import("./areas/reports/reports.js").CourseLogOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/reports/reports.js").LogEntry>>;
+  /**
+   * A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of
+   * action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity
+   * and action; the span is read page by page, stopping at the first entry older than `from`. Every
+   * entry's time comes as an ISO date, read back with the site language's own format. Without `limit`,
+   * the first 100 entries (from `offset`) as a list; with it, a page of them (see "Long lists" in the
+   * docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the
+   * first page, since only the driver filters by it).
+   */
+  courseLogs(courseId: number, options?: import("./core/paging.js").WithoutLimit<import("./areas/reports/reports.js").CourseLogOptions>): Promise<import("./areas/reports/reports.js").LogEntry[]>;
+  /**
+   * A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of
+   * action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity
+   * and action; the span is read page by page, stopping at the first entry older than `from`. Every
+   * entry's time comes as an ISO date, read back with the site language's own format. Without `limit`,
+   * the first 100 entries (from `offset`) as a list; with it, a page of them (see "Long lists" in the
+   * docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the
+   * first page, since only the driver filters by it).
+   */
+  courseLogs(courseId: number, options?: import("./areas/reports/reports.js").CourseLogOptions): Promise<import("./areas/reports/reports.js").LogEntry[] | import("./core/paging.js").ListPage<import("./areas/reports/reports.js").LogEntry>>;
   /** A user's roles in a course, from their profile there: role links carry the role id in any language. */
   courseRoles(userId: number, courseId: number): Promise<{ id: number; name: string; }[]>;
   /**
@@ -200,9 +286,25 @@ export interface MoodleMethods {
   deleteSection(courseId: number, sectionId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
    * A discussion's posts, oldest first, with their messages as text, and whether the person is
-   * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced).
+   * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced). With `limit`,
+   * `posts` is a page of them (see "Long lists" in the docs' concepts): Moodle's service has no paging,
+   * so every post is read and cut, but only the page's messages are turned into text.
    */
-  discussion(discussionId: number): Promise<{ discussion: { id: number; forumInstanceId: number; courseId: number; subscribed: boolean | undefined; }; posts: import("./areas/forums/posts.js").ForumPost[]; }>;
+  discussion(discussionId: number, options: import("./core/paging.js").WithLimit<import("./core/paging.js").PageOptions>): Promise<import("./areas/forums/posts.js").DiscussionPosts<import("./core/paging.js").ListPage<import("./areas/forums/posts.js").ForumPost>>>;
+  /**
+   * A discussion's posts, oldest first, with their messages as text, and whether the person is
+   * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced). With `limit`,
+   * `posts` is a page of them (see "Long lists" in the docs' concepts): Moodle's service has no paging,
+   * so every post is read and cut, but only the page's messages are turned into text.
+   */
+  discussion(discussionId: number, options?: import("./core/paging.js").WithoutLimit<import("./core/paging.js").PageOptions>): Promise<import("./areas/forums/posts.js").DiscussionPosts<import("./areas/forums/posts.js").ForumPost[]>>;
+  /**
+   * A discussion's posts, oldest first, with their messages as text, and whether the person is
+   * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced). With `limit`,
+   * `posts` is a page of them (see "Long lists" in the docs' concepts): Moodle's service has no paging,
+   * so every post is read and cut, but only the page's messages are turned into text.
+   */
+  discussion(discussionId: number, options?: import("./core/paging.js").PageOptions): Promise<import("./areas/forums/posts.js").DiscussionPosts<import("./areas/forums/posts.js").ForumPost[] | import("./core/paging.js").ListPage<import("./areas/forums/posts.js").ForumPost>>>;
   /** Duplicates an activity as the course page's "Duplicate" does (right after it, named with "(copy)"); gives the copy's id and the course afterwards. */
   duplicateActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
@@ -241,8 +343,24 @@ export interface MoodleMethods {
   enrolmentMethods(courseId: number): Promise<import("./areas/participants/methods.js").EnrolmentMethod[]>;
   /** Submits an attempt for grading, and gives its review when the quiz shows it. */
   finishQuizAttempt(attemptId: number): Promise<{ changed: string; attemptId: number; finished: true; review: { summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; } | undefined; }>;
-  /** A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription. */
-  forumDiscussions(activityId: number): Promise<import("./areas/forums/posts.js").ForumDiscussion[]>;
+  /**
+   * A forum's discussions, as its page lists them: who started each, replies, last post, the person's
+   * subscription. With `limit`, a page of them in the forum's order (see "Long lists" in the docs'
+   * concepts), read from the one page of the forum's own paging that holds it.
+   */
+  forumDiscussions(activityId: number, options: import("./core/paging.js").WithLimit<import("./core/paging.js").PageOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/forums/posts.js").ForumDiscussion>>;
+  /**
+   * A forum's discussions, as its page lists them: who started each, replies, last post, the person's
+   * subscription. With `limit`, a page of them in the forum's order (see "Long lists" in the docs'
+   * concepts), read from the one page of the forum's own paging that holds it.
+   */
+  forumDiscussions(activityId: number, options?: import("./core/paging.js").WithoutLimit<import("./core/paging.js").PageOptions>): Promise<import("./areas/forums/posts.js").ForumDiscussion[]>;
+  /**
+   * A forum's discussions, as its page lists them: who started each, replies, last post, the person's
+   * subscription. With `limit`, a page of them in the forum's order (see "Long lists" in the docs'
+   * concepts), read from the one page of the forum's own paging that holds it.
+   */
+  forumDiscussions(activityId: number, options?: import("./core/paging.js").PageOptions): Promise<import("./areas/forums/posts.js").ForumDiscussion[] | import("./core/paging.js").ListPage<import("./areas/forums/posts.js").ForumDiscussion>>;
   /**
    * Everyone's whole-forum grade in a forum graded as a whole, as its grader shows them: one per
    * person it can grade (only the active ones when the forum says so), with how it's graded. One
@@ -283,9 +401,10 @@ export interface MoodleMethods {
   gradebookSetup(courseId: number): Promise<{ categories: import("./areas/grades/gradebook.js").GradebookCategory[]; items: import("./areas/grades/gradebook.js").GradebookItem[]; }>;
   /**
    * Everyone's grades in a course as the grader report shows them, page by page, in one group when
-   * given. People come as user id and full name only.
+   * given, only some people's rows when given their `userIds` (the report has no filter by user: its
+   * pages are read until all of them are found). People come as user id and full name only.
    */
-  graderReport(courseId: number, options?: { group?: number | undefined; }): Promise<import("./areas/grades/gradebook.js").GraderReport>;
+  graderReport(courseId: number, options?: { group?: number | undefined; userIds?: number[] | undefined; }): Promise<import("./areas/grades/gradebook.js").GraderReport>;
   /**
    * Grants participants an extension until a date, through the assignment's extension form (several at
    * once as its bulk action does). Moodle refuses a date before the assignment's due date, and a person
@@ -341,8 +460,24 @@ export interface MoodleMethods {
   messageParticipants(courseId: number, text: string, selection?: import("./areas/messages/messages.js").ParticipantSelection): Promise<{ changed: string; sentTo: number[]; refused: { userId: number; reason: string; }[]; }>;
   /** The person's own grade report for a course. */
   myGrades(courseId: number): Promise<import("./areas/grades/user-report.js").GradeRow[]>;
-  /** The person's notifications, newest first, only the unread ones when asked. */
-  notifications(options?: { unreadOnly?: boolean | undefined; }): Promise<import("./areas/messages/messages.js").Notification[]>;
+  /**
+   * The person's notifications, newest first, only the unread ones when asked. With `limit`, a page of
+   * them (see "Long lists" in the docs' concepts): Moodle's service gives only the page, or, for the
+   * unread ones, batches until the page is full (it has no unread filter).
+   */
+  notifications(options: import("./core/paging.js").WithLimit<import("./areas/messages/messages.js").NotificationOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/messages/messages.js").Notification>>;
+  /**
+   * The person's notifications, newest first, only the unread ones when asked. With `limit`, a page of
+   * them (see "Long lists" in the docs' concepts): Moodle's service gives only the page, or, for the
+   * unread ones, batches until the page is full (it has no unread filter).
+   */
+  notifications(options?: import("./core/paging.js").WithoutLimit<import("./areas/messages/messages.js").NotificationOptions>): Promise<import("./areas/messages/messages.js").Notification[]>;
+  /**
+   * The person's notifications, newest first, only the unread ones when asked. With `limit`, a page of
+   * them (see "Long lists" in the docs' concepts): Moodle's service gives only the page, or, for the
+   * unread ones, batches until the page is full (it has no unread filter).
+   */
+  notifications(options?: import("./areas/messages/messages.js").NotificationOptions): Promise<import("./areas/messages/messages.js").Notification[] | import("./core/paging.js").ListPage<import("./areas/messages/messages.js").Notification>>;
   /** Opens a Moodle form page and waits for its editors to be ready. */
   openForm(pathAndQuery: string): Promise<import("playwright-core").Page>;
   /**
@@ -362,8 +497,29 @@ export interface MoodleMethods {
    * A course's participants with their roles and groups, as the participants page lists them: only
    * those with a role (its id), in a group, or (`inactiveSince`) who haven't accessed the course since
    * that date, when asked. Each role and group is a filter of its own, so ids come in any language.
+   * With `limit`, a page of them in the page's order, by last name (see "Long lists" in the docs'
+   * concepts): the one page of the table's own paging that holds it; the roles' and groups' members
+   * are still read whole, to tell each one's.
    */
-  participants(courseId: number, options?: { role?: number | undefined; group?: number | undefined; inactiveSince?: Date | undefined; }): Promise<import("./areas/participants/participants.js").Participant[]>;
+  participants(courseId: number, options: import("./core/paging.js").WithLimit<import("./areas/participants/participants.js").ParticipantOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/participants/participants.js").Participant>>;
+  /**
+   * A course's participants with their roles and groups, as the participants page lists them: only
+   * those with a role (its id), in a group, or (`inactiveSince`) who haven't accessed the course since
+   * that date, when asked. Each role and group is a filter of its own, so ids come in any language.
+   * With `limit`, a page of them in the page's order, by last name (see "Long lists" in the docs'
+   * concepts): the one page of the table's own paging that holds it; the roles' and groups' members
+   * are still read whole, to tell each one's.
+   */
+  participants(courseId: number, options?: import("./core/paging.js").WithoutLimit<import("./areas/participants/participants.js").ParticipantOptions>): Promise<import("./areas/participants/participants.js").Participant[]>;
+  /**
+   * A course's participants with their roles and groups, as the participants page lists them: only
+   * those with a role (its id), in a group, or (`inactiveSince`) who haven't accessed the course since
+   * that date, when asked. Each role and group is a filter of its own, so ids come in any language.
+   * With `limit`, a page of them in the page's order, by last name (see "Long lists" in the docs'
+   * concepts): the one page of the table's own paging that holds it; the roles' and groups' members
+   * are still read whole, to tell each one's.
+   */
+  participants(courseId: number, options?: import("./areas/participants/participants.js").ParticipantOptions): Promise<import("./areas/participants/participants.js").Participant[] | import("./core/paging.js").ListPage<import("./areas/participants/participants.js").Participant>>;
   /**
    * Who took part in an activity of a course, as its participation report counts it: everyone with
    * the role (every role the report offers, unless `roleId`), with how many actions they made there
@@ -384,8 +540,27 @@ export interface MoodleMethods {
   potentialUsers(courseId: number, search?: string): Promise<import("./areas/participants/enrolments.js").PotentialUser[]>;
   /** A course's question banks: its shared ones and the activities' own, as the banks page lists them. */
   questionBanks(courseId: number): Promise<import("./areas/questions/banks.js").QuestionBank[]>;
-  /** A bank's categories and every question in them, category by category. */
-  questions(activityId: number): Promise<{ categories: import("./areas/questions/banks.js").BankCategory[]; questions: import("./areas/questions/banks.js").BankQuestion[]; }>;
+  /**
+   * A bank's categories and every question in them, category by category. With `limit`, `questions` is
+   * a page of them in that order (see "Long lists" in the docs' concepts), the categories all: the bank
+   * is read category by category until the page is full, each category whole and cut (its page counts
+   * aren't reliable enough to skip by).
+   */
+  questions(activityId: number, options: import("./core/paging.js").WithLimit<import("./core/paging.js").PageOptions>): Promise<import("./areas/questions/banks.js").BankQuestions<import("./core/paging.js").ListPage<import("./areas/questions/banks.js").BankQuestion>>>;
+  /**
+   * A bank's categories and every question in them, category by category. With `limit`, `questions` is
+   * a page of them in that order (see "Long lists" in the docs' concepts), the categories all: the bank
+   * is read category by category until the page is full, each category whole and cut (its page counts
+   * aren't reliable enough to skip by).
+   */
+  questions(activityId: number, options?: import("./core/paging.js").WithoutLimit<import("./core/paging.js").PageOptions>): Promise<import("./areas/questions/banks.js").BankQuestions<import("./areas/questions/banks.js").BankQuestion[]>>;
+  /**
+   * A bank's categories and every question in them, category by category. With `limit`, `questions` is
+   * a page of them in that order (see "Long lists" in the docs' concepts), the categories all: the bank
+   * is read category by category until the page is full, each category whole and cut (its page counts
+   * aren't reliable enough to skip by).
+   */
+  questions(activityId: number, options?: import("./core/paging.js").PageOptions): Promise<import("./areas/questions/banks.js").BankQuestions<import("./areas/questions/banks.js").BankQuestion[] | import("./core/paging.js").ListPage<import("./areas/questions/banks.js").BankQuestion>>>;
   /**
    * The questions of a quiz that wait for grading by hand (essays…), as its manual grading report lists
    * them, each with the finished attempts whose answer requires grading (from the results report).
@@ -397,9 +572,24 @@ export interface MoodleMethods {
   /**
    * A quiz's attempts as its grades report shows them: per attempt the user, state, dates, grade and
    * the mark per question; with `responses`, also the answer per question from the responses report.
-   * Every page of the report.
+   * Every page of the report; with `limit`, `attempts` is a page of them in the report's order (see
+   * "Long lists" in the docs' concepts), read from the one page of the report's own paging that holds it.
    */
-  quizResults(activityId: number, options?: { responses?: boolean | undefined; }): Promise<{ quiz: { id: number; }; attempts: import("./areas/quizzes/results.js").QuizAttemptResult[]; }>;
+  quizResults(activityId: number, options: import("./core/paging.js").WithLimit<import("./areas/quizzes/results.js").QuizResultsOptions>): Promise<import("./areas/quizzes/results.js").QuizResults<import("./core/paging.js").ListPage<import("./areas/quizzes/results.js").QuizAttemptResult>>>;
+  /**
+   * A quiz's attempts as its grades report shows them: per attempt the user, state, dates, grade and
+   * the mark per question; with `responses`, also the answer per question from the responses report.
+   * Every page of the report; with `limit`, `attempts` is a page of them in the report's order (see
+   * "Long lists" in the docs' concepts), read from the one page of the report's own paging that holds it.
+   */
+  quizResults(activityId: number, options?: import("./core/paging.js").WithoutLimit<import("./areas/quizzes/results.js").QuizResultsOptions>): Promise<import("./areas/quizzes/results.js").QuizResults<import("./areas/quizzes/results.js").QuizAttemptResult[]>>;
+  /**
+   * A quiz's attempts as its grades report shows them: per attempt the user, state, dates, grade and
+   * the mark per question; with `responses`, also the answer per question from the responses report.
+   * Every page of the report; with `limit`, `attempts` is a page of them in the report's order (see
+   * "Long lists" in the docs' concepts), read from the one page of the report's own paging that holds it.
+   */
+  quizResults(activityId: number, options?: import("./areas/quizzes/results.js").QuizResultsOptions): Promise<import("./areas/quizzes/results.js").QuizResults<import("./areas/quizzes/results.js").QuizAttemptResult[] | import("./core/paging.js").ListPage<import("./areas/quizzes/results.js").QuizAttemptResult>>>;
   /** A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark, and its sections. */
   quizStructure(activityId: number): Promise<{ quiz: { id: number; }; slots: import("./areas/quizzes/structure.js").QuizSlot[]; sections: import("./areas/quizzes/structure.js").QuizSection[]; }>;
   /**

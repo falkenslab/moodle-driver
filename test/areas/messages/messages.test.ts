@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
-import { MessageError, conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "../../../src/index.js";
+import { MessageError, MoodleError, conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "../../../src/index.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -87,6 +87,74 @@ describe("notifications", { skip: !browser && "no system browser" }, () => {
     await markNotificationsRead(context, SITE);
     assert.deepEqual(state.serviceCalls!.find((c) => c.methodname === "core_message_mark_all_notifications_as_read")?.args, { useridto: 4 });
     assert.deepEqual(await notifications(context, SITE, { unreadOnly: true }), []);
+    await context.close();
+  });
+});
+
+/** Five notifications (ids 5 to 1, newest first; the even ones read), five conversations and a conversation of five messages, paged as Moodle's services do. */
+function fakeLongLists(): FakeMoodleState {
+  const window = <T>(all: T[], from: unknown, count: unknown) => all.slice(from as number, (count as number) ? (from as number) + (count as number) : undefined);
+  const notes = [5, 4, 3, 2, 1].map((id) => ({ id, useridfrom: 3, subject: `Note ${id}`, fullmessage: "x", smallmessage: "", timecreated: 1_790_000_000 + id, read: id % 2 === 0 }));
+  const messages = [1, 2, 3, 4, 5].map((id) => ({ id, useridfrom: 3, text: `<p>Message ${id}</p>`, timecreated: 1_790_000_000 + id }));
+  return {
+    user: { id: 4, fullName: "Ana Student" },
+    serviceCalls: [],
+    services: {
+      message_popup_get_popup_notifications: ({ limit, offset }) => ({ notifications: window(notes, offset, limit), unreadcount: 3 }),
+      core_message_get_conversations: ({ limitfrom, limitnum }) => ({
+        conversations: window([10, 9, 8, 7, 6].map((id) => ({ id, type: 1, name: null, members: [{ id: 3, fullname: "Teacher Uno" }], unreadcount: 0, messages: [] })), limitfrom, limitnum),
+      }),
+      core_message_get_conversation_members: () => [{ id: 3, fullname: "Teacher Uno" }, { id: 4, fullname: "Ana Student" }],
+      core_message_get_conversation_messages: ({ convid, limitfrom, limitnum, newest }) => ({ id: convid, members: [], messages: window(newest ? [...messages].reverse() : messages, limitfrom, limitnum) }),
+    },
+  };
+}
+
+describe("long lists of messages", { skip: !browser && "no system browser" }, () => {
+  it("pages notifications through the service, newest first, and the unread ones counted as unread", async () => {
+    const state = fakeLongLists();
+    const context = await open(state);
+    const ids = (page: { items: { id: number }[]; more: boolean }) => [page.items.map((n) => n.id), page.more];
+    assert.deepEqual(ids(await notifications(context, SITE, { limit: 2 })), [[5, 4], true]);
+    assert.deepEqual(state.serviceCalls!.at(-1)?.args, { useridto: 0, limit: 3, offset: 0 });
+    assert.deepEqual(ids(await notifications(context, SITE, { limit: 2, offset: 2 })), [[3, 2], true]);
+    assert.deepEqual(ids(await notifications(context, SITE, { limit: 2, offset: 4 })), [[1], false]);
+    assert.deepEqual(ids(await notifications(context, SITE, { unreadOnly: true, limit: 2 })), [[5, 3], true]);
+    assert.deepEqual(ids(await notifications(context, SITE, { unreadOnly: true, limit: 2, offset: 2 })), [[1], false]);
+    // Without limit, the list as before.
+    assert.deepEqual((await notifications(context, SITE)).map((n) => n.id), [5, 4, 3, 2, 1]);
+    assert.deepEqual(state.serviceCalls!.at(-1)?.args, { useridto: 0, limit: 0, offset: 0 });
+    assert.deepEqual((await notifications(context, SITE, { unreadOnly: true })).map((n) => n.id), [5, 3, 1]);
+    await assert.rejects(notifications(context, SITE, { limit: 0 }), (error: MoodleError) => error.code === "invalid-input");
+    await context.close();
+  });
+
+  it("pages conversations through the service", async () => {
+    const state = fakeLongLists();
+    const context = await open(state);
+    const first = await conversations(context, SITE, { limit: 2 });
+    assert.deepEqual([first.items.map((c) => c.id), first.more], [[10, 9], true]);
+    assert.deepEqual(state.serviceCalls!.at(-1)?.args, { userid: 4, limitfrom: 0, limitnum: 3 });
+    const next = await conversations(context, SITE, { limit: 2, offset: 2 });
+    assert.deepEqual([next.items.map((c) => c.id), next.more], [[8, 7], true]);
+    const last = await conversations(context, SITE, { limit: 2, offset: 4 });
+    assert.deepEqual([last.items.map((c) => c.id), last.more], [[6], false]);
+    assert.deepEqual((await conversations(context, SITE)).map((c) => c.id), [10, 9, 8, 7, 6]);
+    await context.close();
+  });
+
+  it("pages a conversation's messages from the newest, each page oldest first", async () => {
+    const state = fakeLongLists();
+    const context = await open(state);
+    const texts = (page: { items: { text: string }[]; more: boolean }) => [page.items.map((m) => m.text), page.more];
+    const first = await conversation(context, SITE, 6, { limit: 2 });
+    assert.deepEqual(texts(first.messages), [["Message 4", "Message 5"], true]);
+    assert.deepEqual(first.members, [{ userId: 3, fullName: "Teacher Uno" }]);
+    assert.deepEqual(state.serviceCalls!.at(-1)?.args, { currentuserid: 4, convid: 6, limitfrom: 0, limitnum: 3, newest: true });
+    assert.deepEqual(texts((await conversation(context, SITE, 6, { limit: 2, offset: 2 })).messages), [["Message 2", "Message 3"], true]);
+    assert.deepEqual(texts((await conversation(context, SITE, 6, { limit: 2, offset: 4 })).messages), [["Message 1"], false]);
+    assert.deepEqual((await conversation(context, SITE, 6)).messages.map((m) => m.text), ["Message 1", "Message 2", "Message 3", "Message 4", "Message 5"]);
+    assert.deepEqual(state.serviceCalls!.at(-1)?.args, { currentuserid: 4, convid: 6, limitfrom: 0, limitnum: 0, newest: false });
     await context.close();
   });
 });

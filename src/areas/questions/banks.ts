@@ -10,6 +10,7 @@ import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldVa
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
 import { callService } from "../../core/ajax.js";
 import { MoodleError } from "../../core/errors.js";
+import { pageWindow, sliceWindow, toPage, type ListPage, type PageOptions, type WithLimit, type WithoutLimit } from "../../core/paging.js";
 
 /** The bank isn't there, or Moodle refused the questions. */
 export class QuestionBankError extends MoodleError {
@@ -142,8 +143,23 @@ async function checkBank(context: BrowserContext, siteUrl: string, activityId: n
 // A bank page shows this many questions at most; more than that in one category isn't read.
 const PER_PAGE = 1000;
 
-/** A bank's categories and every question in them, category by category. */
-export async function questions(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ categories: BankCategory[]; questions: BankQuestion[] }> {
+/** A bank's questions as `questions` reads them: its categories, and its questions (a list, or a page of them). */
+export interface BankQuestions<Q = BankQuestion[]> {
+  categories: BankCategory[];
+  questions: Q;
+}
+
+/**
+ * A bank's categories and every question in them, category by category. With `limit`, `questions` is
+ * a page of them in that order (see "Long lists" in the docs' concepts), the categories all: the bank
+ * is read category by category until the page is full, each category whole and cut (its page counts
+ * aren't reliable enough to skip by).
+ */
+export function questions(context: BrowserContext, siteUrl: string, activityId: number, options: WithLimit<PageOptions>): Promise<BankQuestions<ListPage<BankQuestion>>>;
+export function questions(context: BrowserContext, siteUrl: string, activityId: number, options?: WithoutLimit<PageOptions>): Promise<BankQuestions>;
+export function questions(context: BrowserContext, siteUrl: string, activityId: number, options?: PageOptions): Promise<BankQuestions<BankQuestion[] | ListPage<BankQuestion>>>;
+export async function questions(context: BrowserContext, siteUrl: string, activityId: number, options: PageOptions = {}): Promise<BankQuestions<BankQuestion[] | ListPage<BankQuestion>>> {
+  const window = pageWindow(options);
   await checkBank(context, siteUrl, activityId);
   const page = await openSitePage(context, siteUrl, `question/edit.php?cmid=${activityId}`);
   try {
@@ -153,10 +169,11 @@ export async function questions(context: BrowserContext, siteUrl: string, activi
     const { contextId, categories } = await bankCategories(page);
     const found: BankQuestion[] = [];
     for (const category of categories) {
+      if (window.count !== undefined && found.length >= window.offset + window.count) break;
       await page.goto(new URL(`question/edit.php?cmid=${activityId}&cat=${category.id},${contextId}&qperpage=${PER_PAGE}`, siteUrl).href, { waitUntil: "domcontentloaded" });
       found.push(...(await readBankQuestions(page, category.id)));
     }
-    return { categories, questions: found };
+    return { categories, questions: toPage(sliceWindow(found, window), options.limit) };
   } finally {
     await page.close().catch(() => undefined);
   }

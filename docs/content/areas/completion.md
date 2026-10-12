@@ -75,7 +75,7 @@ It goes through `core_completion_override_activity_completion_status`, which nee
 A course's progress report (`report/progress/index.php`): every participant's completion of every activity that tracks it, page by page until no new rows come, optionally in one group.
 
 ```ts
-function completionReport(context: BrowserContext, siteUrl: string, courseId: number, options?: { group?: number }): Promise<CompletionReport>;
+function completionReport(context: BrowserContext, siteUrl: string, courseId: number, options?: { group?: number; userIds?: number[] }): Promise<CompletionReport>;
 
 interface CompletionReport {
   activities: { id: number; name: string; type: string }[];
@@ -91,6 +91,7 @@ interface CompletionCell {
 ```
 
 - `activities`: the report's columns, by course module id, name and module ("page", "quiz"…), read from the header links.
+- `userIds`: only these people's rows. The report has no filter by user: its pages are read until all of them are found.
 - `participants`: one per row, by user id and full name only. The report also shows other identity fields (an email, say): they're not read.
 - `completion`: one cell per activity, in the activities' order. `tracking` says whether the activity completes by hand or automatically; `overridden` is `true` when a teacher set it, not the person or Moodle.
 

@@ -210,7 +210,7 @@ moodle assess-workshop-submission <activityId> <submissionId> --options
 
 ## assignmentSubmissions
 
-Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel). Those come only for participants with a submission: Moodle's grading panel creates an empty one for a participant who has none, so reading leaves them at "none", without the panel's details (confirmed empirically on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves an empty grade (-1, not graded) and a "Grading form viewed" event, as Moodle's grader does.
+Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel). Those come only for participants with a submission: Moodle's grading panel creates an empty one for a participant who has none, so reading leaves them at "none", without the panel's details (confirmed empirically on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves an empty grade (-1, not graded) and a "Grading form viewed" event, as Moodle's grader does. Only some participants when given their `userIds`; with `limit`, a page of them in the grader's order (see "Long lists" in the docs' concepts): Moodle's service lists every participant at once, cut to the page, and only the page's participants are read further (their dates, their panels).
 
 ```bash
 moodle assignment-submissions <activityId> [--options]
@@ -219,7 +219,10 @@ moodle assignment-submissions <activityId> [--options]
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
-| `--include-content` | `boolean` |  |
+| `--include-content` | `boolean` | Also each submission's content, feedback files, workflow state and markers, from the grading panels: true unless given. |
+| `--user-ids` | `number[]` | Only these participants (their user ids). |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## backupCourse
 
@@ -264,7 +267,7 @@ moodle call-service <methodname> --options
 
 ## completionReport
 
-A course's progress report: every participant's completion of every activity that tracks it, page by page, in one group when given. People come as user id and full name only.
+A course's progress report: every participant's completion of every activity that tracks it, page by page, in one group when given, only some people's when given their `userIds` (the report has no filter by user: its pages are read until all of them are found). People come as user id and full name only.
 
 ```bash
 moodle completion-report <courseId> [--options]
@@ -274,26 +277,34 @@ moodle completion-report <courseId> [--options]
 | --- | --- | --- |
 | `courseId` | `number` |  |
 | `--group` | `number` |  |
+| `--user-ids` | `number[]` |  |
 
 ## conversation
 
-A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation).
+A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation). With `limit`, `messages` is a page of them (see "Long lists" in the docs' concepts) counted from the newest: the first page is the latest messages, `more` says there are older ones, and each page's messages still come oldest first. Moodle's service returns only the page.
 
 ```bash
-moodle conversation <conversationId>
+moodle conversation <conversationId> [--options]
 ```
 
 | Argument | Type | Description |
 | --- | --- | --- |
 | `conversationId` | `number` |  |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## conversations
 
-The person's conversations, latest first, with their last message as text.
+The person's conversations, latest first, with their last message as text. With `limit`, a page of them (see "Long lists" in the docs' concepts), the only ones Moodle's service returns.
 
 ```bash
-moodle conversations
+moodle conversations [--options]
 ```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## copyCourse
 
@@ -342,7 +353,7 @@ moodle course-activity-types <courseId>
 
 ## courseLogs
 
-A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format.
+A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format. Without `limit`, the first 100 entries (from `offset`) as a list; with it, a page of them (see "Long lists" in the docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the first page, since only the driver filters by it).
 
 ```bash
 moodle course-logs <courseId> [--options]
@@ -351,12 +362,13 @@ moodle course-logs <courseId> [--options]
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` | `number` |  |
-| `--user-id` | `number` |  |
-| `--activity-id` | `number` |  |
-| `--from` | `Date` |  |
-| `--until` | `Date` |  |
-| `--action` | `"create" \| "view" \| "update" \| "delete" \| "change"` |  |
-| `--limit` | `number` |  |
+| `--user-id` | `number` | Only this user's actions. |
+| `--activity-id` | `number` | Only in this activity (its course module id). |
+| `--from` | `Date` | Only from this date on. |
+| `--until` | `Date` | Only until this date. |
+| `--action` | `"create" \| "view" \| "update" \| "delete" \| "change"` | Only this kind of action. |
+| `--limit` | `number` | How many entries (1 or more): with it, the entries come as a `ListPage`; without it, the first 100, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## courseRoles
 
@@ -600,15 +612,17 @@ moodle delete-section <courseId> <sectionId>
 
 ## discussion
 
-A discussion's posts, oldest first, with their messages as text, and whether the person is subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced).
+A discussion's posts, oldest first, with their messages as text, and whether the person is subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced). With `limit`, `posts` is a page of them (see "Long lists" in the docs' concepts): Moodle's service has no paging, so every post is read and cut, but only the page's messages are turned into text.
 
 ```bash
-moodle discussion <discussionId>
+moodle discussion <discussionId> [--options]
 ```
 
 | Argument | Type | Description |
 | --- | --- | --- |
 | `discussionId` | `number` |  |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## downloadFile
 
@@ -764,15 +778,17 @@ moodle finish-quiz-attempt <attemptId>
 
 ## forumDiscussions
 
-A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription.
+A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription. With `limit`, a page of them in the forum's order (see "Long lists" in the docs' concepts), read from the one page of the forum's own paging that holds it.
 
 ```bash
-moodle forum-discussions <activityId>
+moodle forum-discussions <activityId> [--options]
 ```
 
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## forumGrades
 
@@ -879,7 +895,7 @@ moodle gradebook-setup <courseId>
 
 ## graderReport
 
-Everyone's grades in a course as the grader report shows them, page by page, in one group when given. People come as user id and full name only.
+Everyone's grades in a course as the grader report shows them, page by page, in one group when given, only some people's rows when given their `userIds` (the report has no filter by user: its pages are read until all of them are found). People come as user id and full name only.
 
 ```bash
 moodle grader-report <courseId> [--options]
@@ -889,6 +905,7 @@ moodle grader-report <courseId> [--options]
 | --- | --- | --- |
 | `courseId` | `number` |  |
 | `--group` | `number` |  |
+| `--user-ids` | `number[]` |  |
 
 ## grantExtension
 
@@ -1062,7 +1079,7 @@ moodle my-grades <courseId>
 
 ## notifications
 
-The person's notifications, newest first, only the unread ones when asked.
+The person's notifications, newest first, only the unread ones when asked. With `limit`, a page of them (see "Long lists" in the docs' concepts): Moodle's service gives only the page, or, for the unread ones, batches until the page is full (it has no unread filter).
 
 ```bash
 moodle notifications [--options]
@@ -1070,7 +1087,9 @@ moodle notifications [--options]
 
 | Argument | Type | Description |
 | --- | --- | --- |
-| `--unread-only` | `boolean` |  |
+| `--unread-only` | `boolean` | Only the unread ones; `offset` then counts unread ones. |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## overrideCompletion
 
@@ -1100,7 +1119,7 @@ moodle participant-filters <courseId>
 
 ## participants
 
-A course's participants with their roles and groups, as the participants page lists them: only those with a role (its id), in a group, or (`inactiveSince`) who haven't accessed the course since that date, when asked. Each role and group is a filter of its own, so ids come in any language.
+A course's participants with their roles and groups, as the participants page lists them: only those with a role (its id), in a group, or (`inactiveSince`) who haven't accessed the course since that date, when asked. Each role and group is a filter of its own, so ids come in any language. With `limit`, a page of them in the page's order, by last name (see "Long lists" in the docs' concepts): the one page of the table's own paging that holds it; the roles' and groups' members are still read whole, to tell each one's.
 
 ```bash
 moodle participants <courseId> [--options]
@@ -1109,9 +1128,11 @@ moodle participants <courseId> [--options]
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` | `number` |  |
-| `--role` | `number` |  |
-| `--group` | `number` |  |
-| `--inactive-since` | `Date` |  |
+| `--role` | `number` | Only those with this role (its id). |
+| `--group` | `number` | Only those in this group (its id). |
+| `--inactive-since` | `Date` | Only those who haven't accessed the course since this date. |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## participationReport
 
@@ -1176,15 +1197,17 @@ moodle question-banks <courseId>
 
 ## questions
 
-A bank's categories and every question in them, category by category.
+A bank's categories and every question in them, category by category. With `limit`, `questions` is a page of them in that order (see "Long lists" in the docs' concepts), the categories all: the bank is read category by category until the page is full, each category whole and cut (its page counts aren't reliable enough to skip by).
 
 ```bash
-moodle questions <activityId>
+moodle questions <activityId> [--options]
 ```
 
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## questionsToGrade
 
@@ -1212,7 +1235,7 @@ moodle quiz-info <activityId>
 
 ## quizResults
 
-A quiz's attempts as its grades report shows them: per attempt the user, state, dates, grade and the mark per question; with `responses`, also the answer per question from the responses report. Every page of the report.
+A quiz's attempts as its grades report shows them: per attempt the user, state, dates, grade and the mark per question; with `responses`, also the answer per question from the responses report. Every page of the report; with `limit`, `attempts` is a page of them in the report's order (see "Long lists" in the docs' concepts), read from the one page of the report's own paging that holds it.
 
 ```bash
 moodle quiz-results <activityId> [--options]
@@ -1221,7 +1244,9 @@ moodle quiz-results <activityId> [--options]
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
-| `--responses` | `boolean` |  |
+| `--responses` | `boolean` | Also the answer per question, from the responses report. |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## quizStructure
 

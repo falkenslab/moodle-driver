@@ -61,6 +61,28 @@ describe("forumDiscussions", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("pages through the forum's own paging, one page load a page", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "T" } });
+    // Five discussions, 15 to 11, paged by the forum's `s` (size) and `p` (page from 0).
+    const asked: [number, number][] = [];
+    await context.route(`${SITE}mod/forum/view.php**`, (route) => {
+      const query = new URL(route.request().url()).searchParams;
+      const [size, index] = [Number(query.get("s")), Number(query.get("p"))];
+      asked.push([size, index]);
+      const rows = [15, 14, 13, 12, 11].slice(index * size, index * size + size).map((id) => row(id, `D${id}`, "A", 1_790_000_000, { author: "A", time: 1_790_000_000, post: id }, 0));
+      return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-forum-view", body: `<table>${rows.join("")}</table>` }) });
+    });
+    const ids = (page: { items: { id: number }[]; more: boolean }) => [page.items.map((d) => d.id), page.more];
+    assert.deepEqual(ids(await forumDiscussions(context, SITE, 4, { limit: 2 })), [[15, 14], true]);
+    assert.deepEqual(ids(await forumDiscussions(context, SITE, 4, { limit: 2, offset: 2 })), [[13, 12], true]);
+    assert.deepEqual(ids(await forumDiscussions(context, SITE, 4, { limit: 2, offset: 4 })), [[11], false]);
+    // A page each: the smallest size whose one page holds the window and the one after it.
+    assert.deepEqual(asked, [[3, 0], [5, 0], [4, 1]]);
+    assert.deepEqual((await forumDiscussions(context, SITE, 4)).map((d) => d.id), [15, 14, 13, 12, 11]);
+    await context.close();
+  });
+
   it("refuses a page that isn't a forum", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { user: { id: 3, fullName: "T" } });
@@ -111,6 +133,17 @@ describe("discussion", { skip: !browser && "no system browser" }, () => {
       privateReply: false,
       unread: true,
     });
+    await context.close();
+  });
+
+  it("gives a page of the posts, oldest first, and whether there are more", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "T" }, services, bodies: { "/mod/forum/discuss.php": subscriptionToggle(2, true) } });
+    const first = await discussion(context, SITE, 2, { limit: 1 });
+    assert.deepEqual([first.discussion.courseId, first.posts.items.map((p) => p.id), first.posts.more], [5, [2], true]);
+    const last = await discussion(context, SITE, 2, { limit: 1, offset: 1 });
+    assert.deepEqual([last.posts.items.map((p) => p.text), last.posts.more], [["Yes & no."], false]);
+    assert.deepEqual((await discussion(context, SITE, 2, { offset: 1 })).posts.map((p) => p.id), [3]);
     await context.close();
   });
 

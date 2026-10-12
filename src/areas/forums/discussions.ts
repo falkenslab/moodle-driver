@@ -3,6 +3,7 @@ import { MoodleServiceError, callService } from "../../core/ajax.js";
 import { fetchSitePage, openSitePage } from "../../core/session.js";
 import { readImages, readTexts, type ImageItem } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
+import { numberedPage, sliceWindow, type PageWindow } from "../../core/paging.js";
 
 /** The id isn't a forum's course module, or the person can't see it. */
 export class NotAForumError extends MoodleError {
@@ -86,25 +87,37 @@ export function readDiscussionRows(page: Page): Promise<DiscussionRow[]> {
   });
 }
 
-/** Every discussion of a forum (its course module id), through all its pages. */
-export async function listDiscussions(context: BrowserContext, siteUrl: string, activityId: number): Promise<DiscussionRow[]> {
+/** One page of a forum's discussion list: `size` discussions (`s`), the page `index` from 0 (`p`). */
+async function discussionPage(context: BrowserContext, siteUrl: string, activityId: number, size: number, index: number): Promise<DiscussionRow[]> {
+  const page = await openSitePage(context, siteUrl, `mod/forum/view.php?id=${activityId}&s=${size}&p=${index}`);
+  try {
+    // The body id names the page in any language.
+    if ((await page.locator("body#page-mod-forum-view").count()) === 0) {
+      throw new NotAForumError(`Activity ${activityId} isn't a forum you can view. Take the id of a forum (module "forum") from the course structure.`);
+    }
+    return await readDiscussionRows(page);
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+/**
+ * The discussions of a forum (its course module id) in the window asked: every one through all its
+ * pages, or, for a window, the one page of the forum's own paging (`s`, `p`) that holds it.
+ */
+export async function listDiscussions(context: BrowserContext, siteUrl: string, activityId: number, window: PageWindow = { offset: 0 }): Promise<DiscussionRow[]> {
+  if (window.count !== undefined) {
+    const { size, index, skip } = numberedPage({ offset: window.offset, count: window.count });
+    return sliceWindow(await discussionPage(context, siteUrl, activityId, size, index), { offset: skip, count: window.count });
+  }
   const all = new Map<number, DiscussionRow>();
   for (let p = 0; p < MAX_PAGES; p++) {
-    const page = await openSitePage(context, siteUrl, `mod/forum/view.php?id=${activityId}&s=${PAGE_SIZE}&p=${p}`);
-    try {
-      // The body id names the page in any language.
-      if ((await page.locator("body#page-mod-forum-view").count()) === 0) {
-        throw new NotAForumError(`Activity ${activityId} isn't a forum you can view. Take the id of a forum (module "forum") from the course structure.`);
-      }
-      const rows = await readDiscussionRows(page);
-      const before = all.size;
-      for (const row of rows) all.set(row.id, row);
-      if (rows.length < PAGE_SIZE || all.size === before) break;
-    } finally {
-      await page.close().catch(() => undefined);
-    }
+    const rows = await discussionPage(context, siteUrl, activityId, PAGE_SIZE, p);
+    const before = all.size;
+    for (const row of rows) all.set(row.id, row);
+    if (rows.length < PAGE_SIZE || all.size === before) break;
   }
-  return Array.from(all.values());
+  return sliceWindow(Array.from(all.values()), window);
 }
 
 /** A post as `mod_forum_get_discussion_posts` returns it (Moodle 5.2), the fields read. */

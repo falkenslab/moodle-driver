@@ -21,8 +21,8 @@ function participants(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
-  options?: { role?: number; group?: number; inactiveSince?: Date },
-): Promise<Participant[]>;
+  options?: { role?: number; group?: number; inactiveSince?: Date; limit?: number; offset?: number },
+): Promise<Participant[]>; // ListPage<Participant> with limit
 
 interface Participant {
   userId: number;
@@ -37,6 +37,7 @@ Options (all optional, combined when several are given):
 - `role`: a role id from `participantFilters` (5 is Student on a default site, but read it rather than assume it).
 - `group`: a group id from `participantFilters` or `groups`.
 - `inactiveSince`: only those who haven't accessed the course since that date, as the page's "Inactive for more than" filter does.
+- `limit`, `offset`: a page of them, by last name as the page lists them (see [Long lists](../concepts/calling-functions.md#long-lists)): the one page of the table's own paging that holds it. Each role's and group's members are still read whole, to tell the page's participants' roles and groups.
 
 Each participant comes with every role and group they have in the course (`roles` and `groups` may be empty: someone without a role, or in no group). It throws `NoParticipantsError` when the person can't see the course's participants, or the course doesn't exist.
 

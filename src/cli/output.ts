@@ -40,6 +40,9 @@ function keyValues(object: Record<string, unknown>): string {
 }
 
 const isNested = (value: unknown) => (Array.isArray(value) && value.some((item) => !isScalar(item))) || (isPlainObject(value) && Object.values(value).some((v) => !isScalar(v)));
+/** A `ListPage`: exactly `items` and `more`. */
+const isListPage = (object: Record<string, unknown>): object is { items: unknown[]; more: boolean } =>
+  Object.keys(object).length === 2 && Array.isArray(object.items) && typeof object.more === "boolean";
 const indent = (text: string) => text.split("\n").map((line) => `  ${line}`).join("\n");
 
 /** A value as a person reads it at a terminal. */
@@ -52,6 +55,11 @@ export function human(value: unknown): string {
     return value.map((item) => (isScalar(item) ? scalarText(item) : human(item))).join("\n");
   }
   const object = value as Record<string, unknown>;
+  // A page of a long list (`limit`): its items, and a line when there are more.
+  if (isListPage(object)) {
+    const items = human(object.items);
+    return object.more ? `${items}\n\n(more after these: ask again with a larger --offset)` : items;
+  }
   // A write says first what it did.
   if (typeof object.changed === "string") {
     const { changed, ...rest } = object;

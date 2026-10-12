@@ -13,7 +13,7 @@ A forum is identified by its activity id (`activityId`, the `id` in `mod/forum/v
 A forum's discussions as its page lists them, through all its pages: who started each, how many replies, the last post, whether it's pinned or locked, and whether the person is subscribed to it.
 
 ```ts
-function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number): Promise<ForumDiscussion[]>;
+function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number, options?: { limit?: number; offset?: number }): Promise<ForumDiscussion[]>; // ListPage<ForumDiscussion> with limit
 
 interface ForumDiscussion {
   id: number;
@@ -37,6 +37,8 @@ interface ForumDiscussion {
 
 The person's subscription to the forum as a whole isn't read: the forum's page shows it only as a button whose link is the same either way, with only its label telling the state.
 
+With `limit` and `offset`, a page of the discussions in the forum's order (see [Long lists](../concepts/calling-functions.md#long-lists)): the driver opens the one page of the forum's own paging (its `s` and `p` parameters) that holds it, instead of every page.
+
 Throws `NotAForumError` when the id isn't a forum the person can view.
 
 ## discussion
@@ -44,9 +46,9 @@ Throws `NotAForumError` when the id isn't a forum the person can view.
 A discussion's posts, oldest first, with their messages as plain text, and whether the person is subscribed to it.
 
 ```ts
-function discussion(context: BrowserContext, siteUrl: string, discussionId: number): Promise<{
+function discussion(context: BrowserContext, siteUrl: string, discussionId: number, options?: { limit?: number; offset?: number }): Promise<{
   discussion: { id: number; forumInstanceId: number; courseId: number; subscribed?: boolean };
-  posts: ForumPost[];
+  posts: ForumPost[]; // ListPage<ForumPost> with limit
 }>;
 
 interface ForumPost {
@@ -67,6 +69,7 @@ interface ForumPost {
 - `discussion.forumInstanceId`: the forum's instance id (not its activity id, which the forum functions take); `courseId`: its course.
 - `discussion.subscribed`: whether the person is subscribed to it, read from the subscription item of the discussion's page (its settings menu); missing where the page has none (the person can't subscribe, or the forum forces the subscription).
 - `parentId`: the post it replies to; missing for the discussion's first post.
+- `limit`, `offset`: `posts` as a page (see [Long lists](../concepts/calling-functions.md#long-lists)). Moodle's service has no paging: every post is read and cut, but only the page's messages are turned into text.
 - `created`, `modified`: ISO dates; `modified` only when the post was edited more than a minute after posting.
 - `text`: the message as text, with its paragraphs and lists kept.
 - `images`: the images in the message (`{ url, alt? }`), when it has any; their `pluginfile.php` URLs download with [`downloadFile`](files.md).
