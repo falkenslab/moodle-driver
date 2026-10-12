@@ -42,6 +42,16 @@ describe("userById", { skip: !browser && "no system browser" }, () => {
     });
     await context.close();
   });
+
+  it("gives nobody for a deleted account, which Moodle still returns to an administrator", async () => {
+    const context = await browser!.newContext();
+    const state = moodle(true);
+    // As Moodle 5.2's delete_user leaves it: renamed, the email replaced by md5 of the old username.
+    state.services!.core_user_get_users_by_field = () => [{ id: 11, username: "ada@example.org.1790000000", fullname: "Ada Lovelace", email: "0d107d09f5bbe40cade3de5c71e9e9b7", firstaccess: 0, lastaccess: 0 }];
+    await serveFakeMoodle(context, state);
+    assert.equal(await userById(context, SITE, 11), undefined);
+    await context.close();
+  });
 });
 
 describe("whoAmI", { skip: !browser && "no system browser" }, () => {

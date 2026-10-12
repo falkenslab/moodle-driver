@@ -36,7 +36,7 @@ It throws `NotLoggedInError` without a session, and `MoodleServiceError` for a c
 
 ## userById
 
-A user by id, through `core_user_get_users_by_field`, or `undefined` when Moodle gives nobody.
+A user by id, through `core_user_get_users_by_field`, or `undefined` when there's nobody: no such user, one the person may not see, or a deleted account. Moodle keeps a deleted account's record and still gives it to an administrator, renamed and with its email replaced by a hash; the driver treats it as gone.
 
 ```ts
 function userById(context: BrowserContext, siteUrl: string, userId: number): Promise<User | undefined>;

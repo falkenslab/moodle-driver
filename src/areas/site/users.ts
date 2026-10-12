@@ -26,10 +26,15 @@ export interface User {
   lastAccess?: string;
 }
 
-/** A user by id, or `undefined` when Moodle gives nobody (no such user, or not one the person may see). */
+/**
+ * A user by id, or `undefined` when there's nobody: no such user, one the person may not see, or a
+ * deleted account. Moodle keeps a deleted account's record and its user service still gives it to an
+ * administrator, renamed, with the email replaced by an MD5 hash of the old username (`delete_user`,
+ * confirmed empirically on the sandbox, 5.2); the driver treats it as gone.
+ */
 export async function userById(context: BrowserContext, siteUrl: string, userId: number): Promise<User | undefined> {
   const [user] = await callService<MoodleUser[]>(context, siteUrl, "core_user_get_users_by_field", { field: "id", values: [String(userId)] });
-  if (!user) return undefined;
+  if (!user || isDeletedAccount(user)) return undefined;
   return {
     id: user.id,
     ...(user.username !== undefined ? { username: user.username } : {}),
@@ -39,6 +44,9 @@ export async function userById(context: BrowserContext, siteUrl: string, userId:
     ...(user.lastaccess ? { lastAccess: isoDate(user.lastaccess) } : {}),
   };
 }
+
+// What Moodle's delete_user leaves in place of an email: md5 of the old username, never an address.
+const isDeletedAccount = (user: MoodleUser) => user.email !== undefined && /^[0-9a-f]{32}$/.test(user.email);
 
 /** The site's name, from its public settings; `undefined` where the mobile app support is off. */
 export async function siteName(context: BrowserContext, siteUrl: string): Promise<string | undefined> {

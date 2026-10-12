@@ -4233,7 +4233,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "userById",
-    "description": "A user by id, or `undefined` when Moodle gives nobody (no such user, or not one the person may see).",
+    "description": "A user by id, or `undefined` when there's nobody: no such user, one the person may not see, or a deleted account. Moodle keeps a deleted account's record and its user service still gives it to an administrator, renamed, with the email replaced by an MD5 hash of the old username (`delete_user`, confirmed empirically on the sandbox, 5.2); the driver treats it as gone.",
     "params": [
       {
         "name": "userId",

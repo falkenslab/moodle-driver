@@ -506,8 +506,8 @@ async function deleteUser(username: string): Promise<void> {
   } finally {
     await page.close();
   }
-  // Moodle keeps a deleted account's record, renamed, and its user service still gives it to the admin
-  // (confirmed empirically, 5.2): deleted is its username gone.
+  // Moodle keeps a deleted account's record and still gives it to the admin, renamed; userById
+  // treats it as gone.
   const left = await admin.userById(id);
-  if (left?.username === username) throw new Error(`The throwaway account ${id} wasn't deleted.`);
+  if (left) throw new Error(`The throwaway account ${id} wasn't deleted (userById still gives ${left.username}).`);
 }
