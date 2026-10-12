@@ -393,6 +393,8 @@ describe("the browser and the session", () => {
     const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
     const username = `suitelogout${stamp}`;
     const password = `Suite-${stamp}-x!`;
+    // Registered before the form is sent: a save that outlasts its wait still makes the account.
+    cleanup(() => deleteUser(username));
     const form = await openForm(await admin.context(), SITE, "user/editadvanced.php?id=-1");
     try {
       // The page has another Moodle form before the user's: this one is named by its field.
@@ -402,9 +404,8 @@ describe("the browser and the session", () => {
     } finally {
       await form.close();
     }
-    const id = (await admin.callService<{ id: number }[]>("core_user_get_users_by_field", { field: "username", values: [username] }).catch(() => []))[0]?.id;
+    const id = await accountId(username);
     assert.ok(id, "the throwaway account was created");
-    cleanup(() => deleteUser(id, username));
 
     const moodle = createMoodle({ site: SITE, profileDir: path.join(work, "throwaway"), channel: "chromium", headless: true, downloadBrowser: false });
     try {
@@ -481,8 +482,19 @@ async function connectAndCheck(profileDir: string): Promise<void> {
   assert.ok(await backgroundBrowser(profileDir), "closing only disconnected");
 }
 
-/** Deletes an account the suite made, as the admin, through Moodle's user list (`admin/user.php`). */
-async function deleteUser(id: number, username: string): Promise<void> {
+/** An account's id by its username, as the admin sees it; undefined when there's none. */
+async function accountId(username: string): Promise<number | undefined> {
+  const admin = await as("admin");
+  return (await admin.callService<{ id: number }[]>("core_user_get_users_by_field", { field: "username", values: [username] }))[0]?.id;
+}
+
+/**
+ * Deletes an account the suite made, by its username, as the admin through Moodle's user list
+ * (`admin/user.php`); nothing when there's no such account (its form was never saved).
+ */
+async function deleteUser(username: string): Promise<void> {
+  const id = await accountId(username);
+  if (!id) return;
   const admin = await as("admin");
   const page = await (await admin.context()).newPage();
   try {
