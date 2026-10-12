@@ -76,7 +76,8 @@ function fakeBanks() {
 <form class="mform" method="post" action="${SITE}question/bank/importquestions/import.php?cmid=${activityId}"><input type="hidden" name="newfile" value="777">
 <input type="radio" name="format" value="gift"><input type="radio" name="format" value="xml">
 <select name="category"><option value="14,70">Default</option><option value="13,70">Top</option></select>
-<input type="hidden" name="catfromfile" value="0"><input type="checkbox" name="catfromfile" value="1" checked><input type="hidden" name="contextfromfile" value="0"><input type="checkbox" name="contextfromfile" value="1" checked>
+<input type="checkbox" name="catfromfile" value="1" checked><input type="checkbox" name="contextfromfile" value="1" checked>
+<script>document.querySelector('[name="catfromfile"]').addEventListener("change", (e) => { document.querySelector('[name="contextfromfile"]').disabled = !e.target.checked; });</script>
 <input type="submit" name="submitbutton" value="Import"></form>`,
             ),
           );
@@ -170,7 +171,8 @@ describe("importQuestions", { skip: !browser && "no system browser" }, () => {
     assert.deepEqual(result.questions.map((q) => q.name), ["Range", "Indent"]);
     assert.match(fake.uploads[0]!, /filename="questions\.txt"/);
     const form = fake.posted[0]!;
-    assert.deepEqual([form.get("format"), form.get("category"), form.getAll("catfromfile")], ["gift", "14,70", ["0"]]);
+    // Unticking "category from file" disables "context from file" (Moodle's disabledIf on the group): neither is sent.
+    assert.deepEqual([form.get("format"), form.get("category"), form.getAll("catfromfile"), form.getAll("contextfromfile")], ["gift", "14,70", [], []]);
     await context.close();
   });
 
