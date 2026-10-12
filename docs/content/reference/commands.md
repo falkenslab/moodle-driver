@@ -599,7 +599,7 @@ moodle delete-section <courseId> <sectionId>
 
 ## discussion
 
-A discussion's posts, oldest first, with their messages as text.
+A discussion's posts, oldest first, with their messages as text, and whether the person is subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced).
 
 ```bash
 moodle discussion <discussionId>
@@ -761,7 +761,7 @@ moodle finish-quiz-attempt <attemptId>
 
 ## forumDiscussions
 
-A forum's discussions, as its page lists them: who started each, replies, last post.
+A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription.
 
 ```bash
 moodle forum-discussions <activityId>
@@ -1284,7 +1284,7 @@ moodle remove-quiz-slot <activityId> <slot>
 
 ## replyToPost
 
-Replies to a post; returns the new post's id and its discussion's.
+Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given, the person's subscription to the discussion afterwards, read back (`subscribed`).
 
 ```bash
 moodle reply-to-post <postId> <input>
@@ -1408,6 +1408,20 @@ moodle set-discussion-state <activityId> <discussionId> --options
 | `discussionId` | `number` |  |
 | `--pinned` | `boolean` |  |
 | `--locked` | `boolean` |  |
+
+## setDiscussionSubscription
+
+Subscribes the person to a discussion or unsubscribes them, as the discussion list's toggle does (`mod_forum_set_subscription_state`); what's already so is left alone. Returns the discussion as the forum lists it afterwards.
+
+```bash
+moodle set-discussion-subscription <activityId> <discussionId> <subscribed>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `discussionId` | `number` |  |
+| `subscribed` | `boolean` |  |
 
 ## setEnrolmentMethod
 
@@ -1569,7 +1583,7 @@ moodle site-name
 
 ## startDiscussion
 
-Starts a discussion in a forum; returns its id.
+Starts a discussion in a forum; returns its id, and whether it's pinned and the person subscribed to it, as the forum lists it afterwards, so one call confirms what `subscribe` and `fields` set.
 
 ```bash
 moodle start-discussion <activityId> <input>

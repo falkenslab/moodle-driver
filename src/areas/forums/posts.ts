@@ -6,7 +6,7 @@ import { callService } from "../../core/ajax.js";
 import { isoDate } from "../courses/list.js";
 import { checkLocalFiles } from "../../core/files.js";
 import { FormError, formValue, openForm, removeFromDraft, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
-import { ForumError, NotAForumError, discussionPosts, forumInstanceId, htmlToTexts, listDiscussions } from "./discussions.js";
+import { ForumError, NotAForumError, discussionPosts, discussionSubscription, forumInstanceId, htmlToTexts, listDiscussions } from "./discussions.js";
 import { fetchSitePage, moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { decodeEntities } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
@@ -22,9 +22,11 @@ export interface ForumDiscussion {
   replies: number;
   locked: boolean;
   pinned: boolean;
+  /** Whether the person is subscribed to it: to the discussion, or to the whole forum without opting out of it. */
+  subscribed: boolean;
 }
 
-/** A forum's discussions, as its page lists them: who started each, replies, last post. */
+/** A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription. */
 export async function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number): Promise<ForumDiscussion[]> {
   const rows = await listDiscussions(context, siteUrl, activityId);
   return rows.map((row) => ({
@@ -36,6 +38,7 @@ export async function forumDiscussions(context: BrowserContext, siteUrl: string,
     replies: row.replies,
     locked: row.locked,
     pinned: row.pinned,
+    subscribed: row.subscribed,
   }));
 }
 
@@ -56,15 +59,21 @@ export interface ForumPost {
   unread?: boolean;
 }
 
-/** A discussion's posts, oldest first, with their messages as text. */
+/**
+ * A discussion's posts, oldest first, with their messages as text, and whether the person is
+ * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced).
+ */
 export async function discussion(context: BrowserContext, siteUrl: string, discussionId: number) {
   const { posts, forumid, courseid } = await discussionPosts(context, siteUrl, discussionId);
-  const texts = await htmlToTexts(
-    context,
-    posts.map((post) => post.message),
-  );
+  const [texts, subscribed] = await Promise.all([
+    htmlToTexts(
+      context,
+      posts.map((post) => post.message),
+    ),
+    discussionSubscription(context, siteUrl, discussionId),
+  ]);
   return {
-    discussion: { id: discussionId, forumInstanceId: forumid, courseId: courseid },
+    discussion: { id: discussionId, forumInstanceId: forumid, courseId: courseid, subscribed },
     posts: posts.map(
       (post, i): ForumPost => ({
         id: post.id,
@@ -123,26 +132,63 @@ async function post(context: BrowserContext, siteUrl: string, formPath: string, 
   }
 }
 
-/** Replies to a post; returns the new post's id and its discussion's. */
+/**
+ * Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given,
+ * the person's subscription to the discussion afterwards, read back (`subscribed`).
+ */
 export async function replyToPost(context: BrowserContext, siteUrl: string, postId: number, input: PostInput & { subject?: string }) {
   const landed = new URL(await post(context, siteUrl, `mod/forum/post.php?reply=${postId}`, input));
   // Moodle lands on the discussion, at the new post: discuss.php?d=<discussion>#p<post>.
   const newPost = /^#p(\d+)$/.exec(landed.hash)?.[1];
   const discussionId = landed.searchParams.get("d");
+  const subscribed = input.subscribe !== undefined && discussionId ? await discussionSubscription(context, siteUrl, Number(discussionId)) : undefined;
   return {
     changed: `Replied to post ${postId}${newPost ? ` with post ${newPost}` : ""}.`,
     postId: newPost ? Number(newPost) : undefined,
     discussionId: discussionId ? Number(discussionId) : undefined,
+    ...(subscribed !== undefined && { subscribed }),
   };
 }
 
-/** Starts a discussion in a forum; returns its id. */
+/**
+ * Starts a discussion in a forum; returns its id, and whether it's pinned and the person subscribed
+ * to it, as the forum lists it afterwards, so one call confirms what `subscribe` and `fields` set.
+ */
 export async function startDiscussion(context: BrowserContext, siteUrl: string, activityId: number, input: PostInput & { subject: string }) {
   const instance = await forumInstanceId(context, siteUrl, activityId);
   const before = new Set((await listDiscussions(context, siteUrl, activityId)).map((d) => d.id));
   await post(context, siteUrl, `mod/forum/post.php?forum=${instance}`, input);
   const created = (await listDiscussions(context, siteUrl, activityId)).find((d) => !before.has(d.id));
-  return { changed: `Started discussion ${created?.id ?? "?"} "${input.subject}" in forum ${activityId}.`, discussionId: created?.id };
+  return {
+    changed: `Started discussion ${created?.id ?? "?"} "${input.subject}" in forum ${activityId}.`,
+    discussionId: created?.id,
+    pinned: created?.pinned,
+    subscribed: created?.subscribed,
+  };
+}
+
+/**
+ * Subscribes the person to a discussion or unsubscribes them, as the discussion list's toggle does
+ * (`mod_forum_set_subscription_state`); what's already so is left alone. Returns the discussion as
+ * the forum lists it afterwards.
+ */
+export async function setDiscussionSubscription(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  discussionId: number,
+  subscribed: boolean,
+): Promise<{ changed: string; discussion?: ForumDiscussion }> {
+  const row = (await listDiscussions(context, siteUrl, activityId)).find((d) => d.id === discussionId);
+  if (!row) throw new NotAForumError(`Forum ${activityId} has no discussion ${discussionId}. Take its id from the forum's discussions.`);
+  let changed = "Nothing to change.";
+  if (subscribed !== row.subscribed) {
+    const instance = row.forumInstanceId ?? (await forumInstanceId(context, siteUrl, activityId));
+    // Unlike the lock service, this one takes the state wanted.
+    await callService(context, siteUrl, "mod_forum_set_subscription_state", { forumid: instance, discussionid: discussionId, targetstate: subscribed });
+    changed = `${subscribed ? "Subscribed to" : "Unsubscribed from"} discussion ${discussionId}.`;
+  }
+  return { changed, discussion: (await forumDiscussions(context, siteUrl, activityId)).find((d) => d.id === discussionId) };
 }
 
 /**

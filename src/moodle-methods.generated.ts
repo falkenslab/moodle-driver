@@ -191,8 +191,11 @@ export interface MoodleMethods {
   deleteQuestions(activityId: number, questionIds: number[]): Promise<{ changed: string; deleted: number[]; hidden: number[]; }>;
   /** Deletes a section and every activity in it, with their participants' data. */
   deleteSection(courseId: number, sectionId: number): Promise<import("./areas/activities/build.js").CourseChange>;
-  /** A discussion's posts, oldest first, with their messages as text. */
-  discussion(discussionId: number): Promise<{ discussion: { id: number; forumInstanceId: number; courseId: number; }; posts: import("./areas/forums/posts.js").ForumPost[]; }>;
+  /**
+   * A discussion's posts, oldest first, with their messages as text, and whether the person is
+   * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced).
+   */
+  discussion(discussionId: number): Promise<{ discussion: { id: number; forumInstanceId: number; courseId: number; subscribed: boolean | undefined; }; posts: import("./areas/forums/posts.js").ForumPost[]; }>;
   /** Duplicates an activity as the course page's "Duplicate" does (right after it, named with "(copy)"); gives the copy's id and the course afterwards. */
   duplicateActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
@@ -231,7 +234,7 @@ export interface MoodleMethods {
   enrolmentMethods(courseId: number): Promise<import("./areas/participants/methods.js").EnrolmentMethod[]>;
   /** Submits an attempt for grading, and gives its review when the quiz shows it. */
   finishQuizAttempt(attemptId: number): Promise<{ changed: string; attemptId: number; finished: true; review: { summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; } | undefined; }>;
-  /** A forum's discussions, as its page lists them: who started each, replies, last post. */
+  /** A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription. */
   forumDiscussions(activityId: number): Promise<import("./areas/forums/posts.js").ForumDiscussion[]>;
   /**
    * Everyone's whole-forum grade in a forum graded as a whole, as its grader shows them: one per
@@ -407,8 +410,11 @@ export interface MoodleMethods {
   readReview(attemptId: number): Promise<{ summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; }>;
   /** Removes a slot (by its place, from 1) from a quiz, as the edit page's delete icon does; the question stays in its bank. */
   removeQuizSlot(activityId: number, slot: number): Promise<import("./areas/quizzes/structure.js").QuizChange>;
-  /** Replies to a post; returns the new post's id and its discussion's. */
-  replyToPost(postId: number, input: import("./areas/forums/posts.js").PostInput & { subject?: string | undefined; }): Promise<{ changed: string; postId: number | undefined; discussionId: number | undefined; }>;
+  /**
+   * Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given,
+   * the person's subscription to the discussion afterwards, read back (`subscribed`).
+   */
+  replyToPost(postId: number, input: import("./areas/forums/posts.js").PostInput & { subject?: string | undefined; }): Promise<{ subscribed?: boolean | undefined; changed: string; postId: number | undefined; discussionId: number | undefined; }>;
   /**
    * Resets a course for a new year, as Moodle's reset form does: deletes only what's named in `delete`
    * (in every module of the course that has it), unenrols the people with `unenrolRoles` (role ids),
@@ -454,6 +460,12 @@ export interface MoodleMethods {
    * so is left alone. Returns the discussion as the forum lists it afterwards.
    */
   setDiscussionState(activityId: number, discussionId: number, options: { pinned?: boolean | undefined; locked?: boolean | undefined; }): Promise<{ changed: string; discussion?: import("./areas/forums/posts.js").ForumDiscussion | undefined; }>;
+  /**
+   * Subscribes the person to a discussion or unsubscribes them, as the discussion list's toggle does
+   * (`mod_forum_set_subscription_state`); what's already so is left alone. Returns the discussion as
+   * the forum lists it afterwards.
+   */
+  setDiscussionSubscription(activityId: number, discussionId: number, subscribed: boolean): Promise<{ changed: string; discussion?: import("./areas/forums/posts.js").ForumDiscussion | undefined; }>;
   /**
    * Sets an enrolment method with its form: by id, or the course's first method of a type
    * (`{ type: "self" }`), added when the course has none and the "Add method" menu offers it. Only
@@ -519,8 +531,11 @@ export interface MoodleMethods {
   setWorkshopPhase(activityId: number, phase: import("./areas/workshops/workshops.js").WorkshopPhase): Promise<{ changed: string; phase: import("./areas/workshops/workshops.js").WorkshopPhase; }>;
   /** The site's name, from its public settings; `undefined` where the mobile app support is off. */
   siteName(): Promise<string | undefined>;
-  /** Starts a discussion in a forum; returns its id. */
-  startDiscussion(activityId: number, input: import("./areas/forums/posts.js").PostInput & { subject: string; }): Promise<{ changed: string; discussionId: number | undefined; }>;
+  /**
+   * Starts a discussion in a forum; returns its id, and whether it's pinned and the person subscribed
+   * to it, as the forum lists it afterwards, so one call confirms what `subscribe` and `fields` set.
+   */
+  startDiscussion(activityId: number, input: import("./areas/forums/posts.js").PostInput & { subject: string; }): Promise<{ changed: string; discussionId: number | undefined; pinned: boolean | undefined; subscribed: boolean | undefined; }>;
   /** Starts an attempt, or continues the one in progress, and gives its questions. */
   startQuizAttempt(activityId: number): Promise<{ changed: string; attemptId: number; questions: import("./areas/quizzes/attempts.js").Question[]; }>;
   /** An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, and whether it can be edited or submitted now. */

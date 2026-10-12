@@ -1409,7 +1409,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "discussion",
-    "description": "A discussion's posts, oldest first, with their messages as text.",
+    "description": "A discussion's posts, oldest first, with their messages as text, and whether the person is subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced).",
     "params": [
       {
         "name": "discussionId",
@@ -1863,7 +1863,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "forumDiscussions",
-    "description": "A forum's discussions, as its page lists them: who started each, replies, last post.",
+    "description": "A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription.",
     "params": [
       {
         "name": "activityId",
@@ -2881,7 +2881,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "replyToPost",
-    "description": "Replies to a post; returns the new post's id and its discussion's.",
+    "description": "Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given, the person's subscription to the discussion afterwards, read back (`subscribed`).",
     "params": [
       {
         "name": "postId",
@@ -3188,6 +3188,36 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "setDiscussionSubscription",
+    "description": "Subscribes the person to a discussion or unsubscribes them, as the discussion list's toggle does (`mod_forum_set_subscription_state`); what's already so is left alone. Returns the discussion as the forum lists it afterwards.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "discussionId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "subscribed",
+        "optional": false,
+        "type": "boolean",
+        "value": {
+          "kind": "boolean"
+        }
+      }
+    ]
   },
   {
     "name": "setEnrolmentMethod",
@@ -3645,7 +3675,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "startDiscussion",
-    "description": "Starts a discussion in a forum; returns its id.",
+    "description": "Starts a discussion in a forum; returns its id, and whether it's pinned and the person subscribed to it, as the forum lists it afterwards, so one call confirms what `subscribe` and `fields` set.",
     "params": [
       {
         "name": "activityId",
