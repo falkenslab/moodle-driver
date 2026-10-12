@@ -290,12 +290,15 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
   });
 
   /** The batch forms as Moodle 5.2's, reduced and made up; `markers` 0 is its error page for too few markers. */
-  async function batchSite(context: BrowserContext, { markers = 1, multi = false } = {}) {
+  async function batchSite(context: BrowserContext, { markers = 1, multi = false, workflow = true } = {}) {
     const posted: URLSearchParams[] = [];
-    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+    // The grading panel says whether the assignment uses the workflow and allocation: PANEL has neither.
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: { core_get_fragment: () => ({ html: workflow ? workflowPanel("") : PANEL, javascript: "" }) } });
     const page = (body: string, bodyId: string) => moodlePage({ userId: 3, bodyId, body });
     await context.route(`${SITE}mod/assign/view.php**`, (route: Route) => {
       const html = (body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
+      const id = Number(new URL(route.request().url()).searchParams.get("id"));
+      if (new URL(route.request().url()).searchParams.get("action") === "grader") return html(page(`<div data-assignmentid="${id * 10}" data-contextid="${id * 100}"></div>`, "page-mod-assign-grader"));
       if (route.request().method() === "POST") {
         posted.push(new URLSearchParams(route.request().postData() ?? ""));
         return html(page("", "page-mod-assign-grading"));
@@ -327,6 +330,15 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
     await assert.rejects(setWorkflowState(context, SITE, 64, [5], "inmarking", { notify: true }), /only when releasing/);
     await assert.rejects(setWorkflowState(context, SITE, 64, [], "released"), /Give the participants/);
     assert.equal(posted.length, 1);
+    await context.close();
+  });
+
+  it("refuses the batch actions where the assignment has no marking workflow or allocation, saving nothing", async () => {
+    const context = await browser!.newContext();
+    const posted = await batchSite(context, { workflow: false });
+    await assert.rejects(setWorkflowState(context, SITE, 67, [5], "released"), (error: unknown) => error instanceof GradingError && /doesn't use the marking workflow/.test(error.message));
+    await assert.rejects(allocateMarker(context, SITE, 67, [5], 3), (error: unknown) => error instanceof GradingError && /doesn't allocate markers/.test(error.message));
+    assert.equal(posted.length, 0);
     await context.close();
   });
 
