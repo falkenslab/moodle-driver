@@ -6,8 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
 import { GradebookError, NoGradeReportError, type GradebookCategory, type GradebookItem } from "../../src/index.js";
-import { COURSE, as, userId, type ScratchCourse } from "./harness.js";
-import { logInPatiently, patientScratchCourse } from "./patience.js";
+import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 /** Course 3's assignment and its grade item, as the sandbox seeds them (read only). */
 const ASSIGNMENT = 35;
@@ -18,7 +17,6 @@ describe("grades and the gradebook", () => {
   let studentId: number;
 
   before(async () => {
-    for (const role of ["admin", "teacher", "student"] as const) await logInPatiently(role);
     studentId = await userId("student");
   });
 
@@ -83,7 +81,7 @@ describe("grades and the gradebook", () => {
     let other: GradebookItem;
 
     before(async () => {
-      course = await patientScratchCourse("grades");
+      course = await scratchCourse("grades");
     });
 
     it("addGradeCategory: a Natural category at the top level", SLOW, async () => {
