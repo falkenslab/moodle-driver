@@ -50,7 +50,7 @@ interface ActivityFields {
 - `settings`: any other field of the form by its form name, such as `{ "duedate[enabled]": true, "duedate[day]": 23 }` or `{ completion: 1 }`. They're set after the common inputs, in the order given, and win over them for the same field.
 - `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)); a SCORM or an H5P activity (`h5pactivity`) takes the first as its package (see [SCORM](scorm.md) and [H5P](h5p.md)). A `{ from, to }` (`DraftUpload`) gives a file another name or puts it in a folder's subfolder: `{ from: "/home/ada/notes.pdf", to: "week1/notes.pdf" }`.
 
-`activityId` is the new activity's id, found by comparing the course before and after; when no new activity appears `changed` says so and `activityId` is undefined.
+`activityId` is the new activity's id, found by comparing the course before and after (a shared question bank, `qbank`, which never shows on the course page, by comparing the course's question banks); when no new activity appears `changed` says so and `activityId` is undefined.
 
 Errors:
 

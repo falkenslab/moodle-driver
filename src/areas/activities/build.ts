@@ -10,6 +10,7 @@ import { deleteDraftFile, draftFiles, formValue, openForm, setFields, submitForm
 import { inPage } from "../../core/inPage.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { structureOf, type CourseSection } from "../courses/structure.js";
+import { questionBanks } from "../questions/banks.js";
 import { MoodleError } from "../../core/errors.js";
 import { completionValues, gradeItemsByActivity, hasGradeCondition, parseRestrictions, readCompletion, restrictionsJson, type Completion, type Restrictions } from "./conditions.js";
 
@@ -152,6 +153,8 @@ export async function createActivity(
   const target = before.section.find((s) => Number(s.id) === input.sectionId);
   if (!target) throw new MoodleError(`Course ${input.courseId} has no section ${input.sectionId}. Take its id from the course structure.`, "not-found");
 
+  // A shared question bank (qbank) never shows on the course page: the banks page tells the new one.
+  const bankIds = input.type === "qbank" ? new Set((await questionBanks(context, siteUrl, input.courseId)).map((bank) => bank.id)) : undefined;
   const page = await openForm(context, siteUrl, `course/modedit.php?add=${input.type}&course=${input.courseId}&section=${target.number}&return=0`);
   try {
     if (input.files && input.files.length > 0) {
@@ -168,7 +171,8 @@ export async function createActivity(
   }
 
   const after = await courseState(context, siteUrl, input.courseId);
-  const created = after.cm.find((cm) => !before.cm.some((old) => old.id === cm.id));
+  const bank = bankIds && (await questionBanks(context, siteUrl, input.courseId)).find((b) => !bankIds.has(b.id) && b.type === "qbank");
+  const created = bank ? { id: String(bank.id), name: bank.name, url: new URL(`mod/qbank/view.php?id=${bank.id}`, siteUrl).href } : after.cm.find((cm) => !before.cm.some((old) => old.id === cm.id));
   return {
     changed: created ? `Created ${input.type} ${created.id} "${created.name}" in section ${target.number}.` : `The form was saved, but no new activity appears in course ${input.courseId}.`,
     activityId: created ? Number(created.id) : undefined,
