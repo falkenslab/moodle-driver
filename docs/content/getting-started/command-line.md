@@ -178,7 +178,8 @@ Everything is in `~/.moodle-driver`, the same on Windows, Linux and macOS (`MOOD
     ├── site.json                its URL, and its default profile by name
     └── profiles/<name>/         one browser profile per account, with its session (moodle-session.json),
                                  named after the Moodle username or by --as;
-                                 .browser.json while `moodle open` keeps a browser on it
+                                 .browser.json while `moodle open` keeps a browser on it,
+                                 .browser.lock while a command works on that browser
 ```
 
 Treat `~/.moodle-driver` as you'd treat a logged-in browser: its profiles hold the sessions. On Linux and macOS its files are readable only by you.

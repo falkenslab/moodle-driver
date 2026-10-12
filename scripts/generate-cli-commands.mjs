@@ -184,7 +184,9 @@ const md = [
   "",
   "Every method of the `Moodle` object as a command of `moodle`, generated from the driver's types: the same names (also in kebab-case), arguments and options. See [The command line](../getting-started/command-line.md) for installing it, logging in and the global options.",
   "",
-  "Each one can also be typed in `moodle shell`, without the `moodle` in front, on one browser kept open between commands (see [An interactive session](../getting-started/command-line.md#an-interactive-session)).",
+  "Each one can also be typed in `moodle shell`, without the `moodle` in front, on one browser kept open between commands (see [An interactive session](../getting-started/command-line.md#an-interactive-session)). After `moodle open`, separate `moodle` commands from any terminal work on one browser left open in the background, until `moodle close` (see [Watching separate commands act](../getting-started/command-line.md#watching-separate-commands-act)).",
+  "",
+  "Besides these, `moodle` has its own commands for the session and the browser: `login`, `sites`, `forget`, `shell`, `open`, `close` and `help` (see [The command line](../getting-started/command-line.md)).",
   "",
   ...commands.flatMap((c) => [
     `## ${c.name}`,
