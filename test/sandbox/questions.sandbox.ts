@@ -7,7 +7,6 @@ import path from "node:path";
 import { before, describe, it } from "node:test";
 import { QuestionBankError, type BankQuestion, type Moodle } from "../../src/index.js";
 import { COURSE, as, cleanup, scratchCourse, type ScratchCourse } from "./harness.js";
-import { warmUp } from "./warm-up.js";
 
 const GIFT = `::Sandbox TF:: The sandbox runs Moodle. {T}
 
@@ -51,7 +50,6 @@ describe("question banks", () => {
   const byName = async (name: string): Promise<BankQuestion | undefined> => (await teacher.questions(bankId)).questions.find((q) => q.name === name);
 
   before(async () => {
-    await warmUp("admin", "teacher", "student");
     course = await scratchCourse("questions");
     teacher = await as("teacher");
     bankId = await makeBank(teacher, course, "Sandbox bank");

@@ -5,7 +5,6 @@ import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { FormError, QuizError, type BankQuestion, type Moodle, type Question } from "../../src/index.js";
 import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
-import { warmUp } from "./warm-up.js";
 
 const GIFT = `::Quiz TF:: The sandbox runs Moodle. {T}
 
@@ -28,7 +27,6 @@ describe("quizzes", () => {
   const id = (name: string) => bank.find((q) => q.name === name)!.id;
 
   before(async () => {
-    await warmUp("admin", "teacher", "student");
     course = await scratchCourse("quizzes");
     teacher = await as("teacher");
     student = await as("student");
