@@ -9,8 +9,9 @@
 // The sandbox has no cron: while the suite runs, Moodle's pending ad hoc tasks (backups, copies,
 // restores) are run every few seconds, as cron would.
 import { spawn, spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
@@ -31,6 +32,12 @@ if (!student) {
   console.error('The sandbox has no seeded students: run "npm run activity" there.');
   process.exit(2);
 }
+
+// The accounts' browser profiles outlive the run, so later runs skip logging in (minutes on a busy
+// sandbox): one folder per checkout, since a profile opens in one browser at a time and agents run
+// from worktrees in parallel. They hold the sandbox's session cookies, never a password.
+const profiles = path.join(process.env.MOODLE_SANDBOX_PROFILES ?? path.join(homedir(), ".moodle-driver-sandbox"), createHash("sha256").update(root).digest("hex").slice(0, 12));
+mkdirSync(profiles, { recursive: true, mode: 0o700 });
 
 const work = mkdtempSync(path.join(tmpdir(), "moodle-driver-sandbox-"));
 let tasks;
@@ -67,7 +74,7 @@ try {
   ];
   const child = spawn(process.execPath, [path.join(root, "scripts", "in-docker.mjs"), ...command], {
     stdio: "inherit",
-    env: { ...process.env, MOODLE_DRIVER_DOCKER_MOUNT: `${work}:/sandbox` },
+    env: { ...process.env, MOODLE_DRIVER_DOCKER_MOUNT: `${work}:/sandbox\n${profiles}:/sandbox/profiles` },
   });
   status = await new Promise((resolve) => child.on("exit", (code) => resolve(code ?? 1)));
 } finally {

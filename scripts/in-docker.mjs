@@ -6,7 +6,7 @@
 //   node scripts/in-docker.mjs npm test
 //   node scripts/in-docker.mjs node some-check.mjs
 //
-// MOODLE_DRIVER_DOCKER_MOUNT="<host dir>:<container dir>" mounts one more folder (checks' profiles).
+// MOODLE_DRIVER_DOCKER_MOUNT="<host dir>:<container dir>" mounts one more folder (checks' profiles); several, one per line.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -42,7 +42,7 @@ args.push("-e", "DISPLAY=", "-e", "WAYLAND_DISPLAY=");
 // npm's cache outlives the container: `npx` tools (the Inspector) download once, not on every run.
 args.push("-v", "moodle-mcp-npm-cache:/root/.npm");
 if (sandboxUp) args.push("--network", NETWORK);
-if (process.env.MOODLE_DRIVER_DOCKER_MOUNT) args.push("-v", process.env.MOODLE_DRIVER_DOCKER_MOUNT);
+for (const mount of (process.env.MOODLE_DRIVER_DOCKER_MOUNT ?? "").split("\n").filter(Boolean)) args.push("-v", mount);
 args.push(IMAGE, "bash", "-c", script);
 
 const result = spawnSync("docker", args, { stdio: "inherit" });
