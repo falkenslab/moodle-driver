@@ -18,7 +18,7 @@ const STATE: CourseState = {
   cm: [
     { id: "20", name: "Welcome", module: "page", url: `${SITE}mod/page/view.php?id=20`, visible: true, uservisible: true, accessvisible: true, sectionid: "10", istrackeduser: true, completionstate: 1, isoverallcomplete: true },
     { id: "21", name: "Quiz 1", module: "quiz", visible: true, uservisible: true, accessvisible: true, sectionid: "10", istrackeduser: true, completionstate: 3, isoverallcomplete: false },
-    { id: "22", name: "Locked task", module: "assign", visible: true, uservisible: false, accessvisible: true, hascmrestrictions: true, sectionid: "11", istrackeduser: true, completionstate: 0 },
+    { id: "22", name: "Locked task", module: "assign", visible: true, uservisible: false, accessvisible: false, hascmrestrictions: true, sectionid: "11", istrackeduser: true, completionstate: 0 },
   ],
 };
 
@@ -46,6 +46,29 @@ describe("structureOf", () => {
       completion: { state: "incomplete", complete: false },
     });
     assert.equal(practice?.parentSectionId, 11);
+  });
+
+  // Moodle 5.2 leaves a hidden activity out of a student's state; a teacher's has it, with accessvisible
+  // false for it and for a restricted one, though they can open both.
+  it("makes hidden and restricted activities available to a teacher, not to a student", () => {
+    const teacher: CourseState = {
+      section: [{ id: "10", number: 0, title: "General", cmlist: ["20", "22", "24"] }],
+      cm: [
+        { id: "20", name: "Welcome", module: "page", visible: true, uservisible: true, accessvisible: true, sectionid: "10", istrackeduser: false },
+        { id: "22", name: "Locked task", module: "assign", visible: true, uservisible: true, accessvisible: false, hascmrestrictions: true, sectionid: "10", istrackeduser: false },
+        { id: "24", name: "Draft page", module: "page", visible: false, uservisible: true, accessvisible: false, sectionid: "10", istrackeduser: false },
+      ],
+    };
+    assert.deepEqual(structureOf(teacher)[0]?.activities.map((a) => [a.id, a.visible, a.availableToMe]), [
+      [20, true, true],
+      [22, true, true],
+      [24, false, true],
+    ]);
+    assert.deepEqual(structureOf(STATE).flatMap((s) => s.activities).map((a) => [a.id, a.availableToMe]), [
+      [20, true],
+      [21, true],
+      [22, false],
+    ]);
   });
 });
 
