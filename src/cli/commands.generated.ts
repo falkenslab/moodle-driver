@@ -2202,7 +2202,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "grantExtension",
-    "description": "Grants participants an extension until a date, through the assignment's extension form (several at once as its bulk action does). Moodle refuses a date before the assignment's due date.",
+    "description": "Grants participants an extension until a date, through the assignment's extension form (several at once as its bulk action does). Moodle refuses a date before the assignment's due date, and a person without its \"grant extension\" capability only on saving (the form opens for anyone, confirmed empirically on the sandbox, 5.2): both throw.",
     "params": [
       {
         "name": "activityId",

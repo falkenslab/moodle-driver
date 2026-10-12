@@ -23,7 +23,7 @@ import {
 import { checkLocalFiles } from "../../core/files.js";
 import { isoDate } from "../courses/list.js";
 import { FormError, dateSelectorDate, dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
-import { NotLoggedInError, fetchSitePage } from "../../core/session.js";
+import { NotLoggedInError, fetchSitePage, moodleErrorMessage } from "../../core/session.js";
 import { decodeEntities } from "../../core/text.js";
 import { inPage } from "../../core/inPage.js";
 import { MoodleError } from "../../core/errors.js";
@@ -298,7 +298,9 @@ export async function rubric(context: BrowserContext, siteUrl: string, activityI
 
 /**
  * Grants participants an extension until a date, through the assignment's extension form (several at
- * once as its bulk action does). Moodle refuses a date before the assignment's due date.
+ * once as its bulk action does). Moodle refuses a date before the assignment's due date, and a person
+ * without its "grant extension" capability only on saving (the form opens for anyone, confirmed
+ * empirically on the sandbox, 5.2): both throw.
  */
 export async function grantExtension(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], until: Date): Promise<{ changed: string }> {
   if (userIds.length === 0) throw new GradingError("Give the participants to grant the extension to.");
@@ -309,6 +311,9 @@ export async function grantExtension(context: BrowserContext, siteUrl: string, a
   try {
     await setFields(page, { selectedusers: userIds.join(","), "extensionduedate[enabled]": true, ...(await dateSelectorValues(page, "extensionduedate", until)) });
     await submitForm(page, "submitbutton");
+    // Moodle shows the form to anyone and checks the capability on saving, answering with its error page.
+    const refused = await moodleErrorMessage(page);
+    if (refused !== undefined) throw new NotAnAssignmentError(`Moodle didn't grant the extension in activity ${activityId}: ${refused}`);
   } finally {
     await page.close().catch(() => undefined);
   }
@@ -332,6 +337,27 @@ async function openBatchForm(context: BrowserContext, siteUrl: string, activityI
 }
 
 /**
+ * Refuses a batch action the assignment doesn't use: Moodle's batch forms open and save whatever its
+ * settings (its source, and the sandbox for marker allocation, 5.2), but the grading panel has the workflow state only with the
+ * marking workflow, and the marker selects only with marker allocation too.
+ */
+async function requireGradingFeature(context: BrowserContext, siteUrl: string, activityId: number, userId: number, feature: "workflowState" | "markers"): Promise<void> {
+  const ids = await assignmentIds(context, siteUrl, activityId);
+  const page = await context.newPage();
+  try {
+    const state = await readPanelState(page, await gradingPanelHtml(context, siteUrl, ids.contextId, userId));
+    if (state[feature] !== undefined) return;
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  throw new GradingError(
+    feature === "workflowState"
+      ? `Assignment ${activityId} doesn't use the marking workflow: turn "Use marking workflow" on in its settings first.`
+      : `Assignment ${activityId} doesn't allocate markers (or you can't manage allocations): turn "Use marking workflow" and "Use marking allocation" on in its settings first.`,
+  );
+}
+
+/**
  * Sets the marking workflow state of participants' submissions, as the grading table's "Set marking
  * workflow state" does; "released" shows them their grades, notifying them when `notify` is true
  * (the form's default is not to). With several markers, it sets the submission's overall state.
@@ -348,6 +374,7 @@ export async function setWorkflowState(
     throw new GradingError(`"${state}" isn't a state the batch form sets: one of ${WORKFLOW_STATES.slice(1).join(", ")}.`);
   }
   if (notify && state !== "released") throw new GradingError('Moodle notifies students only when releasing: give notify with "released".');
+  if (userIds.length > 0) await requireGradingFeature(context, siteUrl, activityId, userIds[0]!, "workflowState");
   const page = await openBatchForm(context, siteUrl, activityId, "viewbatchsetmarkingworkflowstate", userIds, "set the marking workflow state");
   try {
     if ((await page.locator(`form.mform [name="markingworkflowstate"] option[value="${state}"]`).count()) === 0) {
@@ -375,6 +402,7 @@ export async function setWorkflowState(
 export async function allocateMarker(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], markerId: number | number[]): Promise<{ changed: string }> {
   const markerIds = Array.isArray(markerId) ? markerId : [markerId];
   if (markerIds.length === 0) throw new GradingError("Give the marker to allocate.");
+  if (userIds.length > 0) await requireGradingFeature(context, siteUrl, activityId, userIds[0]!, "markers");
   const page = await openBatchForm(context, siteUrl, activityId, "viewbatchmarkingallocation", userIds, "allocate markers");
   try {
     // One select per marker the assignment uses: allocatedmarker1, allocatedmarker2…

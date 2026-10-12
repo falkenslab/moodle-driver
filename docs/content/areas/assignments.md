@@ -79,7 +79,7 @@ function submitForGrading(context: BrowserContext, siteUrl: string, activityId: 
 
 Some sites ask students to accept a statement before submitting ("This submission is my own work…"). When the confirmation form has that statement and `acceptStatement` isn't `true` (it's `false` by default; a bare boolean, as before 0.2, is accepted too), nothing is submitted and it throws `SubmissionError` with the statement's text, so the program can show it to the person and call again with `{ acceptStatement: true }` once they agree. Without a statement, `acceptStatement` is ignored.
 
-It throws `SubmissionError` when there's nothing to submit now: no draft, submitted already, or the assignment doesn't ask students to click submit. A submitted assignment can't be edited again unless the teacher reverts it to draft or reopens it.
+It throws `SubmissionError` when there's nothing to submit now: no draft, submitted already, or the assignment doesn't ask students to click submit. It tells that from the assignment's page (`canSubmit`, its "Submit assignment" button) before submitting: Moodle shows its confirmation even for a submission already submitted. A submitted assignment can't be edited again unless the teacher reverts it to draft or reopens it.
 
 ## Example
 

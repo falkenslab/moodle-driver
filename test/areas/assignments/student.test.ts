@@ -49,7 +49,7 @@ function fakeAssignment(statement = false, files = true) {
         if (form.get("action") === "savesubmission") {
           state.stage = "draft";
           if (form.has("onlinetext_editor[text]")) state.text = form.get("onlinetext_editor[text]")!.replace(/<[^>]+>/g, "");
-        } else if (form.get("action") === "confirmsubmit") state.stage = "submitted";
+        } else if (form.get("action") === "confirmsubmit" && state.stage === "draft") state.stage = "submitted";
         return html(view());
       }
       if (actionParam === "editsubmission") {
@@ -64,7 +64,7 @@ function fakeAssignment(statement = false, files = true) {
         );
       }
       if (actionParam === "submit") {
-        if (state.stage !== "draft") return html(page("<p>Not allowed</p>", "page-mod-assign-view"));
+        // Moodle 5.2 shows the confirmation whatever the submission's state (confirmed empirically on the sandbox).
         const box = statement ? `<div class="form-check"><input type="hidden" name="submissionstatement" value="0"><input type="checkbox" name="submissionstatement" value="1"> This is my own work.</div>` : "";
         return html(page(`<form class="mform" method="post" action="${SITE}mod/assign/view.php"><input type="hidden" name="action" value="confirmsubmit">${box}<input type="submit" name="submitbutton" value="Continue"></form>`, "page-mod-assign-submit"));
       }
@@ -125,7 +125,9 @@ describe("studentAssignment, saveSubmission and submitForGrading", { skip: !brow
     await saveSubmission(context, SITE, 30, { onlineText: "<p>x</p>" });
     await submitForGrading(context, SITE, 30, false);
     await assert.rejects(saveSubmission(context, SITE, 30, { onlineText: "<p>y</p>" }), (error: unknown) => error instanceof SubmissionError && /can't edit a submission/.test(error.message));
-    await assert.rejects(submitForGrading(context, SITE, 30, false), /has nothing to submit now/);
+    const posts = state.posts.length;
+    await assert.rejects(submitForGrading(context, SITE, 30, false), (error: unknown) => error instanceof SubmissionError && /has nothing to submit now/.test(error.message));
+    assert.equal(state.posts.length, posts);
     await context.close();
   });
 
