@@ -89,7 +89,8 @@ after(async () => {
   const failures: unknown[] = [];
   for (const fn of cleanups.reverse()) await fn().catch((error: unknown) => failures.push(error));
   cleanups.length = 0;
-  for (const moodle of open.values()) await (await moodle).close().catch(() => undefined);
+  // A login that failed is a rejected promise here: skipped, so the other browsers still close.
+  for (const moodle of open.values()) await moodle.then((m) => m.close()).catch(() => undefined);
   open.clear();
   if (failures.length > 0) throw new AggregateError(failures, `${failures.length} cleanup(s) failed: the sandbox may keep something this file made.`);
 });

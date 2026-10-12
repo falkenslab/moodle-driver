@@ -14,7 +14,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
-const sandboxDir = path.resolve(root, process.env.MOODLE_SANDBOX_DIR ?? "../moodle-sandbox");
+// The sandbox sits beside the repository's main checkout, also when this runs from a git worktree.
+const commonDir = spawnSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: root, encoding: "utf8" }).stdout.trim();
+const mainCheckout = commonDir ? path.dirname(commonDir) : root;
+const sandboxDir = path.resolve(mainCheckout, process.env.MOODLE_SANDBOX_DIR ?? "../moodle-sandbox");
 
 const info = spawnSync(process.execPath, ["manage.mjs", "info", "--json"], { cwd: sandboxDir, encoding: "utf8" });
 if (info.status !== 0) {
