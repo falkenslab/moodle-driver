@@ -168,9 +168,13 @@ export async function submitForGrading(
   options: { acceptStatement?: boolean } | boolean = {},
 ): Promise<{ changed: string; assignment: StudentAssignment }> {
   const acceptStatement = typeof options === "boolean" ? options : (options.acceptStatement ?? false);
+  const nothing = () => new SubmissionError(`Assignment ${activityId} has nothing to submit now (no draft, submitted already, or it doesn't ask students to click submit).`);
+  // Moodle shows the confirmation whatever the submission's state (confirmed empirically on the sandbox,
+  // 5.2): the assignment's own "Submit assignment" button says whether there's a draft to submit.
+  if (!(await studentAssignment(context, siteUrl, activityId)).canSubmit) throw nothing();
   const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=submit`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
-    throw new SubmissionError(`Assignment ${activityId} has nothing to submit now (no draft, submitted already, or it doesn't ask students to click submit).`);
+    throw nothing();
   });
   try {
     const statement = page.locator('form.mform [name="submissionstatement"][type="checkbox"]');
