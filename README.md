@@ -90,7 +90,7 @@ Tables at a terminal, JSON for scripts, errors with their code and an exit statu
 - 🌍 **Any language.** Pages are read by structure (ids, data attributes, field names), never by their text.
 - 🐢 **At a person's pace** when acting as a student, so Moodle's logs and completion look like a person's; or 🐇 fast when time matters.
 - 🛡️ **Safe to hand to an agent.** Every function declares the data it touches (own, course content, others' work, communication…), so a program can allow only some.
-- 📦 **Plain data, typed.** JSON results, ISO dates, errors with stable codes, TypeScript types included.
+- 📦 **Plain data, typed.** JSON results, ISO dates, long lists a page at a time, errors with stable codes, TypeScript types included.
 - 🖥️ **A library and a command.** The same operations from your code or from a terminal.
 
 ## 📦 Install
