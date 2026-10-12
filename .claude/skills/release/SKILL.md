@@ -12,7 +12,7 @@ A release is a version commit, a `vX.Y.Z` git tag on `main`, a GitHub release, a
 
 - The repository has a GitHub remote (`git remote -v` shows `origin`). If not, stop: the first release needs the repo created first (`gh repo create falkenslab/moodle-driver --source . --push`, only if the user asks).
 - On branch `main`, working tree clean (`git status --short` empty), up to date with `origin/main` (`git fetch && git status -sb`). If there are uncommitted changes, stop and ask (or use the `commit` skill first if the user wants them included).
-- Run the `verify` skill; a release must be green. Then, with the Moodle sandbox running, `npm run test:sandbox`: the release must pass against a real Moodle too (every exported function exercised or skipped with a reason).
+- Run the `verify` skill; a release must be green. The sandbox suite (`npm run test:sandbox`) is not part of a release: it takes hours and runs on demand; mention in the notes when it last passed, if it has.
 - `gh auth status` works.
 - `npm whoami` works (logged in with an account in the `falkenslab` organization). If it doesn't, stop and ask the user to run `npm login` themselves: it's interactive.
 - `package.json` has `"publishConfig": { "access": "public" }` (a scoped package is private by default). If it's missing, add it in the release commit and say so.

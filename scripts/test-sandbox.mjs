@@ -6,8 +6,8 @@
 // The accounts come from the sandbox itself (`node manage.mjs info --json` in ../moodle-sandbox, or
 // MOODLE_SANDBOX_DIR) into a temporary folder only the person can read, mounted at /sandbox with the
 // browser profiles; the folder is deleted whatever happens. Nothing prints or stores a password.
-// The sandbox has no cron: while the suite runs, Moodle's pending ad hoc tasks (backups, copies,
-// restores) are run every few seconds, as cron would.
+// The sandbox runs Moodle's cron in a container of its own, so backups, copies and restores run as
+// on a real site.
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -40,26 +40,11 @@ const profiles = path.join(process.env.MOODLE_SANDBOX_PROFILES ?? path.join(home
 mkdirSync(profiles, { recursive: true, mode: 0o700 });
 
 const work = mkdtempSync(path.join(tmpdir(), "moodle-driver-sandbox-"));
-let tasks;
 let status;
 try {
   chmodSync(work, 0o700);
   const accounts = { admin: sandbox.admin, teacher: sandbox.teacher, student, sandboxCourseId: sandbox.course.id };
   writeFileSync(path.join(work, "accounts.json"), JSON.stringify(accounts), { mode: 0o600 });
-
-  // Cron's part: Moodle's ad hoc tasks, every 10 seconds, only when one is due. Running Moodle's task
-  // script costs about 12 s of CPU even with nothing to do (measured on the sandbox), which several
-  // runs at once turned into a constant load; asking the database first costs milliseconds.
-  const due = () => {
-    const query = "select count(*) from mdl_task_adhoc where nextruntime <= extract(epoch from now())";
-    const answer = spawnSync("docker", ["compose", "exec", "-T", "db", "psql", "-U", "moodle", "-d", "moodle", "-Atc", query], { cwd: sandboxDir, encoding: "utf8" });
-    // If the database can't be asked, run them anyway, as before.
-    return answer.status !== 0 || Number(answer.stdout.trim()) > 0;
-  };
-  const runTasks = () => {
-    if (due()) spawnSync("docker", ["compose", "exec", "-T", "webserver", "php", "admin/cli/adhoc_task.php", "--execute"], { cwd: sandboxDir, stdio: "ignore" });
-  };
-  tasks = setInterval(runTasks, 10_000);
 
   const files = process.argv.slice(2);
   const command = [
@@ -78,7 +63,6 @@ try {
   });
   status = await new Promise((resolve) => child.on("exit", (code) => resolve(code ?? 1)));
 } finally {
-  clearInterval(tasks);
   rmSync(work, { recursive: true, force: true });
 }
 process.exit(status);
