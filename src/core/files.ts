@@ -3,6 +3,7 @@ import path from "node:path";
 import type { BrowserContext } from "playwright-core";
 import { NotLoggedInError } from "./session.js";
 import { MoodleError } from "./errors.js";
+import { redacted } from "./http.js";
 
 /** Local files given to upload (a submission, an attachment, a resource): absolute, and there. */
 export async function checkLocalFiles(files: string[]): Promise<void> {
@@ -52,8 +53,11 @@ export async function downloadFile(context: BrowserContext, siteUrl: string, url
   const origin = new URL(siteUrl).origin;
   if (target.origin !== origin) throw new MoodleError(`Only files of ${origin} can be downloaded with the session; ${target.origin} isn't the site.`, "outside-site");
   if (!path.isAbsolute(destDir)) throw new MoodleError(`Give the destination folder as an absolute path: "${destDir}".`, "invalid-input");
-  // The context's request API carries its cookies without opening a tab.
-  const response = await context.request.get(target.href, { maxRedirects: 5 });
+  // The context's request API carries its cookies without opening a tab; a failure's message is
+  // stripped of them (see redacted).
+  const response = await context.request.get(target.href, { maxRedirects: 5 }).catch((error: unknown) => {
+    throw redacted(error);
+  });
   const contentType = response.headers()["content-type"]?.split(";")[0]?.trim();
   // A file the session can't reach comes back as the login page.
   if (contentType === "text/html" && new URL(response.url()).pathname.includes("/login/")) throw new NotLoggedInError();

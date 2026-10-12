@@ -2,6 +2,8 @@
 
 Errors a program can act on have their own class, and their messages speak Moodle's terms: the module, the course structure, logging in again. They never name a program's own tools or settings, so a program can show them as they are or explain them in its own words.
 
+They never carry the person's session either, so they can be logged as they are: when a request to Moodle times out, Playwright's message lists the request's headers, and the driver replaces the session cookie and the `sesskey` in it with `[redacted]`.
+
 **Terms:** [error code](../reference/glossary.md#error-code).
 
 ## Catching them
