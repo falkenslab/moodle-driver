@@ -92,6 +92,14 @@ describe("building a course", () => {
     assert.deepEqual(settings.files?.map((f) => f.name), ["driver-check-scorm.zip"]);
   });
 
+  it("createActivity: a shared question bank, found on the banks page", SLOW, async () => {
+    const teacher = await as("teacher");
+    const made = await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "qbank", name: "Driver bank" });
+    assert.ok(made.activityId, made.changed);
+    const bank = (await teacher.questionBanks(course.id)).find((b) => b.id === made.activityId);
+    assert.deepEqual(bank, { id: made.activityId, name: "Driver bank", type: "qbank", shared: true });
+  });
+
   it("createActivity: refused for a section the course hasn't, and for a student", SLOW, async () => {
     const teacher = await as("teacher");
     await assert.rejects(teacher.createActivity({ courseId: course.id, sectionId: 999_999, type: "page", name: "Nowhere", content: "x" }), (error: unknown) => error instanceof MoodleError && error.code === "not-found");
