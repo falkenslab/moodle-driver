@@ -28,8 +28,8 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 
 - `session.ts` — whether a page has a user logged in (body class, `M.cfg.userId`, login and logout links), `openSitePage()`, `logOut()`, and the hook that lets the browser follow the pages functions open.
 - `ajax.ts` — `callService()`: AJAX over HTTP with the profile's session and the `sesskey` read from a light page, a stale one read again, session errors as `NotLoggedInError` (ADR-004, ADR-011); `http.ts` — requests without a tab (`context.request`, or the fake Moodle's transport); `readPageConfig()`.
-- `forms.ts` — forms: fields by name (TinyMCE through its API), draft areas as the file picker and file manager work them (upload, list, delete), submit, validation errors by field, date selectors in the person's time zone. `inPage.ts` — `inPage()`.
-- `text.ts` — entities decoded, elements' text with paragraphs and lists, media in content. `pace.ts` — a person's reading pace for the realistic trail (ADR-005).
+- `forms.ts` — forms: fields by name (TinyMCE through its API), draft areas as the file picker and file manager work them (upload, list, delete), submit, validation errors by field, date selectors in the person's time zone. `embed.ts` — local files embedded in an editor's HTML: checked against the names it uses, uploaded to that editor's draft area (`<editor>[itemid]`), the HTML pointed at their draft URLs. `inPage.ts` — `inPage()`.
+- `text.ts` — entities decoded, elements' text with paragraphs and lists, media and images in content. `pace.ts` — a person's reading pace for the realistic trail (ADR-005).
 - `site.ts` — a site's base URL from any page (no browser). `login.ts` — `logIn()`: the user at once if there's a session, else a window at the login page waiting for the person (ADR-002).
 - `editor.ts` — the course editor's actions and renames. `files.ts` — local files checked, site files downloaded with the session.
 - `errors.ts` — `MoodleError`, the base of every error the driver throws, and its stable codes (`MoodleErrorCode`).

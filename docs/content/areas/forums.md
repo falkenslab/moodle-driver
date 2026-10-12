@@ -57,6 +57,7 @@ interface ForumPost {
   created?: string;
   modified?: string;
   text: string;
+  images?: ImageItem[]; // { url, alt? }
   attachments: { name: string; url: string }[];
   privateReply: boolean;
   unread?: boolean;
@@ -68,6 +69,7 @@ interface ForumPost {
 - `parentId`: the post it replies to; missing for the discussion's first post.
 - `created`, `modified`: ISO dates; `modified` only when the post was edited more than a minute after posting.
 - `text`: the message as text, with its paragraphs and lists kept.
+- `images`: the images in the message (`{ url, alt? }`), when it has any; their `pluginfile.php` URLs download with [`downloadFile`](files.md).
 - `attachments`: each file's name and URL; download them with the session through [`downloadFile`](files.md).
 - `privateReply`: a private reply, which only its author and the person replied to (and teachers) see.
 - `unread`: whether the person hasn't read it, when Moodle tracks it.
@@ -89,6 +91,7 @@ function replyToPost(context: BrowserContext, siteUrl: string, postId: number, i
 interface PostInput {
   message: string;
   files?: string[];
+  embed?: string[];
   subscribe?: boolean;
   fields?: Record<string, FieldValue>;
 }
@@ -97,6 +100,7 @@ interface PostInput {
 - `message`: the message as HTML (`"<p>Thanks, that worked.</p>"`).
 - `subject`: the reply's subject; without it, the one Moodle fills in ("Re: ...").
 - `files`: absolute paths of local files to attach, uploaded as the file picker does.
+- `embed`: absolute paths of local images and files to put inside the message, which names each by its file name (`'<p>Here: <img src="error.png"></p>'`), as Moodle's editor inserts an image (see [Embedding files in rich text](files.md#embedding-files-in-rich-text)).
 - `subscribe`: subscribe to the discussion or not; without it, Moodle's default.
 - `fields`: other fields of the post form by name, set after the others (a teacher's `{ pinned: true }` on a new discussion, or `{ mailnow: true }`).
 
@@ -163,10 +167,12 @@ interface PostChanges {
   subject?: string;
   message?: string;
   files?: { add?: string[]; remove?: string[] };
+  embed?: string[];
 }
 ```
 
 - `message`: the new message as HTML, replacing the old one.
+- `embed`: absolute paths of local images and files the new `message` names, as in `replyToPost`.
 - `files.add`: absolute paths of local files to attach; `files.remove`: attachments to remove, by name (as `discussion` lists them in `attachments`).
 - With nothing to change, it opens no form and answers `"Nothing to change."`.
 

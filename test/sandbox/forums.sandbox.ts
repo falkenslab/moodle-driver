@@ -201,6 +201,22 @@ describe("forums, ratings and workshops on the scratch course", () => {
     await assert.rejects((await as("student")).editPost(replyId, { message: "<p>Driver check suite: not mine.</p>" }), ForumError);
   });
 
+  it("replyToPost: the teacher embeds an image, which the student sees and downloads", { timeout: 300_000 }, async () => {
+    const teacher = await as("teacher");
+    const image = path.join(dir, "suite-dot.png");
+    writeFileSync(image, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==", "base64"));
+    const result = await teacher.replyToPost(firstPostId, { message: '<p>Look: <img src="suite-dot.png" alt="Dot"></p>', embed: [image] });
+    assert.ok(result.postId, result.changed);
+    try {
+      const student = await as("student");
+      const seen = (await student.discussion(discussionId)).posts.find((p) => p.id === result.postId);
+      assert.match(seen?.images?.[0]?.url ?? "", /pluginfile\.php\/\d+\/mod_forum\/post\/\d+\/suite-dot\.png/);
+      assert.equal((await student.downloadFile(seen!.images![0]!.url, dir)).contentType, "image/png");
+    } finally {
+      await teacher.deletePost(result.postId);
+    }
+  });
+
   it("setDiscussionState: pinned and locked, then back", { timeout: 300_000 }, async () => {
     const teacher = await as("teacher");
     const done = await teacher.setDiscussionState(forumId, discussionId, { pinned: true, locked: true });

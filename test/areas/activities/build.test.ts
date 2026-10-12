@@ -24,7 +24,7 @@ function activityForm(values: { name?: string; error?: string; fileField?: strin
   return `<form class="mform" action="modedit.php" method="post">
 <input type="hidden" name="course" value="5"><input type="hidden" name="modulename" value="resource"><input type="hidden" name="sesskey" value="s1">
 <input type="text" name="name" id="id_name" value="${values.name ?? ""}"><div id="id_error_name">${values.error ?? ""}</div>
-<textarea name="introeditor[text]" id="id_introeditor"></textarea>
+<textarea name="introeditor[text]" id="id_introeditor"></textarea><input type="hidden" name="introeditor[itemid]" value="888">
 <input type="hidden" name="showdescription" value="0"><input type="checkbox" name="showdescription" value="1">
 <input type="hidden" name="${values.fileField ?? "files"}" value="777">
 <select name="visible"><option value="1">Show</option><option value="0">Hide</option></select>
@@ -66,7 +66,8 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
       // Moodle keeps both, renaming the new one, unless asked to overwrite (Moodle 5.2's upload repository).
       if (draft.has(name) && field("overwrite") !== "1") return route.fulfill({ status: 200, contentType: "application/json", body: '{"event":"fileexists"}' });
       draft.set(name, /filename="[^"]+"\r\n(?:[^\r]+\r\n)*\r\n([^\r]*)/.exec(body)?.[1]?.length ?? 0);
-      return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      // Moodle answers with the file's draft URL, in the person's user context (made up: 9).
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ url: `${SITE}draftfile.php/9/user/draft/${field("itemid")}${name}`, id: Number(field("itemid")), file: field("title") }) });
     });
     // The file manager's draft area, made up after Moodle 5.2's draftfiles_ajax.php: a listing per folder, deleting, creating folders.
     await context.route(`${SITE}repository/draftfiles_ajax.php**`, (route: Route) => {
@@ -106,6 +107,29 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     assert.equal(sent.get("introeditor[text]"), "<p>Read it</p>");
     assert.equal(sent.get("visible"), "0");
     assert.deepEqual(sent.getAll("showdescription"), ["0", "1"]);
+    await context.close();
+  });
+
+  it("embeds files in the description: uploaded to its editor's draft area, the HTML pointing at their draft URLs", async () => {
+    const { context, posts, uploads } = await site();
+    await writeFile(path.join(dir, "my shot.png"), "PNG");
+    const description = `<p><img src="my%20shot.png" alt="Shot"> and <a href='brief.txt'>the brief</a>, <a href="https://moodle.org/">Moodle</a></p>`;
+    await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "resource", name: "Brief", description, embed: [path.join(dir, "my shot.png"), path.join(dir, "brief.txt")] });
+    assert.deepEqual(uploads, ["888:my shot.png", "888:brief.txt"]);
+    assert.equal(
+      posts[0]!.get("introeditor[text]"),
+      `<p><img src="${SITE}draftfile.php/9/user/draft/888/my shot.png" alt="Shot"> and <a href='${SITE}draftfile.php/9/user/draft/888/brief.txt'>the brief</a>, <a href="https://moodle.org/">Moodle</a></p>`,
+    );
+    await context.close();
+  });
+
+  it("refuses files to embed the HTML doesn't name, and names it uses with no file, before opening the form", async () => {
+    const { context, posts, uploads } = await site();
+    const brief = path.join(dir, "brief.txt");
+    await assert.rejects(createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "resource", name: "X", description: "<p>Nothing</p>", embed: [brief] }), { code: "invalid-input", message: /No text uses "brief\.txt"/ });
+    await assert.rejects(updateActivity(context, SITE, 40, { description: '<img src="brief.txt"><img src="other.png">', embed: [brief] }), { code: "invalid-input", message: /uses "other\.png"/ });
+    await assert.rejects(updateActivity(context, SITE, 40, { description: '<img src="brief.txt">', embed: ["brief.txt"] }), /absolute paths/);
+    assert.deepEqual([posts.length, uploads.length], [0, 0]);
     await context.close();
   });
 

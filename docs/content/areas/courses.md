@@ -106,12 +106,13 @@ function updateCourse(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
-  changes: { fullName?: string; shortName?: string; summary?: string; settings?: Record<string, FieldValue> },
+  changes: { fullName?: string; shortName?: string; summary?: string; settings?: Record<string, FieldValue>; embed?: string[] },
 ): Promise<{ changed: string; course?: Course }>;
 ```
 
 - `fullName`, `shortName`: the course's names.
 - `summary`: HTML, set through the summary's editor.
+- `embed`: absolute local paths of images and files the `summary` names (`<img src="banner.png">`), put in it as Moodle's editor does (see [Embedding files in rich text](files.md#embedding-files-in-rich-text)).
 - `settings`: any other field of the form by its form name (`startdate[day]`, `visible`, `format`…); `FieldValue` is a string, number, boolean or array of strings. The named options win over `settings` when both set the same field.
 
 With nothing to change it returns `changed: "Nothing to change."` without opening the form. `course` is `undefined` when the person isn't enrolled in the course (so `listCourses` doesn't list it).

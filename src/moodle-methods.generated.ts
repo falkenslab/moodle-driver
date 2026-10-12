@@ -45,8 +45,11 @@ export interface MoodleMethods {
    * A section starts at a page: the slot must be the first of its page (see `setQuizPages`).
    */
   addQuizSection(activityId: number, options: { firstSlot: number; heading: string; shuffle?: boolean | undefined; }): Promise<import("./areas/quizzes/structure.js").QuizChange & { sectionId: number; }>;
-  /** Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is. */
-  addSection(courseId: number, options?: { name?: string | undefined; afterSectionId?: number | undefined; summary?: string | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Adds a section after another one (at the end without it), named when a name is given, with a
+   * description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`).
+   */
+  addSection(courseId: number, options?: { name?: string | undefined; afterSectionId?: number | undefined; summary?: string | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
    * Allocates a marker (the user id of someone who can grade; several where the assignment uses
    * several markers per submission) to participants' submissions, as the grading table's "Allocate
@@ -213,10 +216,10 @@ export interface MoodleMethods {
    */
   editQuizSlot(activityId: number, slot: number, options: { maxMark?: number | undefined; moveAfter?: number | undefined; page?: number | undefined; }): Promise<import("./areas/quizzes/structure.js").QuizChange>;
   /**
-   * Renames, shows or hides, describes (`summary`, HTML), restricts (`restrictions`; `{ conditions: [] }`
-   * removes them) or moves a section after another one.
+   * Renames, shows or hides, describes (`summary`, HTML, with `embed`'s local files in it), restricts
+   * (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
    */
-  editSection(courseId: number, sectionId: number, options: { name?: string | undefined; visible?: boolean | undefined; summary?: string | undefined; restrictions?: import("./areas/activities/conditions.js").Restrictions | undefined; afterSectionId?: number | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  editSection(courseId: number, sectionId: number, options: { name?: string | undefined; visible?: boolean | undefined; summary?: string | undefined; restrictions?: import("./areas/activities/conditions.js").Restrictions | undefined; afterSectionId?: number | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
    * Enrols users in a course by manual enrolment, as the participants page's "Enrol users" dialog does:
    * with `roleId` or the enrolment's default role, from `start` (now, unless given) until `end` (the
@@ -576,10 +579,11 @@ export interface MoodleMethods {
   updateActivity(activityId: number, input: import("./areas/activities/build.js").ActivityFields & { files?: import("./areas/activities/build.js").FileChanges | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
    * Changes a course's full name, short name, summary (HTML) or any other setting by its form field
-   * name, through the course's settings form; returns the course as `listCourses` gives it. Moodle's
-   * refusals (a short name already taken) come back as `FormError` by field.
+   * name, through the course's settings form; returns the course as `listCourses` gives it. `embed`
+   * takes local files the summary names (`<img src="shot.png">`), put in it as Moodle's editor does.
+   * Moodle's refusals (a short name already taken) come back as `FormError` by field.
    */
-  updateCourse(courseId: number, options: { fullName?: string | undefined; shortName?: string | undefined; summary?: string | undefined; settings?: Record<string, import("./core/forms.js").FieldValue> | undefined; }): Promise<{ changed: string; course?: import("./areas/courses/list.js").Course | undefined; }>;
+  updateCourse(courseId: number, options: { fullName?: string | undefined; shortName?: string | undefined; summary?: string | undefined; settings?: Record<string, import("./core/forms.js").FieldValue> | undefined; embed?: string[] | undefined; }): Promise<{ changed: string; course?: import("./areas/courses/list.js").Course | undefined; }>;
   /**
    * Changes a calendar event through the calendar's own form, opened on it: only what's given
    * changes. A new start keeps the event's length unless a new one is given. Returns the event as the

@@ -1,7 +1,7 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { MoodleServiceError, callService } from "../../core/ajax.js";
 import { fetchSitePage, openSitePage } from "../../core/session.js";
-import { readTexts } from "../../core/text.js";
+import { readImages, readTexts, type ImageItem } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
 
 /** The id isn't a forum's course module, or the person can't see it. */
@@ -155,11 +155,17 @@ export async function discussionSubscription(context: BrowserContext, siteUrl: s
 
 /** Plain text of Moodle-cleaned HTML fragments, parsed in a blank tab. */
 export async function htmlToTexts(context: BrowserContext, fragments: string[]): Promise<string[]> {
+  return (await readFragments(context, fragments)).map((fragment) => fragment.text);
+}
+
+/** Plain text and images of Moodle-cleaned HTML fragments, parsed in a blank tab. */
+export async function readFragments(context: BrowserContext, fragments: string[]): Promise<{ text: string; images: ImageItem[] }[]> {
   if (fragments.length === 0) return [];
   const page = await context.newPage();
   try {
     await page.setContent(fragments.map((html) => `<div class="driver-fragment">${html}</div>`).join(""));
-    return await readTexts(page, "body > .driver-fragment");
+    const [texts, images] = await Promise.all([readTexts(page, "body > .driver-fragment"), readImages(page, "body > .driver-fragment")]);
+    return texts.map((text, i) => ({ text, images: images[i] ?? [] }));
   } finally {
     await page.close().catch(() => undefined);
   }

@@ -5,6 +5,7 @@ import path from "node:path";
 import type { BrowserContext, Page } from "playwright-core";
 import { courseState } from "../courses/state.js";
 import { editCourse, renameActivity, renameSection } from "../../core/editor.js";
+import { checkEmbeds, editorTexts, embedFiles } from "../../core/embed.js";
 import { checkLocalFiles } from "../../core/files.js";
 import { deleteDraftFile, draftFiles, formValue, openForm, setFields, submitForm, uploadToDraft, type DraftFile, type DraftUpload, type FieldValue } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
@@ -37,6 +38,16 @@ export interface ActivityFields {
   /** When it counts as complete. */
   completion?: Completion;
   settings?: Record<string, FieldValue>;
+  /**
+   * Local files (absolute paths) to embed in the description, the content or an editor in `settings`,
+   * as Moodle's editor inserts them: the HTML names each by its file name (`<img src="shot.png">`).
+   */
+  embed?: string[];
+}
+
+/** The HTML an activity's inputs write: description, content, and the editors' texts in `settings`. */
+function richTextsOf(input: ActivityFields): (string | undefined)[] {
+  return [input.description, input.content, ...editorTexts(input.settings ?? {})];
 }
 
 /** What a change did, its new id when it created something, and the course afterwards. */
@@ -149,6 +160,7 @@ export async function createActivity(
   input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[] },
 ): Promise<CourseChange> {
   if (input.files) await checkLocalFiles(localPaths(input.files));
+  if (input.embed) await checkEmbeds(richTextsOf(input), input.embed);
   const before = await courseState(context, siteUrl, input.courseId);
   const target = before.section.find((s) => Number(s.id) === input.sectionId);
   if (!target) throw new MoodleError(`Course ${input.courseId} has no section ${input.sectionId}. Take its id from the course structure.`, "not-found");
@@ -164,7 +176,9 @@ export async function createActivity(
       await uploadToDraft(page, area.draft, area.single ? input.files.slice(0, 1) : input.files);
     }
     // Hidden unless asked: a teacher publishes after checking.
-    await setFields(page, fieldsFor(input.type, { ...input, visibility: input.visibility ?? "hidden" }, await conditionValues(context, siteUrl, page, input.courseId, input)));
+    const values = fieldsFor(input.type, { ...input, visibility: input.visibility ?? "hidden" }, await conditionValues(context, siteUrl, page, input.courseId, input));
+    if (input.embed) await embedFiles(page, values, input.embed);
+    await setFields(page, values);
     await submitForm(page, "submitbutton2");
   } finally {
     await page.close().catch(() => undefined);
@@ -189,6 +203,7 @@ export async function updateActivity(context: BrowserContext, siteUrl: string, a
   const { files, ...fields } = input;
   if (files?.replace && (files.add || files.remove)) throw new MoodleError("Give files.replace alone, or files.add and files.remove.", "invalid-input");
   if (files) await checkLocalFiles([...localPaths(files.add), ...localPaths(files.replace)]);
+  if (fields.embed) await checkEmbeds(richTextsOf(fields), fields.embed);
   const page = await openForm(context, siteUrl, `course/modedit.php?update=${activityId}&return=0`);
   let courseId: number;
   let filesDone: { done: string; files: DraftFile[] } | undefined;
@@ -200,7 +215,9 @@ export async function updateActivity(context: BrowserContext, siteUrl: string, a
       if (!area) throw new MoodleError(`A ${type} has no files in its form.`, "not-available");
       filesDone = await changeFiles(page, area.draft, files);
     }
-    await setFields(page, fieldsFor(type, fields, await conditionValues(context, siteUrl, page, courseId, fields)));
+    const values = fieldsFor(type, fields, await conditionValues(context, siteUrl, page, courseId, fields));
+    if (fields.embed) await embedFiles(page, values, fields.embed);
+    await setFields(page, values);
     await submitForm(page, "submitbutton2");
   } finally {
     await page.close().catch(() => undefined);
@@ -253,11 +270,12 @@ export async function deleteActivity(context: BrowserContext, siteUrl: string, c
  * Saves fields of a section's own form (`course/editsection.php`): its description, its access
  * restrictions. No service changes them (`core_course_edit_section` only shows, hides and moves).
  */
-async function saveSectionForm(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number, values: Record<string, FieldValue>): Promise<void> {
+async function saveSectionForm(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number, values: Record<string, FieldValue>, embed: string[] = []): Promise<void> {
   const page = await openForm(context, siteUrl, `course/editsection.php?id=${sectionId}`);
   try {
     // The form edits any section by its id: one of another course is refused, as the course editor's service does.
     if (Number(await formValue(page, "course")) !== courseId) throw new MoodleError(`Course ${courseId} has no section ${sectionId}. Take its id from the course structure.`, "not-found");
+    await embedFiles(page, values, embed);
     await setFields(page, values);
     await submitForm(page, "submitbutton");
   } finally {
@@ -265,33 +283,45 @@ async function saveSectionForm(context: BrowserContext, siteUrl: string, courseI
   }
 }
 
-/** Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is. */
+/**
+ * Adds a section after another one (at the end without it), named when a name is given, with a
+ * description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`).
+ */
 export async function addSection(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
-  { name, afterSectionId, summary }: { name?: string; afterSectionId?: number; summary?: string } = {},
+  { name, afterSectionId, summary, embed }: { name?: string; afterSectionId?: number; summary?: string; embed?: string[] } = {},
 ): Promise<CourseChange> {
+  if (embed) await checkEmbeds([summary], embed);
   const before = new Set((await courseState(context, siteUrl, courseId)).section.map((s) => s.id));
   await editCourse(context, siteUrl, courseId, "section_add", [], { sectionId: afterSectionId });
   const added = (await courseState(context, siteUrl, courseId)).section.find((s) => !before.has(s.id));
   if (added && name !== undefined) await renameSection(context, siteUrl, courseId, Number(added.id), name);
-  if (added && summary !== undefined) await saveSectionForm(context, siteUrl, courseId, Number(added.id), { "summary_editor[text]": summary });
+  if (added && summary !== undefined) await saveSectionForm(context, siteUrl, courseId, Number(added.id), { "summary_editor[text]": summary }, embed);
   const extras = `${name !== undefined ? ` as "${name}"` : ""}${summary !== undefined ? " with a description" : ""}`;
   return afterChange(context, siteUrl, courseId, `Section ${added?.id ?? "?"} added${extras}.`, { sectionId: added ? Number(added.id) : undefined });
 }
 
 /**
- * Renames, shows or hides, describes (`summary`, HTML), restricts (`restrictions`; `{ conditions: [] }`
- * removes them) or moves a section after another one.
+ * Renames, shows or hides, describes (`summary`, HTML, with `embed`'s local files in it), restricts
+ * (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
  */
 export async function editSection(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
   sectionId: number,
-  { name, visible, summary, restrictions, afterSectionId }: { name?: string; visible?: boolean; summary?: string; restrictions?: Restrictions; afterSectionId?: number },
+  {
+    name,
+    visible,
+    summary,
+    restrictions,
+    afterSectionId,
+    embed,
+  }: { name?: string; visible?: boolean; summary?: string; restrictions?: Restrictions; afterSectionId?: number; embed?: string[] },
 ): Promise<CourseChange> {
+  if (embed) await checkEmbeds([summary], embed);
   const done: string[] = [];
   if (name !== undefined) {
     await renameSection(context, siteUrl, courseId, sectionId, name);
@@ -302,7 +332,7 @@ export async function editSection(
     const values: Record<string, FieldValue> = {};
     if (summary !== undefined) values["summary_editor[text]"] = summary;
     if (restrictions !== undefined) values.availabilityconditionsjson = await availabilityValue(context, siteUrl, courseId, restrictions);
-    await saveSectionForm(context, siteUrl, courseId, sectionId, values);
+    await saveSectionForm(context, siteUrl, courseId, sectionId, values, embed);
     if (summary !== undefined) done.push(summary === "" ? "description removed" : "description set");
     if (restrictions !== undefined) done.push(restrictions.conditions.length === 0 ? "restrictions removed" : "restrictions set");
   }

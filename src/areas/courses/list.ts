@@ -1,5 +1,6 @@
 import type { BrowserContext } from "playwright-core";
 import { callService } from "../../core/ajax.js";
+import { checkEmbeds, editorTexts, embedFiles } from "../../core/embed.js";
 import { openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
 import { NotLoggedInError } from "../../core/session.js";
 import { decodeEntities } from "../../core/text.js";
@@ -85,25 +86,28 @@ export class CourseError extends MoodleError {
 
 /**
  * Changes a course's full name, short name, summary (HTML) or any other setting by its form field
- * name, through the course's settings form; returns the course as `listCourses` gives it. Moodle's
- * refusals (a short name already taken) come back as `FormError` by field.
+ * name, through the course's settings form; returns the course as `listCourses` gives it. `embed`
+ * takes local files the summary names (`<img src="shot.png">`), put in it as Moodle's editor does.
+ * Moodle's refusals (a short name already taken) come back as `FormError` by field.
  */
 export async function updateCourse(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
-  { fullName, shortName, summary, settings }: { fullName?: string; shortName?: string; summary?: string; settings?: Record<string, FieldValue> },
+  { fullName, shortName, summary, settings, embed }: { fullName?: string; shortName?: string; summary?: string; settings?: Record<string, FieldValue>; embed?: string[] },
 ): Promise<{ changed: string; course?: Course }> {
   const values: Record<string, FieldValue> = { ...settings };
   if (fullName !== undefined) values.fullname = fullName;
   if (shortName !== undefined) values.shortname = shortName;
   if (summary !== undefined) values["summary_editor[text]"] = summary;
+  if (embed) await checkEmbeds(editorTexts(values), embed);
   if (Object.keys(values).length === 0) return { changed: "Nothing to change.", course: (await listCourses(context, siteUrl)).find((c) => c.id === courseId) };
   const page = await openForm(context, siteUrl, `course/edit.php?id=${courseId}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
     throw new CourseError(`You can't change course ${courseId}'s settings: it doesn't exist, or you aren't allowed.`);
   });
   try {
+    if (embed) await embedFiles(page, values, embed);
     await setFields(page, values);
     await submitForm(page, "saveanddisplay");
   } finally {
