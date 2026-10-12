@@ -159,6 +159,17 @@ describe("assignments", () => {
       assert.ok(mine?.content?.some((c) => c.files.some((f) => f.name === "suite-answer.txt")));
     });
 
+    it("assignmentSubmissions: reading with content leaves a participant who never submitted without a submission", SLOW, async () => {
+      const teacher = await as("teacher");
+      const untouched = await createAssignment(course, "Suite never submitted", { assignsubmission_onlinetext_enabled: true });
+      // Twice: Moodle's grading panel would create an empty ("new") submission the second read would see.
+      for (let read = 1; read <= 2; read++) {
+        const row = (await teacher.assignmentSubmissions(untouched)).find((s) => s.userId === studentId);
+        assert.equal(row?.status, "none", `read ${read}`);
+        assert.equal(row?.content, undefined);
+      }
+    });
+
     it("gradeSubmission: a grade with feedback and a feedback file, seen by the student", SLOW, async () => {
       const teacher = await as("teacher");
       const graded = await teacher.gradeSubmission(simple, studentId, { grade: 80, feedback: "<p>Suite feedback</p>", feedbackFiles: [path.join(folder, "suite-feedback.txt")], notify: false });
