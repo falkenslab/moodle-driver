@@ -4,9 +4,6 @@ import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { CalendarError, type CalendarEvent } from "../../src/index.js";
 import { COURSE, as, cleanup, quietly, scratchCourse, type ScratchCourse } from "./harness.js";
-import { warmUp } from "./warm-up.js";
-
-before(() => warmUp("admin", "teacher", "student"));
 
 /** A start in a few days, on the minute: the event form keeps minutes, not seconds. */
 function daysAhead(days: number, hour = 10): Date {
