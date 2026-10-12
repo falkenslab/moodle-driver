@@ -46,7 +46,7 @@ npm run test:sandbox -- test/sandbox/forums.sandbox.ts    # some
 - The sandbox has no cron: while the suite runs, Moodle's pending ad hoc tasks (copies, backups, restores) run every 10 seconds.
 - Test names start with the function they exercise (`courseStructure: …`). At the end a summary lists, per function, passed, failed or skipped with its reason, and the full run fails when an exported function is in no test, or a skip gives no reason.
 
-Run it before a release; it isn't part of `npm publish`, which can't count on the sandbox.
+It runs on demand, when you want to know the driver still works on a real Moodle (after changing how an area reads Moodle, or Moodle's version): it takes hours, so it's part of no release and of no `npm publish`.
 
 ## Conventions
 
