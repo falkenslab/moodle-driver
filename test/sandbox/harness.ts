@@ -50,22 +50,30 @@ async function logIn(role: Role): Promise<Moodle> {
   // checks that are only slow. The driver's own waits follow these defaults too.
   context.setDefaultTimeout(120_000);
   context.setDefaultNavigationTimeout(300_000);
-  const page = await context.newPage();
   try {
-    await page.goto(`${SITE}login/index.php`, { waitUntil: "domcontentloaded" });
-    // Moodle sends a logged-in person on from the login page; the form is there only without a session.
-    if ((await page.locator("#username").count()) > 0) {
-      const { username, password } = accounts[role];
-      await page.fill("#username", username);
-      await page.fill("#password", password);
-      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click("#loginbtn")]);
-      if ((await page.locator("#username").count()) > 0) throw new Error(`The sandbox's ${role} account couldn't log in.`);
+    const page = await context.newPage();
+    try {
+      await page.goto(`${SITE}login/index.php`, { waitUntil: "domcontentloaded" });
+      // Moodle sends a logged-in person on from the login page; the form is there only without a session.
+      if ((await page.locator("#username").count()) > 0) {
+        const { username, password } = accounts[role];
+        await page.fill("#username", username);
+        await page.fill("#password", password);
+        await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click("#loginbtn", { noWaitAfter: true })]);
+        if ((await page.locator("#username").count()) > 0) throw new Error(`The sandbox's ${role} account couldn't log in.`);
+      }
+    } finally {
+      await page.close().catch(() => undefined);
     }
-  } finally {
-    await page.close();
+    await moodle.saveSession();
+    return moodle;
+  } catch (error) {
+    // A browser left open keeps the process, and its container, alive after the file; and the next
+    // as(role) tries again instead of reusing the failure.
+    await moodle.close().catch(() => undefined);
+    open.delete(role);
+    throw error;
   }
-  await moodle.saveSession();
-  return moodle;
 }
 
 const cleanups: (() => Promise<unknown>)[] = [];
@@ -110,7 +118,15 @@ export interface ScratchCourse {
 export async function scratchCourse(name = "suite"): Promise<ScratchCourse> {
   const admin = await as("admin");
   const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
-  const page = await openForm(await admin.context(), SITE, "course/edit.php?category=1");
+  // A busy sandbox may not answer the first time: the form is opened up to three times.
+  let page: Page | undefined;
+  for (let attempt = 1; !page; attempt++) {
+    try {
+      page = await openForm(await admin.context(), SITE, "course/edit.php?category=1");
+    } catch (error) {
+      if (attempt === 3) throw error;
+    }
+  }
   let id: number;
   try {
     await setFields(page, { fullname: `Driver check ${name} ${stamp}`, shortname: `drivercheck-${name}-${stamp}` });
