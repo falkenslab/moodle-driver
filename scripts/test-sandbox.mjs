@@ -14,7 +14,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
-const sandboxDir = path.resolve(root, process.env.MOODLE_SANDBOX_DIR ?? "../moodle-sandbox");
+// The sandbox sits beside the repository's main checkout, also when this runs from a git worktree.
+const commonDir = spawnSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: root, encoding: "utf8" }).stdout.trim();
+const mainCheckout = commonDir ? path.dirname(commonDir) : root;
+const sandboxDir = path.resolve(mainCheckout, process.env.MOODLE_SANDBOX_DIR ?? "../moodle-sandbox");
 
 const info = spawnSync(process.execPath, ["manage.mjs", "info", "--json"], { cwd: sandboxDir, encoding: "utf8" });
 if (info.status !== 0) {
@@ -37,8 +40,18 @@ try {
   const accounts = { admin: sandbox.admin, teacher: sandbox.teacher, student, sandboxCourseId: sandbox.course.id };
   writeFileSync(path.join(work, "accounts.json"), JSON.stringify(accounts), { mode: 0o600 });
 
-  // Cron's part: Moodle's pending ad hoc tasks, every 10 seconds, quietly.
-  const runTasks = () => spawnSync("docker", ["compose", "exec", "-T", "webserver", "php", "admin/cli/adhoc_task.php", "--execute"], { cwd: sandboxDir, stdio: "ignore" });
+  // Cron's part: Moodle's ad hoc tasks, every 10 seconds, only when one is due. Running Moodle's task
+  // script costs about 12 s of CPU even with nothing to do (measured on the sandbox), which several
+  // runs at once turned into a constant load; asking the database first costs milliseconds.
+  const due = () => {
+    const query = "select count(*) from mdl_task_adhoc where nextruntime <= extract(epoch from now())";
+    const answer = spawnSync("docker", ["compose", "exec", "-T", "db", "psql", "-U", "moodle", "-d", "moodle", "-Atc", query], { cwd: sandboxDir, encoding: "utf8" });
+    // If the database can't be asked, run them anyway, as before.
+    return answer.status !== 0 || Number(answer.stdout.trim()) > 0;
+  };
+  const runTasks = () => {
+    if (due()) spawnSync("docker", ["compose", "exec", "-T", "webserver", "php", "admin/cli/adhoc_task.php", "--execute"], { cwd: sandboxDir, stdio: "ignore" });
+  };
   tasks = setInterval(runTasks, 10_000);
 
   const files = process.argv.slice(2);

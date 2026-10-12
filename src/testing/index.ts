@@ -1,6 +1,10 @@
-// Helpers for testing programs that use the driver without a real Moodle: a fake site served inside
-// a browser context, made-up grading panel HTML, and a browser manager that launches nothing.
-// Published as "@falkenslab/moodle-driver/testing".
+/**
+ * Helpers for testing programs that use the driver without a real Moodle, imported from
+ * `@falkenslab/moodle-driver/testing`: a fake site served inside a browser context, made-up grading
+ * panel HTML, and a browser manager that launches nothing.
+ *
+ * @packageDocumentation
+ */
 import type { BrowserManager } from "../browser/manager.js";
 
 export { SITE, ServiceFailure, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "./fakeMoodle.js";
