@@ -1,6 +1,6 @@
 # Forums
 
-A forum's discussions and their posts as plain data, posting as the person (replies and new discussions, with attachments), editing and deleting posts, and a teacher's moderation (pinning and locking discussions, changing or removing anyone's posts). Grading a forum as a whole and rating posts are in [Grading](grading.md#forumgrades). Students and teachers read and post alike, within what the forum allows them; pinning and locking need the moderation rights a teacher has.
+A forum's discussions and their posts as plain data, posting as the person (replies and new discussions, with attachments), editing and deleting posts, subscribing to discussions, and a teacher's moderation (pinning and locking discussions, changing or removing anyone's posts). Grading a forum as a whole and rating posts are in [Grading](grading.md#forumgrades). Students and teachers read and post alike, within what the forum allows them; pinning and locking need the moderation rights a teacher has.
 
 **Terms:** [participant](../reference/glossary.md#participant), [instance id](../reference/glossary.md#instance-id), [notification](../reference/glossary.md#notification).
 
@@ -10,7 +10,7 @@ A forum is identified by its activity id (`activityId`, the `id` in `mod/forum/v
 
 ## forumDiscussions
 
-A forum's discussions as its page lists them, through all its pages: who started each, how many replies, the last post, and whether it's pinned or locked.
+A forum's discussions as its page lists them, through all its pages: who started each, how many replies, the last post, whether it's pinned or locked, and whether the person is subscribed to it.
 
 ```ts
 function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number): Promise<ForumDiscussion[]>;
@@ -24,24 +24,28 @@ interface ForumDiscussion {
   replies: number;
   locked: boolean;
   pinned: boolean;
+  subscribed: boolean;
 }
 ```
 
-- `id`: the discussion's id, which `discussion` and `setDiscussionState` take.
+- `id`: the discussion's id, which `discussion`, `setDiscussionState` and `setDiscussionSubscription` take.
 - `author`: the name of who started it, as shown; `started`: when, as an ISO date.
 - `lastPost`: who posted last, when (ISO), and that post's id when the page links it.
 - `replies`: the reply count shown.
 - `pinned`: the discussion stays on top of the list; `locked`: nobody can reply any more.
+- `subscribed`: the person gets its posts by notification, whether subscribed to the discussion itself or to the whole forum (and not opted out of this discussion), as Moodle marks the row.
+
+The person's subscription to the forum as a whole isn't read: the forum's page shows it only as a button whose link is the same either way, with only its label telling the state.
 
 Throws `NotAForumError` when the id isn't a forum the person can view.
 
 ## discussion
 
-A discussion's posts, oldest first, with their messages as plain text.
+A discussion's posts, oldest first, with their messages as plain text, and whether the person is subscribed to it.
 
 ```ts
 function discussion(context: BrowserContext, siteUrl: string, discussionId: number): Promise<{
-  discussion: { id: number; forumInstanceId: number; courseId: number };
+  discussion: { id: number; forumInstanceId: number; courseId: number; subscribed?: boolean };
   posts: ForumPost[];
 }>;
 
@@ -60,6 +64,7 @@ interface ForumPost {
 ```
 
 - `discussion.forumInstanceId`: the forum's instance id (not its activity id, which the forum functions take); `courseId`: its course.
+- `discussion.subscribed`: whether the person is subscribed to it, read from the subscription item of the discussion's page (its settings menu); missing where the page has none (the person can't subscribe, or the forum forces the subscription).
 - `parentId`: the post it replies to; missing for the discussion's first post.
 - `created`, `modified`: ISO dates; `modified` only when the post was edited more than a minute after posting.
 - `text`: the message as text, with its paragraphs and lists kept.
@@ -71,13 +76,14 @@ Throws `NotAForumError` when the discussion doesn't exist or the person can't se
 
 ## replyToPost
 
-Replies to a post through Moodle's post form, and returns the new post's id and its discussion's.
+Replies to a post through Moodle's post form, and returns the new post's id and its discussion's; when `subscribe` is given, also the person's subscription to the discussion afterwards, read back from its page, so the call confirms it took.
 
 ```ts
 function replyToPost(context: BrowserContext, siteUrl: string, postId: number, input: PostInput & { subject?: string }): Promise<{
   changed: string;
   postId?: number;
   discussionId?: number;
+  subscribed?: boolean;
 }>;
 
 interface PostInput {
@@ -98,12 +104,14 @@ Errors before anything is posted: a `MoodleError` when the message is empty (`in
 
 ## startDiscussion
 
-Starts a discussion in a forum, through the same form, and returns its id.
+Starts a discussion in a forum, through the same form, and returns its id, whether it's pinned and whether the person is subscribed to it, as the forum lists it afterwards: one call confirms what `subscribe` and `fields: { pinned: true }` set.
 
 ```ts
 function startDiscussion(context: BrowserContext, siteUrl: string, activityId: number, input: PostInput & { subject: string }): Promise<{
   changed: string;
   discussionId?: number;
+  pinned?: boolean;
+  subscribed?: boolean;
 }>;
 ```
 
@@ -124,6 +132,22 @@ function setDiscussionState(
 ```
 
 It's idempotent: what's already so is left alone, and a call that changes nothing calls no service and answers `"Nothing to change."`. A state not given isn't touched. Throws `NotAForumError` when the forum has no such discussion, and `MoodleServiceError` when Moodle refuses (the person can't pin or lock discussions).
+
+## setDiscussionSubscription
+
+Subscribes the person to a discussion or unsubscribes them, as the discussion list's toggle does, through Moodle's `mod_forum_set_subscription_state` service. Returns the discussion as the forum lists it afterwards.
+
+```ts
+function setDiscussionSubscription(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  discussionId: number,
+  subscribed: boolean,
+): Promise<{ changed: string; discussion?: ForumDiscussion }>;
+```
+
+It's idempotent: when the person is already so, it calls no service and answers `"Nothing to change."`. Unsubscribing from a discussion of a forum the person is subscribed to opts them out of that discussion only. Throws `NotAForumError` when the forum has no such discussion, and `MoodleServiceError` when Moodle refuses (a forum where subscriptions are disabled or forced).
 
 ## editPost
 
@@ -202,6 +226,9 @@ try {
     files: ["/home/me/exercise3.pdf"],
   });
 
+  // Stop following it.
+  if (started.subscribed && started.discussionId) await moodle.setDiscussionSubscription(forumId, started.discussionId, false);
+
   // As a teacher: keep it on top and closed to replies.
   if (started.discussionId) await moodle.setDiscussionState(forumId, started.discussionId, { pinned: true, locked: true });
 } catch (error) {
@@ -215,6 +242,7 @@ try {
 - `forumDiscussions`, `discussion`: `others-personal` (others' names and posts).
 - `replyToPost`, `startDiscussion`: `communication` (writing before others).
 - `setDiscussionState`: `others-personal` and `communication`.
+- `setDiscussionSubscription`: `own` (the person's subscription) and `others-personal` (the discussion it returns names who started it).
 - `editPost`, `deletePost`: `communication` (one's own posts) and `others-write` (a moderator changing or removing someone else's).
 
 See [Data categories](../concepts/data-categories.md).

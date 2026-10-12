@@ -180,6 +180,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   replyToPost: ["communication"],
   startDiscussion: ["communication"],
   setDiscussionState: ["others-personal", "communication"],
+  // The person's own subscription; the discussion it returns names who started it.
+  setDiscussionSubscription: ["own", "others-personal"],
   // Editing or deleting one's own posts is communication; a moderator's, someone else's, is writing about others.
   editPost: ["communication", "others-write"],
   deletePost: ["communication", "others-write"],

@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { MoodleServiceError, callService } from "../../core/ajax.js";
-import { openSitePage } from "../../core/session.js";
+import { fetchSitePage, openSitePage } from "../../core/session.js";
 import { readTexts } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
 
@@ -33,6 +33,8 @@ export interface DiscussionRow {
   replies: number;
   locked: boolean;
   pinned: boolean;
+  /** Whether the person is subscribed to it (to the discussion, or to the whole forum without opting out of it). */
+  subscribed: boolean;
   /** The forum's instance id, which the forum's services take. */
   forumInstanceId?: number;
 }
@@ -76,6 +78,8 @@ export function readDiscussionRows(page: Page): Promise<DiscussionRow[]> {
         replies: Number((repliesCell?.textContent ?? "0").trim()),
         locked: locked !== null && !locked.hasAttribute("hidden"),
         pinned: /\bpinned\b/.test(row.className),
+        // Moodle marks the row of a discussion the person is subscribed to, toggle or not.
+        subscribed: /\bsubscribed\b/.test(row.className),
         forumInstanceId: Number(row.getAttribute("data-forumid")) || undefined,
       };
     });
@@ -127,6 +131,26 @@ export async function discussionPosts(context: BrowserContext, siteUrl: string, 
     }
     throw error;
   }
+}
+
+/**
+ * Whether the person is subscribed to a discussion, from its page's subscription toggle (in the
+ * discussion's settings menu): `data-targetstate="0"` when subscribed, "1" when not. Undefined when
+ * the page has no toggle for it (the person can't subscribe, or the subscription is forced).
+ */
+export function readDiscussionSubscription(html: string, discussionId: number): boolean | undefined {
+  for (const tag of html.match(/<(?:a|input)\b[^>]*\bdata-type="subscription-toggle"[^>]*>/g) ?? []) {
+    if (!tag.includes(`data-discussionid="${discussionId}"`)) continue;
+    const target = /\bdata-targetstate="([01])"/.exec(tag)?.[1];
+    if (target !== undefined) return target === "0";
+  }
+  return undefined;
+}
+
+/** The person's subscription to a discussion, read from its page over HTTP (no service gives it). */
+export async function discussionSubscription(context: BrowserContext, siteUrl: string, discussionId: number): Promise<boolean | undefined> {
+  const { html } = await fetchSitePage(context, siteUrl, `mod/forum/discuss.php?d=${discussionId}`, { follow: false });
+  return readDiscussionSubscription(html, discussionId);
 }
 
 /** Plain text of Moodle-cleaned HTML fragments, parsed in a blank tab. */

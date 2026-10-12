@@ -112,6 +112,7 @@ describe("forums of the content course", () => {
     for (const d of discussions) {
       assert.ok(d.id > 0 && d.subject && d.author);
       assert.ok(d.replies >= 0);
+      assert.equal(typeof d.subscribed, "boolean");
     }
     const sections = await student.courseStructure(COURSE);
     const other = sections.flatMap((s) => s.activities).find((a) => a.type !== "forum" && a.availableToMe);
@@ -125,6 +126,8 @@ describe("forums of the content course", () => {
     const read = await student.discussion(first.id);
     assert.equal(read.discussion.id, first.id);
     assert.equal(read.discussion.courseId, COURSE);
+    // The discussion's page and the forum's list agree on the subscription.
+    assert.equal(read.discussion.subscribed, first.subscribed);
     assert.equal(read.posts.length, first.replies + 1);
     assert.equal(read.posts[0]!.parentId, undefined);
     assert.equal(read.posts[0]!.subject, first.subject);
@@ -150,6 +153,8 @@ describe("forums, ratings and workshops on the scratch course", () => {
     const student = await as("student");
     const result = await student.startDiscussion(forumId, { subject: "Driver check suite question", message: "<p>A question from the sandbox suite.</p>" });
     assert.ok(result.discussionId);
+    assert.equal(result.pinned, false);
+    assert.equal(typeof result.subscribed, "boolean");
     discussionId = result.discussionId;
     const listed = (await (await as("teacher")).forumDiscussions(forumId)).find((d) => d.id === discussionId);
     assert.ok(listed);
@@ -211,6 +216,34 @@ describe("forums, ratings and workshops on the scratch course", () => {
     assert.equal(back.discussion?.pinned, false);
     assert.equal(back.discussion?.locked, false);
     await assert.rejects(teacher.setDiscussionState(forumId, 999_999_999, { pinned: true }), NotAForumError);
+  });
+
+  it("setDiscussionSubscription: a discussion started pinned and subscribed, unsubscribed and subscribed again on a reply", { timeout: 300_000 }, async () => {
+    const teacher = await as("teacher");
+    const started = await teacher.startDiscussion(forumId, { subject: "Driver check suite subscription", message: "<p>Subscribed and pinned.</p>", subscribe: true, fields: { pinned: true } });
+    assert.ok(started.discussionId);
+    const id = started.discussionId;
+    try {
+      assert.equal(started.subscribed, true);
+      assert.equal(started.pinned, true);
+      const listed = (await teacher.forumDiscussions(forumId)).find((d) => d.id === id);
+      assert.equal(listed?.subscribed, true);
+      assert.equal(listed?.pinned, true);
+      assert.equal((await teacher.discussion(id)).discussion.subscribed, true);
+      // The person's own subscription: the student isn't subscribed to the teacher's discussion.
+      assert.equal((await (await as("student")).forumDiscussions(forumId)).find((d) => d.id === id)?.subscribed, false);
+      const off = await teacher.setDiscussionSubscription(forumId, id, false);
+      assert.equal(off.discussion?.subscribed, false);
+      assert.equal((await teacher.discussion(id)).discussion.subscribed, false);
+      assert.equal((await teacher.setDiscussionSubscription(forumId, id, false)).changed, "Nothing to change.");
+      const [first] = (await teacher.discussion(id)).posts;
+      const reply = await teacher.replyToPost(first!.id, { message: "<p>Driver check suite: subscribing again.</p>", subscribe: true });
+      assert.equal(reply.subscribed, true);
+      assert.equal((await teacher.forumDiscussions(forumId)).find((d) => d.id === id)?.subscribed, true);
+      await assert.rejects(teacher.setDiscussionSubscription(forumId, 999_999_999, true), NotAForumError);
+    } finally {
+      await teacher.deletePost((await teacher.discussion(id)).posts[0]!.id);
+    }
   });
 
   it("rate: the teacher rates the student's post; the student can't rate it", { timeout: 300_000 }, async () => {

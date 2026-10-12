@@ -15,7 +15,7 @@ import { listCourses, updateCourse } from "./areas/courses/list.js";
 import { resetCourse } from "./areas/courses/reset.js";
 import { downloadFile, type DownloadedFile } from "./core/files.js";
 import { openForm } from "./core/forms.js";
-import { deletePost, discussion, editPost, forumDiscussions, replyToPost, setDiscussionState, startDiscussion } from "./areas/forums/posts.js";
+import { deletePost, discussion, editPost, forumDiscussions, replyToPost, setDiscussionState, setDiscussionSubscription, startDiscussion } from "./areas/forums/posts.js";
 import { addGradeCategory, addGradeItem, deleteGradeCategory, deleteGradeItem, gradebookSetup, graderReport, updateGradeCategory, updateGradeItem } from "./areas/grades/gradebook.js";
 import { setGrade } from "./areas/grades/singleview.js";
 import { forumGrades, gradeForumUser } from "./areas/forums/grading.js";
@@ -161,6 +161,7 @@ const SITE_FUNCTIONS = {
   messageParticipants,
   setCompletion,
   setDiscussionState,
+  setDiscussionSubscription,
   setGrade,
   setQuizOverride,
   setQuizPages,
