@@ -198,13 +198,17 @@ interface EnrolmentMethodSettings {
   end?: Date | null;
   roleId?: number;
   maxUsers?: number; // 0: no limit
-  welcome?: string | false; // self enrolment's welcome message; false sends none
+  welcome?: string | false; // manual and self enrolment's welcome message; false sends none
 }
 ```
 
 `enrolmentMethods` lists the methods in the order Moodle tries them, and opens each method's form for its role, key, dates and limit. What a form shows depends on the person's permissions: an editing teacher usually configures self enrolment and guest access but not manual enrolment, whose role then isn't returned.
 
-`setEnrolmentMethod` takes a method by id, or by type (`{ type: "self" }`: the course's first one of that type, added when the course has none and the page's "Add method" menu offers it). Only the settings given change; dates are in the person's time zone in Moodle. A welcome message turns sending on (from the course contact, unless another sender was chosen). It returns the method afterwards. It throws `EnrolmentError` for a method the course doesn't have and can't add, or when the person can't manage the course's methods; `FormError` with Moodle's reason when it refuses the form, or for a setting the person's form doesn't have.
+`setEnrolmentMethod` takes a method by id, or by type (`{ type: "self" }`: the course's first one of that type, added when the course has none and the page's "Add method" menu offers it). Only the settings given change; dates are in the person's time zone in Moodle. A welcome message turns sending on (from the course contact, unless another sender was chosen). `enabled` switches an existing method with the enable and disable icons of its row on the methods page, as a person would; the other settings go through its form (a new method takes its state from the form too). It returns the method afterwards.
+
+What Moodle lets the person change depends on the method and their permissions: an editing teacher switches and configures self enrolment and guest access, but not manual enrolment (it takes `enrol/manual:config`, which by default only managers and admins have): Moodle offers them neither its icons nor its status and role, only its welcome message. Asking for a state the method already has is no change, so `{ enabled: true }` on an enabled manual method succeeds for them too. Disabling the method the person is enrolled through asks for a confirmation in Moodle that the driver doesn't give.
+
+It throws `EnrolmentError` for a method the course doesn't have and can't add, when the person can't manage the course's methods, and for a setting Moodle doesn't let them change (naming it, before anything is saved); `FormError` with Moodle's reason when it refuses the form.
 
 A student enrols with the key in Moodle itself (the course's "Enrol me"); the driver only sets the method up.
 

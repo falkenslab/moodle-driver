@@ -467,11 +467,14 @@ export interface MoodleMethods {
    */
   setDiscussionSubscription(activityId: number, discussionId: number, subscribed: boolean): Promise<{ changed: string; discussion?: import("./areas/forums/posts.js").ForumDiscussion | undefined; }>;
   /**
-   * Sets an enrolment method with its form: by id, or the course's first method of a type
-   * (`{ type: "self" }`), added when the course has none and the "Add method" menu offers it. Only
-   * what's given changes. Returns the method afterwards. Throws `EnrolmentError` for a method the
-   * course doesn't have or can't add, `FormError` with Moodle's reason when it refuses the form (a key
-   * required by the site, an end before the start).
+   * Sets an enrolment method: by id, or the course's first method of a type (`{ type: "self" }`),
+   * added when the course has none and the "Add method" menu offers it. Only what's given changes.
+   * `enabled` goes through the methods page's enable and disable icons, the rest through the method's
+   * form: what Moodle lets the person change differs by method (an editing teacher can't configure
+   * manual enrolment, enrol/manual:config, so neither switch it nor set its role). Returns the method
+   * afterwards. Throws `EnrolmentError` for a method the course doesn't have or can't add, and for a
+   * setting Moodle doesn't let the person change (naming it); `FormError` with Moodle's reason when it
+   * refuses the form (a key required by the site, an end before the start).
    */
   setEnrolmentMethod(courseId: number, method: number | { type: string; }, settings: import("./areas/participants/methods.js").EnrolmentMethodSettings): Promise<{ changed: string; method: import("./areas/participants/methods.js").EnrolmentMethod; }>;
   /**
