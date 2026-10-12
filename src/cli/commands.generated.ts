@@ -2232,7 +2232,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "groupings",
-    "description": "A course's groupings with their groups' ids, from its groupings page and each grouping's groups page.",
+    "description": "A course's groupings with their groups' ids, from its groupings page and each grouping's groups page. Throws `MoodleError` with Moodle's refusal for a person who can't manage groups.",
     "params": [
       {
         "name": "courseId",

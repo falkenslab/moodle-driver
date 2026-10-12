@@ -158,13 +158,15 @@ export async function setGroupMembers(context: BrowserContext, siteUrl: string, 
   return { changed: `Group ${groupId}: ${parts.join("; ") || "nothing changed"}.`, members: current };
 }
 
-/** A course's groupings with their groups' ids, from its groupings page and each grouping's groups page. */
+/** A course's groupings with their groups' ids, from its groupings page and each grouping's groups page. Throws `MoodleError` with Moodle's refusal for a person who can't manage groups. */
 export async function groupings(context: BrowserContext, siteUrl: string, courseId: number): Promise<Grouping[]> {
   const page = await openSitePage(context, siteUrl, `group/groupings.php?id=${courseId}`);
   let found: { id: number; name: string }[];
   try {
-    if ((await page.locator("body#page-group-groupings").count()) === 0) {
-      throw new MoodleError(`You can't see the groupings of course ${courseId}: ${(await moodleErrorMessage(page)) ?? "it doesn't exist, or you aren't allowed."}`, "not-found");
+    // Moodle's refusal (no moodle/course:managegroups) keeps the page's body id: its error box tells.
+    const refusal = await moodleErrorMessage(page);
+    if (refusal || (await page.locator("body#page-group-groupings").count()) === 0) {
+      throw new MoodleError(`You can't see the groupings of course ${courseId}: ${refusal ?? "it doesn't exist, or you aren't allowed."}`, "not-found");
     }
     found = await page.evaluate(() => {
       interface El {
