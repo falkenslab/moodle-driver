@@ -27,34 +27,27 @@ import {
   siteProfileDir,
   type CourseSection,
 } from "../../src/index.js";
+import type { BrowserContext } from "playwright-core";
 import { openForm, setFields } from "../../src/internals.js";
 import { closeBackgroundBrowser } from "../../src/browser/background.js";
 import { hostBackground } from "../../src/cli/background.js";
-import { COURSE, SITE, as, cleanup, scratchCourse, userId, type Role, type ScratchCourse } from "./harness.js";
+import { COURSE, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 const SLOW = { timeout: 300_000 };
+
+/** A browser of the file's own waits as long as the harness's do for a busy sandbox. */
+function patient(context: BrowserContext): BrowserContext {
+  context.setDefaultTimeout(120_000);
+  context.setDefaultNavigationTimeout(300_000);
+  return context;
+}
 const activitiesOf = (sections: CourseSection[]) => sections.flatMap((section) => section.activities);
 
 let work: string;
-before(
-  async () => {
-    work = await mkdtemp(path.join(tmpdir(), "courses-sandbox-"));
-    cleanup(() => rm(work, { recursive: true, force: true }));
-    // The accounts first, before anything is made. When a login fails, the harness's after hook stops
-    // at that account, before closing the other browsers, and the file would never end: a watchdog
-    // (which doesn't keep the process alive by itself) ends it once its tests have failed.
-    try {
-      for (const role of ["student", "teacher", "admin"] as const) {
-        await warmLogin(role);
-        await as(role);
-      }
-    } catch (error) {
-      setTimeout(() => process.exit(1), 120_000).unref();
-      throw error;
-    }
-  },
-  { timeout: 900_000 },
-);
+before(async () => {
+  work = await mkdtemp(path.join(tmpdir(), "courses-sandbox-"));
+  cleanup(() => rm(work, { recursive: true, force: true }));
+});
 
 describe("the content course, read", () => {
   it("listCourses: the student and the teacher are enrolled in the content course", SLOW, async () => {
@@ -215,11 +208,11 @@ describe("the scratch course, written", () => {
   // The course and the resources the reads below need, shown to students.
   before(
     async () => {
-      scratch = await patiently(() => scratchCourse("courses"));
+      scratch = await scratchCourse("courses");
       sourceFile = path.join(work, "suite-notes.txt");
       await writeFile(sourceFile, "Notes for the suite: a file resource's content.\n");
       const teacher = await as("teacher");
-      const add = async (fields: Parameters<typeof teacher.createActivity>[0]) => (await patiently(() => teacher.createActivity(fields))).activityId!;
+      const add = async (fields: Parameters<typeof teacher.createActivity>[0]) => (await teacher.createActivity(fields)).activityId!;
       const where = { courseId: scratch.id, sectionId: scratch.sectionId, visibility: "shown" as const };
       ids.label = await add({ ...where, type: "label", content: "<p>The suite's label text.</p>" });
       ids.url = await add({ ...where, type: "url", name: "Suite link", url: "https://moodle.org/" });
@@ -351,7 +344,7 @@ describe("the browser and the session", () => {
     const browser = createBrowserManager({ profileDir: path.join(work, "manager"), channel: "chromium", headless: true, downloadBrowser: false });
     try {
       assert.equal(browser.openChannel(), undefined);
-      const context = await browser.context();
+      const context = patient(await browser.context());
       assert.equal(browser.openChannel(), "chromium");
       assert.equal(browser.visible(), false);
       // A new profile has no session on the sandbox.
@@ -415,7 +408,7 @@ describe("the browser and the session", () => {
 
     const moodle = createMoodle({ site: SITE, profileDir: path.join(work, "throwaway"), channel: "chromium", headless: true, downloadBrowser: false });
     try {
-      const page = await (await moodle.context()).newPage();
+      const page = await patient(await moodle.context()).newPage();
       await page.goto(`${SITE}login/index.php`, { waitUntil: "domcontentloaded" });
       await page.fill("#username", username);
       await page.fill("#password", password);
@@ -477,50 +470,12 @@ describe("the browser and the session", () => {
   });
 });
 
-/**
- * The setup's writes, tried again when a page took longer than the driver's 60 s navigation timeout:
- * the shared sandbox gets that slow under several suites. Whatever a failed try made is in the scratch
- * course, deleted after the file (or, for the course itself, by the cleanup it registered).
- */
-async function patiently<T>(fn: () => Promise<T>, tries = 5): Promise<T> {
-  for (let n = 1; ; n++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (n >= tries || (error as Error).name !== "TimeoutError") throw error;
-    }
-  }
-}
-
-/**
- * Logs an account in on its harness profile the way the harness does, but waiting for a slow sandbox:
- * the harness's click waits 30 s for the navigation (Playwright's action timeout), which a loaded
- * sandbox exceeds; the harness then finds the session there and skips its form. Credentials stay in
- * memory, read from the run's folder as the harness reads them.
- */
-async function warmLogin(role: Role): Promise<void> {
-  const accounts = JSON.parse(await readFile("/sandbox/accounts.json", "utf8")) as Record<Role, { username: string; password: string }>;
-  const moodle = createMoodle({ site: SITE, profileDir: `/sandbox/profiles/${role}`, channel: "chromium", headless: true, downloadBrowser: false });
-  try {
-    const page = await (await moodle.context()).newPage();
-    await page.goto(`${SITE}login/index.php`, { waitUntil: "domcontentloaded", timeout: 180_000 });
-    if ((await page.locator("#username").count()) > 0) {
-      await page.fill("#username", accounts[role].username);
-      await page.fill("#password", accounts[role].password);
-      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 300_000 }), page.click("#loginbtn", { noWaitAfter: true })]);
-    }
-    await page.close();
-    await moodle.saveSession();
-  } finally {
-    await moodle.close();
-  }
-}
-
 /** Connects to the background browser on `profileDir` as a program would, checks it's the student, and disconnects. */
 async function connectAndCheck(profileDir: string): Promise<void> {
   const found = await backgroundBrowser(profileDir);
   assert.ok(found, "the background browser is open");
   const moodle = createMoodle({ site: SITE, browser: connectBrowserManager({ ...found, profileDir }) });
+  patient(await moodle.context());
   assert.equal((await moodle.whoAmI()).userId, await userId("student"));
   await moodle.close();
   assert.ok(await backgroundBrowser(profileDir), "closing only disconnected");
@@ -531,12 +486,11 @@ async function deleteUser(id: number, username: string): Promise<void> {
   const admin = await as("admin");
   const page = await (await admin.context()).newPage();
   try {
-    await patiently(() => page.goto(`${SITE}my/`, { waitUntil: "domcontentloaded" }));
+    await page.goto(`${SITE}my/`, { waitUntil: "domcontentloaded" });
     const sesskey = await page.evaluate(() => (globalThis as unknown as { M: { cfg: { sesskey: string } } }).M.cfg.sesskey);
     // Moodle's confirmation is md5 of the id, as its "Delete" button sends it.
     const confirm = createHash("md5").update(String(id)).digest("hex");
-    // Tried again on a timeout: a second request for a user already deleted is only an error page.
-    await patiently(() => page.goto(`${SITE}admin/user.php?delete=${id}&confirm=${confirm}&sesskey=${sesskey}`, { waitUntil: "domcontentloaded" }));
+    await page.goto(`${SITE}admin/user.php?delete=${id}&confirm=${confirm}&sesskey=${sesskey}`, { waitUntil: "domcontentloaded" });
   } finally {
     await page.close();
   }
