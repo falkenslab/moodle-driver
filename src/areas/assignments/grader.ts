@@ -81,6 +81,11 @@ export function listParticipants(context: BrowserContext, siteUrl: string, insta
   });
 }
 
+/** Whether a participant has a submission (any status): `submissionstatus` is empty without one. */
+export function hasSubmission(participant: MoodleParticipant): boolean {
+  return Boolean(participant.submissionstatus);
+}
+
 export function participantDates(context: BrowserContext, siteUrl: string, instanceId: number, userId: number): Promise<MoodleParticipantDates> {
   return callService(context, siteUrl, "mod_assign_get_participant", { assignid: instanceId, userid: userId, embeduser: false });
 }
@@ -156,7 +161,13 @@ export function readSubmissionContent(page: Page, html: string): Promise<PluginC
   }, html);
 }
 
-/** The grader panel's HTML for one participant: their current submission and grade form. */
+/**
+ * The grader panel's HTML for one participant: their current submission and grade form. Opening it
+ * writes, as Moodle's grader does on showing a participant: an empty submission ("new") for one who
+ * has none, an empty grade (-1, not graded) for one who has no grade, and a "Grading form viewed"
+ * event (its source, `add_grade_form_elements`, and the sandbox, 5.2). Reads open it only for a
+ * participant who has a submission (`hasSubmission`).
+ */
 export async function gradingPanelHtml(context: BrowserContext, siteUrl: string, contextId: number, userId: number): Promise<string> {
   const fragment = await callService<{ html: string }>(context, siteUrl, "core_get_fragment", {
     component: "mod_assign",

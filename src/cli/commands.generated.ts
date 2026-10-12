@@ -574,7 +574,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "assignmentSubmissions",
-    "description": "Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel).",
+    "description": "Every participant's submission to an assignment, with the group they submit for (group submissions), and, unless `includeContent` is false, its content, the feedback files they have, its marking workflow state and markers (all from each participant's grading panel). Those come only for participants with a submission: Moodle's grading panel creates an empty one for a participant who has none, so reading leaves them at \"none\", without the panel's details (confirmed empirically on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves an empty grade (-1, not graded) and a \"Grading form viewed\" event, as Moodle's grader does.",
     "params": [
       {
         "name": "activityId",
@@ -3062,7 +3062,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "rubric",
-    "description": "An assignment's grading method and, for a rubric or a marking guide, its criteria with the ids `gradeSubmission` takes: read from the grader's panel for its first participant.",
+    "description": "An assignment's grading method and, for a rubric or a marking guide, its criteria with the ids `gradeSubmission` takes: read from the grader's panel for the first participant with a submission. Where nobody has one yet, the panel is the first participant's, and Moodle creates an empty submission (\"new\") for them on opening it.",
     "params": [
       {
         "name": "activityId",

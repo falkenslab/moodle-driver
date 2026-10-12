@@ -12,6 +12,10 @@ after(() => browser?.close());
 
 const DUE = 1_800_000_000;
 
+/** The participants whose grading panel was opened, in order. */
+const panelsOpened = (state: FakeMoodleState) =>
+  (state.serviceCalls ?? []).filter((call) => call.methodname === "core_get_fragment").map((call) => Number((call.args.args as { name: string; value: string }[]).find((arg) => arg.name === "userid")?.value));
+
 // A made-up assignment: instance cmid*10 in context cmid*100, two participants, one of them submitted.
 function submissionsSite(activityId: number): FakeMoodleState {
   return {
@@ -41,6 +45,8 @@ describe("assignmentSubmissions", { skip: !browser && "no system browser" }, () 
     assert.deepEqual(ada?.content?.map((c) => c.plugin), ["onlinetext", "file", "onlinetext"]);
     assert.deepEqual([alan?.status, alan?.extensionGranted, alan?.content], ["none", true, undefined]);
     assert.equal(state.serviceCalls?.find((call) => call.methodname === "core_get_fragment")?.args.contextid, 2100);
+    // Moodle's panel would create an empty submission for Alan, who has none.
+    assert.deepEqual(panelsOpened(state), [7]);
     assert.equal(state.serviceCalls?.find((call) => call.methodname === "mod_assign_list_participants")?.args.assignid, 210);
     await context.close();
   });
@@ -143,7 +149,10 @@ describe("rubric", { skip: !browser && "no system browser" }, () => {
       user: { id: 3, fullName: "Teacher" },
       bodies: { "/mod/assign/view.php": `<div data-assignmentid="${activityId * 10}" data-contextid="${activityId * 100}"></div>` },
       services: {
-        mod_assign_list_participants: () => [{ id: 7, fullname: "Ada Lovelace", submitted: true, requiregrading: true, grantedextension: false, submissionstatus: "submitted" }],
+        mod_assign_list_participants: () => [
+          { id: 8, fullname: "Alan Turing", submitted: false, requiregrading: false, grantedextension: false, submissionstatus: "" },
+          { id: 7, fullname: "Ada Lovelace", submitted: true, requiregrading: true, grantedextension: false, submissionstatus: "submitted" },
+        ],
         core_get_fragment: () => ({ html: rubricPanel(submitted.length > 0), javascript: "" }),
         mod_assign_submit_grading_form: (args) => {
           submitted.push(args);
@@ -154,9 +163,10 @@ describe("rubric", { skip: !browser && "no system browser" }, () => {
     return { state, submitted };
   }
 
-  it("reads the grading method and the rubric's criteria and levels by id", async () => {
+  it("reads the grading method and the rubric's criteria and levels by id, from a participant with a submission", async () => {
     const context = await browser!.newContext();
-    await serveFakeMoodle(context, rubricSite(41).state);
+    const site: FakeMoodleState = { ...rubricSite(41).state, serviceCalls: [] };
+    await serveFakeMoodle(context, site);
     assert.deepEqual(await rubric(context, SITE, 41), {
       assignment: { id: 41 },
       method: "rubric",
@@ -165,6 +175,7 @@ describe("rubric", { skip: !browser && "no system browser" }, () => {
         { id: 2, description: "Gives an example", levels: [{ id: 4, definition: "None", score: 0 }, { id: 5, definition: "Wrong", score: 1 }] },
       ],
     });
+    assert.deepEqual(panelsOpened(site), [7]);
     await context.close();
   });
 
@@ -253,6 +264,7 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
     let saved = "";
     const state: FakeMoodleState = {
       user: { id: 3, fullName: "Teacher" },
+      serviceCalls: [],
       bodies: { "/mod/assign/view.php": `<div data-assignmentid="${activityId * 10}" data-contextid="${activityId * 100}"></div>` },
       services: {
         mod_assign_list_participants: () => [
@@ -272,12 +284,14 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
     return { state, submitted };
   }
 
-  it("gives each participant's group, workflow state and markers", async () => {
+  it("gives each participant's group, workflow state and markers, the panel's only with a submission", async () => {
     const context = await browser!.newContext();
-    await serveFakeMoodle(context, workflowSite(61).state);
+    const { state } = workflowSite(61);
+    await serveFakeMoodle(context, state);
     const [lucia, alan] = await assignmentSubmissions(context, SITE, 61);
     assert.deepEqual([lucia?.group, lucia?.workflowState, lucia?.markers], [{ id: 4, name: "Driver group" }, "notmarked", [{ id: 3, name: "Teacher Uno" }]]);
-    assert.deepEqual([alan?.group, alan?.workflowState], [undefined, "notmarked"]);
+    assert.deepEqual([alan?.status, alan?.group, alan?.workflowState, alan?.markers], ["none", undefined, undefined, undefined]);
+    assert.deepEqual(panelsOpened(state), [5]);
     await context.close();
   });
 
@@ -309,7 +323,16 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
   async function batchSite(context: BrowserContext, { markers = 1, multi = false, workflow = true } = {}) {
     const posted: URLSearchParams[] = [];
     // The grading panel says whether the assignment uses the workflow and allocation: PANEL has neither.
-    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: { core_get_fragment: () => ({ html: workflow ? workflowPanel("") : PANEL, javascript: "" }) } });
+    const state: FakeMoodleState = {
+      user: { id: 3, fullName: "Teacher" },
+      serviceCalls: [],
+      services: {
+        // Only participant 6 has a submission.
+        mod_assign_list_participants: () => [5, 6].map((id) => ({ id, fullname: `User ${id}`, submitted: id === 6, requiregrading: false, grantedextension: false, submissionstatus: id === 6 ? "submitted" : "" })),
+        core_get_fragment: () => ({ html: workflow ? workflowPanel("") : PANEL, javascript: "" }),
+      },
+    };
+    await serveFakeMoodle(context, state);
     const page = (body: string, bodyId: string) => moodlePage({ userId: 3, bodyId, body });
     await context.route(`${SITE}mod/assign/view.php**`, (route: Route) => {
       const html = (body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
@@ -331,7 +354,7 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
       const slots = Array.from({ length: markers }, (_, i) => `<select name="allocatedmarker${i + 1}"><option value="">Choose...</option><option value="3">Teacher Uno</option></select>`).join("");
       return html(page(`<form class="mform" method="post" action="${SITE}mod/assign/view.php">${hidden}<input type="hidden" name="action" value="setbatchmarkingallocation">${slots}<input type="submit" name="submitbutton" value="Save"></form>`, "page-mod-assign-viewbatchmarkingallocation"));
     });
-    return posted;
+    return Object.assign(posted, { state });
   }
 
   it("releases submissions as the batch form does, notifying when asked", async () => {
@@ -362,6 +385,8 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
     const context = await browser!.newContext();
     const posted = await batchSite(context);
     assert.equal((await allocateMarker(context, SITE, 65, [5, 6], 3)).changed, "Allocated marker 3 to users 5, 6 in assignment 65.");
+    // The panel that says the assignment allocates markers is 6's, who has a submission: 5's would create one.
+    assert.deepEqual(panelsOpened(posted.state), [6]);
     assert.deepEqual([posted[0]?.get("allocatedmarker1"), posted[0]?.get("action")], ["3", "setbatchmarkingallocation"]);
     await assert.rejects(allocateMarker(context, SITE, 65, [5], 9), /User 9 can't mark/);
     await assert.rejects(allocateMarker(context, SITE, 65, [5], [3, 3]), /uses 1 marker per submission/);
@@ -401,7 +426,8 @@ describe("feedback files", { skip: !browser && "no system browser" }, () => {
       user: { id: 3, fullName: "Teacher" },
       bodies: { "/mod/assign/view.php": `<div data-assignmentid="510" data-contextid="5100"></div><script>var fp = {"repositories":{"5":{"id":"5","name":"Upload a file","type":"upload"}}};</script>` },
       services: {
-        mod_assign_list_participants: () => [{ id: 7, fullname: "Ada Lovelace", submitted: false, requiregrading: false, grantedextension: false, submissionstatus: "" }],
+        // Without submitting: grading her made the empty submission ("new") Moodle's panel creates.
+        mod_assign_list_participants: () => [{ id: 7, fullname: "Ada Lovelace", submitted: false, requiregrading: false, grantedextension: false, submissionstatus: "new" }],
         mod_assign_get_participant: () => ({ allowsubmissionsfromdate: 0, duedate: 0, cutoffdate: 0 }),
         core_get_fragment: () => ({ html: panel(), javascript: "" }),
         mod_assign_submit_grading_form: (args) => {

@@ -74,7 +74,11 @@ export interface MoodleMethods {
   /**
    * Every participant's submission to an assignment, with the group they submit for (group
    * submissions), and, unless `includeContent` is false, its content, the feedback files they have,
-   * its marking workflow state and markers (all from each participant's grading panel).
+   * its marking workflow state and markers (all from each participant's grading panel). Those come only
+   * for participants with a submission: Moodle's grading panel creates an empty one for a participant
+   * who has none, so reading leaves them at "none", without the panel's details (confirmed empirically
+   * on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves
+   * an empty grade (-1, not graded) and a "Grading form viewed" event, as Moodle's grader does.
    */
   assignmentSubmissions(activityId: number, options?: { includeContent?: boolean | undefined; }): Promise<import("./areas/assignments/grading.js").Submission[]>;
   /**
@@ -439,7 +443,9 @@ export interface MoodleMethods {
   restoreCourse(file: string, options: { into: number | "new"; categoryId?: number | undefined; mode?: "merge" | "replace" | undefined; fullName?: string | undefined; shortName?: string | undefined; withUsers?: boolean | undefined; timeoutMs?: number | undefined; }): Promise<{ changed: string; course: import("./areas/backup/backup.js").CourseRef; }>;
   /**
    * An assignment's grading method and, for a rubric or a marking guide, its criteria with the ids
-   * `gradeSubmission` takes: read from the grader's panel for its first participant.
+   * `gradeSubmission` takes: read from the grader's panel for the first participant with a submission.
+   * Where nobody has one yet, the panel is the first participant's, and Moodle creates an empty
+   * submission ("new") for them on opening it.
    */
   rubric(activityId: number): Promise<{ assignment: { id: number; }; } & import("./areas/assignments/grading.js").GradingDefinition>;
   /** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */

@@ -8,6 +8,7 @@ import {
   draftAreaFiles,
   fillGradingForm,
   gradingPanelHtml,
+  hasSubmission,
   listParticipants,
   panelGrade,
   participantDates,
@@ -78,7 +79,11 @@ async function extensionDate(context: BrowserContext, siteUrl: string, activityI
 /**
  * Every participant's submission to an assignment, with the group they submit for (group
  * submissions), and, unless `includeContent` is false, its content, the feedback files they have,
- * its marking workflow state and markers (all from each participant's grading panel).
+ * its marking workflow state and markers (all from each participant's grading panel). Those come only
+ * for participants with a submission: Moodle's grading panel creates an empty one for a participant
+ * who has none, so reading leaves them at "none", without the panel's details (confirmed empirically
+ * on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves
+ * an empty grade (-1, not graded) and a "Grading form viewed" event, as Moodle's grader does.
  */
 export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, { includeContent = true } = {}): Promise<Submission[]> {
   const ids = await assignmentIds(context, siteUrl, activityId);
@@ -91,8 +96,8 @@ export async function assignmentSubmissions(context: BrowserContext, siteUrl: st
     for (const participant of participants) {
       const dates = await participantDates(context, siteUrl, ids.instanceId, participant.id);
       const status = participant.submissionstatus || "none";
-      // Everyone's panel: feedback files can come without a submission.
-      const panel = parser ? await gradingPanelHtml(context, siteUrl, ids.contextId, participant.id) : undefined;
+      // Only with a submission: the panel creates one for a participant without (see gradingPanelHtml).
+      const panel = parser && hasSubmission(participant) ? await gradingPanelHtml(context, siteUrl, ids.contextId, participant.id) : undefined;
       const withContent = status === "submitted" || status === "draft";
       const state: PanelState = parser && panel !== undefined ? await readPanelState(parser, panel) : {};
       submissions.push({
@@ -281,16 +286,28 @@ export async function readGradingDefinition(page: Page, panelHtml: string): Prom
 }
 
 /**
+ * The participant whose grading panel a read opens: the first with a submission, since the panel
+ * creates an empty one for a participant without (see `gradingPanelHtml`); `fallback`, or the first
+ * participant, where nobody has one. `undefined` without participants.
+ */
+async function panelReader(context: BrowserContext, siteUrl: string, instanceId: number, fallback?: number): Promise<number | undefined> {
+  const participants = await listParticipants(context, siteUrl, instanceId);
+  return participants.find(hasSubmission)?.id ?? fallback ?? participants[0]?.id;
+}
+
+/**
  * An assignment's grading method and, for a rubric or a marking guide, its criteria with the ids
- * `gradeSubmission` takes: read from the grader's panel for its first participant.
+ * `gradeSubmission` takes: read from the grader's panel for the first participant with a submission.
+ * Where nobody has one yet, the panel is the first participant's, and Moodle creates an empty
+ * submission ("new") for them on opening it.
  */
 export async function rubric(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ assignment: { id: number } } & GradingDefinition> {
   const ids = await assignmentIds(context, siteUrl, activityId);
-  const [first] = await listParticipants(context, siteUrl, ids.instanceId);
-  if (!first) throw new GradingError(`Assignment ${activityId} has no participants: its grading form can't be read without one.`);
+  const reader = await panelReader(context, siteUrl, ids.instanceId);
+  if (reader === undefined) throw new GradingError(`Assignment ${activityId} has no participants: its grading form can't be read without one.`);
   const page = await context.newPage();
   try {
-    return { assignment: { id: activityId }, ...(await readGradingDefinition(page, await gradingPanelHtml(context, siteUrl, ids.contextId, first.id))) };
+    return { assignment: { id: activityId }, ...(await readGradingDefinition(page, await gradingPanelHtml(context, siteUrl, ids.contextId, reader))) };
   } finally {
     await page.close().catch(() => undefined);
   }
@@ -339,13 +356,16 @@ async function openBatchForm(context: BrowserContext, siteUrl: string, activityI
 /**
  * Refuses a batch action the assignment doesn't use: Moodle's batch forms open and save whatever its
  * settings (its source, and the sandbox for marker allocation, 5.2), but the grading panel has the workflow state only with the
- * marking workflow, and the marker selects only with marker allocation too.
+ * marking workflow, and the marker selects only with marker allocation too. The panel read is a
+ * participant's with a submission where there is one, `userId`'s otherwise: allocating markers
+ * creates no submission, and the panel would.
  */
 async function requireGradingFeature(context: BrowserContext, siteUrl: string, activityId: number, userId: number, feature: "workflowState" | "markers"): Promise<void> {
   const ids = await assignmentIds(context, siteUrl, activityId);
+  const reader = (await panelReader(context, siteUrl, ids.instanceId, userId)) ?? userId;
   const page = await context.newPage();
   try {
-    const state = await readPanelState(page, await gradingPanelHtml(context, siteUrl, ids.contextId, userId));
+    const state = await readPanelState(page, await gradingPanelHtml(context, siteUrl, ids.contextId, reader));
     if (state[feature] !== undefined) return;
   } finally {
     await page.close().catch(() => undefined);

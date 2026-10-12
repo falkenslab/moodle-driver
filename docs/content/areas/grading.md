@@ -34,7 +34,7 @@ function assignmentSubmissions(
 - `markers`: with marker allocation, the markers allocated to the submission, `{ id, name }[]` (Moodle 5.2 allows several per submission; empty when none is).
 - `content`: per submission plugin, `{ plugin, text, files }`: `plugin` is the plugin's name (`"onlinetext"`, `"file"`…), `text` its content as plain text with paragraphs and lists kept, `files` its `{ name, url }` links (for [downloadFile](files.md)). Only for submitted and draft submissions; the comments plugin isn't part of it.
 
-`includeContent` is `true` by default. Content, feedback files, the workflow state and the markers come from each participant's grading panel (the group from the participants service, always), one service call per participant (and one listing of the panel's feedback files where the assignment has them); with `includeContent: false` neither is loaded, which is much faster for a large course when only the statuses are needed. Participants are read one at a time; an extension's date comes from the extension form (no service open to AJAX gives it), one page per participant with an extension.
+`includeContent` is `true` by default. Content, feedback files, the workflow state and the markers come from each participant's grading panel (the group from the participants service, always), one service call per participant (and one listing of the panel's feedback files where the assignment has them); with `includeContent: false` neither is loaded, which is much faster for a large course when only the statuses are needed. The panel is opened only for participants with a submission: Moodle's grading panel creates an empty submission (`"new"`) for a participant who has none, so reading leaves a participant who never submitted at `"none"`, without feedback files, workflow state or markers. Opening it is still not free of writes, as in Moodle's grader: a participant with a submission and no grade gets an empty one (not graded), and Moodle logs a "Grading form viewed" event. Participants are read one at a time; an extension's date comes from the extension form (no service open to AJAX gives it), one page per participant with an extension.
 
 It throws `NotAnAssignmentError` when the id isn't an assignment the person can grade, and passes the services' refusals as `MoodleServiceError`.
 
@@ -115,7 +115,7 @@ interface GradingCriterion {
 
 `method` is `"simple"` for a plain grade or a scale (with no criteria), `"rubric"` or `"guide"` for advanced grading. A rubric criterion has its `description` and its `levels` (`id` for `gradeSubmission`, the level's `definition` and its `score`). A guide criterion has its short name as `description`, its description for students (`details`) and for markers (`markers`), and its `maxScore`.
 
-It's read from the grading panel of the assignment's first participant, so it throws `GradingError` when the assignment has no participants, and `NotAnAssignmentError` when the id isn't an assignment the person can grade.
+It's read from the grading panel of the assignment's first participant with a submission, so it throws `GradingError` when the assignment has no participants. Where nobody has submitted yet, the panel is the first participant's, and Moodle creates an empty submission (`"new"`) for them on opening it. It throws `NotAnAssignmentError` when the id isn't an assignment the person can grade.
 
 ## grantExtension
 
@@ -155,7 +155,7 @@ function setWorkflowState(
 
 With group submissions, a group's members are separate participants: give every member's id (`assignmentSubmissions` gives each one's `group`). With several markers per submission, it sets the submission's overall state (the form's "Grade" context), not the person's own mark. Moodle skips participants whose grading is disabled (locked, or a submission they can't be graded on).
 
-Errors (`GradingError`): `userIds` empty; a state that isn't one, or that the form doesn't offer the person (releasing takes Moodle's "release grades" capability); `notify` without releasing; an assignment without the marking workflow (read from the first participant's grading panel before anything is sent: Moodle's batch form would open and save there all the same); Moodle not opening the form (the person isn't allowed), with Moodle's reason when it gives one. `NotAnAssignmentError` when the id isn't an assignment the person can grade. `FormError` when Moodle refuses the form.
+Errors (`GradingError`): `userIds` empty; a state that isn't one, or that the form doesn't offer the person (releasing takes Moodle's "release grades" capability); `notify` without releasing; an assignment without the marking workflow (read from the grading panel of a participant with a submission, or of the first one given, before anything is sent: Moodle's batch form would open and save there all the same); Moodle not opening the form (the person isn't allowed), with Moodle's reason when it gives one. `NotAnAssignmentError` when the id isn't an assignment the person can grade. `FormError` when Moodle refuses the form.
 
 ## allocateMarker
 
@@ -169,7 +169,7 @@ function allocateMarker(context: BrowserContext, siteUrl: string, activityId: nu
 
 Moodle leaves alone the submissions whose state is past marking (marking completed, in review, ready for release, released). `assignmentSubmissions` gives each submission's `markers`.
 
-Errors (`GradingError`): `userIds` or `markerId` empty; an assignment without marker allocation, or a person who can't manage allocations (read from the first participant's grading panel before anything is sent: Moodle's batch form would open and save there all the same); more markers than the assignment uses; a user who can't mark it; Moodle not opening the form, with its reason, such as an assignment needing more markers per submission than the course has ("There are not enough markers (1) to meet the required number for this assignment (2)").
+Errors (`GradingError`): `userIds` or `markerId` empty; an assignment without marker allocation, or a person who can't manage allocations (read from the grading panel of a participant with a submission, or of the first one given, before anything is sent: Moodle's batch form would open and save there all the same); more markers than the assignment uses; a user who can't mark it; Moodle not opening the form, with its reason, such as an assignment needing more markers per submission than the course has ("There are not enough markers (1) to meet the required number for this assignment (2)").
 
 ## forumGrades
 
