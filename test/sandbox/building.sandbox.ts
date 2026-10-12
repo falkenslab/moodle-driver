@@ -3,8 +3,7 @@
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { ActivitySettingsError, CompletionError, MoodleError, type CourseActivity, type CourseSection } from "../../src/index.js";
-import { as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
-import { logInPatiently } from "./login.js";
+import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { scormPackage, textFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
@@ -26,7 +25,6 @@ describe("building a course", () => {
   let folderId: number;
 
   before(async () => {
-    await logInPatiently();
     course = await scratchCourse("building");
     sections = await (await as("teacher")).courseStructure(course.id);
   }, SETUP);
@@ -236,8 +234,9 @@ describe("building a course", () => {
     assert.ok(!seen || !seen.visible);
     const cleared = await teacher.editSection(course.id, sectionId, { restrictions: { conditions: [] }, visible: true });
     assert.equal(cleared.sections.find((s) => s.id === sectionId)?.restricted, false);
-    // A section of another course is refused.
-    await assert.rejects(teacher.editSection(course.id, 1, { summary: "x" }), MoodleError);
+    // A section of another course (the content course's, refused before anything is saved).
+    const other = (await teacher.courseStructure(COURSE))[0]!.id;
+    await assert.rejects(teacher.editSection(course.id, other, { summary: "x" }), (error: unknown) => error instanceof MoodleError && error.code === "not-found");
   });
 
   it("deleteSection: gone with its activities", SLOW, async () => {

@@ -5,7 +5,6 @@ import { before, describe, it } from "node:test";
 import { ChoiceError, LessonError, NotAnH5PActivityError, ScormError, SurveyError, type FieldValue, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
 import { SITE, as, scratchCourse, type ScratchCourse } from "./harness.js";
-import { logInPatiently } from "./login.js";
 import { scormPackage, siteFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
@@ -28,7 +27,6 @@ describe("doing activities", () => {
   let pageId: number;
 
   before(async () => {
-    await logInPatiently();
     course = await scratchCourse("activities");
     const teacher = await as("teacher");
     // An activity of another module, for the "not a …" errors.
