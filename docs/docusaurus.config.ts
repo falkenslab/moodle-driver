@@ -33,7 +33,8 @@ const config: Config = {
           path: "content",
           routeBasePath: "/",
           sidebarPath: "./sidebars.ts",
-          editUrl: "https://github.com/falkenslab/moodle-driver/edit/main/docs/",
+          // The API reference is generated from src/'s doc comments: no page to edit there.
+          editUrl: ({ docPath }) => (docPath.startsWith("api/") ? undefined : `https://github.com/falkenslab/moodle-driver/edit/main/docs/content/${docPath}`),
         },
         blog: false,
         theme: { customCss: "./src/css/custom.css" },
