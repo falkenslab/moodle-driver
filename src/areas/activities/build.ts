@@ -10,6 +10,7 @@ import { deleteDraftFile, draftFiles, formValue, openForm, setFields, submitForm
 import { inPage } from "../../core/inPage.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { structureOf, type CourseSection } from "../courses/structure.js";
+import { questionBanks } from "../questions/banks.js";
 import { MoodleError } from "../../core/errors.js";
 import { completionValues, gradeItemsByActivity, hasGradeCondition, parseRestrictions, readCompletion, restrictionsJson, type Completion, type Restrictions } from "./conditions.js";
 
@@ -106,9 +107,15 @@ export interface FileChanges {
 
 const localPaths = (files: (string | DraftUpload)[] = []) => files.map((file) => (typeof file === "string" ? file : file.from));
 
-/** The form's file area: a SCORM's package, or the files of a resource or folder. */
-async function fileArea(page: Page, type: string): Promise<string | undefined> {
-  return formValue(page, type === "scorm" ? "packagefile" : "files");
+/**
+ * The form's file area: the files of a resource or folder, or the one package of a SCORM or an H5P
+ * activity (`packagefile` in both forms, confirmed empirically, 5.2).
+ */
+async function fileArea(page: Page): Promise<{ draft: string; single: boolean } | undefined> {
+  const files = await formValue(page, "files");
+  if (files) return { draft: files, single: false };
+  const pkg = await formValue(page, "packagefile");
+  return pkg ? { draft: pkg, single: true } : undefined;
 }
 
 /** Applies `changes` to the draft area `draft` and says what was done; refuses a file to remove that isn't there. */
@@ -133,8 +140,8 @@ async function changeFiles(page: Page, draft: string, changes: FileChanges): Pro
 /**
  * Creates an activity or resource of any type at the end of a section, through Moodle's own form,
  * hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file
- * resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`)
- * takes the first as its package.
+ * resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or
+ * an H5P activity (`type: "h5pactivity"`) takes the first as its package.
  */
 export async function createActivity(
   context: BrowserContext,
@@ -146,14 +153,15 @@ export async function createActivity(
   const target = before.section.find((s) => Number(s.id) === input.sectionId);
   if (!target) throw new MoodleError(`Course ${input.courseId} has no section ${input.sectionId}. Take its id from the course structure.`, "not-found");
 
+  // A shared question bank (qbank) never shows on the course page: the banks page tells the new one.
+  const bankIds = input.type === "qbank" ? new Set((await questionBanks(context, siteUrl, input.courseId)).map((bank) => bank.id)) : undefined;
   const page = await openForm(context, siteUrl, `course/modedit.php?add=${input.type}&course=${input.courseId}&section=${target.number}&return=0`);
   try {
     if (input.files && input.files.length > 0) {
-      // A SCORM takes one package, in a field of its own.
-      const scorm = input.type === "scorm";
-      const draft = await fileArea(page, input.type);
-      if (!draft) throw new MoodleError(`A ${input.type} takes no files in its form.`, "not-available");
-      await uploadToDraft(page, draft, scorm ? input.files.slice(0, 1) : input.files);
+      // A SCORM or an H5P activity takes one package, in a field of its own.
+      const area = await fileArea(page);
+      if (!area) throw new MoodleError(`A ${input.type} takes no files in its form.`, "not-available");
+      await uploadToDraft(page, area.draft, area.single ? input.files.slice(0, 1) : input.files);
     }
     // Hidden unless asked: a teacher publishes after checking.
     await setFields(page, fieldsFor(input.type, { ...input, visibility: input.visibility ?? "hidden" }, await conditionValues(context, siteUrl, page, input.courseId, input)));
@@ -163,7 +171,8 @@ export async function createActivity(
   }
 
   const after = await courseState(context, siteUrl, input.courseId);
-  const created = after.cm.find((cm) => !before.cm.some((old) => old.id === cm.id));
+  const bank = bankIds && (await questionBanks(context, siteUrl, input.courseId)).find((b) => !bankIds.has(b.id) && b.type === "qbank");
+  const created = bank ? { id: String(bank.id), name: bank.name, url: new URL(`mod/qbank/view.php?id=${bank.id}`, siteUrl).href } : after.cm.find((cm) => !before.cm.some((old) => old.id === cm.id));
   return {
     changed: created ? `Created ${input.type} ${created.id} "${created.name}" in section ${target.number}.` : `The form was saved, but no new activity appears in course ${input.courseId}.`,
     activityId: created ? Number(created.id) : undefined,
@@ -187,9 +196,9 @@ export async function updateActivity(context: BrowserContext, siteUrl: string, a
     courseId = Number(await formValue(page, "course"));
     const type = (await formValue(page, "modulename")) ?? "";
     if (files) {
-      const draft = await fileArea(page, type);
-      if (!draft) throw new MoodleError(`A ${type} has no files in its form.`, "not-available");
-      filesDone = await changeFiles(page, draft, files);
+      const area = await fileArea(page);
+      if (!area) throw new MoodleError(`A ${type} has no files in its form.`, "not-available");
+      filesDone = await changeFiles(page, area.draft, files);
     }
     await setFields(page, fieldsFor(type, fields, await conditionValues(context, siteUrl, page, courseId, fields)));
     await submitForm(page, "submitbutton2");
@@ -423,7 +432,7 @@ export async function activitySettings(context: BrowserContext, siteUrl: string,
     const fields = await readFormFields(page);
     const value = (name: string) => fields.find((f) => f.name === name)?.value as string | undefined;
     const module = (await formValue(page, "modulename")) ?? "";
-    const draft = await fileArea(page, module);
+    const draft = (await fileArea(page))?.draft;
     const courseId = Number(await formValue(page, "course"));
     const availability = value("availabilityconditionsjson");
     // A grade condition names a grade item: its activity comes from the gradebook, when the person can read it.
@@ -438,7 +447,7 @@ export async function activitySettings(context: BrowserContext, siteUrl: string,
       name: value("name") ?? "",
       description: value("introeditor[text]") ?? "",
       fields,
-      /** A file resource's, folder's or SCORM's files, by their path in it, as `updateActivity`'s `files.remove` takes them. */
+      /** A file resource's, folder's, SCORM's or H5P activity's files, by their path in it, as `updateActivity`'s `files.remove` takes them. */
       files: draft ? await draftFiles(page, draft) : undefined,
       /** When students can open it, in the terms `updateActivity` takes; undefined without restrictions. */
       restrictions: parseRestrictions(availability, gradeActivities),

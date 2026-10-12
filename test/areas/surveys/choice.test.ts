@@ -61,4 +61,15 @@ describe("choices", { skip: !browser && "no system browser" }, () => {
     await assert.rejects(answerChoice(closed, SITE, 40, [1]), (error: Error) => error instanceof ChoiceError && /Moodle says: Sorry, this activity closed on 1 October\./.test(error.message));
     await closed.close();
   });
+
+  it("refuses another module's id, whose error page keeps the choice's body id", async () => {
+    // The sandbox showed it: choice/view.php sets its URL before finding the activity, so Moodle 5.2's error page is "page-mod-choice-view".
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" } });
+    const error = `<div class="box errorbox alert alert-danger" data-rel="fatalerror"><p class="errormessage">Invalid course module ID</p></div>`;
+    await context.route(`${SITE}mod/choice/view.php**`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 4, bodyId: "page-mod-choice-view", body: error }) }));
+    await assert.rejects(getChoice(context, SITE, 41), (e: Error) => e instanceof ChoiceError && /Invalid course module ID/.test(e.message));
+    await assert.rejects(answerChoice(context, SITE, 41, [1]), ChoiceError);
+    await context.close();
+  });
 });

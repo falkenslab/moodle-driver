@@ -32,9 +32,19 @@ describe("h5pActivity", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("finds tracking from the report itself when the page doesn't link it, as for a student without attempts", async () => {
+    // The sandbox showed it: Moodle 5.2 links a student's report only once they have an attempt.
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" }, bodies: { "/mod/h5pactivity/view.php": `<div data-activityname="Fresh"></div>`, "/mod/h5pactivity/report.php": `<div id="region-main"><p>No attempts yet</p></div>` } });
+    assert.deepEqual(await h5pActivity(context, SITE, 40), { id: 40, name: "Fresh", tracked: true, attempts: [] });
+    await context.close();
+  });
+
   it("gives no attempts where they aren't tracked, and refuses another module", async () => {
     const context = await browser!.newContext();
-    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" }, bodies: { "/mod/h5pactivity/view.php": `<div data-activityname="Untracked"></div>` } });
+    // Untracked, the report is Moodle's error page, which keeps the report's body id.
+    const denied = `<div class="box errorbox alert alert-danger" data-rel="fatalerror"><p class="errormessage">Sorry, but you do not currently have permissions to do that.</p></div>`;
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" }, bodies: { "/mod/h5pactivity/view.php": `<div data-activityname="Untracked"></div>`, "/mod/h5pactivity/report.php": denied } });
     assert.deepEqual(await h5pActivity(context, SITE, 39), { id: 39, name: "Untracked", tracked: false, attempts: [] });
     await context.close();
     const other = await browser!.newContext();

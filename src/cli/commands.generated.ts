@@ -1000,7 +1000,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "createActivity",
-    "description": "Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: \"scorm\"`) takes the first as its package.",
+    "description": "Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: \"scorm\"`) or an H5P activity (`type: \"h5pactivity\"`) takes the first as its package.",
     "params": [
       {
         "name": "input",

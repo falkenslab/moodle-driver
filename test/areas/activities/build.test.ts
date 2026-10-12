@@ -118,6 +118,30 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     await context.close();
   });
 
+  it("uploads an H5P activity's package to its packagefile field too", async () => {
+    // The sandbox showed it: h5pactivity's form has a packagefile field like a SCORM's, and no files field.
+    const { context, uploads } = await site("packagefile");
+    await writeFile(path.join(dir, "quiz.h5p"), "PK");
+    const result = await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "h5pactivity", name: "Check", files: [path.join(dir, "quiz.h5p"), path.join(dir, "brief.txt")] });
+    assert.equal(result.activityId, 40);
+    assert.deepEqual(uploads, ["777:quiz.h5p"]);
+    await context.close();
+  });
+
+  it("finds a new shared question bank on the banks page, as it never shows on the course page", async () => {
+    // The sandbox showed it: a qbank's form is saved, but the course page's state has no module for it (Moodle 5.2).
+    const { context, posts } = await site();
+    await context.route(`${SITE}question/banks.php**`, (route: Route) => {
+      // Made up after Moodle 5.2's banks page: the shared banks' list links each bank's view.
+      const banks = posts.length > 0 ? `<li><a href="${SITE}mod/qbank/view.php?id=55">Unit 1 bank</a></li>` : "";
+      return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-question-banks", body: `<div class="shared-banks"><ul class="question-banks-list">${banks}</ul></div>` }) });
+    });
+    // The bank is taken from the banks page, whatever the course page shows.
+    const result = await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "qbank", name: "Unit 1 bank" });
+    assert.deepEqual([result.activityId, result.url, result.changed], [55, `${SITE}mod/qbank/view.php?id=55`, 'Created qbank 55 "Unit 1 bank" in section 1.']);
+    await context.close();
+  });
+
   it("updates only what's given", async () => {
     const { context, posts } = await site();
     await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "resource", name: "Brief" });

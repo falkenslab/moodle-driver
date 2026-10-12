@@ -35,13 +35,13 @@ interface H5PAttempt {
 
 - `id`: the course module id given; `name`: the activity's name.
 - `contentType`: the H5P library and its version (`{ library: "H5P.MultiChoice", version: "1.14" }`), read from the player page's H5P settings before any of its scripts run. Missing when the activity has no player (no content uploaded) or the player page can't be read.
-- `tracked`: Moodle records attempts and scores for this activity (its "enable attempt tracking" setting); the page links to the attempts report only then.
+- `tracked`: Moodle records attempts and scores for this activity (its "enable attempt tracking" setting): the page links to the attempts report only then, and a student's page only once they have an attempt, so without the link the report itself is opened to tell (Moodle answers it with an error when attempts aren't tracked, or when the activity doesn't let students review them).
 - `attempts`: the person's own attempts, oldest first; empty when attempts aren't tracked, when the person has none, and for a teacher, whose report lists participants rather than attempts.
 - `id`: Moodle's id for the attempt, from its report link; `number`: its number for the person (1, 2...).
 - `score` and `maxScore`: the raw score and the maximum, as numbers.
 - `completed` and `passed`: from the report's completion and success icons; missing when the row shows no icon.
 
-The activity page, the player page and, when tracked, the attempts report (`mod/h5pactivity/report.php`) are opened; nothing is played, so no attempt is started or recorded. Throws `NotAnH5PActivityError` when the id isn't an H5P activity the person can open.
+The activity page, the player page and the attempts report (`mod/h5pactivity/report.php`) are opened; nothing is played, so no attempt is started or recorded. Throws `NotAnH5PActivityError` when the id isn't an H5P activity the person can open.
 
 ## Playing H5P content
 

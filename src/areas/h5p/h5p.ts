@@ -122,13 +122,16 @@ export async function h5pActivity(context: BrowserContext, siteUrl: string, acti
     const library = /"library":"([^"\s]+) (\d+\.\d+)"/.exec(html);
     if (library) activity.contentType = { library: library[1]!, version: library[2]! };
   }
-  if (facts.tracked) {
-    const report = await openSitePage(context, siteUrl, `mod/h5pactivity/report.php?id=${activityId}`);
-    try {
-      activity.attempts = (await readH5PAttempts(report)).sort((a, b) => a.number - b.number);
-    } finally {
-      await report.close().catch(() => undefined);
-    }
+  // A student's page links to their report only once they have an attempt (Moodle 5.2's navigation,
+  // confirmed empirically): without the link, the report itself says whether Moodle tracks attempts,
+  // answering with an error page when it doesn't (or when the activity doesn't let students review them).
+  const report = await openSitePage(context, siteUrl, `mod/h5pactivity/report.php?id=${activityId}`);
+  try {
+    // Moodle's error page keeps the report's body id; its error box is what tells them apart.
+    if (!facts.tracked) activity.tracked = (await report.locator("body#page-mod-h5pactivity-report").count()) > 0 && (await report.locator('[data-rel="fatalerror"]').count()) === 0;
+    if (activity.tracked) activity.attempts = (await readH5PAttempts(report)).sort((a, b) => a.number - b.number);
+  } finally {
+    await report.close().catch(() => undefined);
   }
   return activity;
 }
