@@ -52,7 +52,7 @@ Each `CourseSection` has `id`, `number` (0 is the general section), `title`, `vi
 - `name`, `type`: the module, such as `"page"`, `"assign"`, `"quiz"`, `"forum"` or `"resource"`.
 - `url`: the activity's page, when it has one (a label has none).
 - `visible`: shown to students.
-- `availableToMe`: the person can open it now (visible to them and not blocked by a restriction).
+- `availableToMe`: the person can open it now. For a student, false on an activity blocked by a restriction (one hidden from students isn't listed for them at all); for a teacher, true on hidden and restricted activities alike, since they can open them (`visible: false, availableToMe: true` is a hidden activity seen by its teacher).
 - `restricted`: it has access restrictions.
 - `completion`: the person's completion, only when the activity tracks it for them: `state` is one of `"incomplete"`, `"complete"`, `"complete-pass"`, `"complete-fail"` (`COMPLETION_STATES`), and `complete` is Moodle's overall verdict.
 - `dates`, `restriction`: only with `details`.

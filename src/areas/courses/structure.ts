@@ -20,7 +20,11 @@ export interface CourseActivity {
   url?: string;
   /** Shown to students. */
   visible: boolean;
-  /** The person can open it now. */
+  /**
+   * The person can open it now: false for a student on an activity hidden from students or blocked by a
+   * restriction; true for a teacher on those, since they can see hidden activities (Moodle's
+   * `uservisible`, confirmed empirically on Moodle 5.2).
+   */
   availableToMe: boolean;
   restricted: boolean;
   /** The person's completion, when the activity tracks it for them. */
@@ -63,7 +67,9 @@ export function structureOf(state: CourseState, details?: Map<number, ActivityDe
           type: cm.module,
           url: cm.url,
           visible: cm.visible,
-          availableToMe: (cm.uservisible ?? true) && (cm.accessvisible ?? true),
+          // Moodle's accessvisible is false for any hidden or restricted activity, whoever looks;
+          // uservisible already lets through those the person may see anyway (a teacher's).
+          availableToMe: cm.uservisible ?? cm.accessvisible ?? true,
           restricted: cm.hascmrestrictions ?? false,
           completion: state ? { state, complete: cm.isoverallcomplete ?? state !== "incomplete" } : undefined,
           dates: extra && extra.dates.length > 0 ? extra.dates : undefined,

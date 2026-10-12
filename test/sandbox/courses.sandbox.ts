@@ -237,6 +237,19 @@ describe("the scratch course, written", () => {
     assert.deepEqual(await teacher.courseUpdates(scratch.id, new Date(Date.now() + 3_600_000)), []);
   });
 
+  it("courseStructure: a hidden activity is available to the teacher, not to the student", SLOW, async () => {
+    const teacher = await as("teacher");
+    // Hidden, as createActivity makes it by default.
+    const { activityId } = await teacher.createActivity({ courseId: scratch.id, sectionId: scratch.sectionId, type: "page", name: "Driver check hidden page", content: "<p>Hidden.</p>" });
+    const mine = activitiesOf(await teacher.courseStructure(scratch.id)).find((a) => a.id === activityId);
+    assert.deepEqual(mine && { visible: mine.visible, availableToMe: mine.availableToMe }, { visible: false, availableToMe: true });
+    const student = await as("student");
+    const theirs = activitiesOf(await student.courseStructure(scratch.id)).find((a) => a.id === activityId);
+    assert.ok(!theirs || !theirs.availableToMe, "the student can't open it");
+    assert.ok(!(await student.pendingActivities(scratch.id)).pending.some((p) => p.activityId === activityId));
+    await teacher.deleteActivity(scratch.id, activityId!);
+  });
+
   it("activityContent: a page, a label, a URL, a file and a folder, as the student reads them", SLOW, async () => {
     const student = await as("student");
     const page = await student.activityContent(ids.page, "page");
