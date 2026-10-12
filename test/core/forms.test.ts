@@ -21,6 +21,21 @@ describe("setFields", { skip: !browser && "no system browser" }, () => {
     assert.equal(await page.inputValue('[name="grade[modgrade_point]"]'), "80");
     await page.close();
   });
+
+  it("waits for a TinyMCE editor still starting, which can't take content yet", async () => {
+    const page = await browser!.newPage();
+    // A made-up TinyMCE: the editor exists at once but starts later, and throws on content before
+    // then, as a real one's plugins do (codesample in a Moodle 5.2 forum reply).
+    await page.setContent(`<form class="mform"><textarea name="message[text]" id="msg"></textarea></form>
+<script>
+  const editor = { initialized: false, setContent(html) { if (!this.initialized) throw new TypeError("Cannot read properties of undefined (reading 'select')"); this.html = html; }, save() { document.getElementById("msg").value = this.html; } };
+  window.tinymce = { get: (id) => (id === undefined ? [editor] : id === "msg" ? editor : null) };
+  setTimeout(() => { editor.initialized = true; }, 300);
+</script>`);
+    await setFields(page, { "message[text]": "<p>Late but set</p>" });
+    assert.equal(await page.inputValue('[name="message[text]"]'), "<p>Late but set</p>");
+    await page.close();
+  });
 });
 
 describe("date selectors", { skip: !browser && "no system browser" }, () => {

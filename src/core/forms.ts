@@ -75,6 +75,19 @@ export function formValue(page: Page, name: string): Promise<string | undefined>
 export async function setFields(page: Page, values: Record<string, FieldValue>, formSelector = "form.mform"): Promise<void> {
   const missing: string[] = [];
   const disabled: string[] = [];
+  // TinyMCE editors still starting can't take content: setContent throws inside a plugin (codesample's
+  // "reading 'select'" in a forum reply, seen on the sandbox, 5.2, once its pages loaded fast). One
+  // created later reads its textarea when it starts, so only the existing ones are waited for.
+  await page
+    .waitForFunction(
+      () => {
+        const tinymce = (globalThis as unknown as { tinymce?: { get(): { initialized: boolean }[] } }).tinymce;
+        return !tinymce || tinymce.get().every((editor) => editor.initialized);
+      },
+      null,
+      { timeout: 30_000 },
+    )
+    .catch(() => undefined);
   // One field at a time: Moodle enables dependent fields in handlers that run after the change event
   // (choosing whether to rescale enables a maximum grade, confirmed empirically, 5.2).
   for (const [name, value] of Object.entries(values)) {
