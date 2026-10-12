@@ -227,8 +227,10 @@ export async function deleteDraftFile(page: Page, draftItemId: string, name: str
  * upload repository's id comes from the page's file picker settings, the context from `M.cfg`.
  * A `DraftUpload` names the file in the area, in a subfolder when its `to` has one (created first).
  * With `overwrite`, a file of the same name is replaced; without it, Moodle keeps both, renaming the new one.
+ * Returns each file's draft URL (`draftfile.php/<user context>/user/draft/<item>/<name>`), in order:
+ * what an editor writes into its HTML for a file in its draft area.
  */
-export async function uploadToDraft(page: Page, draftItemId: string, filePaths: (string | DraftUpload)[], { overwrite = false }: { overwrite?: boolean } = {}): Promise<void> {
+export async function uploadToDraft(page: Page, draftItemId: string, filePaths: (string | DraftUpload)[], { overwrite = false }: { overwrite?: boolean } = {}): Promise<string[]> {
   const files = await Promise.all(
     filePaths.map(async (file) => {
       const from = typeof file === "string" ? file : file.from;
@@ -243,19 +245,20 @@ export async function uploadToDraft(page: Page, draftItemId: string, filePaths: 
       await draftAction(page, "mkdir", { itemid: draftItemId, filepath: draftPath(parts.slice(0, i).join("/")), newdirname: parts[i]! });
     }
   }
-  const errors = await page.evaluate(
+  const { errors, urls } = await page.evaluate(
     async ({ draftItemId, files, overwrite }) => {
       const g = globalThis as unknown as {
         document: { documentElement: { innerHTML: string } };
         M: { cfg: { wwwroot: string; sesskey: string; contextid: number } };
-        fetch(url: string, init: object): Promise<{ json(): Promise<{ error?: string }> }>;
+        fetch(url: string, init: object): Promise<{ json(): Promise<{ error?: string; url?: string; newfile?: { url?: string } }> }>;
         FormData: new () => { append(name: string, value: unknown, filename?: string): void };
         Blob: new (parts: unknown[]) => unknown;
         atob(data: string): string;
       };
       const repo = /"id":"(\d+)","name":"(?:[^"\\]|\\.)*","type":"upload"/.exec(g.document.documentElement.innerHTML)?.[1];
-      if (!repo) return ["the site has no upload repository enabled"];
+      if (!repo) return { errors: ["the site has no upload repository enabled"], urls: [] };
       const failed: string[] = [];
+      const urls: string[] = [];
       for (const file of files) {
         const body = new g.FormData();
         body.append("repo_upload_file", new g.Blob([Uint8Array.from(g.atob(file.base64), (c) => c.charCodeAt(0))]), file.name);
@@ -264,14 +267,17 @@ export async function uploadToDraft(page: Page, draftItemId: string, filePaths: 
           body.append(key, value);
         }
         const response = await g.fetch(`${g.M.cfg.wwwroot}/repository/repository_ajax.php?action=upload`, { method: "POST", body, credentials: "same-origin" });
-        const answer = await response.json().catch(() => ({ error: "the answer isn't JSON" }));
+        const answer = await response.json().catch(() => ({ error: "the answer isn't JSON" }) as { error?: string; url?: string; newfile?: { url?: string } });
         if (answer.error) failed.push(`${file.name}: ${answer.error}`);
+        // A name already there, not overwritten, comes back as a "fileexists" event with the new file's name.
+        else urls.push(answer.url ?? answer.newfile?.url ?? "");
       }
-      return failed;
+      return { errors: failed, urls };
     },
     { draftItemId, files, overwrite },
   );
   if (errors.length > 0) throw new FormError("Uploading failed:", errors.map((message) => ({ field: "files", message })));
+  return urls;
 }
 
 /**

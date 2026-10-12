@@ -32,6 +32,7 @@ What it returns depends on the type:
 - `text`: for a page or a label, the content as plain text, with paragraphs, line breaks and list items (as `- ` lines) kept, and scripts and styles left out.
 - `chapters`: for a book, `{ title, text }[]` in order, the title taken off the start of the text.
 - `media`: for a page, label or book, the videos, audio and players in the content (see below).
+- `images`: for a page, label or book with images in its content, each `{ url, alt? }` once; a `pluginfile.php` URL downloads with `downloadFile`.
 - `url`: for a URL resource, its target.
 - `files`: for a file resource or a folder, `{ name, url }[]`; each `url` is a `pluginfile.php` link to pass to `downloadFile`.
 - `trail`: the trail used.
@@ -89,4 +90,4 @@ for (const file of folder.files ?? []) {
 
 ## Data categories
 
-`activityContent` is `course-content`. `readTexts`, `readMedia`, `readingSeconds` and `pause` are `none`: they only parse a page or wait. For reading any activity's module, `moduleCategories(module)` returns `course-content` for pages, books, labels, URLs, files and folders. See [data categories](../concepts/data-categories.md).
+`activityContent` is `course-content`. `readTexts`, `readMedia`, `readImages`, `readingSeconds` and `pause` are `none`: they only parse a page or wait. For reading any activity's module, `moduleCategories(module)` returns `course-content` for pages, books, labels, URLs, files and folders. See [data categories](../concepts/data-categories.md).

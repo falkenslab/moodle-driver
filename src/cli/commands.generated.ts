@@ -334,7 +334,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "addSection",
-    "description": "Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is.",
+    "description": "Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is, and `embed`'s local files in it (`<img src=\"shot.png\">`).",
     "params": [
       {
         "name": "courseId",
@@ -372,6 +372,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "string",
           "value": {
             "kind": "string"
+          }
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
           }
         }
       ]
@@ -1574,6 +1582,15 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "json"
           },
           "description": "Attachments to add (absolute local paths) and to remove (by name, as the post lists them)."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Absolute local paths to embed in the new message, which names each by its file name (`<img src=\"shot.png\">`)."
         }
       ]
     }
@@ -1633,7 +1650,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "editSection",
-    "description": "Renames, shows or hides, describes (`summary`, HTML), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.",
+    "description": "Renames, shows or hides, describes (`summary`, HTML, with `embed`'s local files in it), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.",
     "params": [
       {
         "name": "courseId",
@@ -1695,6 +1712,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
+          }
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
           }
         }
       ]
@@ -3859,7 +3884,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "updateCourse",
-    "description": "Changes a course's full name, short name, summary (HTML) or any other setting by its form field name, through the course's settings form; returns the course as `listCourses` gives it. Moodle's refusals (a short name already taken) come back as `FormError` by field.",
+    "description": "Changes a course's full name, short name, summary (HTML) or any other setting by its form field name, through the course's settings form; returns the course as `listCourses` gives it. `embed` takes local files the summary names (`<img src=\"shot.png\">`), put in it as Moodle's editor does. Moodle's refusals (a short name already taken) come back as `FormError` by field.",
     "params": [
       {
         "name": "courseId",
@@ -3905,6 +3930,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "Record<string, FieldValue>",
           "value": {
             "kind": "json"
+          }
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
           }
         }
       ]

@@ -15,6 +15,13 @@ export function textFile(name: string, text = `${name}\n`): string {
   return file;
 }
 
+/** A local 1×1 PNG image, by name: its absolute path. */
+export function pngFile(name: string): string {
+  const file = path.join(dir, name);
+  writeFileSync(file, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==", "base64"));
+  return file;
+}
+
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;

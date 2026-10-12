@@ -5,10 +5,11 @@ import type { BrowserContext, Page } from "playwright-core";
 import { callService } from "../../core/ajax.js";
 import { isoDate } from "../courses/list.js";
 import { checkLocalFiles } from "../../core/files.js";
+import { checkEmbeds, embedFiles } from "../../core/embed.js";
 import { FormError, formValue, openForm, removeFromDraft, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
-import { ForumError, NotAForumError, discussionPosts, discussionSubscription, forumInstanceId, htmlToTexts, listDiscussions } from "./discussions.js";
+import { ForumError, NotAForumError, discussionPosts, discussionSubscription, forumInstanceId, listDiscussions, readFragments } from "./discussions.js";
 import { fetchSitePage, moodleErrorMessage, openSitePage } from "../../core/session.js";
-import { decodeEntities } from "../../core/text.js";
+import { decodeEntities, type ImageItem } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
 
 /** A discussion of a forum, as `forumDiscussions` lists it. */
@@ -54,6 +55,8 @@ export interface ForumPost {
   modified?: string;
   /** The message as plain text, paragraphs and lists kept. */
   text: string;
+  /** The images in the message, when it has any: their URLs download with `downloadFile`. */
+  images?: ImageItem[];
   attachments: { name: string; url: string }[];
   privateReply: boolean;
   unread?: boolean;
@@ -65,8 +68,8 @@ export interface ForumPost {
  */
 export async function discussion(context: BrowserContext, siteUrl: string, discussionId: number) {
   const { posts, forumid, courseid } = await discussionPosts(context, siteUrl, discussionId);
-  const [texts, subscribed] = await Promise.all([
-    htmlToTexts(
+  const [fragments, subscribed] = await Promise.all([
+    readFragments(
       context,
       posts.map((post) => post.message),
     ),
@@ -82,7 +85,8 @@ export async function discussion(context: BrowserContext, siteUrl: string, discu
         author: { id: post.author.id, fullName: post.author.fullname },
         created: isoDate(post.timecreated),
         modified: post.timemodified && post.timemodified - post.timecreated > 60 ? isoDate(post.timemodified) : undefined,
-        text: texts[i] ?? "",
+        text: fragments[i]?.text ?? "",
+        ...(fragments[i]?.images.length ? { images: fragments[i]!.images } : {}),
         attachments: (post.attachments ?? []).map((file) => ({ name: file.filename, url: file.url ?? file.fileurl ?? "" })),
         privateReply: post.isprivatereply ?? false,
         unread: post.unread ?? undefined,
@@ -97,6 +101,8 @@ export interface PostInput {
   message: string;
   /** Absolute local paths to attach. */
   files?: string[];
+  /** Absolute local paths to embed in the message, which names each by its file name (`<img src="shot.png">`). */
+  embed?: string[];
   /** Subscribe to the discussion; Moodle's default when missing. */
   subscribe?: boolean;
   /** Other post form fields by name ({"pinned": true} for a teacher). */
@@ -114,6 +120,7 @@ function checkMessage(message: string): void {
 async function post(context: BrowserContext, siteUrl: string, formPath: string, input: PostInput & { subject?: string }): Promise<string> {
   checkMessage(input.message);
   if (input.files) await checkLocalFiles(input.files);
+  if (input.embed) await checkEmbeds([input.message], input.embed);
   const page = await openForm(context, siteUrl, formPath);
   try {
     if (input.files && input.files.length > 0) {
@@ -122,6 +129,7 @@ async function post(context: BrowserContext, siteUrl: string, formPath: string, 
       await uploadToDraft(page, draft, input.files);
     }
     const values: Record<string, FieldValue> = { "message[text]": input.message, ...input.fields };
+    if (input.embed) await embedFiles(page, values, input.embed);
     if (input.subject !== undefined) values.subject = input.subject;
     if (input.subscribe !== undefined) values.discussionsubscribe = input.subscribe;
     await setFields(page, values);
@@ -227,6 +235,8 @@ export interface PostChanges {
   message?: string;
   /** Attachments to add (absolute local paths) and to remove (by name, as the post lists them). */
   files?: { add?: string[]; remove?: string[] };
+  /** Absolute local paths to embed in the new message, which names each by its file name (`<img src="shot.png">`). */
+  embed?: string[];
 }
 
 /** Moodle's reason on a notification it redirected with (`#user-notifications .alert-danger`), or undefined. */
@@ -260,6 +270,7 @@ export async function editPost(context: BrowserContext, siteUrl: string, postId:
   const remove = changes.files?.remove ?? [];
   if (changes.message !== undefined) checkMessage(changes.message);
   if (changes.subject !== undefined && changes.subject.trim() === "") throw new MoodleError("The subject is empty: a post needs one.", "invalid-input");
+  if (changes.embed) await checkEmbeds([changes.message], changes.embed);
   if (changes.subject === undefined && changes.message === undefined && add.length === 0 && remove.length === 0) return { changed: "Nothing to change." };
   if (add.length > 0) await checkLocalFiles(add);
   const formPath = `mod/forum/post.php?edit=${postId}`;
@@ -283,6 +294,7 @@ export async function editPost(context: BrowserContext, siteUrl: string, postId:
     const values: Record<string, FieldValue> = {};
     if (changes.subject !== undefined) values.subject = changes.subject;
     if (changes.message !== undefined) values["message[text]"] = changes.message;
+    if (changes.embed) await embedFiles(page, values, changes.embed);
     await setFields(page, values);
     await submitForm(page, "submitbutton");
     // A refusal after posting comes back as a notification on the discussion.

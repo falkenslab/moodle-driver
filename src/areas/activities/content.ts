@@ -3,7 +3,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import type { Trail } from "../../options.js";
 import { pause, readingSeconds } from "../../core/pace.js";
 import { openSitePage } from "../../core/session.js";
-import { readMedia, readTexts, type MediaItem } from "../../core/text.js";
+import { readImages, readMedia, readTexts, type ImageItem, type MediaItem } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
 
 /** The modules whose content `activityContent` reads. */
@@ -31,6 +31,8 @@ export interface ActivityContent {
   chapters?: { title: string; text: string }[];
   /** Videos, audio and players in a page's, label's or book's content. */
   media?: MediaItem[];
+  /** The images in a page's, label's or book's content, when it has any: their URLs download with `downloadFile`. */
+  images?: ImageItem[];
   /** A URL resource's target. */
   url?: string;
   /** A file resource's or a folder's files. */
@@ -117,11 +119,14 @@ async function readContent(
     const page = await view(path, selector);
     output.text = (await readTexts(page, selector))[0] ?? "";
     output.media = await readMedia(page, selector);
+    const images = (await readImages(page, selector))[0] ?? [];
+    if (images.length > 0) output.images = images;
     await page.close();
     await readAsAPerson(output.text);
   } else if (type === "book") {
     output.chapters = [];
     const media: MediaItem[] = [];
+    const images: ImageItem[] = [];
     if (realistic) {
       // Chapter by chapter, following "next", as a reader does.
       const page = await view(`mod/book/view.php?id=${activityId}`, "#region-main .book_content");
@@ -131,6 +136,7 @@ async function readContent(
           const read = chapter(title, (await readTexts(page, "#region-main .book_content"))[0] ?? "");
           output.chapters.push(read);
           media.push(...(await readMedia(page, "#region-main .book_content")));
+          images.push(...(await readImages(page, "#region-main .book_content")).flat());
           await readAsAPerson(read.text);
           const next = page.locator("#region-main a.btn-next").first();
           if ((await next.count()) === 0) break;
@@ -145,10 +151,12 @@ async function readContent(
       const bodies = await readTexts(page, ".book_chapter");
       output.chapters = bodies.map((body, i) => chapter(titles[i] ?? "", body));
       media.push(...(await readMedia(page, ".book_chapter")));
+      images.push(...(await readImages(page, ".book_chapter")).flat());
       await page.close();
     }
     // The same video can appear in several chapters: once each.
     output.media = [...new Map(media.map((item) => [item.url, item])).values()];
+    if (images.length > 0) output.images = [...new Map(images.map((item) => [item.url, item])).values()];
   } else if (type === "url") {
     // forceview logs the view and shows the link instead of leaving the site.
     const page = await view(`mod/url/view.php?id=${activityId}&forceview=1`, ".urlworkaround a");

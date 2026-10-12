@@ -95,6 +95,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   decodeEntities: NONE,
   readTexts: NONE,
   readMedia: NONE,
+  readImages: NONE,
   readingSeconds: NONE,
   pause: NONE,
   checkLocalFiles: NONE,

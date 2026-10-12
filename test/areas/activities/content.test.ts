@@ -56,7 +56,7 @@ describe("readingSeconds", () => {
 describe("activityContent", { skip: !browser && "no system browser" }, () => {
   // Made-up pages shaped like Moodle 5.2's, one per content type (ids: page 5, book 6, url 7, label 8, file 9, folder 10).
   const BODIES: Record<string, string> = {
-    "/mod/page/view.php": `<div id="region-main"><div class="box generalbox"><h3>Loops</h3><p>A loop repeats.</p><ul><li>for</li><li>while</li></ul></div></div>`,
+    "/mod/page/view.php": `<div id="region-main"><div class="box generalbox"><h3>Loops</h3><p>A loop repeats.<img src="${SITE}pluginfile.php/34/mod_page/content/2/loop.png" alt="A loop"></p><ul><li>for</li><li>while</li></ul></div></div>`,
     "/mod/url/view.php": `<div id="region-main"><div class="urlworkaround">Click on <a href="https://docs.example.org/tutorial">Docs</a> to open the resource.</div></div>`,
     "/mod/resource/view.php": `<div id="region-main"><div class="resourceworkaround">Click <a href="${SITE}pluginfile.php/35/mod_resource/content/0/brief.txt">brief.txt</a> link.</div></div>`,
     "/mod/folder/view.php": `<div id="region-main"><div class="foldertree"><a href="${SITE}pluginfile.php/36/mod_folder/content/0/a.py?forcedownload=1">a.py</a><a href="${SITE}pluginfile.php/36/mod_folder/content/0/b.py?forcedownload=1">b.py</a></div></div>`,
@@ -90,6 +90,7 @@ describe("activityContent", { skip: !browser && "no system browser" }, () => {
     const context = await site();
     const page = await activityContent(context, SITE, 5, "page", fast);
     assert.deepEqual([page.text, page.trail, page.readingSeconds], ["Loops\n\nA loop repeats.\n\n- for\n- while", "fast", undefined]);
+    assert.deepEqual(page.images, [{ url: `${SITE}pluginfile.php/34/mod_page/content/2/loop.png`, alt: "A loop" }]);
     assert.deepEqual((await activityContent(context, SITE, 6, "book", fast)).chapters, [
       { title: "1. Parameters", text: "They take values." },
       { title: "2. Defining", text: "Use def." },

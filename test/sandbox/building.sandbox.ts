@@ -1,10 +1,13 @@
 // Building a course and its completion, against the sandbox: activities and sections made, changed,
 // moved and deleted on a scratch course by the teacher, read back as the teacher and the student.
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { before, describe, it } from "node:test";
 import { ActivitySettingsError, CompletionError, MoodleError, type CourseActivity, type CourseSection } from "../../src/index.js";
 import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
-import { scormPackage, textFile } from "./packages.js";
+import { pngFile, scormPackage, textFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
 const SLOW = { timeout: 900_000 };
@@ -41,6 +44,18 @@ describe("building a course", () => {
     assert.equal(sectionOf(seen, pageId)?.id, course.sectionId);
     const content = await (await as("student")).activityContent(pageId, "page", { trail: "fast" });
     assert.match(JSON.stringify(content), /Page body/);
+  });
+
+  it("createActivity: a page with an embedded image, which the student sees and downloads", SLOW, async () => {
+    const teacher = await as("teacher");
+    const made = await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "page", name: "Driver image page", content: '<p>A dot: <img src="dot.png" alt="Dot"></p>', embed: [pngFile("dot.png")], visibility: "shown" });
+    assert.ok(made.activityId, made.changed);
+    const content = await (await as("student")).activityContent(made.activityId, "page", { trail: "fast" });
+    const image = content.images?.[0];
+    assert.match(image?.url ?? "", /pluginfile\.php\/\d+\/mod_page\/content\/\d+\/dot\.png/);
+    assert.equal(image?.alt, "Dot");
+    const saved = await (await as("student")).downloadFile(image!.url, mkdtempSync(path.join(tmpdir(), "driver-embed-")));
+    assert.equal(saved.contentType, "image/png");
   });
 
   it("createActivity: a URL and a label, hidden from students unless asked", SLOW, async () => {

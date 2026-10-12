@@ -123,7 +123,7 @@ moodle add-quiz-section <activityId> --options
 
 ## addSection
 
-Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is.
+Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`).
 
 ```bash
 moodle add-section <courseId> [--options]
@@ -135,6 +135,7 @@ moodle add-section <courseId> [--options]
 | `--name` | `string` |  |
 | `--after-section-id` | `number` |  |
 | `--summary` | `string` |  |
+| `--embed` | `string[]` |  |
 
 ## allocateMarker
 
@@ -666,6 +667,7 @@ moodle edit-post <postId> --options
 | `--subject` | `string` |  |
 | `--message` | `string` | The new message (HTML), replacing the old one. |
 | `--files` | `{ add?: string[]; remove?: string[]; }` | Attachments to add (absolute local paths) and to remove (by name, as the post lists them). |
+| `--embed` | `string[]` | Absolute local paths to embed in the new message, which names each by its file name (`<img src="shot.png">`). |
 
 ## editQuizSlot
 
@@ -685,7 +687,7 @@ moodle edit-quiz-slot <activityId> <slot> --options
 
 ## editSection
 
-Renames, shows or hides, describes (`summary`, HTML), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
+Renames, shows or hides, describes (`summary`, HTML, with `embed`'s local files in it), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
 
 ```bash
 moodle edit-section <courseId> <sectionId> --options
@@ -700,6 +702,7 @@ moodle edit-section <courseId> <sectionId> --options
 | `--summary` | `string` |  |
 | `--restrictions` | `Restrictions` |  |
 | `--after-section-id` | `number` |  |
+| `--embed` | `string[]` |  |
 
 ## enrolUsers
 
@@ -1685,7 +1688,7 @@ moodle update-activity <activityId> <input>
 
 ## updateCourse
 
-Changes a course's full name, short name, summary (HTML) or any other setting by its form field name, through the course's settings form; returns the course as `listCourses` gives it. Moodle's refusals (a short name already taken) come back as `FormError` by field.
+Changes a course's full name, short name, summary (HTML) or any other setting by its form field name, through the course's settings form; returns the course as `listCourses` gives it. `embed` takes local files the summary names (`<img src="shot.png">`), put in it as Moodle's editor does. Moodle's refusals (a short name already taken) come back as `FormError` by field.
 
 ```bash
 moodle update-course <courseId> --options
@@ -1698,6 +1701,7 @@ moodle update-course <courseId> --options
 | `--short-name` | `string` |  |
 | `--summary` | `string` |  |
 | `--settings` | `Record<string, FieldValue>` |  |
+| `--embed` | `string[]` |  |
 
 ## updateEvent
 

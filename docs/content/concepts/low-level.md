@@ -32,7 +32,7 @@ function openSitePage(context: BrowserContext, siteUrl: string, path: string, op
 
 Opens a page of the site (a path relative to it) in a new tab and checks there's a session, throwing `NotLoggedInError` when Moodle answers with its login page. Close the page when done. It's also a method, `moodle.openSitePage(path)`, like `moodle.openForm(path)`. While the browser is shown on demand, the page is shown afterwards in the working tab (`follow: false` skips it).
 
-Read pages by structure, not by text (see [How it works](how-it-works.md)): the body id names the page (`page-mod-quiz-view`), ids and data attributes name things. `moodleErrorMessage(page)` gives Moodle's message on an error page; `readSessionFacts(page)` and `pageIsLoggedIn(page, siteUrl)` tell whether a page has a user logged in, and `isLoggedIn(url, siteUrl, facts)` decides it from a page's final URL and those facts (for HTML fetched without a tab, `htmlSessionFacts(html)` gives them). `readTexts(page, selector)` gives elements' text with paragraphs and lists, and `readMedia(page, selector)` the media in them.
+Read pages by structure, not by text (see [How it works](how-it-works.md)): the body id names the page (`page-mod-quiz-view`), ids and data attributes name things. `moodleErrorMessage(page)` gives Moodle's message on an error page; `readSessionFacts(page)` and `pageIsLoggedIn(page, siteUrl)` tell whether a page has a user logged in, and `isLoggedIn(url, siteUrl, facts)` decides it from a page's final URL and those facts (for HTML fetched without a tab, `htmlSessionFacts(html)` gives them). `readTexts(page, selector)` gives elements' text with paragraphs and lists, `readMedia(page, selector)` the media in them, and `readImages(page, selector)` their images, one list per element.
 
 To read a page's HTML without a tab, `fetchSitePage(context, siteUrl, path)` gives its final URL and HTML over HTTP with the profile's session, and throws `NotLoggedInError` when Moodle answers with its login page; `readMoodleConfig(html)` parses its `M.cfg`, and `htmlSessionFacts(html)` tells whether someone is logged in. Moodle's server takes most of a page's time, so it's lighter rather than much faster (ADR-011).
 
@@ -42,7 +42,7 @@ To read a page's HTML without a tab, `fetchSitePage(context, siteUrl, path)` giv
 openForm(context, siteUrl, path): Promise<Page>; // waits for editors and Moodle's form dependencies
 formValue(page, name): Promise<string | undefined>; // a hidden field's value
 setFields(page, values, formSelector?): Promise<void>; // by field name, in order
-uploadToDraft(page, draftItemId, filePaths, { overwrite }?): Promise<void>; // as the file picker's upload does
+uploadToDraft(page, draftItemId, filePaths, { overwrite }?): Promise<string[]>; // as the file picker's upload does; the files' draft URLs
 draftFiles(page, draftItemId): Promise<DraftFile[]>; // the files in a draft area, subfolders included
 deleteDraftFile(page, draftItemId, name): Promise<void>; // as the file manager's delete does
 removeFromDraft(page, draftItemId, names): Promise<void>; // several, by path, refusing any the area doesn't have
@@ -54,7 +54,7 @@ dateSelectorDate(page, name); // the date a selector holds
 - `setFields` sets text inputs and textareas (through TinyMCE where it edits them), selects (several values for a multiple one), checkboxes and radios, one field at a time so Moodle's handlers run in between. It throws `FormError` for fields the form doesn't have and for fields still disabled after the ones before them: Moodle wouldn't send them.
 - Date selectors (`duedate[day]`, `[month]`, `[year]`, `[hour]`, `[minute]`) are read in the person's time zone (`M.cfg.usertimezone`): build their values with `dateSelectorValues`, enabling the selector's `[enabled]` checkbox first when it has one.
 - `submitForm` waits for the next page and reads Moodle's validation messages by field.
-- A draft area holds a file area's files while its form is open (the files field's value is its id). `uploadToDraft` takes local paths, or `{ from, to }` to name a file in the area or put it in a subfolder (`to: "week1/notes.pdf"`, the folders created first); with `overwrite: true` a file of the same name is replaced, otherwise Moodle keeps both and renames the new one. `draftFiles` and `deleteDraftFile` name files by their path in the area, through the file manager's `repository/draftfiles_ajax.php`. Nothing changes in the activity until the form is saved.
+- A draft area holds a file area's files while its form is open (the files field's value is its id). `uploadToDraft` takes local paths, or `{ from, to }` to name a file in the area or put it in a subfolder (`to: "week1/notes.pdf"`, the folders created first); with `overwrite: true` a file of the same name is replaced, otherwise Moodle keeps both and renames the new one. It returns each file's draft URL (`draftfile.php/<user context>/user/draft/<item>/<name>`), what an editor writes into its HTML for a file in its own draft area (`<editor>[itemid]`). `draftFiles` and `deleteDraftFile` name files by their path in the area, through the file manager's `repository/draftfiles_ajax.php`. Nothing changes in the activity until the form is saved.
 
 ```ts
 import { setFields, submitForm, dateSelectorValues } from "@falkenslab/moodle-driver/internals";

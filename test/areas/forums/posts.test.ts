@@ -85,7 +85,7 @@ describe("discussion", { skip: !browser && "no system browser" }, () => {
         courseid: 5,
         posts: [
           { id: 2, subject: "Can a variable change?", message: "<p>If I set <code>x = 1</code>…</p><p>can I change it?</p>", author: { id: 6, fullname: "Ada Lovelace" }, parentid: null, timecreated: 1_790_000_000, timemodified: 1_790_000_000, isprivatereply: false, unread: null, attachments: [] },
-          { id: 3, subject: "Re: Can a variable change? &amp; more", message: "<p>Yes &amp; no.</p>", author: { id: 7, fullname: "Alan Turing" }, parentid: 2, timecreated: 1_790_000_600, timemodified: 1_790_000_900, isprivatereply: false, unread: true, attachments: [{ filename: "proof.pdf", url: `${SITE}pluginfile.php/1/mod_forum/attachment/3/proof.pdf` }] },
+          { id: 3, subject: "Re: Can a variable change? &amp; more", message: `<p>Yes &amp; no.<img src="${SITE}pluginfile.php/1/mod_forum/post/3/dot.png" alt="Dot"></p>`, author: { id: 7, fullname: "Alan Turing" }, parentid: 2, timecreated: 1_790_000_600, timemodified: 1_790_000_900, isprivatereply: false, unread: true, attachments: [{ filename: "proof.pdf", url: `${SITE}pluginfile.php/1/mod_forum/attachment/3/proof.pdf` }] },
         ],
       };
     },
@@ -106,6 +106,7 @@ describe("discussion", { skip: !browser && "no system browser" }, () => {
       created: new Date(1_790_000_600_000).toISOString(),
       modified: new Date(1_790_000_900_000).toISOString(),
       text: "Yes & no.",
+      images: [{ url: `${SITE}pluginfile.php/1/mod_forum/post/3/dot.png`, alt: "Dot" }],
       attachments: [{ name: "proof.pdf", url: `${SITE}pluginfile.php/1/mod_forum/attachment/3/proof.pdf` }],
       privateReply: false,
       unread: true,
@@ -125,7 +126,7 @@ describe("discussion", { skip: !browser && "no system browser" }, () => {
 function postForm(subject: string): string {
   return `<form class="mform" action="${SITE}mod/forum/post.php" method="post">
 <input type="hidden" name="forum" value="2"><input type="hidden" name="reply" value="0"><input type="hidden" name="sesskey" value="s1">
-<input type="text" name="subject" value="${subject}"><textarea name="message[text]" id="id_message"></textarea>
+<input type="text" name="subject" value="${subject}"><textarea name="message[text]" id="id_message"></textarea><input type="hidden" name="message[itemid]" value="666">
 <input type="hidden" name="discussionsubscribe" value="0"><input type="checkbox" name="discussionsubscribe" value="1" checked>
 <input type="hidden" name="pinned" value="0"><input type="checkbox" name="pinned" value="1">
 <input type="hidden" name="attachments" value="555"><input type="submit" name="submitbutton" value="Post to forum"></form>
@@ -161,8 +162,12 @@ describe("replyToPost and startDiscussion", { skip: !browser && "no system brows
     });
     await context.route(`${SITE}mod/forum/discuss.php**`, (route: Route) => route.fulfill({ status: 200, contentType: "text/html", body: page(subscriptionToggle(1, posts.at(-1)?.get("discussionsubscribe") === "1")) }));
     await context.route(`${SITE}repository/repository_ajax.php**`, (route: Route) => {
-      uploads.push(/filename="([^"]+)"/.exec(route.request().postData() ?? "")?.[1] ?? "");
-      return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      const body = route.request().postData() ?? "";
+      const itemid = /name="itemid"\r\n\r\n(\d+)/.exec(body)?.[1];
+      const name = /filename="([^"]+)"/.exec(body)?.[1] ?? "";
+      uploads.push(`${itemid}:${name}`);
+      // Moodle answers with the file's draft URL, in the person's user context (made up: 9).
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ url: `${SITE}draftfile.php/9/user/draft/${itemid}/${name}` }) });
     });
     return { context, posts, uploads };
   }
@@ -175,7 +180,19 @@ describe("replyToPost and startDiscussion", { skip: !browser && "no system brows
     assert.equal(posts[0]?.get("subject"), "Re: Welcome");
     assert.equal(posts[0]?.get("message[text]"), "<p>Hello</p>");
     assert.deepEqual(posts[0]?.getAll("discussionsubscribe"), ["0"]);
-    assert.deepEqual(uploads, ["shot.txt"]);
+    assert.deepEqual(uploads, ["555:shot.txt"]);
+    await context.close();
+  });
+
+  it("embeds a file in the message: uploaded to the message editor's draft area, the img pointing at its draft URL", async () => {
+    const { context, posts, uploads } = await site();
+    await writeFile(path.join(dir, "dot.png"), "PNG");
+    await replyToPost(context, SITE, 4, { message: '<p>See <img src="dot.png" alt="Dot"></p>', embed: [path.join(dir, "dot.png")] });
+    assert.deepEqual(uploads, ["666:dot.png"]);
+    assert.equal(posts[0]?.get("message[text]"), `<p>See <img src="${SITE}draftfile.php/9/user/draft/666/dot.png" alt="Dot"></p>`);
+    // A name the message uses with no file given: refused before anything is sent.
+    await assert.rejects(startDiscussion(context, SITE, 9, { subject: "X", message: '<img src="other.png">', embed: [path.join(dir, "dot.png")] }), { code: "invalid-input" });
+    assert.equal(posts.length, 1);
     await context.close();
   });
 

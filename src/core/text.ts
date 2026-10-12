@@ -53,6 +53,36 @@ export function readTexts(page: Page, selector: string): Promise<string[]> {
   }, selector);
 }
 
+/** An image in a text (`<img>`): its URL, absolute, and its alternative text when it has one. */
+export interface ImageItem {
+  url: string;
+  alt?: string;
+}
+
+/**
+ * The images (`<img>`) in each element matching `selector`, one list per element, each URL once;
+ * `data:` URLs are left out. An image of the site downloads with the session (`downloadFile`).
+ */
+export function readImages(page: Page, selector: string): Promise<ImageItem[][]> {
+  return page.evaluate((selector) => {
+    interface El {
+      src: string;
+      getAttribute(name: string): string | null;
+      querySelectorAll(s: string): ArrayLike<El>;
+    }
+    const roots = Array.from((globalThis as unknown as { document: El }).document.querySelectorAll(selector));
+    return roots.map((root) => {
+      const found = new Map<string, { url: string; alt?: string }>();
+      for (const img of Array.from(root.querySelectorAll("img[src]"))) {
+        const url = img.src;
+        const alt = img.getAttribute("alt")?.trim();
+        if (url && !url.startsWith("data:") && !found.has(url)) found.set(url, alt ? { url, alt } : { url });
+      }
+      return Array.from(found.values());
+    });
+  }, selector);
+}
+
 /** A video, audio or player found in a page's content. */
 export interface MediaItem {
   kind: "video" | "audio" | "youtube" | "vimeo" | "embed";

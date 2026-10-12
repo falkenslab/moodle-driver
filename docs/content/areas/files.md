@@ -1,6 +1,6 @@
 # Files
 
-Files in both directions: saving a site's files (a resource, a folder's files, a submission, a post's attachment) to a local folder with the person's session, and uploading local files in the forms that take them (a file resource or folder, a submission, a forum post, a question import). Anyone can download what their session can reach; uploading depends on the form, so on who can use it (a teacher creating a resource, a student submitting). The driver never opens or interprets the files: a program gets their paths.
+Files in both directions: saving a site's files (a resource, a folder's files, a submission, a post's attachment, an image in a page or a post) to a local folder with the person's session, and uploading local files in the forms that take them (a file resource or folder, a submission, a forum post, a question import), or inside the HTML a function writes (an image in a page, a section's or course's summary, a post). Anyone can download what their session can reach; uploading depends on the form, so on who can use it (a teacher creating a resource, a student submitting). The driver never opens or interprets the files: a program gets their paths.
 
 **Terms:** [session](../reference/glossary.md#session), [site](../reference/glossary.md#site).
 
@@ -64,6 +64,27 @@ What can go wrong, besides `checkLocalFiles`' errors:
 - Moodle refuses the form when it's saved: a `FormError` with Moodle's messages by field.
 
 `updateActivity` changes a file resource's or folder's files only when its `files` says what to add, remove or replace; otherwise the ones there stay. `activitySettings` lists them. The low-level `uploadToDraft`, `draftFiles`, `deleteDraftFile` and `removeFromDraft` work on any form opened with `openForm` (see [low-level access](../concepts/low-level.md)).
+
+## Embedding files in rich text
+
+Images and files can go inside the HTML a function writes, as a person inserting an image in Moodle's editor does. The HTML names each file by its file name, in a `src` or an `href` (`<img src="diagram.png" alt="The loop">`, `<a href="notes.pdf">the notes</a>`), and `embed` gives their absolute local paths:
+
+| Function | Where the HTML goes |
+| --- | --- |
+| `createActivity`, `updateActivity` | `description`, `content`, or an editor in `settings` (`"activityeditor[text]"`) ([activities](activities.md)). |
+| `addSection`, `editSection` | The section's `summary` ([activities](activities.md#addsection-editsection-and-deletesection)). |
+| `startDiscussion`, `replyToPost`, `editPost` | The post's `message` ([forums](forums.md)). |
+| `updateCourse` | The course's `summary` ([courses](courses.md#updatecourse)). |
+
+Each editor of a Moodle form keeps the files its text shows in a draft area of its own (the `<editor>[itemid]` field beside `<editor>[text]`), not in the file manager's. The driver uploads each file to the draft area of the editor whose HTML names it (replacing one of the same name there) and rewrites that `src` or `href` to the file's draft URL (`draftfile.php/<user context>/user/draft/<item>/diagram.png`), which is what the editor writes; on saving, Moodle keeps the files with the text and turns the URLs into its own, so readers get `pluginfile.php` URLs. Readers find them in [activityContent](content.md)'s `images` and a [forum post](forums.md#discussion)'s `images`, and download them with `downloadFile`. Confirmed empirically on Moodle 5.2: a page's image and a reply's image show to the student, and download with their session.
+
+A name is a `src` or `href` without a scheme (`https:`, `mailto:`), not starting with `/`, `#` or `?`; escapes are read (`my%20diagram.png` names `my diagram.png`). Before anything is sent, a `MoodleError` (`invalid-input`) refuses a file to embed that no text names, a name the text uses with no file given (another relative link counts: give the full URL instead), and two files with the same name; `checkLocalFiles`' errors come first. An editor that takes no files is a `MoodleError` (`not-available`). Without `embed`, the HTML is sent as given.
+
+```ts fragment
+// A page with a diagram, and a reply showing a screenshot.
+await moodle.createActivity({ courseId: 3, sectionId: 21, type: "page", name: "Loops", content: '<p>How a loop runs:</p><p><img src="loop.png" alt="A loop"></p>', embed: ["/home/ada/loop.png"] });
+await moodle.replyToPost(1204, { message: '<p>This is the error I get: <img src="error.png" alt="The error"></p>', embed: ["/home/ada/error.png"] });
+```
 
 ## Example
 

@@ -26,7 +26,7 @@ export { MoodleServiceError } from "./core/ajax.js";
 export { FormError, type FieldValue, type DraftUpload, type DraftFile } from "./core/forms.js";
 export { findMoodleSite } from "./core/site.js";
 export { checkLocalFiles, downloadFile, type DownloadedFile } from "./core/files.js";
-export type { MediaItem } from "./core/text.js";
+export type { MediaItem, ImageItem } from "./core/text.js";
 export { publicSiteInfo, courseActivityTypes } from "./areas/site/info.js";
 export { userById, siteName, courseRoles, courseAbilities, whoAmI, type User, type Me } from "./areas/site/users.js";
 

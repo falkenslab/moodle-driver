@@ -11,7 +11,7 @@ export { openSitePage, fetchSitePage, readSessionFacts, htmlSessionFacts, readMo
 export { readOwnProfile } from "./core/login.js";
 export { openForm, formValue, setFields, submitForm, uploadToDraft, draftFiles, deleteDraftFile, removeFromDraft, dateSelectorValues, dateSelectorDate, type DraftUpload, type DraftFile } from "./core/forms.js";
 export { inPage } from "./core/inPage.js";
-export { decodeEntities, readTexts, readMedia } from "./core/text.js";
+export { decodeEntities, readTexts, readMedia, readImages } from "./core/text.js";
 export { readingSeconds, pause } from "./core/pace.js";
 export { editCourse, renameActivity, renameSection, type EditorAction } from "./core/editor.js";
 export { readWwwroot } from "./core/site.js";

@@ -37,6 +37,7 @@ interface ActivityFields {
   restrictions?: Restrictions; // when students can open it
   completion?: Completion; // when it counts as complete
   settings?: Record<string, FieldValue>;
+  embed?: string[]; // local files the HTML names: <img src="shot.png">
 }
 ```
 
@@ -49,12 +50,13 @@ interface ActivityFields {
 - `restrictions`, `completion`: when students can open it and when it counts as complete, in plain terms (see [Restrictions and completion](#restrictions-and-completion)).
 - `settings`: any other field of the form by its form name, such as `{ "duedate[enabled]": true, "duedate[day]": 23 }` or `{ completion: 1 }`. They're set after the common inputs, in the order given, and win over them for the same field.
 - `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)); a SCORM or an H5P activity (`h5pactivity`) takes the first as its package (see [SCORM](scorm.md) and [H5P](h5p.md)). A `{ from, to }` (`DraftUpload`) gives a file another name or puts it in a folder's subfolder: `{ from: "/home/ada/notes.pdf", to: "week1/notes.pdf" }`.
+- `embed`: absolute local paths of images and files to put inside the HTML of `description`, `content` or an editor in `settings` (`"activityeditor[text]"`), which names each by its file name: `content: '<img src="shot.png">', embed: ["/home/ada/shot.png"]`. They're uploaded to that editor's own draft area, as Moodle's editor inserts an image, and kept with the text (see [Embedding files in rich text](files.md#embedding-files-in-rich-text)).
 
 `activityId` is the new activity's id, found by comparing the course before and after (a shared question bank, `qbank`, which never shows on the course page, by comparing the course's question banks); when no new activity appears `changed` says so and `activityId` is undefined.
 
 Errors:
 
-- A `MoodleError` when a file path isn't absolute or doesn't exist (`invalid-input`, `not-found`), when the course has no section with that id (`not-found`), when `content` is given for a type other than a page or label (`invalid-input`), or when the type's form takes no files (`not-available`).
+- A `MoodleError` when a file path isn't absolute or doesn't exist (`invalid-input`, `not-found`), when a file to embed and the HTML don't match (`invalid-input`), when the course has no section with that id (`not-found`), when `content` is given for a type other than a page or label (`invalid-input`), or when the type's form takes no files (`not-available`).
 - `FormError` when a field isn't in the form or is disabled (see below), when uploading fails, or when Moodle refuses the form; its `fields` hold Moodle's message per field (`{ field: "name", message: "You must supply a value here." }`).
 - `NotLoggedInError` without a session.
 
@@ -231,13 +233,13 @@ function deleteActivity(context: BrowserContext, siteUrl: string, courseId: numb
 ## addSection, editSection and deleteSection
 
 ```ts
-function addSection(context: BrowserContext, siteUrl: string, courseId: number, options?: { name?: string; afterSectionId?: number; summary?: string }): Promise<CourseChange>;
+function addSection(context: BrowserContext, siteUrl: string, courseId: number, options?: { name?: string; afterSectionId?: number; summary?: string; embed?: string[] }): Promise<CourseChange>;
 function editSection(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
   sectionId: number,
-  changes: { name?: string; visible?: boolean; summary?: string; restrictions?: Restrictions; afterSectionId?: number },
+  changes: { name?: string; visible?: boolean; summary?: string; restrictions?: Restrictions; afterSectionId?: number; embed?: string[] },
 ): Promise<CourseChange>;
 function deleteSection(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number): Promise<CourseChange>;
 ```
@@ -245,6 +247,7 @@ function deleteSection(context: BrowserContext, siteUrl: string, courseId: numbe
 - `addSection` adds a section after `afterSectionId`, or at the end without it; with `name` it renames it afterwards, and with `summary` it gives it a description. `sectionId` is the new section's id.
 - `editSection` renames, describes (`summary`), restricts (`restrictions`, see [Restrictions and completion](#restrictions-and-completion)), shows (`visible: true`) or hides it, or moves it after another section.
 - `summary` is the section's description, HTML as given (`""` removes it), shown on the course page under the section's name. No service changes it nor `restrictions`, so they're saved through the section's own form (`course/editsection.php`, its `summary_editor` and `availabilityconditionsjson`), in one save when both are given; the driver only takes a section of the given course: another course's is a `MoodleError` (`not-found`), and Moodle's refusals of the form a `FormError`. [courseStructure](courses.md) with `details` reads it back as `summary`.
+- `embed`: absolute local paths of images and files the `summary` names (`<img src="map.png">`), put in it as Moodle's editor does (see [Embedding files in rich text](files.md#embedding-files-in-rich-text)).
 - `deleteSection` deletes the section and every activity in it, with their participants' data.
 
 Sections are renamed through the course format's in-place editor (`format_topics`, `format_weeks`…): the driver reads the course's format once from the course page's classes and keeps it for the process.
