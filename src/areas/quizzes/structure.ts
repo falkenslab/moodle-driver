@@ -189,7 +189,8 @@ function slotAt(slots: QuizSlot[], slot: number, activityId: number): QuizSlot {
   return found;
 }
 
-type QuizChange = { changed: string; quiz: { id: number }; slots: QuizSlot[]; sections: QuizSection[] };
+/** What a change to a quiz's structure answers: what changed, and the quiz's slots and sections afterwards. */
+export type QuizChange = { changed: string; quiz: { id: number }; slots: QuizSlot[]; sections: QuizSection[] };
 
 async function afterChange(page: Page, activityId: number, changed: string): Promise<QuizChange> {
   await page.reload({ waitUntil: "domcontentloaded" });

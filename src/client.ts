@@ -46,6 +46,7 @@ import { saveSubmission, studentAssignment, submitForGrading } from "./areas/ass
 import { getSurvey, submitSurvey } from "./areas/surveys/surveys.js";
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
 import { MoodleError } from "./core/errors.js";
+import type { MoodleMethods } from "./moodle-methods.generated.js";
 
 /**
  * The functions that take the browser context and the site first, of the high-level API: each becomes
@@ -187,8 +188,17 @@ type SiteFunctions = typeof SITE_FUNCTIONS;
 /** A function of `(context, siteUrl, ...rest)` as a method of `(...rest)`. */
 type Bound<F> = F extends (context: BrowserContext, siteUrl: string, ...rest: infer A) => infer R ? (...rest: A) => R : never;
 
-/** The methods bound from the site functions, each named and documented as its function. */
-export type MoodleMethods = { [K in keyof SiteFunctions]: Bound<SiteFunctions[K]> };
+/** The site functions as methods: what `MoodleMethods`, written out by the generator, must be. */
+type BoundMethods = { [K in keyof SiteFunctions]: Bound<SiteFunctions[K]> };
+
+// src/moodle-methods.generated.ts writes each method out with its function's doc comment (for the API
+// reference and editors); this fails the build when it no longer matches the functions: the same
+// methods, each one usable as its function bound. (One way only: an overloaded function, like
+// submitSurvey, is written with all its signatures, where the bound one keeps only the last.)
+type Matches<A, B> = [keyof A] extends [keyof B] ? ([keyof B] extends [keyof A] ? ([A] extends [B] ? true : false) : false) : false;
+export type { MoodleMethods };
+const methodsMatch: Matches<MoodleMethods, BoundMethods> = true;
+void methodsMatch;
 
 // Functions bound by hand, with the object's defaults: methods of the same name all the same.
 const DEFAULTED = ["activityContent", "answerQuizQuestions", "answerLessonPage", "downloadFile", "exportGrades"] as const;
