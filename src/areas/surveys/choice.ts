@@ -2,7 +2,7 @@
 // whether the answer can be changed, and the current answer. Its services aren't open to AJAX.
 import type { BrowserContext, Page } from "playwright-core";
 import { inPage } from "../../core/inPage.js";
-import { openSitePage } from "../../core/session.js";
+import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
 
 /** The choice isn't there, or the person can't answer it now. */
@@ -86,9 +86,12 @@ export function readChoice(page: Page): Promise<Omit<Choice, "id">> {
 
 async function openChoice(context: BrowserContext, siteUrl: string, activityId: number): Promise<Page> {
   const page = await openSitePage(context, siteUrl, `mod/choice/view.php?id=${activityId}`);
-  if ((await page.locator("body#page-mod-choice-view").count()) === 0) {
+  // The choice page sets its URL before finding the activity, so Moodle's error for another module's id
+  // keeps the choice's body id (confirmed empirically, 5.2): its error box tells them apart.
+  const error = await moodleErrorMessage(page);
+  if ((await page.locator("body#page-mod-choice-view").count()) === 0 || error !== undefined) {
     await page.close().catch(() => undefined);
-    throw new ChoiceError(`Activity ${activityId} isn't a choice you can open. Take the id of a choice (module "choice") from the course structure.`);
+    throw new ChoiceError(`Activity ${activityId} isn't a choice you can open${error ? ` (Moodle says: ${error})` : ""}. Take the id of a choice (module "choice") from the course structure.`);
   }
   return page;
 }
