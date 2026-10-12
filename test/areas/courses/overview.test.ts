@@ -46,8 +46,9 @@ describe("activitiesOverview, deadlines and courseUpdates", { skip: !browser && 
   const services: FakeMoodleState["services"] = {
     core_courseformat_get_state: () => JSON.stringify(state),
     core_courseformat_get_overview_information: (args) => {
-      if (!overviews[String(args.modname)]) throw new ServiceFailure("invalidparameter");
-      return { courseid: 3, activities: overviews[String(args.modname)] };
+      // Moodle 5.2 answers a type without an overview (a label) or one the course lacks with no activities.
+      if (args.courseid !== 3) throw new ServiceFailure("invalidrecord");
+      return { courseid: 3, activities: overviews[String(args.modname)] ?? [] };
     },
     core_calendar_get_action_events_by_timesort: () => ({ events: [EVENT] }),
     core_calendar_get_action_events_by_course: () => ({ events: [{ ...EVENT, overdue: true, course: undefined, action: undefined }] }),
@@ -72,10 +73,11 @@ describe("activitiesOverview, deadlines and courseUpdates", { skip: !browser && 
     await context.close();
   });
 
-  it("overviews one type, passing Moodle's error for a type without an overview", async () => {
+  it("overviews one type: none for a type without an overview, Moodle's error for a course it refuses", async () => {
     const { context } = await site();
     assert.deepEqual((await activitiesOverview(context, SITE, 3, "page")).map((a) => a.id), [5]);
-    await assert.rejects(activitiesOverview(context, SITE, 3, "label"), (error: unknown) => error instanceof MoodleServiceError && error.errorcode === "invalidparameter");
+    assert.deepEqual(await activitiesOverview(context, SITE, 3, "label"), []);
+    await assert.rejects(activitiesOverview(context, SITE, 4, "assign"), (error: unknown) => error instanceof MoodleServiceError && error.errorcode === "invalidrecord");
     await context.close();
   });
 
