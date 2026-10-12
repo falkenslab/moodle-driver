@@ -118,6 +118,16 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     await context.close();
   });
 
+  it("uploads an H5P activity's package to its packagefile field too", async () => {
+    // The sandbox showed it: h5pactivity's form has a packagefile field like a SCORM's, and no files field.
+    const { context, uploads } = await site("packagefile");
+    await writeFile(path.join(dir, "quiz.h5p"), "PK");
+    const result = await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "h5pactivity", name: "Check", files: [path.join(dir, "quiz.h5p"), path.join(dir, "brief.txt")] });
+    assert.equal(result.activityId, 40);
+    assert.deepEqual(uploads, ["777:quiz.h5p"]);
+    await context.close();
+  });
+
   it("updates only what's given", async () => {
     const { context, posts } = await site();
     await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "resource", name: "Brief" });

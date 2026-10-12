@@ -48,7 +48,7 @@ interface ActivityFields {
 - `visibility`: `"hidden"` by default, so a teacher publishes after checking; `"stealth"` hides it from the course page but keeps it available by link, where the site allows it.
 - `restrictions`, `completion`: when students can open it and when it counts as complete, in plain terms (see [Restrictions and completion](#restrictions-and-completion)).
 - `settings`: any other field of the form by its form name, such as `{ "duedate[enabled]": true, "duedate[day]": 23 }` or `{ completion: 1 }`. They're set after the common inputs, in the order given, and win over them for the same field.
-- `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)); a SCORM takes the first as its package (see [SCORM](scorm.md)). A `{ from, to }` (`DraftUpload`) gives a file another name or puts it in a folder's subfolder: `{ from: "/home/ada/notes.pdf", to: "week1/notes.pdf" }`.
+- `files`: absolute local paths uploaded to the form's file area, for a file resource or a folder (see [files](files.md)); a SCORM or an H5P activity (`h5pactivity`) takes the first as its package (see [SCORM](scorm.md) and [H5P](h5p.md)). A `{ from, to }` (`DraftUpload`) gives a file another name or puts it in a folder's subfolder: `{ from: "/home/ada/notes.pdf", to: "week1/notes.pdf" }`.
 
 `activityId` is the new activity's id, found by comparing the course before and after; when no new activity appears `changed` says so and `activityId` is undefined.
 
@@ -76,7 +76,7 @@ It takes the same `ActivityFields` as `createActivity`, reading the activity's m
 
 ### Changing a resource's or folder's files
 
-`files` changes a file resource's or folder's files (a SCORM's package too) in the form's draft area before it's saved, as the file manager does: `remove` deletes files by their path in the activity, as `activitySettings` lists them; `add` uploads local files, and a file with the name of one already there replaces it (a new version of a PDF keeps its name and its links); `replace` removes every file and uploads the given ones. Folders in a folder are paths: `"week1/notes.pdf"`, created when a file goes there. The result's `files` are the activity's files afterwards, and `changed` says what was removed and added.
+`files` changes a file resource's or folder's files (a SCORM's or H5P activity's package too) in the form's draft area before it's saved, as the file manager does: `remove` deletes files by their path in the activity, as `activitySettings` lists them; `add` uploads local files, and a file with the name of one already there replaces it (a new version of a PDF keeps its name and its links); `replace` removes every file and uploads the given ones. Folders in a folder are paths: `"week1/notes.pdf"`, created when a file goes there. The result's `files` are the activity's files afterwards, and `changed` says what was removed and added.
 
 - A file to remove that the activity doesn't have: a `MoodleError` (`not-found`) naming the files it has, before anything is saved.
 - `replace` with `add` or `remove`: a `MoodleError` (`invalid-input`).
@@ -120,7 +120,7 @@ interface FormField {
 }
 ```
 
-`description` is the description editor's HTML. `files`, for a file resource, a folder or a SCORM (its package), are its files as `{ name, size }`: `name` is the path in the activity (`"week1/notes.pdf"`), as `updateActivity`'s `files.remove` takes it, and `size` is in bytes. `restrictions` (undefined without any) and `completion` (undefined when completion is off in the course) are in the terms `updateActivity` takes (see [Restrictions and completion](#restrictions-and-completion)). Each field in `fields` has:
+`description` is the description editor's HTML. `files`, for a file resource, a folder, a SCORM or an H5P activity (its package), are its files as `{ name, size }`: `name` is the path in the activity (`"week1/notes.pdf"`), as `updateActivity`'s `files.remove` takes it, and `size` is in bytes. `restrictions` (undefined without any) and `completion` (undefined when completion is off in the course) are in the terms `updateActivity` takes (see [Restrictions and completion](#restrictions-and-completion)). Each field in `fields` has:
 
 - `name`: the form name `settings` takes.
 - `type`: a date selector's parts (`duedate[day]`, `[month]`, `[year]`, `[hour]`, `[minute]`) are `"date"`; text, URL and email inputs are `"text"`; anything else unrecognized is `"other"`.
