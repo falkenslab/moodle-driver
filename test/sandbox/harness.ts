@@ -8,7 +8,7 @@
 // - Test names start with the function they exercise, "<function>: <what>"; summary.ts checks every
 //   function of src/index.ts appears in one (passed, failed, or skipped with the reason).
 import { readFileSync } from "node:fs";
-import { after } from "node:test";
+import { after, beforeEach } from "node:test";
 import type { Page } from "playwright-core";
 import { createMoodle, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
@@ -27,6 +27,12 @@ export const FORBIDDEN_COURSE = accounts.sandboxCourseId;
 
 const open = new Map<Role, Promise<Moodle>>();
 
+// Each test says when it starts (the reporter speaks only when it ends), so a slow or hung run
+// shows where it is while it runs.
+beforeEach((t) => {
+  console.error(`[${new Date().toISOString().slice(11, 19)}] ▶ ${t.name}`);
+});
+
 /** A Moodle object logged in as the account, its profile kept for the run; closed after the file. */
 export function as(role: Role): Promise<Moodle> {
   let moodle = open.get(role);
@@ -40,22 +46,34 @@ export function as(role: Role): Promise<Moodle> {
 async function logIn(role: Role): Promise<Moodle> {
   const moodle = createMoodle({ site: SITE, profileDir: `/sandbox/profiles/${role}`, channel: "chromium", headless: true, downloadBrowser: false, trail: "fast" });
   const context = await moodle.context();
-  const page = await context.newPage();
+  // A sandbox busy with other runs can take minutes to answer: Playwright's 30 s defaults would fail
+  // checks that are only slow. The driver's own waits follow these defaults too.
+  context.setDefaultTimeout(120_000);
+  context.setDefaultNavigationTimeout(300_000);
   try {
-    await page.goto(`${SITE}login/index.php`, { waitUntil: "domcontentloaded" });
-    // Moodle sends a logged-in person on from the login page; the form is there only without a session.
-    if ((await page.locator("#username").count()) > 0) {
-      const { username, password } = accounts[role];
-      await page.fill("#username", username);
-      await page.fill("#password", password);
-      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 120_000 }), page.click("#loginbtn")]);
-      if ((await page.locator("#username").count()) > 0) throw new Error(`The sandbox's ${role} account couldn't log in.`);
+    const page = await context.newPage();
+    try {
+      await page.goto(`${SITE}login/index.php`, { waitUntil: "domcontentloaded" });
+      // Moodle sends a logged-in person on from the login page; the form is there only without a session.
+      if ((await page.locator("#username").count()) > 0) {
+        const { username, password } = accounts[role];
+        await page.fill("#username", username);
+        await page.fill("#password", password);
+        await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click("#loginbtn", { noWaitAfter: true })]);
+        if ((await page.locator("#username").count()) > 0) throw new Error(`The sandbox's ${role} account couldn't log in.`);
+      }
+    } finally {
+      await page.close().catch(() => undefined);
     }
-  } finally {
-    await page.close();
+    await moodle.saveSession();
+    return moodle;
+  } catch (error) {
+    // A browser left open keeps the process, and its container, alive after the file; and the next
+    // as(role) tries again instead of reusing the failure.
+    await moodle.close().catch(() => undefined);
+    open.delete(role);
+    throw error;
   }
-  await moodle.saveSession();
-  return moodle;
 }
 
 const cleanups: (() => Promise<unknown>)[] = [];
@@ -71,7 +89,8 @@ after(async () => {
   const failures: unknown[] = [];
   for (const fn of cleanups.reverse()) await fn().catch((error: unknown) => failures.push(error));
   cleanups.length = 0;
-  for (const moodle of open.values()) await (await moodle).close().catch(() => undefined);
+  // A login that failed is a rejected promise here: skipped, so the other browsers still close.
+  for (const moodle of open.values()) await moodle.then((m) => m.close()).catch(() => undefined);
   open.clear();
   if (failures.length > 0) throw new AggregateError(failures, `${failures.length} cleanup(s) failed: the sandbox may keep something this file made.`);
 });
@@ -100,7 +119,15 @@ export interface ScratchCourse {
 export async function scratchCourse(name = "suite"): Promise<ScratchCourse> {
   const admin = await as("admin");
   const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
-  const page = await openForm(await admin.context(), SITE, "course/edit.php?category=1");
+  // A busy sandbox may not answer the first time: the form is opened up to three times.
+  let page: Page | undefined;
+  for (let attempt = 1; !page; attempt++) {
+    try {
+      page = await openForm(await admin.context(), SITE, "course/edit.php?category=1");
+    } catch (error) {
+      if (attempt === 3) throw error;
+    }
+  }
   let id: number;
   try {
     await setFields(page, { fullname: `Driver check ${name} ${stamp}`, shortname: `drivercheck-${name}-${stamp}` });
