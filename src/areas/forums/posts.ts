@@ -7,7 +7,8 @@ import { isoDate } from "../courses/list.js";
 import { checkLocalFiles } from "../../core/files.js";
 import { checkEmbeds, embedFiles } from "../../core/embed.js";
 import { FormError, formValue, openForm, removeFromDraft, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
-import { ForumError, NotAForumError, discussionPosts, discussionSubscription, forumInstanceId, listDiscussions, readFragments } from "./discussions.js";
+import { ForumError, NotAForumError, discussionPosts, discussionSubscription, forumInstanceId, listDiscussions, readFragments, type DiscussionRow, type MoodlePost } from "./discussions.js";
+import { mapItems, pageWindow, paged, sliceWindow, toPage, type ListPage, type PageOptions, type WithLimit, type WithoutLimit } from "../../core/paging.js";
 import { fetchSitePage, moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { decodeEntities, type ImageItem } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
@@ -27,10 +28,21 @@ export interface ForumDiscussion {
   subscribed: boolean;
 }
 
-/** A forum's discussions, as its page lists them: who started each, replies, last post, the person's subscription. */
-export async function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number): Promise<ForumDiscussion[]> {
-  const rows = await listDiscussions(context, siteUrl, activityId);
-  return rows.map((row) => ({
+/**
+ * A forum's discussions, as its page lists them: who started each, replies, last post, the person's
+ * subscription. With `limit`, a page of them in the forum's order (see "Long lists" in the docs'
+ * concepts), read from the one page of the forum's own paging that holds it.
+ */
+export function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number, options: WithLimit<PageOptions>): Promise<ListPage<ForumDiscussion>>;
+export function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number, options?: WithoutLimit<PageOptions>): Promise<ForumDiscussion[]>;
+export function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number, options?: PageOptions): Promise<ForumDiscussion[] | ListPage<ForumDiscussion>>;
+export async function forumDiscussions(context: BrowserContext, siteUrl: string, activityId: number, options: PageOptions = {}): Promise<ForumDiscussion[] | ListPage<ForumDiscussion>> {
+  const page = await paged(options, (window) => listDiscussions(context, siteUrl, activityId, window));
+  return mapItems(page, (rows) => rows.map(toForumDiscussion));
+}
+
+function toForumDiscussion(row: DiscussionRow): ForumDiscussion {
+  return {
     id: row.id,
     subject: row.subject,
     author: row.author,
@@ -40,7 +52,7 @@ export async function forumDiscussions(context: BrowserContext, siteUrl: string,
     locked: row.locked,
     pinned: row.pinned,
     subscribed: row.subscribed,
-  }));
+  };
 }
 
 /** A post of a discussion, as `discussion` reads it. */
@@ -62,37 +74,48 @@ export interface ForumPost {
   unread?: boolean;
 }
 
+/** A discussion as `discussion` reads it: where it is, the person's subscription, and its posts (a list, or a page of them). */
+export interface DiscussionPosts<P = ForumPost[]> {
+  discussion: { id: number; forumInstanceId: number; courseId: number; subscribed: boolean | undefined };
+  posts: P;
+}
+
 /**
  * A discussion's posts, oldest first, with their messages as text, and whether the person is
- * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced).
+ * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced). With `limit`,
+ * `posts` is a page of them (see "Long lists" in the docs' concepts): Moodle's service has no paging,
+ * so every post is read and cut, but only the page's messages are turned into text.
  */
-export async function discussion(context: BrowserContext, siteUrl: string, discussionId: number) {
-  const { posts, forumid, courseid } = await discussionPosts(context, siteUrl, discussionId);
-  const [fragments, subscribed] = await Promise.all([
-    readFragments(
-      context,
-      posts.map((post) => post.message),
-    ),
-    discussionSubscription(context, siteUrl, discussionId),
-  ]);
-  return {
-    discussion: { id: discussionId, forumInstanceId: forumid, courseId: courseid, subscribed },
-    posts: posts.map(
-      (post, i): ForumPost => ({
-        id: post.id,
-        parentId: post.parentid ?? undefined,
-        subject: decodeEntities(post.subject),
-        author: { id: post.author.id, fullName: post.author.fullname },
-        created: isoDate(post.timecreated),
-        modified: post.timemodified && post.timemodified - post.timecreated > 60 ? isoDate(post.timemodified) : undefined,
-        text: fragments[i]?.text ?? "",
-        ...(fragments[i]?.images.length ? { images: fragments[i]!.images } : {}),
-        attachments: (post.attachments ?? []).map((file) => ({ name: file.filename, url: file.url ?? file.fileurl ?? "" })),
-        privateReply: post.isprivatereply ?? false,
-        unread: post.unread ?? undefined,
-      }),
-    ),
-  };
+export function discussion(context: BrowserContext, siteUrl: string, discussionId: number, options: WithLimit<PageOptions>): Promise<DiscussionPosts<ListPage<ForumPost>>>;
+export function discussion(context: BrowserContext, siteUrl: string, discussionId: number, options?: WithoutLimit<PageOptions>): Promise<DiscussionPosts>;
+export function discussion(context: BrowserContext, siteUrl: string, discussionId: number, options?: PageOptions): Promise<DiscussionPosts<ForumPost[] | ListPage<ForumPost>>>;
+export async function discussion(context: BrowserContext, siteUrl: string, discussionId: number, options: PageOptions = {}): Promise<DiscussionPosts<ForumPost[] | ListPage<ForumPost>>> {
+  const window = pageWindow(options);
+  const { posts: all, forumid, courseid } = await discussionPosts(context, siteUrl, discussionId);
+  const [posts, subscribed] = await Promise.all([mapItems(toPage(sliceWindow(all, window), options.limit), (page) => toForumPosts(context, page)), discussionSubscription(context, siteUrl, discussionId)]);
+  return { discussion: { id: discussionId, forumInstanceId: forumid, courseId: courseid, subscribed }, posts };
+}
+
+async function toForumPosts(context: BrowserContext, posts: MoodlePost[]): Promise<ForumPost[]> {
+  const fragments = await readFragments(
+    context,
+    posts.map((post) => post.message),
+  );
+  return posts.map(
+    (post, i): ForumPost => ({
+      id: post.id,
+      parentId: post.parentid ?? undefined,
+      subject: decodeEntities(post.subject),
+      author: { id: post.author.id, fullName: post.author.fullname },
+      created: isoDate(post.timecreated),
+      modified: post.timemodified && post.timemodified - post.timecreated > 60 ? isoDate(post.timemodified) : undefined,
+      text: fragments[i]?.text ?? "",
+      ...(fragments[i]?.images.length ? { images: fragments[i]!.images } : {}),
+      attachments: (post.attachments ?? []).map((file) => ({ name: file.filename, url: file.url ?? file.fileurl ?? "" })),
+      privateReply: post.isprivatereply ?? false,
+      unread: post.unread ?? undefined,
+    }),
+  );
 }
 
 /** A post to write, for `startDiscussion` and `replyToPost`. */

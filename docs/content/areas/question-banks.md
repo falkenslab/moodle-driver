@@ -39,7 +39,7 @@ Throws `QuestionBankError` when the course doesn't exist or the person can't see
 A bank's categories and every question in them, category by category.
 
 ```ts
-function questions(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ categories: BankCategory[]; questions: BankQuestion[] }>;
+function questions(context: BrowserContext, siteUrl: string, activityId: number, options?: { limit?: number; offset?: number }): Promise<{ categories: BankCategory[]; questions: BankQuestion[] }>; // questions: ListPage<BankQuestion> with limit
 
 interface BankCategory {
   id: number;
@@ -62,7 +62,7 @@ interface BankQuestion {
 - `status`: `"ready"` or `"draft"`; `version`: as shown ("v1").
 - `categoryId`: the category it's in.
 
-Up to 1000 questions are read per category. Throws `QuestionBankError` when the module keeps no questions (see above) or the person can't see its bank.
+With `limit` and `offset`, `questions` is a page of them, category by category, and `categories` all of them (see [Long lists](../concepts/calling-functions.md#long-lists)): the categories are read in order until the page is full, each one whole and cut (the counts the category filter shows aren't reliable enough to skip by). Up to 1000 questions are read per category. Throws `QuestionBankError` when the module keeps no questions (see above) or the person can't see its bank.
 
 ## importQuestions
 

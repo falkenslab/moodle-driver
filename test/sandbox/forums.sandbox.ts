@@ -262,6 +262,38 @@ describe("forums, ratings and workshops on the scratch course", () => {
     }
   });
 
+  it("discussion: a discussion's posts a page at a time, and forumDiscussions too", { timeout: 600_000 }, async () => {
+    const teacher = await as("teacher");
+    const made: number[] = [];
+    try {
+      for (const subject of ["Driver check suite page A", "Driver check suite page B"]) {
+        const { discussionId: id } = await teacher.startDiscussion(forumId, { subject, message: `<p>${subject}.</p>` });
+        assert.ok(id);
+        made.push(id);
+      }
+      const [first] = (await teacher.discussion(made[0]!)).posts;
+      for (const n of [1, 2, 3]) await teacher.replyToPost(first!.id, { message: `<p>Driver check suite: reply ${n}.</p>` });
+      const ids = (list: { id: number }[]) => list.map((item) => item.id);
+      const posts = (await teacher.discussion(made[0]!)).posts;
+      assert.equal(posts.length, 4);
+      const page = await teacher.discussion(made[0]!, { limit: 2 });
+      assert.deepEqual([ids(page.posts.items), page.posts.more], [ids(posts.slice(0, 2)), true]);
+      assert.equal(page.discussion.id, made[0]);
+      const last = await teacher.discussion(made[0]!, { limit: 2, offset: 2 });
+      assert.deepEqual([ids(last.posts.items), last.posts.more], [ids(posts.slice(2)), false]);
+      assert.equal(last.posts.items.at(-1)?.text, "Driver check suite: reply 3.");
+      // The forum has the suite's discussion and these two at least.
+      const all = await teacher.forumDiscussions(forumId);
+      assert.ok(all.length >= 3);
+      const firstPage = await teacher.forumDiscussions(forumId, { limit: 2 });
+      assert.deepEqual([ids(firstPage.items), firstPage.more], [ids(all.slice(0, 2)), true]);
+      const nextPage = await teacher.forumDiscussions(forumId, { limit: 2, offset: 2 });
+      assert.deepEqual([ids(nextPage.items), nextPage.more], [ids(all.slice(2, 4)), all.length > 4]);
+    } finally {
+      for (const id of made) await teacher.deletePost((await teacher.discussion(id)).posts[0]!.id);
+    }
+  });
+
   it("rate: the teacher rates the student's post; the student can't rate it", { timeout: 300_000 }, async () => {
     const teacher = await as("teacher");
     const item = { type: "forum-post" as const, id: firstPostId, discussionId };

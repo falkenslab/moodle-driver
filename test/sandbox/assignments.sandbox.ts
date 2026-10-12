@@ -112,6 +112,19 @@ describe("assignments", () => {
       assert.ok(mine.dueDate);
       await assert.rejects((await as("student")).assignmentSubmissions(ASSIGNMENT));
     });
+
+    it("assignmentSubmissions: the seeded assignment's participants a page at a time, and chosen ones", SLOW, async () => {
+      const teacher = await as("teacher");
+      const all = await teacher.assignmentSubmissions(ASSIGNMENT, { includeContent: false });
+      assert.ok(all.length >= 3, `expected three participants at least, got ${all.length}`);
+      const ids = (list: { userId: number }[]) => list.map((s) => s.userId);
+      const first = await teacher.assignmentSubmissions(ASSIGNMENT, { includeContent: false, limit: 2 });
+      assert.deepEqual([ids(first.items), first.more], [ids(all.slice(0, 2)), true]);
+      assert.deepEqual(first.items, all.slice(0, 2));
+      const next = await teacher.assignmentSubmissions(ASSIGNMENT, { includeContent: false, limit: 2, offset: 2 });
+      assert.deepEqual([ids(next.items), next.more], [ids(all.slice(2, 4)), all.length > 4]);
+      assert.deepEqual(ids(await teacher.assignmentSubmissions(ASSIGNMENT, { includeContent: false, userIds: [studentId] })), [studentId]);
+    });
   });
 
   describe("on a scratch course", () => {
@@ -157,6 +170,10 @@ describe("assignments", () => {
       const text = mine?.content?.find((c) => c.plugin === "onlinetext");
       assert.match(text?.text ?? "", /The suite's answer/);
       assert.ok(mine?.content?.some((c) => c.files.some((f) => f.name === "suite-answer.txt")));
+      // The same through a page of one and through the student's id: their content read as well.
+      const page = await teacher.assignmentSubmissions(simple, { userIds: [studentId], limit: 1 });
+      assert.deepEqual([page.items.map((s) => s.userId), page.more], [[studentId], false]);
+      assert.deepEqual(page.items[0]?.content, mine?.content);
     });
 
     it("assignmentSubmissions: reading with content leaves a participant who never submitted without a submission", SLOW, async () => {

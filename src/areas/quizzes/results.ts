@@ -5,6 +5,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { inPage } from "../../core/inPage.js";
 import { QuizError } from "./attempts.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
+import { mapItems, numberedPage, pageWindow, paged, sliceWindow, type ListPage, type PageOptions, type PageWindow, type WithLimit, type WithoutLimit } from "../../core/paging.js";
 
 /** An attempt at a quiz, as `quizResults` reads it from the quiz's reports. */
 export interface QuizAttemptResult {
@@ -87,35 +88,71 @@ export function readQuizReport(page: Page, mode: "overview" | "responses"): Prom
 
 const MAX_PAGES = 100;
 
-/** Every page of one of a quiz's reports, its attempts once each. */
-export async function readReport(context: BrowserContext, siteUrl: string, activityId: number, mode: "overview" | "responses"): Promise<QuizAttemptResult[]> {
+/** One page of one of a quiz's reports; `size` (its `pagesize`, not saved as the person's preference) when given. */
+async function reportPage(context: BrowserContext, siteUrl: string, activityId: number, mode: "overview" | "responses", index: number, size?: number): Promise<QuizAttemptResult[]> {
+  const page = await openSitePage(context, siteUrl, `mod/quiz/report.php?id=${activityId}&mode=${mode}&attempts=enrolled_with${size ? `&pagesize=${size}` : ""}&page=${index}`);
+  try {
+    if ((await page.locator("body#page-mod-quiz-report").count()) === 0 || (await moodleErrorMessage(page)) !== undefined) {
+      throw new QuizError(`You can't see quiz ${activityId}'s results: ${(await moodleErrorMessage(page)) ?? "it isn't a quiz, or you aren't allowed"}`);
+    }
+    return await readQuizReport(page, mode);
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+/**
+ * One of a quiz's reports in the window asked: every page, its attempts once each, or for a window
+ * the one page of the report's own paging (`pagesize`, `page`) that holds it.
+ */
+export async function readReport(context: BrowserContext, siteUrl: string, activityId: number, mode: "overview" | "responses", window: PageWindow = { offset: 0 }): Promise<QuizAttemptResult[]> {
+  if (window.count !== undefined) {
+    const { size, index, skip } = numberedPage({ offset: window.offset, count: window.count });
+    return sliceWindow(await reportPage(context, siteUrl, activityId, mode, index, size), { offset: skip, count: window.count });
+  }
   const all = new Map<number, QuizAttemptResult>();
   for (let p = 0; p < MAX_PAGES; p++) {
-    const page = await openSitePage(context, siteUrl, `mod/quiz/report.php?id=${activityId}&mode=${mode}&attempts=enrolled_with&page=${p}`);
-    try {
-      if ((await page.locator("body#page-mod-quiz-report").count()) === 0 || (await moodleErrorMessage(page)) !== undefined) {
-        throw new QuizError(`You can't see quiz ${activityId}'s results: ${(await moodleErrorMessage(page)) ?? "it isn't a quiz, or you aren't allowed"}`);
-      }
-      const rows = await readQuizReport(page, mode);
-      const fresh = rows.filter((row) => !all.has(row.id));
-      if (fresh.length === 0) break;
-      for (const row of fresh) all.set(row.id, row);
-    } finally {
-      await page.close().catch(() => undefined);
-    }
+    const rows = await reportPage(context, siteUrl, activityId, mode, p);
+    const fresh = rows.filter((row) => !all.has(row.id));
+    if (fresh.length === 0) break;
+    for (const row of fresh) all.set(row.id, row);
   }
-  return Array.from(all.values());
+  return sliceWindow(Array.from(all.values()), window);
+}
+
+/** A quiz's attempts, as `quizResults` reads them: the attempts are a list, or a page of them. */
+export interface QuizResults<A = QuizAttemptResult[]> {
+  quiz: { id: number };
+  attempts: A;
 }
 
 /**
  * A quiz's attempts as its grades report shows them: per attempt the user, state, dates, grade and
  * the mark per question; with `responses`, also the answer per question from the responses report.
- * Every page of the report.
+ * Every page of the report; with `limit`, `attempts` is a page of them in the report's order (see
+ * "Long lists" in the docs' concepts), read from the one page of the report's own paging that holds it.
  */
-export async function quizResults(context: BrowserContext, siteUrl: string, activityId: number, { responses = false }: { responses?: boolean } = {}) {
-  const attempts = await readReport(context, siteUrl, activityId, "overview");
-  if (responses) {
-    const answered = new Map((await readReport(context, siteUrl, activityId, "responses")).map((row) => [row.id, row]));
+export function quizResults(context: BrowserContext, siteUrl: string, activityId: number, options: WithLimit<QuizResultsOptions>): Promise<QuizResults<ListPage<QuizAttemptResult>>>;
+export function quizResults(context: BrowserContext, siteUrl: string, activityId: number, options?: WithoutLimit<QuizResultsOptions>): Promise<QuizResults>;
+export function quizResults(context: BrowserContext, siteUrl: string, activityId: number, options?: QuizResultsOptions): Promise<QuizResults<QuizAttemptResult[] | ListPage<QuizAttemptResult>>>;
+export async function quizResults(context: BrowserContext, siteUrl: string, activityId: number, options: QuizResultsOptions = {}): Promise<QuizResults<QuizAttemptResult[] | ListPage<QuizAttemptResult>>> {
+  const page = await paged(options, (window) => readReport(context, siteUrl, activityId, "overview", window));
+  return { quiz: { id: activityId }, attempts: await mapItems(page, (attempts) => withResponses(context, siteUrl, activityId, attempts, options)) };
+}
+
+/** What `quizResults` takes: the responses too, and a page of the attempts. */
+export interface QuizResultsOptions extends PageOptions {
+  /** Also the answer per question, from the responses report. */
+  responses?: boolean;
+}
+
+/** The attempts with their answers from the responses report when asked: the same window of it, or every page when some attempt isn't there. */
+async function withResponses(context: BrowserContext, siteUrl: string, activityId: number, attempts: QuizAttemptResult[], { responses = false, limit, offset }: QuizResultsOptions): Promise<QuizAttemptResult[]> {
+  if (responses && attempts.length > 0) {
+    let read = await readReport(context, siteUrl, activityId, "responses", pageWindow({ limit, offset }));
+    // The two reports may sort differently (each keeps the person's own sort): then every page.
+    if (limit !== undefined && attempts.some((attempt) => !read.some((row) => row.id === attempt.id))) read = await readReport(context, siteUrl, activityId, "responses");
+    const answered = new Map(read.map((row) => [row.id, row]));
     for (const attempt of attempts) {
       const other = answered.get(attempt.id);
       for (const question of attempt.questions) {
@@ -124,5 +161,5 @@ export async function quizResults(context: BrowserContext, siteUrl: string, acti
       }
     }
   }
-  return { quiz: { id: activityId }, attempts };
+  return attempts;
 }

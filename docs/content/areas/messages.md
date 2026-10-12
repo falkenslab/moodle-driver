@@ -10,10 +10,10 @@ Everything goes through the services Moodle's own notification popover and messa
 
 ## notifications
 
-The person's notifications, newest first, optionally only the unread ones.
+The person's notifications, newest first, optionally only the unread ones, all of them or a page at a time (see [Long lists](../concepts/calling-functions.md#long-lists)).
 
 ```ts
-function notifications(context: BrowserContext, siteUrl: string, options?: { unreadOnly?: boolean }): Promise<Notification[]>;
+function notifications(context: BrowserContext, siteUrl: string, options?: { unreadOnly?: boolean; limit?: number; offset?: number }): Promise<Notification[]>; // ListPage<Notification> with limit
 
 interface Notification {
   id: number;
@@ -28,13 +28,14 @@ interface Notification {
 }
 ```
 
-- `unreadOnly`: default `false`.
+- `unreadOnly`: default `false`; with it, `offset` counts unread notifications.
+- `limit`, `offset`: a page of them, newest first; without `limit`, every one.
 - `subject` and `text`: the notification's subject and its message as plain text.
 - `fromUserId`: who it's from; a negative id is the site itself (the no-reply or support user).
 - `url`: where it leads (the post, the assignment, the graded submission…).
 - `component` and `eventType`: what sent it, such as `"mod_forum"` with `"posts"`, or `"mod_assign"`; useful to filter by kind in any language.
 
-It reads `message_popup_get_popup_notifications`, the popover's service, without a limit.
+It reads `message_popup_get_popup_notifications`, the popover's service: without a limit, everything; with one, only the page. The service has no unread filter: for a page of unread ones, the driver reads its notifications in batches of 50 (or more for a larger page) until the page is full.
 
 ### Forum notifications come later
 
@@ -52,10 +53,10 @@ It goes through `core_message_mark_all_notifications_as_read` for the logged-in 
 
 ## conversations
 
-The person's conversations, latest first, each with its last message.
+The person's conversations, latest first, each with its last message, all of them or a page at a time (see [Long lists](../concepts/calling-functions.md#long-lists)).
 
 ```ts
-function conversations(context: BrowserContext, siteUrl: string): Promise<ConversationSummary[]>;
+function conversations(context: BrowserContext, siteUrl: string, options?: { limit?: number; offset?: number }): Promise<ConversationSummary[]>; // ListPage<ConversationSummary> with limit
 
 interface ConversationSummary {
   id: number;
@@ -72,22 +73,22 @@ interface ConversationSummary {
 - `unread`: how many messages the person hasn't read.
 - `lastMessage`: its sender, its text and when it was sent.
 
-It reads `core_message_get_conversations`, the drawer's service.
+It reads `core_message_get_conversations`, the drawer's service, which returns only the page asked for.
 
 ## conversation
 
-One conversation's members and messages, oldest first.
+One conversation's members and messages, oldest first, all of them or a page at a time (see [Long lists](../concepts/calling-functions.md#long-lists)).
 
 ```ts
-function conversation(context: BrowserContext, siteUrl: string, conversationId: number): Promise<{
+function conversation(context: BrowserContext, siteUrl: string, conversationId: number, options?: { limit?: number; offset?: number }): Promise<{
   id: number;
   members: { userId: number; fullName: string }[];
-  messages: { id: number; fromUserId: number; text: string; time?: string }[];
+  messages: { id: number; fromUserId: number; text: string; time?: string }[]; // ListPage<…> with limit
 }>;
 ```
 
 - `members`: everyone in the conversation but the person, whether they wrote in it or not, as `conversations` gives them (in the person's own conversation, the person).
-- `messages`: their sender, their text and when they were sent.
+- `messages`: their sender, their text and when they were sent. With `limit`, a page counted from the newest message: the first page holds the latest messages, `more` says there are older ones, and each page's messages still come oldest first. `core_message_get_conversation_messages` returns only the page.
 
 `conversationId` is an `id` from `conversations`, or the `conversationId` that `sendMessage` returns. It reads `core_message_get_conversation_members` and `core_message_get_conversation_messages`; the person must be a member, or Moodle refuses with a `MoodleServiceError` (see [Errors](../concepts/errors.md)).
 

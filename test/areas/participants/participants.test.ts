@@ -38,7 +38,9 @@ function fakeCourse(): FakeMoodleState {
           const since = value("accesssince");
           return (role === undefined || p.roles.includes(role)) && (group === undefined || p.groups.includes(group)) && (since === undefined || p.lastAccess < since);
         });
-        return { html: table(rows), warnings: [] };
+        // Paged as the table is: `pagesize` rows a page, pages from 1.
+        const [size, number] = [args.pagesize as number, args.pagenumber as number];
+        return { html: table(rows.slice((number - 1) * size, number * size)), warnings: [] };
       },
     },
   };
@@ -74,6 +76,20 @@ describe("participants", { skip: !browser && "no system browser" }, () => {
     assert.deepEqual((await participants(context, SITE, 3, { inactiveSince: new Date(1_750_000_000_000) })).map((p) => p.userId), [4]);
     const call = state.serviceCalls!.find((c) => (c.args.filters as Filter[]).some((f) => f.name === "accesssince"));
     assert.deepEqual((call?.args.filters as Filter[])[0], { name: "courseid", jointype: 1, values: [3] });
+    await context.close();
+  });
+
+  it("gives a page of them through the table's own paging, still with their roles and groups", async () => {
+    const state = fakeCourse();
+    const context = await open(state);
+    const first = await participants(context, SITE, 3, { limit: 1 });
+    assert.deepEqual([first.items, first.more], [[{ userId: 3, fullName: "Teacher Uno", roles: [{ id: 3, name: "Teacher" }], groups: [] }], true]);
+    const asked = state.serviceCalls!.find((c) => (c.args.filters as Filter[]).length === 1)?.args;
+    assert.deepEqual([asked?.pagesize, asked?.pagenumber], [2, 1]);
+    const next = await participants(context, SITE, 3, { limit: 1, offset: 1 });
+    assert.deepEqual([next.items.map((p) => [p.userId, p.groups.map((g) => g.id)]), next.more], [[[4, [1]]], true]);
+    const last = await participants(context, SITE, 3, { limit: 2, offset: 1, role: 5 });
+    assert.deepEqual([last.items.map((p) => p.userId), last.more], [[5], false]);
     await context.close();
   });
 

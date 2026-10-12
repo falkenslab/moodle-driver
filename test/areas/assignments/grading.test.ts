@@ -61,6 +61,29 @@ describe("assignmentSubmissions", { skip: !browser && "no system browser" }, () 
     await context.close();
   });
 
+  it("pages over the participants, opening panels and reading dates only for the page's, and takes chosen ones", async () => {
+    const context = await browser!.newContext();
+    const state = submissionsSite(24);
+    // Five participants who submitted, ids 11 to 15.
+    state.services!.mod_assign_list_participants = () =>
+      [11, 12, 13, 14, 15].map((id) => ({ id, fullname: `User ${id}`, submitted: true, requiregrading: true, grantedextension: false, submissionstatus: "submitted" }));
+    await serveFakeMoodle(context, state);
+    const dates = () => state.serviceCalls!.filter((call) => call.methodname === "mod_assign_get_participant").map((call) => call.args.userid);
+    const first = await assignmentSubmissions(context, SITE, 24, { limit: 2 });
+    assert.deepEqual([first.items.map((s) => s.userId), first.more], [[11, 12], true]);
+    assert.deepEqual([panelsOpened(state), dates()], [[11, 12], [11, 12]]);
+    const next = await assignmentSubmissions(context, SITE, 24, { limit: 2, offset: 2, includeContent: false });
+    assert.deepEqual([next.items.map((s) => s.userId), next.more], [[13, 14], true]);
+    const last = await assignmentSubmissions(context, SITE, 24, { limit: 2, offset: 4, includeContent: false });
+    assert.deepEqual([last.items.map((s) => s.userId), last.more], [[15], false]);
+    state.serviceCalls!.length = 0;
+    assert.deepEqual((await assignmentSubmissions(context, SITE, 24, { userIds: [14, 12] })).map((s) => s.userId), [12, 14]);
+    assert.deepEqual(panelsOpened(state), [12, 14]);
+    assert.deepEqual((await assignmentSubmissions(context, SITE, 24, { includeContent: false })).map((s) => s.userId), [11, 12, 13, 14, 15]);
+    await assert.rejects(assignmentSubmissions(context, SITE, 24, { userIds: [] }), /userIds is empty/);
+    await context.close();
+  });
+
   it("refuses an id that isn't an assignment", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { ...submissionsSite(23), bodies: {} });

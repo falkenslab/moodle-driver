@@ -260,6 +260,33 @@ describe("quizResults", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("pages the attempts through the report's own paging, with the same page of responses", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+    // Five attempts, 21 to 25 (users 31 to 35), paged by `pagesize` and `page`.
+    const asked: string[] = [];
+    await context.route(`${SITE}mod/quiz/report.php**`, (route: Route) => {
+      const query = new URL(route.request().url()).searchParams;
+      const mode = query.get("mode");
+      const [size, index] = [Number(query.get("pagesize") || 30), Number(query.get("page"))];
+      asked.push(`${mode} ${query.get("pagesize")} ${index}`);
+      const rows = [21, 22, 23, 24, 25].slice(index * size, index * size + size).map(
+        (id) => `<tr><td><input name="attemptid[]" type="checkbox" value="${id}"></td><td class="cell bold sticky-column"><a href="${SITE}user/view.php?id=${id + 10}&amp;course=3">User ${id + 10}</a></td><td>Finished</td><td class="cell bold">5.00</td>${question(1, mode === "overview" ? "1.00" : `Answer ${id}`, "correct")}</tr>`,
+      );
+      const body = `<div id="region-main"><table id="attempts"><thead><tr><th>Select</th><th class="bold sticky-column">Name</th><th>Status</th><th class="bold">Grade</th><th>Q. 1</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+      return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-quiz-report", body }) });
+    });
+    const first = await quizResults(context, SITE, 27, { limit: 2, responses: true });
+    assert.deepEqual([first.attempts.items.map((a) => [a.id, a.questions[0]?.response]), first.attempts.more], [[[21, "Answer 21"], [22, "Answer 22"]], true]);
+    assert.deepEqual(asked, ["overview 3 0", "responses 3 0"]);
+    const next = await quizResults(context, SITE, 27, { limit: 2, offset: 2 });
+    assert.deepEqual([next.attempts.items.map((a) => a.id), next.attempts.more], [[23, 24], true]);
+    const last = await quizResults(context, SITE, 27, { limit: 2, offset: 4 });
+    assert.deepEqual([last.attempts.items.map((a) => a.id), last.attempts.more], [[25], false]);
+    assert.deepEqual((await quizResults(context, SITE, 27)).attempts.map((a) => a.id), [21, 22, 23, 24, 25]);
+    await context.close();
+  });
+
   it("passes Moodle's refusal", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" }, bodies: { "/mod/quiz/report.php": `<div data-rel="fatalerror"><p class="errormessage">You cannot access this report</p></div>` } });

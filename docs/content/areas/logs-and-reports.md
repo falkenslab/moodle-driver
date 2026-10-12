@@ -17,8 +17,8 @@ function courseLogs(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
-  options?: { userId?: number; activityId?: number; from?: Date; until?: Date; action?: LogAction; limit?: number },
-): Promise<LogEntry[]>;
+  options?: { userId?: number; activityId?: number; from?: Date; until?: Date; action?: LogAction; limit?: number; offset?: number },
+): Promise<LogEntry[]>; // ListPage<LogEntry> with limit
 
 type LogAction = "create" | "view" | "update" | "delete" | "change"; // LOG_ACTIONS
 
@@ -42,7 +42,7 @@ interface LogEntry {
 
 - `userId`, `activityId` and `action` are the report's own filters: one person's events, one activity's (its course module id), and one kind of action (`"change"` is any create, update or delete).
 - `from` and `until` keep to a time span: the report is read page by page, newest first, stopping at the first event older than `from`.
-- `limit`: at most this many entries, 100 unless given.
+- `limit`, `offset`: a page of entries (see [Long lists](../concepts/calling-functions.md#long-lists)): with `limit`, they come as `{ items, more }`; without it, the first 100 (after `offset`) as a plain list. Without `until`, the report opens at its page that holds `offset`; with `until`, which only the driver applies, it's read from the first page.
 - Each entry: `time` (ISO 8601) and `timeText` as the report shows it; who did it (`userId`, `userName`, none for the system's events; `realUserId` when someone acted logged in as them); whom it was about (`relatedUserId`, `relatedUserName`: graded, enrolled…); where (`context`, "Forum: News", and `activityId` when it was an activity); `component` and `event` names; Moodle's `description`; `origin` (`"web"`, `"cli"`, `"ws"`…) and `ip`.
 
 `time` is missing only when the site's date format couldn't be read back; then a call with `from` or `until` throws `ReportError` rather than guess. Viewing the report is itself logged, so a later page may begin with rows already read: they're left out (two events identical to the second would be taken as one). Throws `ReportError` when the person can't see the course's logs.

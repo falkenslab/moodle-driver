@@ -94,6 +94,16 @@ describe("completionReport", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("keeps only the people asked for, and stops reading once they're all found", async () => {
+    const pagesServed: string[] = [];
+    const context = await open({ user: { id: 3, fullName: "Teacher" }, pagesServed, bodies: { "/report/progress/index.php": REPORT } });
+    const report = await completionReport(context, SITE, 3, { userIds: [5] });
+    assert.deepEqual([report.activities.length, report.participants.map((p) => p.userId)], [2, [5]]);
+    assert.equal(pagesServed.filter((p) => p === "/report/progress/index.php").length, 1);
+    await assert.rejects(completionReport(context, SITE, 3, { userIds: [] }), /userIds is empty/);
+    await context.close();
+  });
+
   it("gives an empty report when no activity tracks completion, and refuses an error page", async () => {
     const context = await open({ user: { id: 3, fullName: "Teacher" }, bodies: { "/report/progress/index.php": `<form id="include-activity-select-report"></form><div class="errorbox">None.</div>` } });
     assert.deepEqual(await completionReport(context, SITE, 3), { activities: [], participants: [] });

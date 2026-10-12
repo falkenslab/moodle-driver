@@ -5,6 +5,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { callService } from "../../core/ajax.js";
 import { openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
+import { mapItems, numberedPage, pageWindow, sliceWindow, toPage, type ListPage, type PageOptions, type PageWindow, type WithLimit, type WithoutLimit } from "../../core/paging.js";
 
 /** A participant of a course with their roles and groups, as `participants` lists them. */
 export interface Participant {
@@ -66,8 +67,8 @@ export function readParticipantRows(page: Page): Promise<{ userId: number; fullN
   });
 }
 
-/** One page (from 1) of the participants table matching `filters`, as the HTML fragment the page renders. */
-export async function participantsTablePage(context: BrowserContext, siteUrl: string, courseId: number, filters: Filter[], pagenumber: number): Promise<string> {
+/** One page (from 1) of the participants table matching `filters`, `pagesize` rows a page, as the HTML fragment the page renders. */
+export async function participantsTablePage(context: BrowserContext, siteUrl: string, courseId: number, filters: Filter[], pagenumber: number, pagesize = PARTICIPANTS_PAGE_SIZE): Promise<string> {
   const { html } = await callService<{ html: string }>(context, siteUrl, "core_table_get_dynamic_table_content", {
     component: "core_user",
     handler: "participants",
@@ -79,15 +80,23 @@ export async function participantsTablePage(context: BrowserContext, siteUrl: st
     firstinitial: "",
     lastinitial: "",
     pagenumber,
-    pagesize: PARTICIPANTS_PAGE_SIZE,
+    pagesize,
     hiddencolumns: [],
     resetpreferences: false,
   });
   return html;
 }
 
-/** Every participant matching `filters`, page by page, parsed in `parser` (a blank tab). */
-async function fetchAll(context: BrowserContext, siteUrl: string, parser: Page, courseId: number, filters: Filter[]): Promise<{ userId: number; fullName: string }[]> {
+/**
+ * The participants matching `filters` in the window asked, parsed in `parser` (a blank tab): every
+ * one page by page, or for a window the one page of the table's own paging that holds it.
+ */
+async function fetchAll(context: BrowserContext, siteUrl: string, parser: Page, courseId: number, filters: Filter[], window: PageWindow = { offset: 0 }): Promise<{ userId: number; fullName: string }[]> {
+  if (window.count !== undefined) {
+    const { size, index, skip } = numberedPage({ offset: window.offset, count: window.count });
+    await parser.setContent(await participantsTablePage(context, siteUrl, courseId, filters, index + 1, size));
+    return sliceWindow(await readParticipantRows(parser), { offset: skip, count: window.count });
+  }
   const all = new Map<number, { userId: number; fullName: string }>();
   for (let pagenumber = 1; pagenumber <= MAX_PARTICIPANT_PAGES; pagenumber++) {
     const html = await participantsTablePage(context, siteUrl, courseId, filters, pagenumber);
@@ -96,7 +105,7 @@ async function fetchAll(context: BrowserContext, siteUrl: string, parser: Page, 
     for (const row of rows) all.set(row.userId, row);
     if (rows.length < PARTICIPANTS_PAGE_SIZE) break;
   }
-  return Array.from(all.values());
+  return sliceWindow(Array.from(all.values()), window);
 }
 
 /**
@@ -145,13 +154,16 @@ export async function groups(context: BrowserContext, siteUrl: string, courseId:
  * A course's participants with their roles and groups, as the participants page lists them: only
  * those with a role (its id), in a group, or (`inactiveSince`) who haven't accessed the course since
  * that date, when asked. Each role and group is a filter of its own, so ids come in any language.
+ * With `limit`, a page of them in the page's order, by last name (see "Long lists" in the docs'
+ * concepts): the one page of the table's own paging that holds it; the roles' and groups' members
+ * are still read whole, to tell each one's.
  */
-export async function participants(
-  context: BrowserContext,
-  siteUrl: string,
-  courseId: number,
-  { role, group, inactiveSince }: { role?: number; group?: number; inactiveSince?: Date } = {},
-): Promise<Participant[]> {
+export function participants(context: BrowserContext, siteUrl: string, courseId: number, options: WithLimit<ParticipantOptions>): Promise<ListPage<Participant>>;
+export function participants(context: BrowserContext, siteUrl: string, courseId: number, options?: WithoutLimit<ParticipantOptions>): Promise<Participant[]>;
+export function participants(context: BrowserContext, siteUrl: string, courseId: number, options?: ParticipantOptions): Promise<Participant[] | ListPage<Participant>>;
+export async function participants(context: BrowserContext, siteUrl: string, courseId: number, options: ParticipantOptions = {}): Promise<Participant[] | ListPage<Participant>> {
+  const { role, group, inactiveSince } = options;
+  const window = pageWindow(options);
   const { roles, groups: courseGroupList } = await participantFilters(context, siteUrl, courseId);
   const filters: Filter[] = [];
   if (role !== undefined) filters.push({ name: "roles", jointype: JOIN_ANY, values: [role] });
@@ -161,16 +173,27 @@ export async function participants(
 
   const parser = await context.newPage();
   try {
-    const people = await fetchAll(context, siteUrl, parser, courseId, filters);
-    const byUser = new Map<number, Participant>(people.map((p) => [p.userId, { ...p, roles: [], groups: [] }]));
+    const people = toPage(await fetchAll(context, siteUrl, parser, courseId, filters, window), options.limit);
+    const listed = Array.isArray(people) ? people : people.items;
+    const byUser = new Map<number, Participant>(listed.map((p) => [p.userId, { ...p, roles: [], groups: [] }]));
     for (const r of roles) {
       for (const member of await fetchAll(context, siteUrl, parser, courseId, [{ name: "roles", jointype: JOIN_ANY, values: [r.id] }])) byUser.get(member.userId)?.roles.push(r);
     }
     for (const g of courseGroupList) {
       for (const member of await fetchAll(context, siteUrl, parser, courseId, [{ name: "groups", jointype: JOIN_ANY, values: [g.id] }])) byUser.get(member.userId)?.groups.push(g);
     }
-    return Array.from(byUser.values());
+    return await mapItems(people, () => Array.from(byUser.values()));
   } finally {
     await parser.close().catch(() => undefined);
   }
+}
+
+/** What `participants` takes: who (a role, a group, inactive since a date), and a page of them. */
+export interface ParticipantOptions extends PageOptions {
+  /** Only those with this role (its id). */
+  role?: number;
+  /** Only those in this group (its id). */
+  group?: number;
+  /** Only those who haven't accessed the course since this date. */
+  inactiveSince?: Date;
 }

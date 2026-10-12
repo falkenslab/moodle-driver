@@ -15,11 +15,11 @@ function assignmentSubmissions(
   context: BrowserContext,
   siteUrl: string,
   activityId: number,
-  options?: { includeContent?: boolean },
-): Promise<Submission[]>;
+  options?: { includeContent?: boolean; userIds?: number[]; limit?: number; offset?: number },
+): Promise<Submission[]>; // ListPage<Submission> with limit
 ```
 
-`activityId` is the assignment's activity id (course module id). Each `Submission` has:
+`activityId` is the assignment's activity id (course module id). `userIds` keeps to those participants; `limit` and `offset` give a page of them in the grader's order (see [Long lists](../concepts/calling-functions.md#long-lists)). Moodle's participants service lists everyone at once, so the list is cut, but only the page's participants are read further (their dates, extensions and grading panels): a page costs a page's requests. Each `Submission` has:
 
 - `userId`, `fullName`: the participant.
 - `status`: Moodle's submission status, `"submitted"`, `"draft"`, `"new"`, `"reopened"`, or `"none"` without a submission.

@@ -45,24 +45,40 @@ describe("reports and course life cycle", () => {
 
   it("courseLogs: the content course's logs, newest first, by user and action", async () => {
     const teacher = await as("teacher");
-    const logs = await teacher.courseLogs(COURSE, { limit: 30 });
+    const logs = (await teacher.courseLogs(COURSE, { limit: 30 })).items;
     assert.ok(logs.length > 0);
     assert.ok(logs.length <= 30);
     const times = logs.map((entry) => entry.time).filter((time): time is string => time !== undefined);
     assert.equal(times.length, logs.length, "every entry's time read back with the site's format");
     assert.deepEqual(times, [...times].sort().reverse());
-    const mine = await teacher.courseLogs(COURSE, { userId: studentId, limit: 10 });
+    const mine = (await teacher.courseLogs(COURSE, { userId: studentId, limit: 10 })).items;
     assert.ok(mine.length > 0, "the student did things in the content course");
     assert.ok(mine.every((entry) => entry.userId === studentId));
-    const views = await teacher.courseLogs(COURSE, { action: "view", limit: 10 });
+    const views = (await teacher.courseLogs(COURSE, { action: "view", limit: 10 })).items;
     // Moodle files some reads under other words ("Tour started"): views hold the modules viewed, changes none of them.
     assert.ok(views.some((entry) => entry.activityId !== undefined && / viewed the '/.test(entry.description)));
-    const changes = await teacher.courseLogs(COURSE, { action: "change", limit: 30 });
+    const changes = (await teacher.courseLogs(COURSE, { action: "change", limit: 30 })).items;
     assert.ok(!changes.some((entry) => / viewed the '/.test(entry.description)), "a module view isn't a change");
     // The span: nothing before `from`.
     const from = new Date(Date.parse(times[times.length - 1]!) - 1000);
-    assert.ok((await teacher.courseLogs(COURSE, { from, limit: 30 })).every((entry) => Date.parse(entry.time!) >= from.getTime()));
+    assert.ok((await teacher.courseLogs(COURSE, { from, limit: 30 })).items.every((entry) => Date.parse(entry.time!) >= from.getTime()));
     await assert.rejects((await as("student")).courseLogs(COURSE), ReportError);
+  });
+
+  it("courseLogs: a page with limit and offset, and without limit the first 100 as a list", async () => {
+    const teacher = await as("teacher");
+    // Up to a minute ago: other runs may make the student act in the content course meanwhile.
+    const until = new Date(Date.now() - 60_000);
+    const first = await teacher.courseLogs(COURSE, { userId: studentId, until, limit: 3 });
+    assert.equal(first.items.length, 3);
+    assert.equal(first.more, true, "the student did more than three things in the content course");
+    const next = await teacher.courseLogs(COURSE, { userId: studentId, until, limit: 3, offset: 3 });
+    assert.equal(next.items.length, 3);
+    const both = await teacher.courseLogs(COURSE, { userId: studentId, until, limit: 6 });
+    assert.deepEqual([...first.items, ...next.items], both.items);
+    const all = await teacher.courseLogs(COURSE, { userId: studentId, until });
+    assert.ok(Array.isArray(all) && all.length <= 100);
+    assert.deepEqual(all.slice(0, 6), both.items);
   });
 
   it("activityReport: the content course's activities with their views", async () => {

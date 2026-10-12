@@ -113,4 +113,45 @@ describe("notifications and messages", () => {
     assert.equal(read.messages.at(-1)?.text, text);
     await assert.rejects(teacher.messageParticipants(course.id, text, { userIds: [] }), MessageError);
   });
+
+  it("notifications: a page at a time, newest first, the unread ones paged the same way", { timeout: 600_000 }, async () => {
+    const teacher = await as("teacher");
+    const student = await as("student");
+    // Three more grade notifications, unread: the student had at least one already (they're never deleted).
+    for (const grade of [7, 8, 9]) await teacher.gradeForumUser(forumId, studentId, { grade, notify: true });
+    const all = await student.notifications();
+    assert.ok(all.length >= 4, `expected four notifications at least, got ${all.length}`);
+    const ids = (list: { id: number }[]) => list.map((n) => n.id);
+    const first = await student.notifications({ limit: 2 });
+    assert.deepEqual([ids(first.items), first.more], [ids(all.slice(0, 2)), true]);
+    const next = await student.notifications({ limit: 2, offset: 2 });
+    assert.deepEqual(ids(next.items), ids(all.slice(2, 4)));
+    assert.equal(next.more, all.length > 4);
+    const unread = await student.notifications({ unreadOnly: true });
+    assert.ok(unread.length >= 3 && unread.every((n) => !n.read));
+    const firstUnread = await student.notifications({ unreadOnly: true, limit: 2 });
+    assert.deepEqual([ids(firstUnread.items), firstUnread.more], [ids(unread.slice(0, 2)), true]);
+    const nextUnread = await student.notifications({ unreadOnly: true, limit: 2, offset: 2 });
+    assert.deepEqual([ids(nextUnread.items), nextUnread.more], [ids(unread.slice(2, 4)), unread.length > 4]);
+    await student.markNotificationsRead();
+  });
+
+  it("conversation: a page of messages from the newest, and conversations a page at a time", { timeout: 300_000 }, async () => {
+    const student = await as("student");
+    const teacher = await as("teacher");
+    // Two more, so the conversation has more messages than a page (earlier runs' stay in it too).
+    for (const n of [1, 2]) await teacher.sendMessage(studentId, `Driver check suite: page message ${n} (${stamp}).`);
+    const all = (await student.conversation(conversationId!)).messages;
+    assert.ok(all.length >= 4);
+    const ids = (list: { id: number }[]) => list.map((m) => m.id);
+    const first = await student.conversation(conversationId!, { limit: 2 });
+    assert.deepEqual([ids(first.messages.items), first.messages.more], [ids(all.slice(-2)), true]);
+    assert.equal(first.messages.items.at(-1)?.text, `Driver check suite: page message 2 (${stamp}).`);
+    const next = await student.conversation(conversationId!, { limit: 2, offset: 2 });
+    assert.deepEqual(ids(next.messages.items), ids(all.slice(-4, -2)));
+    assert.equal(next.messages.more, all.length > 4);
+    const conversations = await student.conversations();
+    const page = await student.conversations({ limit: 1 });
+    assert.deepEqual([page.items.map((c) => c.id), page.more], [conversations.slice(0, 1).map((c) => c.id), conversations.length > 1]);
+  });
 });

@@ -92,11 +92,14 @@ const MAX_PAGES = 100;
 
 /**
  * Everyone's grades in a course as the grader report shows them, page by page, in one group when
- * given. People come as user id and full name only.
+ * given, only some people's rows when given their `userIds` (the report has no filter by user: its
+ * pages are read until all of them are found). People come as user id and full name only.
  */
-export async function graderReport(context: BrowserContext, siteUrl: string, courseId: number, { group }: { group?: number } = {}): Promise<GraderReport> {
+export async function graderReport(context: BrowserContext, siteUrl: string, courseId: number, { group, userIds }: { group?: number; userIds?: number[] } = {}): Promise<GraderReport> {
   const report: GraderReport = { columns: [], rows: [] };
   const seen = new Set<number>();
+  const wanted = userIds ? new Set(userIds) : undefined;
+  if (wanted?.size === 0) throw new MoodleError("userIds is empty: give at least one user, or leave it out for everyone.", "invalid-input");
   for (let p = 0; p < MAX_PAGES; p++) {
     const page = await openSitePage(context, siteUrl, `grade/report/grader/index.php?id=${courseId}&page=${p}${group ? `&group=${group}` : ""}`);
     try {
@@ -113,7 +116,8 @@ export async function graderReport(context: BrowserContext, siteUrl: string, cou
       const fresh = read.rows.filter((row) => !seen.has(row.userId));
       if (fresh.length === 0) break;
       for (const row of fresh) seen.add(row.userId);
-      report.rows.push(...fresh);
+      report.rows.push(...fresh.filter((row) => !wanted || wanted.has(row.userId)));
+      if (wanted && report.rows.length === wanted.size) break;
     } finally {
       await page.close().catch(() => undefined);
     }

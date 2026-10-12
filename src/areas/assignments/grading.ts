@@ -28,6 +28,7 @@ import { NotLoggedInError, fetchSitePage, moodleErrorMessage } from "../../core/
 import { decodeEntities } from "../../core/text.js";
 import { inPage } from "../../core/inPage.js";
 import { MoodleError } from "../../core/errors.js";
+import { mapItems, pageWindow, sliceWindow, toPage, type ListPage, type PageOptions, type WithLimit, type WithoutLimit } from "../../core/paging.js";
 
 /** The grader's feedback comments field, when the assignment has them on. */
 const FEEDBACK_FIELD = "assignfeedbackcomments_editor[text]";
@@ -84,15 +85,44 @@ async function extensionDate(context: BrowserContext, siteUrl: string, activityI
  * who has none, so reading leaves them at "none", without the panel's details (confirmed empirically
  * on the sandbox, 5.2). For a participant with a submission and no grade yet, the panel still leaves
  * an empty grade (-1, not graded) and a "Grading form viewed" event, as Moodle's grader does.
+ * Only some participants when given their `userIds`; with `limit`, a page of them in the grader's
+ * order (see "Long lists" in the docs' concepts): Moodle's service lists every participant at once,
+ * cut to the page, and only the page's participants are read further (their dates, their panels).
  */
-export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, { includeContent = true } = {}): Promise<Submission[]> {
+export function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, options: WithLimit<SubmissionOptions>): Promise<ListPage<Submission>>;
+export function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, options?: WithoutLimit<SubmissionOptions>): Promise<Submission[]>;
+export function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, options?: SubmissionOptions): Promise<Submission[] | ListPage<Submission>>;
+export async function assignmentSubmissions(context: BrowserContext, siteUrl: string, activityId: number, options: SubmissionOptions = {}): Promise<Submission[] | ListPage<Submission>> {
+  const window = pageWindow(options);
+  const wanted = options.userIds ? new Set(options.userIds) : undefined;
+  if (wanted?.size === 0) throw new MoodleError("userIds is empty: give at least one participant, or leave it out for everyone.", "invalid-input");
   const ids = await assignmentIds(context, siteUrl, activityId);
-  const participants = await listParticipants(context, siteUrl, ids.instanceId);
+  const everyone = await listParticipants(context, siteUrl, ids.instanceId);
+  const listed = toPage(sliceWindow(wanted ? everyone.filter((p) => wanted.has(p.id)) : everyone, window), options.limit);
+  return mapItems(listed, (participants) => readSubmissions(context, siteUrl, activityId, ids, participants, options.includeContent ?? true));
+}
+
+/** What `assignmentSubmissions` takes: the content too, some participants, and a page of them. */
+export interface SubmissionOptions extends PageOptions {
+  /** Also each submission's content, feedback files, workflow state and markers, from the grading panels: true unless given. */
+  includeContent?: boolean;
+  /** Only these participants (their user ids). */
+  userIds?: number[];
+}
+
+/** The submissions of these participants, one at a time: one person at a time, as Moodle expects of a session. */
+async function readSubmissions(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  ids: Awaited<ReturnType<typeof assignmentIds>>,
+  participants: Awaited<ReturnType<typeof listParticipants>>,
+  includeContent: boolean,
+): Promise<Submission[]> {
   // A blank tab parses the panels' HTML: nothing of Moodle's loads there.
   const parser = includeContent ? await context.newPage() : undefined;
   const submissions: Submission[] = [];
   try {
-    // One participant at a time: one person at a time, as Moodle expects of a session.
     for (const participant of participants) {
       const dates = await participantDates(context, siteUrl, ids.instanceId, participant.id);
       const status = participant.submissionstatus || "none";

@@ -27,6 +27,7 @@ export { FormError, type FieldValue, type DraftUpload, type DraftFile } from "./
 export { findMoodleSite } from "./core/site.js";
 export { checkLocalFiles, downloadFile, type DownloadedFile } from "./core/files.js";
 export type { MediaItem, ImageItem } from "./core/text.js";
+export type { ListPage, PageOptions, WithLimit, WithoutLimit } from "./core/paging.js";
 export { publicSiteInfo, courseActivityTypes } from "./areas/site/info.js";
 export { userById, siteName, courseRoles, courseAbilities, whoAmI, type User, type Me } from "./areas/site/users.js";
 
@@ -71,7 +72,7 @@ export { activityContent, CONTENT_TYPES, NotViewableError, type ContentType, typ
 
 // Assignments.
 export { NotAnAssignmentError, GradingError, WORKFLOW_STATES, type PluginContent, type WorkflowState } from "./areas/assignments/grader.js";
-export { assignmentSubmissions, gradeSubmission, rubric, grantExtension, setWorkflowState, allocateMarker, type Submission, type GradingCriterion, type GradingDefinition } from "./areas/assignments/grading.js";
+export { assignmentSubmissions, gradeSubmission, rubric, grantExtension, setWorkflowState, allocateMarker, type Submission, type SubmissionOptions, type GradingCriterion, type GradingDefinition } from "./areas/assignments/grading.js";
 export { studentAssignment, saveSubmission, submitForGrading, SubmissionError, type StudentAssignment } from "./areas/assignments/student.js";
 
 // Quizzes and question banks.
@@ -89,7 +90,7 @@ export {
   type QuestionField,
   type Question,
 } from "./areas/quizzes/attempts.js";
-export { quizResults, type QuizAttemptResult } from "./areas/quizzes/results.js";
+export { quizResults, type QuizAttemptResult, type QuizResults, type QuizResultsOptions } from "./areas/quizzes/results.js";
 export { questionsToGrade, gradeQuizQuestion, type QuestionToGrade } from "./areas/quizzes/grading.js";
 export { quizStructure, addQuestionsToQuiz, editQuizSlot, removeQuizSlot, setQuizPages, addQuizSection, type QuizSlot, type QuizSection, type QuizChange } from "./areas/quizzes/structure.js";
 export {
@@ -105,6 +106,7 @@ export {
   type QuestionBank,
   type BankQuestion,
   type BankCategory,
+  type BankQuestions,
   type QuestionType,
   type QuestionInput,
 } from "./areas/questions/banks.js";
@@ -114,7 +116,7 @@ export { forumGrades, gradeForumUser, type ForumGrade, type ForumGrades } from "
 export { rate, type RateableItem } from "./areas/ratings/ratings.js";
 export { workshopInfo, setWorkshopPhase, assessWorkshopSubmission, WorkshopError, WORKSHOP_PHASES, type WorkshopPhase, type WorkshopInfo, type WorkshopSubmission, type WorkshopAssessment, type WorkshopCriterion } from "./areas/workshops/workshops.js";
 export { NotAForumError, ForumError } from "./areas/forums/discussions.js";
-export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, setDiscussionSubscription, editPost, deletePost, type ForumDiscussion, type ForumPost, type PostInput, type PostChanges } from "./areas/forums/posts.js";
+export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, setDiscussionSubscription, editPost, deletePost, type ForumDiscussion, type ForumPost, type DiscussionPosts, type PostInput, type PostChanges } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";
 export { getChoice, answerChoice, ChoiceError, type Choice } from "./areas/surveys/choice.js";
 export { lessonPage, answerLessonPage, LessonError, type LessonField, type LessonPage } from "./areas/lessons/lessons.js";
@@ -151,14 +153,15 @@ export {
   ReportError,
   type LogAction,
   type LogEntry,
+  type CourseLogOptions,
   type ActivityViews,
   type ParticipationAction,
   type ActivityParticipant,
 } from "./areas/reports/reports.js";
 export { setCompletion, overrideCompletion, completionReport, CompletionError, type CompletionCell, type CompletionReport } from "./areas/completion/completion.js";
-export { participants, participantFilters, groups, NoParticipantsError, type Participant, type CourseGroup } from "./areas/participants/participants.js";
+export { participants, participantFilters, groups, NoParticipantsError, type Participant, type ParticipantOptions, type CourseGroup } from "./areas/participants/participants.js";
 export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, createGrouping, deleteGrouping, setGroupingGroups, type GroupSettings, type GroupingSettings, type Grouping } from "./areas/participants/groups.js";
 export { enrolmentMethods, setEnrolmentMethod, type EnrolmentMethod, type EnrolmentMethodSettings } from "./areas/participants/methods.js";
 export { potentialUsers, enrolUsers, unenrolUser, setUserRoles, EnrolmentError, type PotentialUser } from "./areas/participants/enrolments.js";
 export { upcomingEvents, calendarEvent, createEvent, updateEvent, deleteEvent, CalendarError, type CalendarEvent, type EventChanges } from "./areas/calendar/calendar.js";
-export { notifications, markNotificationsRead, conversations, conversation, sendMessage, messageParticipants, MessageError, type Notification, type ConversationSummary, type ParticipantSelection } from "./areas/messages/messages.js";
+export { notifications, markNotificationsRead, conversations, conversation, sendMessage, messageParticipants, MessageError, type Notification, type NotificationOptions, type ConversationSummary, type Conversation, type ConversationMessage, type ParticipantSelection } from "./areas/messages/messages.js";

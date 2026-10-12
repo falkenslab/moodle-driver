@@ -16,11 +16,14 @@ after(() => browser?.close());
  * form with its upload repository, the multichoice edit form (new, or question 20 with three answers,
  * saved as a new version), and the delete page (asking, then confirming; question 20 is in use).
  */
-function fakeBanks() {
-  const bank = new Map<number, { id: number; name: string; type: string }[]>([
+function fakeBanks(
+  bank = new Map<number, { id: number; name: string; type: string }[]>([
     [13, []],
     [14, [{ id: 20, name: "Loop", type: "multichoice" }]],
-  ]);
+  ]),
+) {
+  // The categories whose questions were listed, in order.
+  const listed: number[] = [];
   let nextId = 30;
   const uploads: string[] = [];
   const posted: URLSearchParams[] = [];
@@ -53,6 +56,7 @@ function fakeBanks() {
           return html(route, page("page-mod-x-mod", `<form class="mform"><input type="hidden" name="modulename" value="${activityId === "5" ? "page" : activityId === "27" ? "quiz" : "qbank"}"></form>`));
         case "/question/edit.php": {
           const cat = Number((url.searchParams.get("cat") ?? "14,70").split(",")[0]);
+          if (url.searchParams.has("cat")) listed.push(cat);
           const filter = `<div data-filterregion="filtertypedata"><select data-field-name="category"><option value="" disabled>Bank</option><option value="13">Top for Course bank</option><option value="14">&nbsp;&nbsp;&nbsp;Default for Course bank (${bank.get(14)!.length})</option></select></div>`;
           const table = `<table id="categoryquestions"><tbody>${(bank.get(cat) ?? []).map(row).join("")}</tbody></table>`;
           return html(route, page("page-question-edit", `<div class="questionbankwindow" data-contextid="70">${filter}${table}</div>`));
@@ -128,7 +132,7 @@ function fakeBanks() {
       }
     });
   };
-  return { routes, uploads, posted, deleted, hidden };
+  return { routes, uploads, posted, deleted, hidden, listed };
 }
 
 async function open(fake: ReturnType<typeof fakeBanks>): Promise<BrowserContext> {
@@ -153,6 +157,23 @@ describe("questionBanks and questions", { skip: !browser && "no system browser" 
       ],
       questions: [{ id: 20, name: "Loop", type: "multichoice", status: "ready", version: "v1", categoryId: 14 }],
     });
+    await context.close();
+  });
+
+  it("gives a page of the questions, reading only the categories it needs", async () => {
+    const q = (id: number) => ({ id, name: `Q${id}`, type: "truefalse" });
+    const fake = fakeBanks(new Map([[13, [41, 42].map(q)], [14, [43, 44, 45].map(q)]]));
+    const context = await open(fake);
+    const first = await questions(context, SITE, 36, { limit: 2 });
+    assert.deepEqual([first.categories.length, first.questions.items.map((x) => x.id), first.questions.more, fake.listed], [2, [41, 42], true, [13, 14]]);
+    const next = await questions(context, SITE, 36, { limit: 2, offset: 2 });
+    assert.deepEqual([next.questions.items.map((x) => x.id), next.questions.more], [[43, 44], true]);
+    const last = await questions(context, SITE, 36, { limit: 2, offset: 4 });
+    assert.deepEqual([last.questions.items.map((x) => x.id), last.questions.more], [[45], false]);
+    fake.listed.length = 0;
+    await questions(context, SITE, 36, { limit: 1 });
+    assert.deepEqual(fake.listed, [13], "the second category isn't read for a page the first one fills");
+    assert.deepEqual((await questions(context, SITE, 36)).questions.map((x) => x.id), [41, 42, 43, 44, 45]);
     await context.close();
   });
 

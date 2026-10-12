@@ -48,7 +48,7 @@ It throws `NoGradeReportError` when the page has no grade report: the course doe
 Everyone's grades in a course as the teacher's grader report shows them (`grade/report/grader/index.php`), page by page until no new rows come, optionally in one group.
 
 ```ts
-function graderReport(context: BrowserContext, siteUrl: string, courseId: number, options?: { group?: number }): Promise<GraderReport>;
+function graderReport(context: BrowserContext, siteUrl: string, courseId: number, options?: { group?: number; userIds?: number[] }): Promise<GraderReport>;
 
 interface GraderReport {
   columns: GradeColumn[];
@@ -65,6 +65,7 @@ interface GradeColumn {
 ```
 
 - `group`: a group id (see `groups` in [Participants](participants.md)); without it, the report as it opens for the person.
+- `userIds`: only these people's rows. The report has no filter by user: its pages are read until all of them are found.
 - `columns`: one per grade item in the report's order, its `id` the grade item's id. `kind` is `"item"` for an activity or manual item, `"category"` for a category's total and `"course"` for the course total. An activity's column carries its course module id and module.
 - `rows`: one per participant, by user id and full name only (no emails or other identity fields). Each grade refers to a column by `itemId`; a cell with no grade ("-") has no `grade` field.
 

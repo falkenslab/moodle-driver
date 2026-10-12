@@ -42,6 +42,11 @@ function state(): FakeMoodleState {
     services: {
       core_course_get_enrolled_courses_by_timeline_classification: () => ({ courses: [{ id: 3, shortname: "loops", fullname: "Loops", viewurl: `${SITE}course/view.php?id=3`, visible: true }] }),
       core_completion_update_activity_completion_status_manually: () => ({ status: true, warnings: [] }),
+      // Three notifications, newest first, paged by the service's limit and offset.
+      message_popup_get_popup_notifications: ({ limit, offset }) => {
+        const all = [3, 2, 1].map((id) => ({ id, useridfrom: 3, subject: `Note ${id}`, fullmessage: "x", smallmessage: "", timecreated: 1_790_000_000 + id, read: false }));
+        return { notifications: all.slice(offset as number, (limit as number) ? (offset as number) + (limit as number) : undefined), unreadcount: 3 };
+      },
     },
   };
 }
@@ -90,6 +95,21 @@ describe("the moodle command", () => {
     // Not a terminal: JSON without asking.
     const piped = await moodle(context, ["list-courses"], { interactive: false });
     assert.equal((JSON.parse(piped.out) as unknown[]).length, 1);
+    await context.close();
+  });
+
+  it("shows a page of a long list as its items, and says when there are more", { skip: !browser && "no system browser" }, async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, state());
+    const first = await moodle(context, ["--site", SITE, "notifications", "--limit", "2"]);
+    assert.equal(first.status, 0, first.err);
+    assert.match(first.out, /^id +subject/);
+    assert.match(first.out, /\n3 +Note 3.*\n2 +Note 2.*\n\n\(more after these: ask again with a larger --offset\)$/s);
+    const last = await moodle(context, ["--site", SITE, "notifications", "--limit", "2", "--offset", "2"]);
+    assert.match(last.out, /\n1 +Note 1/);
+    assert.doesNotMatch(last.out, /more after these/);
+    const json = await moodle(context, ["--site", SITE, "notifications", "--limit", "2", "--offset", "2", "--json"]);
+    assert.deepEqual([(JSON.parse(json.out) as { items: { id: number }[]; more: boolean }).items.map((n) => n.id), JSON.parse(json.out).more], [[1], false]);
     await context.close();
   });
 

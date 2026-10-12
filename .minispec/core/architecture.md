@@ -31,6 +31,7 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 - `forms.ts` — forms: fields by name (TinyMCE through its API), draft areas as the file picker and file manager work them (upload, list, delete), submit, validation errors by field, date selectors in the person's time zone. `embed.ts` — local files embedded in an editor's HTML: checked against the names it uses, uploaded to that editor's draft area (`<editor>[itemid]`), the HTML pointed at their draft URLs. `inPage.ts` — `inPage()`.
 - `text.ts` — entities decoded, elements' text with paragraphs and lists, media and images in content. `pace.ts` — a person's reading pace for the realistic trail (ADR-005).
 - `site.ts` — a site's base URL from any page (no browser). `login.ts` — `logIn()`: the user at once if there's a session, else a window at the login page waiting for the person (ADR-002).
+- `paging.ts` — long lists a page at a time (`limit`, `offset`, `ListPage`): each paged function only fetches a window, as little of it as Moodle allows.
 - `editor.ts` — the course editor's actions and renames. `files.ts` — local files checked, site files downloaded with the session.
 - `errors.ts` — `MoodleError`, the base of every error the driver throws, and its stable codes (`MoodleErrorCode`).
 

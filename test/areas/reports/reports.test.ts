@@ -77,7 +77,21 @@ describe("courseLogs", { skip: !browser && "no system browser" }, () => {
     await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: STRINGS, bodies: { "/report/log/index.php": LOGS } });
     const span = await courseLogs(context, SITE, 3, { from: new Date("2026-10-11T00:00:00Z"), until: new Date("2026-10-11T18:04:00Z") });
     assert.deepEqual(span.map((e) => e.time), ["2026-10-11T18:03:37.000Z"]);
-    assert.equal((await courseLogs(context, SITE, 3, { limit: 1 })).length, 1);
+    await context.close();
+  });
+
+  it("gives a page of entries with limit and offset, and whether there are more", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: STRINGS, bodies: { "/report/log/index.php": LOGS } });
+    const asked: string[] = [];
+    context.on("request", (request) => void (request.url().includes("report/log") && asked.push(request.url())));
+    const first = await courseLogs(context, SITE, 3, { limit: 2 });
+    assert.deepEqual([first.items.map((e) => e.timeText), first.more], [["11 October 2026, 8:04:12 PM", "11 October 2026, 8:03:37 PM"], true]);
+    const last = await courseLogs(context, SITE, 3, { limit: 2, offset: 2 });
+    assert.deepEqual([last.items.map((e) => e.timeText), last.more], [["10 October 2026, 9:00:00 AM"], false]);
+    // Without limit, the list as before (its first 100).
+    assert.equal((await courseLogs(context, SITE, 3, { offset: 1 })).length, 2);
+    assert.deepEqual(asked.map((url) => new URL(url).searchParams.get("perpage")), ["20", "20", "101"]);
     await context.close();
   });
 
