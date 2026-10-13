@@ -7,7 +7,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { MoodleServiceError, callService } from "../../core/ajax.js";
 import { dateSelectorValues, openForm, setFields, submitForm, uploadToDraft, formValue, type FieldValue } from "../../core/forms.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
-import { checkLocalFiles, downloadFile, type DownloadedFile } from "../../core/files.js";
+import { checkLocalFiles, downloadFile, freePath, type DownloadedFile } from "../../core/files.js";
 import { MoodleError } from "../../core/errors.js";
 import { decodeEntities } from "../../core/text.js";
 import { editCourse, renameSection } from "../../core/editor.js";
@@ -17,6 +17,7 @@ import { addSection, editSection } from "../activities/build.js";
 import { BackupError } from "./errors.js";
 import { archiveKind, branchOfNumber, branchOfRelease, readBackupInfo, type BackupInfo } from "./mbz.js";
 import { conditionsOf, readBackupContents, type BackupContents } from "./contents.js";
+import { anonymizeBackup } from "./anonymous.js";
 
 export { BackupError };
 
@@ -255,6 +256,11 @@ export function selectionOf(
  * rather than to its content (blocks, filters, badges, course events, groups, competencies, custom
  * fields, content bank, legacy files); the file is read afterwards to check that it holds what was
  * asked and no people's data.
+ *
+ * `anonymous` (the default for a selection, not for a whole course) makes the file name no one and
+ * no site, through `anonymizeBackup`: no user ids or authors, a neutral site, course and file name.
+ * It's then saved as `backup-moodle2-anonymous-<date>.mbz`; the copy Moodle keeps in its backup area
+ * stays as Moodle made it. `anonymous: false` keeps what Moodle wrote.
  */
 export async function backupCourse(
   context: BrowserContext,
@@ -266,10 +272,13 @@ export async function backupCourse(
     anonymize,
     sections,
     activities,
+    anonymous = sections !== undefined || activities !== undefined,
     timeoutMs = DEFAULT_TIMEOUT_MS,
   }: {
     withUsers?: boolean;
     anonymize?: boolean;
+    /** The file naming no one and no site (`anonymizeBackup`): true unless given for a selection, false for a whole course. */
+    anonymous?: boolean;
     /** Ids of the sections to back up, each with everything in it. */
     sections?: number[];
     /** Course module ids of activities and resources to back up, each alone. */
@@ -279,6 +288,7 @@ export async function backupCourse(
 ): Promise<{ changed: string; file: DownloadedFile }> {
   const selecting = sections !== undefined || activities !== undefined;
   if (selecting && withUsers) throw new MoodleError("A backup of part of a course carries no users' data: leave out withUsers, or back up the whole course.", "invalid-input");
+  if (anonymous && withUsers) throw new MoodleError("An anonymous backup carries no users' data: leave out withUsers, or use Moodle's own anonymization (anonymize) with anonymous: false.", "invalid-input");
   if (selecting && (sections ?? []).length + (activities ?? []).length === 0) throw new MoodleError("Give the sections or activities to back up, or neither for the whole course.", "invalid-input");
   const page = await openWizard(
     context,
@@ -344,11 +354,25 @@ export async function backupCourse(
     await files.close().catch(() => undefined);
   }
   if (!link) throw new BackupError(`Moodle made the backup "${fileName}", but it isn't in the backup areas you can see.`);
-  const file = await downloadFile(context, siteUrl, link, destDir);
-  if (!selection) return { changed: `Course ${courseId} backed up to ${file.name}.`, file };
-  await checkSelection(file.path, selection);
+  let file = await downloadFile(context, siteUrl, link, destDir);
+  if (selection) await checkSelection(file.path, selection);
+  if (anonymous) file = await anonymousCopy(file, destDir);
   const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-  return { changed: `Part of course ${courseId} (${count(selection.activityIds.size, "activity", "activities")} in ${count(selection.sectionIds.size, "section", "sections")}) backed up to ${file.name}, without people's data.`, file };
+  const what = selection ? `Part of course ${courseId} (${count(selection.activityIds.size, "activity", "activities")} in ${count(selection.sectionIds.size, "section", "sections")})` : `Course ${courseId}`;
+  const how = [selection ? "without people's data" : "", anonymous ? "naming no one and no site" : ""].filter(Boolean).join(", ");
+  return { changed: `${what} backed up to ${file.name}${how ? `, ${how}` : ""}.`, file };
+}
+
+/** A downloaded backup replaced by its anonymous copy, named without the course (`backup-moodle2-anonymous-<date>.mbz`). */
+async function anonymousCopy(file: DownloadedFile, destDir: string): Promise<DownloadedFile> {
+  const date = /-(\d{8}-\d{4})(?:-[a-z]{2})?(?: \(\d+\))?\.mbz$/.exec(file.name)?.[1];
+  const dest = await freePath(destDir, `backup-moodle2-anonymous${date ? `-${date}` : ""}.mbz`);
+  try {
+    const { file: written } = await anonymizeBackup(file.path, dest);
+    return { ...file, ...written };
+  } finally {
+    await rm(file.path, { force: true });
+  }
 }
 
 /** Reads a selection's file: it must hold what was asked and no people's data, or it's deleted. */

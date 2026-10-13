@@ -23,7 +23,7 @@ One go at a quiz, from starting it to submitting it, with its answers, marks and
 
 ### Backup
 
-A course, or part of one (its content, and its people's data when asked), saved as a `.mbz` file (a gzipped archive of XML files and the content's files), which Moodle can restore into a new course or an existing one; a course copy and an import are a backup restored at once, without a file. Moodle makes them through wizards, and may make backups, restores and copies later, in its scheduled tasks (cron). The driver makes them with `backupCourse`, `restoreCourse`, `copyCourse` and `importActivities`, waiting for Moodle up to a timeout. See [Copy, backup and restore](../areas/copy-backup-restore.md).
+A course, or part of one (its content, and its people's data when asked), saved as a `.mbz` file (a gzipped archive of XML files and the content's files), which Moodle can restore into a new course or an existing one; a course copy and an import are a backup restored at once, without a file. Moodle makes them through wizards, and may make backups, restores and copies later, in its scheduled tasks (cron). The driver makes them with `backupCourse`, `restoreCourse`, `copyCourse` and `importActivities`, waiting for Moodle up to a timeout. An anonymous backup (`anonymizeBackup`, by default for part of a course) names no one and no site: no user ids or authors, a neutral original site and course. See [Copy, backup and restore](../areas/copy-backup-restore.md).
 
 ### Calendar event
 

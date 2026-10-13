@@ -20,7 +20,7 @@ if (!client) throw new Error("src/client.ts not found");
 // The object's methods that take a plain value from a command line. The rest (context, tab, visible,
 // setVisible, saveSession, close) handle the browser itself: the command does that for the person;
 // openScorm leaves the player on the working tab, which closes with the command.
-const OWN = ["logIn", "publicSiteInfo", "backupContents", "callService"];
+const OWN = ["logIn", "publicSiteInfo", "backupContents", "anonymizeBackup", "callService"];
 // Methods whose options the object fills in when not given (bound by hand in src/client.ts).
 const OPTIONAL_LAST = { downloadFile: "destDir" };
 

@@ -7,6 +7,7 @@ import { backgroundBrowser, closeBackgroundBrowser, connectBrowserManager } from
 import { ALL_DATA_CATEGORIES, DATA_CATEGORIES, type DataCategory } from "../categories.js";
 import type { Moodle, MoodleOptions } from "../client.js";
 import { backupContents } from "../areas/backup/contents.js";
+import { anonymizeBackup } from "../areas/backup/anonymous.js";
 import { MoodleError } from "../core/errors.js";
 import { NotLoggedInError } from "../core/session.js";
 import { parseSiteUrl } from "../options.js";
@@ -274,10 +275,10 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
       }
     }
 
-    // A backup file is read on this computer: no site, no profile, no browser.
-    if (command.name === "backupContents") {
-      const [file] = methodArguments(command, positionals, flags, deps.cwd) as [string];
-      const text = render(await backupContents(file), json);
+    // A backup file is read or rewritten on this computer: no site, no profile, no browser.
+    if (command.name === "backupContents" || command.name === "anonymizeBackup") {
+      const [file, destFile] = methodArguments(command, positionals, flags, deps.cwd) as [string, string];
+      const text = render(command.name === "backupContents" ? await backupContents(file) : await anonymizeBackup(file, destFile), json);
       if (text) deps.stdout(text);
       return 0;
     }

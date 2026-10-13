@@ -149,6 +149,7 @@ describe("backupCourse", { skip: !browser && "no system browser" }, () => {
     assert.deepEqual(ticked.sort(), ["setting_activity_forum_20_included", "setting_activity_label_23_included", "setting_activity_page_25_included", "setting_activity_subsection_24_included", "setting_section_section_10_included", "setting_section_section_11_included", "setting_section_section_12_included"]);
     await assert.rejects(backupCourse(context, SITE, 3, "/tmp/backups", { sections: [99], activities: [98] }), { code: "not-found", message: /Course 3 has no section 99 and no activity 98/ });
     await assert.rejects(backupCourse(context, SITE, 3, "/tmp/backups", { activities: [21], withUsers: true }), { code: "invalid-input" });
+    await assert.rejects(backupCourse(context, SITE, 3, "/tmp/backups", { withUsers: true, anonymous: true }), { code: "invalid-input", message: /anonymous backup carries no users' data/ });
     await assert.rejects(backupCourse(context, SITE, 3, "/tmp/backups", { activities: [] }), { code: "invalid-input" });
     await context.close();
   });

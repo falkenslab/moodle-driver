@@ -75,6 +75,12 @@ describe("the moodle command", () => {
     const contents = await moodle(undefined, ["backup-contents", fixture, "--json"]);
     assert.equal(contents.status, 0, contents.err);
     assert.deepEqual((JSON.parse(contents.out) as { activities: { id: number }[] }).activities.map((a) => a.id), [686]);
+    // And written anonymous, the same way.
+    const out = await mkdtemp(path.join(tmpdir(), "cli-anonymous-"));
+    const anonymous = await moodle(undefined, ["anonymize-backup", fixture, path.join(out, "shared.mbz"), "--json"]);
+    assert.equal(anonymous.status, 0, anonymous.err);
+    assert.equal((JSON.parse(anonymous.out) as { file: { name: string } }).file.name, "shared.mbz");
+    await rm(out, { recursive: true, force: true });
     const unknown = await moodle(undefined, ["--site", SITE, "list-cursos"]);
     assert.deepEqual([unknown.status, /no command "list-cursos"/.test(unknown.err)], [2, true]);
   });

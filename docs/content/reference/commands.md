@@ -151,6 +151,19 @@ moodle allocate-marker <activityId> <userIds> <markerId>
 | `userIds` | `number[]` |  |
 | `markerId` | `number \| number[]` |  |
 
+## anonymizeBackup
+
+A copy of a backup file that names no one and no site, written on this computer without the browser or a session (`anonymizeBackup`).
+
+```bash
+moodle anonymize-backup <file> <destFile>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `file` | `string` |  |
+| `destFile` | `string` |  |
+
 ## answerChoice
 
 Answers a choice with one option (several where it allows them) by id, as "Save my choice" does; returns the choice afterwards.
@@ -238,7 +251,7 @@ moodle backup-contents <file>
 
 ## backupCourse
 
-Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too. With `sections` (section ids) or `activities` (course module ids: activities and resources), only those go in: a section with everything in it, an activity alone (with its section's name, which Moodle needs for it). A selection never carries people's data, nor what belongs to the course rather than to its content (blocks, filters, badges, course events, groups, competencies, custom fields, content bank, legacy files); the file is read afterwards to check that it holds what was asked and no people's data.
+Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too. With `sections` (section ids) or `activities` (course module ids: activities and resources), only those go in: a section with everything in it, an activity alone (with its section's name, which Moodle needs for it). A selection never carries people's data, nor what belongs to the course rather than to its content (blocks, filters, badges, course events, groups, competencies, custom fields, content bank, legacy files); the file is read afterwards to check that it holds what was asked and no people's data. `anonymous` (the default for a selection, not for a whole course) makes the file name no one and no site, through `anonymizeBackup`: no user ids or authors, a neutral site, course and file name. It's then saved as `backup-moodle2-anonymous-<date>.mbz`; the copy Moodle keeps in its backup area stays as Moodle made it. `anonymous: false` keeps what Moodle wrote.
 
 ```bash
 moodle backup-course <courseId> <destDir> [--options]
@@ -250,6 +263,7 @@ moodle backup-course <courseId> <destDir> [--options]
 | `destDir` | `string` |  |
 | `--with-users` | `boolean` |  |
 | `--anonymize` | `boolean` |  |
+| `--anonymous` | `boolean` | The file naming no one and no site (`anonymizeBackup`): true unless given for a selection, false for a whole course. |
 | `--sections` | `number[]` | Ids of the sections to back up, each with everything in it. |
 | `--activities` | `number[]` | Course module ids of activities and resources to back up, each alone. |
 | `--timeout-ms` | `number` |  |
