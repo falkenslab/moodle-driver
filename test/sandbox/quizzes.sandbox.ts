@@ -285,4 +285,27 @@ describe("quizzes", () => {
       await assert.rejects(teacher.setQuizOverride(quizId, await userId("student"), { attempts: 2 }), QuizError);
     });
   });
+
+  describe("a quiz that asks before an attempt (#56)", () => {
+    const quiz = async (name: string, settings: Record<string, string | number | boolean>) => {
+      const quizId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "quiz", name, visibility: "shown", settings })).activityId!;
+      await teacher.addQuestionsToQuiz(quizId, { questionIds: [id("Quiz TF")] });
+      return quizId;
+    };
+
+    it("startQuizAttempt: a quiz with a time limit, its confirmation dialog accepted, then finished", SLOW, async () => {
+      const quizId = await quiz("Timed quiz", { "timelimit[enabled]": true, "timelimit[number]": 20, "timelimit[timeunit]": 60 });
+      const started = await student.startQuizAttempt(quizId);
+      assert.ok(started.attemptId > 0);
+      assert.deepEqual(started.questions.map((q) => q.type), ["truefalse"]);
+      assert.equal((await student.finishQuizAttempt(started.attemptId)).finished, true);
+      assert.deepEqual((await student.quizInfo(quizId)).attempts.map((a) => [a.id, a.inProgress]), [[started.attemptId, false]]);
+    });
+
+    it("startQuizAttempt: a quiz with a password refused, no attempt made", SLOW, async () => {
+      const quizId = await quiz("Password quiz", { quizpassword: "driver-check" });
+      await assert.rejects(student.startQuizAttempt(quizId), (error: unknown) => error instanceof QuizError && /password/.test(error.message));
+      assert.deepEqual((await student.quizInfo(quizId)).attempts, []);
+    });
+  });
 });

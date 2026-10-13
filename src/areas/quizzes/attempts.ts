@@ -3,7 +3,7 @@ import type { Trail } from "../../options.js";
 import { dateSelectorValues, openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
 import { pause, readingSeconds } from "../../core/pace.js";
 import { inPage } from "../../core/inPage.js";
-import { NotLoggedInError, openSitePage } from "../../core/session.js";
+import { NotLoggedInError, moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
 
 /** The quiz or attempt isn't there, or the person can't do what was asked. */
@@ -209,25 +209,77 @@ export async function quizInfo(context: BrowserContext, siteUrl: string, activit
   }
 }
 
-/** Starts an attempt, or continues the one in progress, as the quiz page's button does; returns its id. */
+/**
+ * Starts an attempt, or continues the one in progress, as the quiz page's button does; returns its id.
+ *
+ * A quiz with a time limit or a password asks first, on its preflight form (`#mod_quiz_preflight_form`):
+ * with JavaScript, the start button opens it in a dialog on the same page instead of leaving it; before
+ * the page's script is ready, the button posts and Moodle shows the form as a page of its own (both
+ * confirmed empirically, Moodle 5.2). So after the click this waits for whichever comes: the dialog,
+ * or another page; then confirms the form, or refuses a password with `QuizError` (the driver never
+ * types one). A quiz meant for a secure pop-up window opens the attempt in a new window, closed after.
+ */
 export async function startAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<number> {
   const page = await openSitePage(context, siteUrl, `mod/quiz/view.php?id=${activityId}`);
+  const opened = new Set<Page>();
   try {
     if ((await page.locator("body#page-mod-quiz-view").count()) === 0) throw NOT_A_QUIZ(activityId);
     const start = page.locator('form[action*="startattempt.php"] [type="submit"]').first();
     if ((await start.count()) === 0) throw new QuizError(`You can't start an attempt at quiz ${activityId} now: ${(await readQuizView(page)).messages.join(" ") || "see the quiz's information"}.`);
-    await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), start.click()]);
-    // A time limit or a password first asks for confirmation on a form of its own.
-    if ((await page.locator("#mod_quiz_preflight_form, form[action*='startattempt.php'] [name='submitbutton']").count()) > 0) {
-      if ((await page.locator("#mod_quiz_preflight_form [name='quizpassword']").count()) > 0) throw new QuizError(`Quiz ${activityId} asks for a password, which this server doesn't type.`);
-      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click("[name='submitbutton']")]);
+    const PREFLIGHT = "#mod_quiz_preflight_form";
+    // Moodle marks the start button of a quiz that runs in a secure pop-up window.
+    const popup = (await page.locator(".quizsecuremoderequired").count()) > 0;
+    // The view page holds the preflight form hidden from the start: it counts once shown, or off the view page.
+    let landed = await afterClick(context, page, () => start.click(), { popup, shown: page.locator(PREFLIGHT).waitFor({ state: "visible" }) });
+    if (landed !== page) opened.add(landed);
+    const attempt = () => Number(new URL(landed.url()).searchParams.get("attempt"));
+    // A timed quiz in a pop-up asks twice: in the dialog, then in the pop-up as a page (confirmed empirically, 5.2).
+    for (let round = 0; round < 2 && !attempt() && (await landed.locator(PREFLIGHT).count()) > 0; round++) {
+      if ((await landed.locator(`${PREFLIGHT} [name='quizpassword']`).count()) > 0) {
+        throw new QuizError(`Quiz ${activityId} asks for a password before an attempt: the driver never types one, so start this attempt in Moodle.`);
+      }
+      const at = landed;
+      landed = await afterClick(context, at, () => at.locator(`${PREFLIGHT} [name='submitbutton']`).click(), { popup: popup && at === page });
+      if (landed !== page) opened.add(landed);
     }
-    const id = Number(new URL(page.url()).searchParams.get("attempt"));
-    if (!id) throw new QuizError(`Quiz ${activityId} didn't open an attempt (it landed on ${new URL(page.url()).pathname}).`);
-    return id;
+    if (!attempt()) {
+      const moodle = await moodleErrorMessage(landed);
+      throw new QuizError(`Quiz ${activityId} didn't open an attempt${moodle ? `: ${moodle}` : ` (it landed on ${new URL(landed.url()).pathname})`}.`);
+    }
+    return attempt();
   } finally {
     await page.close().catch(() => undefined);
+    for (const other of opened) await other.close().catch(() => undefined);
   }
+}
+
+/**
+ * Clicks, then waits for the first of: the page reaching another page than its own or startattempt.php
+ * (which only redirects, or shows the preflight form: `shown` waits for that), `shown` (the form, in a
+ * dialog or as a page), Moodle's error page, or with `popup` a new window (a quiz in a secure pop-up).
+ * Gives the page that holds what came next.
+ */
+async function afterClick(context: BrowserContext, page: Page, click: () => Promise<void>, { popup = false, shown }: { popup?: boolean; shown?: Promise<void> } = {}): Promise<Page> {
+  const from = page.url();
+  const waits = [
+    page.waitForURL((url) => url.href !== from && !url.pathname.endsWith("/mod/quiz/startattempt.php"), { waitUntil: "domcontentloaded" }).then(() => page),
+    page.locator('[data-rel="fatalerror"]').waitFor({ state: "attached" }).then(() => page),
+  ];
+  if (shown) waits.push(shown.then(() => page));
+  if (popup) {
+    waits.push(
+      context.waitForEvent("page").then(async (opened) => {
+        await opened.waitForURL(/\/mod\/quiz\/(attempt|startattempt)\.php/, { waitUntil: "domcontentloaded" });
+        return opened;
+      }),
+    );
+  }
+  // The waits that lose end with the page or time out: nobody else listens to them.
+  for (const wait of waits) wait.catch(() => undefined);
+  await click();
+  return Promise.any(waits).catch(() => {
+    throw new QuizError(`The quiz's page at ${new URL(from).pathname} neither moved on nor asked anything after its button.`);
+  });
 }
 
 /** Every question of an attempt, page by page, with the page each is on. */
