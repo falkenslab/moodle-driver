@@ -271,6 +271,52 @@ describe("reports and course life cycle", () => {
     assert.deepEqual(await activityIds("teacher", scratch.id), before);
   });
 
+  it("backupContents: a part that depends on what it left out, read; restoreCourse: its warnings in another course", SLOW, async () => {
+    const teacher = await as("teacher");
+    const sections = await teacher.courseStructure(scratch.id);
+    // In the scratch course: "Loops", "Loops: check" restricted on its completion, and a page linking to it.
+    const loops = await teacher.createActivity({ courseId: scratch.id, sectionId: sections[0]!.id, type: "page", name: `Loops ${stamp}`, content: "<p>A loop.</p>", completion: "manual", visibility: "shown" });
+    const check = await teacher.createActivity({
+      courseId: scratch.id,
+      sectionId: sections[0]!.id,
+      type: "page",
+      name: `Loops check ${stamp}`,
+      content: "<p>Try it.</p>",
+      visibility: "shown",
+      restrictions: { conditions: [{ type: "completion", activityId: loops.activityId!, state: "complete" }] },
+    });
+    const intro = await teacher.createActivity({ courseId: scratch.id, sectionId: sections[0]!.id, type: "page", name: `Intro ${stamp}`, content: `<p>See <a href="${SITE}mod/page/view.php?id=${loops.activityId}">loops</a>.</p>`, visibility: "shown" });
+    const dir = mkdtempSync(path.join(tmpdir(), "suite-deps-"));
+    cleanup(async () => rmSync(dir, { recursive: true, force: true }));
+    const { file } = await teacher.backupCourse(scratch.id, dir, { activities: [check.activityId!, intro.activityId!], timeoutMs: 600_000 });
+    cleanup(() => removeBackupFile("teacher", scratch.id, file.name));
+
+    const contents = await teacher.backupContents(file.path);
+    assert.equal(contents.type, "course");
+    assert.equal(contents.moodle.release.split(".")[0], "5");
+    assert.equal(contents.original.courseId, scratch.id);
+    assert.equal(contents.withUsers, false);
+    assert.ok(contents.plugins.includes("mod_page"));
+    assert.deepEqual(contents.activities.map((a) => a.id).sort(), [check.activityId!, intro.activityId!].sort());
+    const depends = (id: number) => contents.activities.find((a) => a.id === id)!.dependencies;
+    assert.deepEqual(depends(check.activityId!), [{ kind: "restriction", condition: "completion", activityId: loops.activityId }]);
+    assert.deepEqual(depends(intro.activityId!), [{ kind: "link", activityId: loops.activityId, module: "page" }]);
+
+    // Restored in another course, without Loops: the restriction and the link are broken there.
+    const other = await scratchCourse("lifecycle-target");
+    const restored = await teacher.restoreCourse(file.path, { into: other.id, timeoutMs: 600_000 });
+    const names = (await teacher.courseStructure(other.id)).flatMap((s) => s.activities).filter((a) => restored.activityIds!.includes(a.id));
+    const newCheck = names.find((a) => a.name === `Loops check ${stamp}`)!;
+    const newIntro = names.find((a) => a.name === `Intro ${stamp}`)!;
+    assert.deepEqual(
+      restored.warnings!.map((w) => [w.activityId, w.kind, w.condition ?? w.url]),
+      [
+        [newCheck.id, "restriction", "completion"],
+        [newIntro.id, "link", `${SITE}mod/page/view.php?id=${loops.activityId}`],
+      ].sort((a, b) => restored.activityIds!.indexOf(a[0] as number) - restored.activityIds!.indexOf(b[0] as number)),
+    );
+  });
+
   it("importActivities: one activity of the content course imported into the scratch course", SLOW, async () => {
     const teacher = await as("teacher");
     const source = (await teacher.courseStructure(COURSE)).flatMap((s) => s.activities);

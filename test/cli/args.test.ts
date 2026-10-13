@@ -11,7 +11,7 @@ const command = (name: string) => findCommand(COMMANDS, name)!;
 describe("the command table", () => {
   it("has a command for every method of the Moodle object but those giving a browser tab, and the object's own that take plain values", () => {
     const names = new Set(COMMANDS.map((c) => c.name));
-    const missing = [...MOODLE_METHODS, "logIn", "publicSiteInfo", "callService"].filter((name) => !names.has(name) && !LEFT_OUT.includes(name));
+    const missing = [...MOODLE_METHODS, "logIn", "publicSiteInfo", "backupContents", "callService"].filter((name) => !names.has(name) && !LEFT_OUT.includes(name));
     assert.deepEqual(missing, []);
     assert.deepEqual(LEFT_OUT, ["openForm", "openSitePage"]);
   });

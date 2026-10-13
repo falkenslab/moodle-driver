@@ -9,6 +9,7 @@ import { calendarEvent, createEvent, deleteEvent, updateEvent, upcomingEvents } 
 import { answerChoice, getChoice } from "./areas/surveys/choice.js";
 import { activityReport, courseLogs, participationReport } from "./areas/reports/reports.js";
 import { backupCourse, copyCourse, importActivities, restoreCourse } from "./areas/backup/backup.js";
+import { backupContents, type BackupContents } from "./areas/backup/contents.js";
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
 import { listCourses, updateCourse } from "./areas/courses/list.js";
@@ -241,6 +242,8 @@ export interface Moodle extends MoodleMethods {
   logIn(options?: { timeoutMs?: number; onWait?: (elapsedMs: number) => void }): Promise<LoginResult>;
   /** What the site tells anyone before logging in, without the browser. */
   publicSiteInfo(): ReturnType<typeof publicSiteInfo>;
+  /** What a backup file (`.mbz`) holds and what its activities refer to outside it, read on this computer without the browser or a session (`backupContents`). */
+  backupContents(file: string): Promise<BackupContents>;
   /** Calls one of Moodle's AJAX services as the logged-in person. */
   callService<T>(methodname: string, args: Record<string, unknown>): Promise<T>;
   /** `activityContent`, at the object's `trail` unless given. */
@@ -308,6 +311,7 @@ export function createMoodle(options: MoodleOptions): Moodle {
     context: () => browser.context(),
     logIn: (loginOptions = {}) => logIn(browser, site, { ...loginOptions, timeoutMs: loginOptions.timeoutMs ?? defaults.loginTimeoutMs }),
     publicSiteInfo: () => publicSiteInfo(site),
+    backupContents: (file) => backupContents(file),
     callService: async <T>(methodname: string, args: Record<string, unknown>) => callService<T>(await browser.context(), site, methodname, args),
     activityContent: async (
       activityOrId: { id: number; type: string } | number,

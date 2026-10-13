@@ -70,6 +70,11 @@ describe("the moodle command", () => {
     // What anyone can ask needs no profile (the fake site isn't reachable without a browser: any error but that one).
     const open = await moodle(undefined, ["--site", SITE, "public-site-info"]);
     assert.doesNotMatch(open.err, /No profile/);
+    // A backup file is read without a site, a profile or a browser.
+    const fixture = path.join(import.meta.dirname, "..", "areas", "backup", "fixtures", "activity.mbz");
+    const contents = await moodle(undefined, ["backup-contents", fixture, "--json"]);
+    assert.equal(contents.status, 0, contents.err);
+    assert.deepEqual((JSON.parse(contents.out) as { activities: { id: number }[] }).activities.map((a) => a.id), [686]);
     const unknown = await moodle(undefined, ["--site", SITE, "list-cursos"]);
     assert.deepEqual([unknown.status, /no command "list-cursos"/.test(unknown.err)], [2, true]);
   });

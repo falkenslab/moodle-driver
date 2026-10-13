@@ -5,7 +5,7 @@ import path from "node:path";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
 import { BackupError, backupCourse, copyCourse, importActivities, restoreCourse } from "../../../src/index.js";
-import { placeRestored } from "../../../src/areas/backup/backup.js";
+import { brokenInActivity, placeRestored } from "../../../src/areas/backup/backup.js";
 import { SITE, ServiceFailure, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 import { writeTgz } from "./tgz.js";
 
@@ -333,5 +333,26 @@ describe("importActivities", { skip: !browser && "no system browser" }, () => {
     assert.deepEqual([posts[0]!.getAll("setting_activity_page_5_included"), posts[0]!.getAll("setting_activity_quiz_7_included")], [["0", "1"], ["0"]]);
     await assert.rejects(importActivities(context, SITE, 3, 9, { activityIds: [99] }), BackupError);
     await context.close();
+  });
+});
+
+describe("brokenInActivity", () => {
+  it("names the restrictions Moodle restored broken and the links to activities outside the course", () => {
+    const availability = JSON.stringify({ op: "&", c: [{ type: "completion", cm: 0, e: 1 }, { type: "completion", cm: 31, e: 1 }, { type: "completion", cm: -1, e: 1 }, { type: "grade", id: 0 }, { type: "group", id: -1 }, { type: "date", d: ">=", t: 1 }] });
+    const texts = [`<a href="${SITE}mod/page/view.php?id=31">ok</a> <a href="${SITE}mod/page/view.php?id=12">here</a> <a href="https://old.example.org/mod/quiz/view.php?id=31&amp;x=1">there</a>`];
+    const warnings = brokenInActivity({ id: 40, name: "Check" }, availability, texts, new Set([31, 40]), SITE);
+    assert.deepEqual(
+      warnings.map((w) => [w.kind, w.condition ?? w.url]),
+      [
+        ["restriction", "completion"],
+        ["restriction", "grade"],
+        ["restriction", "group"],
+        ["link", `${SITE}mod/page/view.php?id=12`],
+        ["link", "https://old.example.org/mod/quiz/view.php?id=31"],
+      ],
+    );
+    assert.match(warnings[3]!.message, /^Activity 40 "Check" links to .*id=12, an activity outside this course/);
+    assert.match(warnings[4]!.message, /on another site/);
+    assert.deepEqual(brokenInActivity({ id: 40, name: "Check" }, undefined, [], new Set(), SITE), []);
   });
 });

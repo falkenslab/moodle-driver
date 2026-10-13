@@ -16,6 +16,7 @@ import { courseActivityTypes } from "../site/info.js";
 import { addSection, editSection } from "../activities/build.js";
 import { BackupError } from "./errors.js";
 import { archiveKind, branchOfNumber, branchOfRelease, readBackupInfo, type BackupInfo } from "./mbz.js";
+import { conditionsOf, readBackupContents, type BackupContents } from "./contents.js";
 
 export { BackupError };
 
@@ -572,7 +573,7 @@ export async function restoreCourse(
     afterSectionId?: number;
     timeoutMs?: number;
   },
-): Promise<{ changed: string; course: CourseRef; sectionIds?: number[]; activityIds?: number[] }> {
+): Promise<{ changed: string; course: CourseRef; sectionIds?: number[]; activityIds?: number[]; warnings?: RestoreWarning[] }> {
   await checkLocalFiles([file]);
   if (into === "new" && categoryId === undefined) throw new MoodleError('A restore into a new course needs the category to create it in (categoryId).', "invalid-input");
   if (into !== "new" && mode !== "merge" && mode !== "replace") throw new MoodleError(`Unknown restore mode "${String(mode)}": use "merge" or "replace".`, "invalid-input");
@@ -580,7 +581,8 @@ export async function restoreCourse(
   if (sectionId !== undefined && afterSectionId !== undefined) throw new MoodleError("Give sectionId (into one section) or afterSectionId (as new sections), not both.", "invalid-input");
   if (place && (into === "new" || mode !== "merge")) throw new MoodleError("sectionId and afterSectionId place a restore merged into an existing course (into: <course id>, mode: \"merge\").", "invalid-input");
   // A zip-format backup isn't read here: Moodle checks it alone.
-  const info = (await archiveKind(file)) === "zip" ? undefined : await readBackupInfo(file);
+  const read = (await archiveKind(file)) === "zip" ? undefined : await readBackupContents(file);
+  const info = read?.info;
   // The wizard works in the context it restores into: the category's for a new course, the course's otherwise.
   const contextId =
     into === "new"
@@ -660,15 +662,118 @@ export async function restoreCourse(
       restored = await placeRestored(context, siteUrl, into, info, before!, beforeSummaries!, place);
       where = place.sectionId !== undefined ? `, its activities at the end of section ${place.sectionId}` : `, its sections after section ${place.afterSectionId}`;
     }
+    const warnings = await restoreWarnings(context, siteUrl, into, restored.activityIds, read?.contents);
     return {
-      changed: `Backup ${file} restored into course ${into} (${mode === "replace" ? "its content replaced" : "merged with its content"}${where}): ${restored.sectionIds.length} new section(s), ${restored.activityIds.length} new activit${restored.activityIds.length === 1 ? "y" : "ies"}.`,
+      changed: `Backup ${file} restored into course ${into} (${mode === "replace" ? "its content replaced" : "merged with its content"}${where}): ${restored.sectionIds.length} new section(s), ${restored.activityIds.length} new activit${restored.activityIds.length === 1 ? "y" : "ies"}${warnings.length > 0 ? `, ${warnings.length} thing(s) left to fix` : ""}.`,
       course,
       ...restored,
+      warnings,
     };
   }
   const course = newShortName ? await courseByShortName(context, siteUrl, newShortName) : undefined;
   if (!course) throw new BackupError(`Moodle finished the restore, but the new course${newShortName ? ` "${newShortName}"` : ""} isn't visible to you.`);
   return { changed: `Backup ${file} restored into new course ${course.id} "${course.fullName}".`, course };
+}
+
+/** Something a restore left broken in an activity, for a teacher to fix. */
+export interface RestoreWarning {
+  /** The restored activity: its course module id in the course restored into, and its name. */
+  activityId: number;
+  name: string;
+  /**
+   * `restriction`: an access condition Moodle restored marked as broken, its activity, grade item,
+   * group or grouping not restored with it (`condition` says which). `link`: a link in its text to an
+   * activity outside the course (`url`), on this site or the one the backup came from.
+   */
+  kind: "restriction" | "link";
+  condition?: "completion" | "grade" | "group" | "grouping";
+  url?: string;
+  message: string;
+}
+
+/**
+ * What's broken in a restored activity, from its form's availability JSON and texts: conditions Moodle
+ * restored pointing at nothing (an activity not in the course, or 0 and -1, its marks for an
+ * activity, grade item, group or grouping not restored, confirmed in its `update_after_restore`, 5.2),
+ * and links to activities that aren't in the course (Moodle points one it didn't restore back to the
+ * original site's activity).
+ */
+export function brokenInActivity(
+  activity: { id: number; name: string },
+  availability: string | undefined,
+  texts: string[],
+  courseActivities: Set<number>,
+  siteUrl: string,
+): RestoreWarning[] {
+  const warnings: RestoreWarning[] = [];
+  const what = `Activity ${activity.id} "${activity.name}"`;
+  for (const condition of conditionsOf(availability)) {
+    const type = String(condition.type);
+    const id = Number(type === "completion" ? condition.cm : condition.id);
+    if (!["completion", "grade", "group", "grouping"].includes(type) || Number.isNaN(id)) continue;
+    // -1 is "the previous activity" for completion, Moodle's mark of a group not restored for groups.
+    const broken = type === "completion" ? id === 0 || (id > 0 && !courseActivities.has(id)) : id <= 0;
+    if (!broken) continue;
+    const on = { completion: "another activity's completion", grade: "a grade", group: "a group", grouping: "a grouping" }[type as "completion"];
+    warnings.push({
+      activityId: activity.id,
+      name: activity.name,
+      kind: "restriction",
+      condition: type as RestoreWarning["condition"],
+      message: `${what}: its access restriction on ${on} names one that wasn't restored with it; Moodle keeps it marked as broken. Fix or remove the condition.`,
+    });
+  }
+  const site = siteUrl.replace(/\/$/, "");
+  const seen = new Set<string>();
+  for (const text of texts) {
+    for (const [url, , id] of text.replaceAll("&amp;", "&").matchAll(/(?:https?:\/\/[^\s"'<>]*?)?\/mod\/([a-z0-9_]+)\/view\.php\?id=(\d+)/g)) {
+      const elsewhere = /^https?:/.test(url) && !url.startsWith(`${site}/`);
+      if ((!elsewhere && courseActivities.has(Number(id))) || seen.has(url)) continue;
+      seen.add(url);
+      warnings.push({
+        activityId: activity.id,
+        name: activity.name,
+        kind: "link",
+        url,
+        message: `${what} links to ${url}, an activity ${elsewhere ? "on another site" : "outside this course"}: the one it linked to wasn't restored with it.`,
+      });
+    }
+  }
+  return warnings;
+}
+
+/**
+ * What the restore left broken in the activities it added to a course: those with restrictions (the
+ * course's state says which), and those whose text linked to activities left out of the backup (its
+ * contents say which), each read from its settings form.
+ */
+async function restoreWarnings(context: BrowserContext, siteUrl: string, courseId: number, added: number[], contents: BackupContents | undefined): Promise<RestoreWarning[]> {
+  if (added.length === 0) return [];
+  const state = await courseState(context, siteUrl, courseId);
+  const inCourse = new Set(state.cm.map((cm) => Number(cm.id)));
+  const linking = (contents?.activities ?? []).filter((a) => a.dependencies.some((d) => d.kind === "link"));
+  const warnings: RestoreWarning[] = [];
+  for (const id of added) {
+    const cm = state.cm.find((c) => Number(c.id) === id);
+    if (!cm) continue;
+    const name = decodeEntities(cm.name);
+    if (!cm.hascmrestrictions && !linking.some((a) => a.type === cm.module && a.title === name)) continue;
+    const page = await openSitePage(context, siteUrl, `course/modedit.php?update=${id}&return=0`);
+    let fields: { name: string; value: string }[];
+    try {
+      fields = await page.evaluate(() =>
+        Array.from(
+          (globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<{ name: string; value: string }> } }).document.querySelectorAll("form.mform textarea, form.mform input[name='availabilityconditionsjson']"),
+        ).map((field) => ({ name: field.name, value: field.value })),
+      );
+    } finally {
+      await page.close().catch(() => undefined);
+    }
+    const availability = fields.find((f) => f.name === "availabilityconditionsjson")?.value;
+    const texts = fields.filter((f) => f.name !== "availabilityconditionsjson").map((f) => f.value);
+    warnings.push(...brokenInActivity({ id, name }, availability, texts, inCourse, siteUrl));
+  }
+  return warnings;
 }
 
 /** A course by id (`core_course_get_courses`), when the person may see it. */

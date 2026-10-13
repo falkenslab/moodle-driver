@@ -649,7 +649,7 @@ export interface MoodleMethods {
    * on the way (named, described, hidden or restricted as the backup's, when it had none) is put back.
    * Returns the sections and activities the course has new, in the course's order.
    */
-  restoreCourse(file: string, options: { into: number | "new"; categoryId?: number | undefined; mode?: "merge" | "replace" | undefined; fullName?: string | undefined; shortName?: string | undefined; withUsers?: boolean | undefined; sectionId?: number | undefined; afterSectionId?: number | undefined; timeoutMs?: number | undefined; }): Promise<{ changed: string; course: import("./areas/backup/backup.js").CourseRef; sectionIds?: number[] | undefined; activityIds?: number[] | undefined; }>;
+  restoreCourse(file: string, options: { into: number | "new"; categoryId?: number | undefined; mode?: "merge" | "replace" | undefined; fullName?: string | undefined; shortName?: string | undefined; withUsers?: boolean | undefined; sectionId?: number | undefined; afterSectionId?: number | undefined; timeoutMs?: number | undefined; }): Promise<{ changed: string; course: import("./areas/backup/backup.js").CourseRef; sectionIds?: number[] | undefined; activityIds?: number[] | undefined; warnings?: import("./areas/backup/backup.js").RestoreWarning[] | undefined; }>;
   /**
    * An assignment's grading method and, for a rubric or a marking guide, its criteria with the ids
    * `gradeSubmission` takes: read from the grader's panel for the first participant with a submission.

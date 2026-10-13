@@ -40,6 +40,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   "Moodle.context": NONE,
   "Moodle.logIn": NONE,
   "Moodle.publicSiteInfo": NONE,
+  "Moodle.backupContents": CONTENT,
   "Moodle.callService": ANY,
   "Moodle.openScorm": OWN,
   "Moodle.tab": ANY,
@@ -113,6 +114,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   backupCourse: ["course-content", "others-personal"],
   restoreCourse: ["course-content", "others-personal"],
   importActivities: CONTENT,
+  // A local file: what teachers made, as a backup holds it (with people's data only when it does).
+  backupContents: CONTENT,
   // Resetting deletes the course's people's work and enrolments: deciding about others.
   resetCourse: ["course-content", "others-write"],
   myGrades: OWN,

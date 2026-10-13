@@ -224,6 +224,18 @@ moodle assignment-submissions <activityId> [--options]
 | `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
 | `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
+## backupContents
+
+What a backup file (`.mbz`) holds and what its activities refer to outside it, read on this computer without the browser or a session (`backupContents`).
+
+```bash
+moodle backup-contents <file>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `file` | `string` |  |
+
 ## backupCourse
 
 Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too. With `sections` (section ids) or `activities` (course module ids: activities and resources), only those go in: a section with everything in it, an activity alone (with its section's name, which Moodle needs for it). A selection never carries people's data, nor what belongs to the course rather than to its content (blocks, filters, badges, course events, groups, competencies, custom fields, content bank, legacy files); the file is read afterwards to check that it holds what was asked and no people's data.
