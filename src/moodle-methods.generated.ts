@@ -123,8 +123,13 @@ export interface MoodleMethods {
    * rather than to its content (blocks, filters, badges, course events, groups, competencies, custom
    * fields, content bank, legacy files); the file is read afterwards to check that it holds what was
    * asked and no people's data.
+   *
+   * `anonymous` (the default for a selection, not for a whole course) makes the file name no one and
+   * no site, through `anonymizeBackup`: no user ids or authors, a neutral site, course and file name.
+   * It's then saved as `backup-moodle2-anonymous-<date>.mbz`; the copy Moodle keeps in its backup area
+   * stays as Moodle made it. `anonymous: false` keeps what Moodle wrote.
    */
-  backupCourse(courseId: number, destDir: string, options?: { withUsers?: boolean | undefined; anonymize?: boolean | undefined; sections?: number[] | undefined; activities?: number[] | undefined; timeoutMs?: number | undefined; }): Promise<{ changed: string; file: import("./core/files.js").DownloadedFile; }>;
+  backupCourse(courseId: number, destDir: string, options?: { withUsers?: boolean | undefined; anonymize?: boolean | undefined; anonymous?: boolean | undefined; sections?: number[] | undefined; activities?: number[] | undefined; timeoutMs?: number | undefined; }): Promise<{ changed: string; file: import("./core/files.js").DownloadedFile; }>;
   /** One calendar event by its id, as `upcomingEvents` gives them. */
   calendarEvent(eventId: number): Promise<import("./areas/calendar/calendar.js").CalendarEvent>;
   /**

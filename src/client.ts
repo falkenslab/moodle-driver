@@ -10,6 +10,7 @@ import { answerChoice, getChoice } from "./areas/surveys/choice.js";
 import { activityReport, courseLogs, participationReport } from "./areas/reports/reports.js";
 import { backupCourse, copyCourse, importActivities, restoreCourse } from "./areas/backup/backup.js";
 import { backupContents, type BackupContents } from "./areas/backup/contents.js";
+import { anonymizeBackup } from "./areas/backup/anonymous.js";
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
 import { listCourses, updateCourse } from "./areas/courses/list.js";
@@ -244,6 +245,8 @@ export interface Moodle extends MoodleMethods {
   publicSiteInfo(): ReturnType<typeof publicSiteInfo>;
   /** What a backup file (`.mbz`) holds and what its activities refer to outside it, read on this computer without the browser or a session (`backupContents`). */
   backupContents(file: string): Promise<BackupContents>;
+  /** A copy of a backup file that names no one and no site, written on this computer without the browser or a session (`anonymizeBackup`). */
+  anonymizeBackup(file: string, destFile: string): ReturnType<typeof anonymizeBackup>;
   /** Calls one of Moodle's AJAX services as the logged-in person. */
   callService<T>(methodname: string, args: Record<string, unknown>): Promise<T>;
   /** `activityContent`, at the object's `trail` unless given. */
@@ -312,6 +315,7 @@ export function createMoodle(options: MoodleOptions): Moodle {
     logIn: (loginOptions = {}) => logIn(browser, site, { ...loginOptions, timeoutMs: loginOptions.timeoutMs ?? defaults.loginTimeoutMs }),
     publicSiteInfo: () => publicSiteInfo(site),
     backupContents: (file) => backupContents(file),
+    anonymizeBackup: (file, destFile) => anonymizeBackup(file, destFile),
     callService: async <T>(methodname: string, args: Record<string, unknown>) => callService<T>(await browser.context(), site, methodname, args),
     activityContent: async (
       activityOrId: { id: number; type: string } | number,

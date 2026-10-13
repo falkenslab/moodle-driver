@@ -4,6 +4,7 @@ import path from "node:path";
 import { checkLocalFiles } from "../../core/files.js";
 import { BackupError } from "./errors.js";
 import { addSectionDetails, childrenOf, parseBackupInfo, parseXml, readTarEntries, textOf, type BackupInfo, type XmlElement } from "./mbz.js";
+import { SCRUBBED, identifiersOf, type BackupIdentifier } from "./anonymous.js";
 
 /**
  * Something an activity of a backup refers to that the backup doesn't hold, so a restore elsewhere
@@ -78,6 +79,13 @@ export interface BackupContents {
   withUsers: boolean;
   /** Whether it holds the course's gradebook setup (its categories): a whole course's with graded activities does, a part's doesn't. */
   gradebook: boolean;
+  /**
+   * What in it still names a person or the site and course it came from: user ids (files' owners,
+   * questions' creators…), authors' names, the original site's address and identifier hash, the
+   * course's id and names, the site's host in question stamps, the site's address in texts, the
+   * backup's log. Empty for a backup `anonymizeBackup` wrote, so a catalog can check one before taking it.
+   */
+  identifies: BackupIdentifier[];
 }
 
 /** An activity's own XML files, where its text is (not its references, roles, grades or logs). */
@@ -146,7 +154,7 @@ const parsed = (entries: Map<string, Buffer>, name: string): XmlElement | undefi
   }
 };
 
-/** The contents of a backup from its entries (`moodle_backup.xml`, the sections', activities' and questions' XML) and the names of all its files. */
+/** The contents of a backup from its entries (its XML files, log and index) and the names of all its files. */
 export function contentsOf(file: string, info: BackupInfo, entries: Map<string, Buffer>, names: string[]): BackupContents {
   const activities = info.activities.filter((a) => a.included);
   const held = {
@@ -226,11 +234,10 @@ export function contentsOf(file: string, info: BackupInfo, entries: Map<string, 
     plugins,
     withUsers: info.settings.users === "1",
     gradebook,
+    identifies: identifiersOf(info, entries),
   };
 }
 
-/** The entries `contentsOf` reads: the backup's description and the sections', activities', questions' and groups' XML. */
-const WANTED = /^(moodle_backup\.xml|questions\.xml|groups\.xml|gradebook\.xml|sections\/[^/]+\/section\.xml|activities\/[^/]+\/[^/]+\.xml)$/;
 
 /** Reads a backup file's contents (see `backupContents`), its names listed as it goes. */
 export async function readBackupContents(file: string): Promise<{ info: BackupInfo; contents: BackupContents }> {
@@ -238,7 +245,8 @@ export async function readBackupContents(file: string): Promise<{ info: BackupIn
   const names: string[] = [];
   const entries = await readTarEntries(file, (name) => {
     names.push(name);
-    return WANTED.test(name);
+    // Every XML file, the log and the index: what identifies anyone may be in any of them.
+    return SCRUBBED(name);
   });
   const xml = entries.get("moodle_backup.xml");
   if (!xml) throw new BackupError(`${file} isn't a Moodle backup: it has no moodle_backup.xml.`);

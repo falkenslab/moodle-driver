@@ -8,8 +8,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
-import { BackupError, CourseError, ReportError, type CourseSection } from "../../src/index.js";
-import { deleteDraftFile, formValue, openForm, openSitePage, submitForm } from "../../src/internals.js";
+import { ANONYMOUS, BackupError, CourseError, ReportError, type CourseSection } from "../../src/index.js";
+import { deleteDraftFile, draftFiles, formValue, openForm, openSitePage, submitForm } from "../../src/internals.js";
 import { readBackupInfo } from "../../src/areas/backup/mbz.js";
 import { readTgz, writeTgz } from "../areas/backup/tgz.js";
 import { COURSE, SITE, as, cleanup, deleteCourse, notForbidden, scratchCourse, userId, type ScratchCourse } from "./harness.js";
@@ -19,6 +19,9 @@ const STUDENT_ROLE = 5;
 const CATEGORY = 1;
 const SLOW = { timeout: 900_000 };
 const stamp = Date.now().toString(36);
+
+/** A one-pixel PNG, for a page's image. */
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 
 /** A course this file made, deleted after the file. */
 function made(courseId: number): number {
@@ -31,9 +34,10 @@ function made(courseId: number): number {
 /**
  * Deletes a backup file from the person's private backup area, where Moodle keeps the backups made
  * without users' data, through the area's "Manage backup files" form (reached from a course's
- * restore page).
+ * restore page). `name` is the file's, or a test of names (an anonymous backup's local name isn't
+ * Moodle's).
  */
-async function removeBackupFile(role: "teacher" | "admin", courseId: number, name: string): Promise<void> {
+async function removeBackupFile(role: "teacher" | "admin", courseId: number, name: string | ((name: string) => boolean)): Promise<void> {
   const context = await (await as(role)).context();
   const course = await openSitePage(context, SITE, `course/view.php?id=${courseId}`);
   const contextId = await course.evaluate(() => (globalThis as unknown as { M: { cfg: { contextid: number } } }).M.cfg.contextid);
@@ -45,7 +49,9 @@ async function removeBackupFile(role: "teacher" | "admin", courseId: number, nam
   await list.close();
   const form = await openForm(context, SITE, `backup/backupfilesedit.php?${query}`);
   try {
-    await deleteDraftFile(form, (await formValue(form, "files_filemanager"))!, name);
+    const draft = (await formValue(form, "files_filemanager"))!;
+    if (typeof name === "string") await deleteDraftFile(form, draft, name);
+    else for (const file of await draftFiles(form, draft)) if (name(file.name)) await deleteDraftFile(form, draft, file.name);
     await submitForm(form, "submitbutton");
   } finally {
     await form.close();
@@ -199,7 +205,7 @@ describe("reports and course life cycle", () => {
     assert.ok(page && resource, "the content course has a page and a file outside its first section with content");
     const dir = mkdtempSync(path.join(tmpdir(), "suite-part-"));
     cleanup(async () => rmSync(dir, { recursive: true, force: true }));
-    const { file, changed } = await teacher.backupCourse(COURSE, dir, { sections: [whole.id], activities: [page.id, resource.id], timeoutMs: 600_000 });
+    const { file, changed } = await teacher.backupCourse(COURSE, dir, { sections: [whole.id], activities: [page.id, resource.id], anonymous: false, timeoutMs: 600_000 });
     cleanup(() => removeBackupFile("teacher", scratch.id, file.name));
     assert.match(changed, /without people's data/);
     // The file: what was asked, no one's data (no users, no grades, submissions, posts or logs).
@@ -288,7 +294,7 @@ describe("reports and course life cycle", () => {
     const intro = await teacher.createActivity({ courseId: scratch.id, sectionId: sections[0]!.id, type: "page", name: `Intro ${stamp}`, content: `<p>See <a href="${SITE}mod/page/view.php?id=${loops.activityId}">loops</a>.</p>`, visibility: "shown" });
     const dir = mkdtempSync(path.join(tmpdir(), "suite-deps-"));
     cleanup(async () => rmSync(dir, { recursive: true, force: true }));
-    const { file } = await teacher.backupCourse(scratch.id, dir, { activities: [check.activityId!, intro.activityId!], timeoutMs: 600_000 });
+    const { file } = await teacher.backupCourse(scratch.id, dir, { activities: [check.activityId!, intro.activityId!], anonymous: false, timeoutMs: 600_000 });
     cleanup(() => removeBackupFile("teacher", scratch.id, file.name));
 
     const contents = await teacher.backupContents(file.path);
@@ -315,6 +321,98 @@ describe("reports and course life cycle", () => {
         [newIntro.id, "link", `${SITE}mod/page/view.php?id=${loops.activityId}`],
       ].sort((a, b) => restored.activityIds!.indexOf(a[0] as number) - restored.activityIds!.indexOf(b[0] as number)),
     );
+  });
+
+  it("backupCourse: part of a course anonymous by default (a page with an image, a quiz with questions, a file), restored by the admin with everything and no one's name", SLOW, async () => {
+    const teacher = await as("teacher");
+    const admin = await as("admin");
+    const course = await scratchCourse("lifecycle-anonymous");
+    const dir = mkdtempSync(path.join(tmpdir(), "suite-anonymous-"));
+    cleanup(async () => rmSync(dir, { recursive: true, force: true }));
+    const image = path.join(dir, "dot.png");
+    writeFileSync(image, PNG);
+    const notes = path.join(dir, "notes.txt");
+    writeFileSync(notes, "Notes.\n");
+    const at = { courseId: course.id, sectionId: course.sectionId, visibility: "shown" as const };
+    const page = await teacher.createActivity({ ...at, type: "page", name: `Anonymous page ${stamp}`, content: '<p>A dot: <img src="dot.png" alt="dot"></p>', embed: [image] });
+    const resource = await teacher.createActivity({ ...at, type: "resource", name: `Anonymous file ${stamp}`, files: [notes] });
+    const label = await teacher.createActivity({
+      ...at,
+      type: "label",
+      content: `<p><a href="${SITE}mod/page/view.php?id=${page.activityId}">page</a> <a href="${SITE}course/view.php?id=${course.id}">course</a> <a href="${SITE}mod/forum/index.php?id=${course.id}">forums</a> <a href="${SITE}mod/page/view.php?id=999999">gone</a></p>`,
+    });
+    const quiz = await teacher.createActivity({ ...at, type: "quiz", name: `Anonymous quiz ${stamp}` });
+    const own = await teacher.createQuestion(quiz.activityId!, { type: "truefalse", name: "Anonymous TF", text: "<p>True?</p>", correct: true });
+    // A question from the course's shared bank, which the selection leaves out: Moodle carries the question.
+    await teacher.createActivity({ ...at, type: "qbank", name: `Anonymous bank ${stamp}` });
+    const bank = (await teacher.questionBanks(course.id)).find((b) => b.name === `Anonymous bank ${stamp}`)!;
+    const shared = await teacher.createQuestion(bank.id, { type: "shortanswer", name: "Anonymous SA", text: "<p>Two plus two?</p>", answers: [{ text: "four", fraction: 1 }] });
+    await teacher.addQuestionsToQuiz(quiz.activityId!, { questionIds: [own.questionId!, shared.questionId!] });
+    const chosen = [page, resource, label, quiz].map((a) => a.activityId!);
+
+    const { file, changed } = await teacher.backupCourse(course.id, dir, { activities: chosen, timeoutMs: 600_000 });
+    cleanup(() => removeBackupFile("teacher", course.id, (name) => name.startsWith(`backup-moodle2-course-${course.id}-`)));
+    assert.match(changed, /naming no one and no site/);
+    assert.match(file.name, /^backup-moodle2-anonymous-\d{8}-\d{4}\.mbz$/);
+    const contents = await teacher.backupContents(file.path);
+    assert.deepEqual(contents.identifies, []);
+    assert.deepEqual(contents.original, { site: ANONYMOUS.site, courseId: 0, courseFullName: ANONYMOUS.courseFullName, courseShortName: ANONYMOUS.courseShortName, format: "topics" });
+    assert.deepEqual(contents.activities.map((a) => a.id).sort(), [...chosen].sort());
+    assert.ok(contents.plugins.includes("qtype_truefalse") && contents.plugins.includes("qtype_shortanswer"));
+    // Nothing in its XML names the teacher, the site or the course.
+    const me = await teacher.whoAmI();
+    const xml = readTgz(readFileSync(file.path)).filter(([name]) => name.endsWith(".xml")).map(([, data]) => data.toString("utf8")).join("\n");
+    for (const text of [me.fullName, "localhost:8080", `drivercheck-lifecycle-anonymous`, "Driver check lifecycle-anonymous"]) assert.ok(!xml.includes(text), text);
+    assert.doesNotMatch(xml, /<(userid|usermodified|usercreated|createdby|modifiedby|ownerid)>[1-9]/);
+
+    // Restored on the same site, as from another: links to what came with it decoded, the rest to the anonymous site.
+    const other = await scratchCourse("lifecycle-anonymous-target");
+    const restored = await admin.restoreCourse(file.path, { into: other.id, timeoutMs: 600_000 });
+    const now = (await admin.courseStructure(other.id)).flatMap((s) => s.activities).filter((a) => restored.activityIds!.includes(a.id));
+    const named = (prefix: string) => now.find((a) => a.name.startsWith(prefix))!;
+    assert.deepEqual(now.map((a) => a.type).sort(), ["label", "page", "quiz", "resource"]);
+    assert.ok(((await admin.activitySettings(named("Anonymous file").id)).files ?? []).length > 0, "the file resource has its file");
+    const shown = await admin.activityContent(named("Anonymous page").id, "page");
+    assert.equal(shown.images?.length, 1);
+    const dot = await admin.downloadFile(shown.images![0]!.url, dir);
+    assert.deepEqual(readFileSync(dot.path), PNG, "the page's image came with it");
+    const newLabel = now.find((a) => a.type === "label")!;
+    const form = await openSitePage(await admin.context(), SITE, `course/modedit.php?update=${newLabel.id}&return=0`);
+    const text = await form.locator('textarea[name="introeditor[text]"]').inputValue();
+    await form.close();
+    assert.ok(text.includes(`${SITE}mod/page/view.php?id=${named("Anonymous page").id}"`), text);
+    assert.ok(text.includes(`${SITE}course/view.php?id=${other.id}"`) && text.includes(`${SITE}mod/forum/index.php?id=${other.id}"`), text);
+    assert.deepEqual(restored.warnings!.map((w) => [w.kind, w.url]), [["link", `${ANONYMOUS.site}/mod/page/view.php?id=999999`]]);
+    // The questions came with the quiz, the shared one into a bank of the course, and they're the admin's now.
+    const newQuiz = named("Anonymous quiz").id;
+    assert.deepEqual((await admin.quizStructure(newQuiz)).slots.map((s) => s.name), ["Anonymous TF", "Anonymous SA"]);
+    const creators: string[] = [];
+    for (const held of await admin.questionBanks(other.id)) {
+      const bankPage = await openSitePage(await admin.context(), SITE, `question/edit.php?cmid=${held.id}`);
+      creators.push(...(await bankPage.locator(".qbank-creator-name").allInnerTexts()).map((name) => name.trim()));
+      await bankPage.close();
+    }
+    const adminName = (await admin.whoAmI()).fullName;
+    // Each question's creator and last modifier, as the banks show them.
+    assert.ok(creators.length >= 2 && creators.every((name) => name === adminName), `the questions show who restored them, not who made them: ${creators.join(", ")}`);
+  });
+
+  it("anonymizeBackup: a whole course's backup as Moodle made it, anonymized on this computer and restored", SLOW, async () => {
+    assert.ok(backupFile, "backupCourse made the file");
+    const teacher = await as("teacher");
+    const admin = await as("admin");
+    const before = await teacher.backupContents(backupFile);
+    assert.ok(["original_wwwroot", "original_site_identifier_hash", "original_course_fullname", "original_course_id"].every((field) => before.identifies.some((i) => i.field === field)), JSON.stringify(before.identifies));
+    const dest = path.join(path.dirname(backupFile), "anonymous.mbz");
+    const { file, cleared } = await teacher.anonymizeBackup(backupFile, dest);
+    assert.equal(file.path, dest);
+    assert.equal(cleared.length, before.identifies.length);
+    const after = await teacher.backupContents(dest);
+    assert.deepEqual(after.identifies, []);
+    assert.deepEqual([after.sections, after.activities], [before.sections, before.activities]);
+    const { course } = await admin.restoreCourse(dest, { into: "new", categoryId: CATEGORY, fullName: `Driver check anonymous ${stamp}`, shortName: `drivercheck-anonymous-${stamp}`, timeoutMs: 600_000 });
+    made(course.id);
+    assert.ok((await admin.courseStructure(course.id)).flatMap((s) => s.activities).some((a) => a.type === "page" && a.name === pageName));
   });
 
   it("importActivities: one activity of the content course imported into the scratch course", SLOW, async () => {

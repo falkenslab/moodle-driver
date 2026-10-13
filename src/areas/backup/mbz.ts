@@ -1,9 +1,11 @@
 // A Moodle backup file (.mbz) read locally, with Node alone: no browser, no session. An .mbz is a
 // gzipped tar (Moodle's default; a site set to `usezipbackups` writes a zip, which isn't read here)
 // holding `moodle_backup.xml`, the backup's description, and an XML file per part of it.
-import { createReadStream } from "node:fs";
-import { open } from "node:fs/promises";
-import { createGunzip } from "node:zlib";
+import { once } from "node:events";
+import { createReadStream, createWriteStream } from "node:fs";
+import { open, rename, rm } from "node:fs/promises";
+import { pipeline } from "node:stream/promises";
+import { createGunzip, createGzip } from "node:zlib";
 import { checkLocalFiles } from "../../core/files.js";
 import { BackupError } from "./errors.js";
 
@@ -71,6 +73,100 @@ export async function readTarEntries(file: string, wanted: (name: string) => boo
     stream.destroy();
   }
   return found;
+}
+
+/**
+ * Copies a gzipped tar to `destFile`, every entry as it was (its header's bytes too) except those
+ * `replacements` gives new contents for: their header keeps its name, mode and times, with the new
+ * size and checksum. Streams, so a backup of any size takes little memory; written to a temporary
+ * file first and renamed, so `destFile` may be `file` itself, and a failure leaves no half file.
+ */
+export async function rewriteTar(file: string, destFile: string, replacements: Map<string, Buffer>): Promise<void> {
+  if ((await archiveKind(file)) !== "tgz") throw new BackupError(`${file} isn't a Moodle backup the driver can read: an .mbz file is a gzipped archive, and this one isn't.`);
+  const temporary = `${destFile}.${process.pid}-${Date.now()}.part`;
+  const source = createReadStream(file);
+  const gunzip = source.pipe(createGunzip());
+  const gzip = createGzip();
+  const output = createWriteStream(temporary);
+  const written = pipeline(gzip, output);
+  // Back pressure: waits for the compressor when it asks to.
+  const write = async (bytes: Buffer) => {
+    if (!gzip.write(bytes)) await once(gzip, "drain");
+  };
+  let buffer: Buffer = Buffer.alloc(0);
+  let copy = 0;
+  let skip = 0;
+  let longName: string | undefined;
+  let pendingLong: { type: string; size: number; padded: number; header: Buffer } | undefined;
+  try {
+    outer: for await (const chunk of gunzip as AsyncIterable<Buffer>) {
+      buffer = buffer.length > 0 ? Buffer.concat([buffer, chunk]) : chunk;
+      for (;;) {
+        if (copy > 0 || skip > 0) {
+          const n = Math.min(copy || skip, buffer.length);
+          if (copy > 0) {
+            await write(buffer.subarray(0, n));
+            copy -= n;
+          } else skip -= n;
+          buffer = buffer.subarray(n);
+          if (copy > 0 || skip > 0) break;
+          continue;
+        }
+        if (pendingLong) {
+          // A long name's own entry: kept to name the next one, and copied as it is.
+          if (buffer.length < pendingLong.padded) break;
+          const data = buffer.subarray(0, pendingLong.size).toString("utf8");
+          longName = pendingLong.type === "L" ? data.replace(/\0+$/, "") : (/(?:^|\n)\d+ path=([^\n]*)\n/.exec(data)?.[1] ?? longName);
+          await write(Buffer.concat([pendingLong.header, buffer.subarray(0, pendingLong.padded)]));
+          buffer = buffer.subarray(pendingLong.padded);
+          pendingLong = undefined;
+          continue;
+        }
+        if (buffer.length < 512) break;
+        const header = Buffer.from(buffer.subarray(0, 512));
+        buffer = buffer.subarray(512);
+        if (header.every((byte) => byte === 0)) break outer;
+        if (!validHeader(header)) throw new BackupError(`${file} is damaged: its archive breaks off.`);
+        const type = String.fromCharCode(header[156]!);
+        const size = octal(header.subarray(124, 136));
+        const padded = Math.ceil(size / 512) * 512;
+        if (type === "L" || type === "x") {
+          pendingLong = { type, size, padded, header };
+          continue;
+        }
+        const prefix = header.subarray(257, 262).toString("latin1") === "ustar" ? cString(header.subarray(345, 500)) : "";
+        const plain = cString(header.subarray(0, 100));
+        const name = (longName ?? (prefix ? `${prefix}/${plain}` : plain)).replace(/^\.\//, "");
+        longName = undefined;
+        const replacement = (type === "0" || type === "\0") && replacements.get(name);
+        if (replacement) {
+          header.write(`${replacement.length.toString(8).padStart(11, "0")}\0`, 124, 12, "latin1");
+          header.write("        ", 148, 8, "latin1");
+          let sum = 0;
+          for (const byte of header) sum += byte;
+          header.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148, 8, "latin1");
+          await write(Buffer.concat([header, replacement, Buffer.alloc((512 - (replacement.length % 512)) % 512)]));
+          skip = padded;
+        } else {
+          await write(header);
+          copy = padded;
+        }
+      }
+    }
+    if (copy > 0 || skip > 0 || pendingLong) throw new BackupError(`${file} is damaged: its archive breaks off.`);
+    await write(Buffer.alloc(1024)); // The archive's end.
+    gzip.end();
+    await written;
+    await rename(temporary, destFile);
+  } catch (error) {
+    gzip.destroy();
+    await written.catch(() => undefined);
+    await rm(temporary, { force: true });
+    if (error instanceof BackupError) throw error;
+    throw new BackupError(`${file} couldn't be rewritten into ${destFile}: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    source.destroy();
+  }
 }
 
 /** Whether a file is a gzipped archive (Moodle's default .mbz), a zip (`usezipbackups`) or neither, by its first bytes. */
