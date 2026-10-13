@@ -15,6 +15,7 @@ Turn a backup of part of a course into one that names no person and no site, so 
 ## Changes
 
 - `anonymizeBackup(file, destFile)`: no browser, no session; writes a copy of the `.mbz` where every user id is 0 and every author, creator or modifier name empty, in `files.xml`, `questions.xml` and any other of the backup's XML that carries them, and the course's names and the original site replaced by neutral values. Refuses a backup with users' data (that needs Moodle's own anonymization). Leaves the content, settings and files untouched.
+- `backupCourse` with a selection (`sections`/`activities`) gives an anonymous backup by default, through the same rewriting (`anonymous: false` keeps the metadata); a whole-course backup stays as Moodle makes it unless `anonymous: true`. If the sandbox shows the neutral site breaks something in a restore, the default is reconsidered and the report says why.
 - `backupContents` gains `identifies`: what in the backup still names a person or the site (empty after `anonymizeBackup`), so a catalog can check a file before accepting it.
 - Writing the archive back: a minimal tar writer over Node's zlib, next to the reader, no dependency.
 - Docs on the backup page (what a catalog-ready backup is); the `moodle` command (`moodle anonymize-backup <file> <dest>`); exported like `backupContents`.
