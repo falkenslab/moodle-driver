@@ -6,6 +6,7 @@ import path from "node:path";
 import { backgroundBrowser, closeBackgroundBrowser, connectBrowserManager } from "../browser/background.js";
 import { ALL_DATA_CATEGORIES, DATA_CATEGORIES, type DataCategory } from "../categories.js";
 import type { Moodle, MoodleOptions } from "../client.js";
+import { backupContents } from "../areas/backup/contents.js";
 import { MoodleError } from "../core/errors.js";
 import { NotLoggedInError } from "../core/session.js";
 import { parseSiteUrl } from "../options.js";
@@ -263,6 +264,24 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
       return 0;
     }
 
+    const allow = global.allow ?? session.defaults.allow;
+    if (allow) {
+      const allowed = allowedCategories(allow);
+      const outside = (categoriesOf(command.name) ?? ["any"]).filter((c) => !allowed.includes(c));
+      if (outside.length > 0) {
+        deps.stderr(`refused: ${kebab(command.name)} touches ${outside.join(", ")}, outside --allow ${allowed.join(",")}.`);
+        return 1;
+      }
+    }
+
+    // A backup file is read on this computer: no site, no profile, no browser.
+    if (command.name === "backupContents") {
+      const [file] = methodArguments(command, positionals, flags, deps.cwd) as [string];
+      const text = render(await backupContents(file), json);
+      if (text) deps.stdout(text);
+      return 0;
+    }
+
     const site = siteOf(deps, session, global);
     if (!site) throw new UsageError("No site yet: log in first with `moodle login --site https://campus.example.org/`, or give --site.");
     const loggingIn = command.name === "logIn";
@@ -276,16 +295,6 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
     const profileDir = chosen?.profileDir ?? pending ?? path.join(deps.home, "sites", ".none");
     // A profile logged in to for the first time has its folder from now on, browser or not.
     if (loggingIn) mkdirSync(profileDir, { recursive: true });
-
-    const allow = global.allow ?? session.defaults.allow;
-    if (allow) {
-      const allowed = allowedCategories(allow);
-      const outside = (categoriesOf(command.name) ?? ["any"]).filter((c) => !allowed.includes(c));
-      if (outside.length > 0) {
-        deps.stderr(`refused: ${kebab(command.name)} touches ${outside.join(", ")}, outside --allow ${allowed.join(",")}.`);
-        return 1;
-      }
-    }
 
     const args = methodArguments(command, positionals, flags, deps.cwd);
     const moodle = await moodleFor(deps, session, site, profileDir);

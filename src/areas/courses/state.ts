@@ -26,6 +26,8 @@ export interface CourseState {
     accessvisible?: boolean;
     hascmrestrictions?: boolean;
     sectionid: string;
+    /** A subsection's own section (Moodle 5). */
+    delegatesectionid?: string | number | null;
     istrackeduser?: boolean;
     completionstate?: number;
     isoverallcomplete?: boolean;

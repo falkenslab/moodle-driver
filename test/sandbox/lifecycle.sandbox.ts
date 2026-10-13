@@ -4,12 +4,15 @@
 // tests make, each deleted afterwards. Moodle makes copies, backups and restores in its ad hoc
 // tasks, which the runner runs every 10 s: those tests have long timeouts.
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
-import { BackupError, CourseError, ReportError } from "../../src/index.js";
-import { COURSE, as, cleanup, deleteCourse, notForbidden, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { BackupError, CourseError, ReportError, type CourseSection } from "../../src/index.js";
+import { deleteDraftFile, formValue, openForm, openSitePage, submitForm } from "../../src/internals.js";
+import { readBackupInfo } from "../../src/areas/backup/mbz.js";
+import { readTgz, writeTgz } from "../areas/backup/tgz.js";
+import { COURSE, SITE, as, cleanup, deleteCourse, notForbidden, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 const STUDENT_ROLE = 5;
 /** The sandbox's default category, where new courses go. */
@@ -23,6 +26,30 @@ function made(courseId: number): number {
   assert.notEqual(courseId, COURSE);
   cleanup(() => deleteCourse(courseId));
   return courseId;
+}
+
+/**
+ * Deletes a backup file from the person's private backup area, where Moodle keeps the backups made
+ * without users' data, through the area's "Manage backup files" form (reached from a course's
+ * restore page).
+ */
+async function removeBackupFile(role: "teacher" | "admin", courseId: number, name: string): Promise<void> {
+  const context = await (await as(role)).context();
+  const course = await openSitePage(context, SITE, `course/view.php?id=${courseId}`);
+  const contextId = await course.evaluate(() => (globalThis as unknown as { M: { cfg: { contextid: number } } }).M.cfg.contextid);
+  await course.close();
+  const list = await openSitePage(context, SITE, `backup/restorefile.php?contextid=${contextId}`);
+  const query = await list
+    .locator('form[action*="backupfilesedit.php"]:has(input[name="component"][value="user"])')
+    .evaluate((form) => Array.from((form as unknown as { querySelectorAll(s: string): ArrayLike<{ name: string; value: string }> }).querySelectorAll("input")).map((input) => `${encodeURIComponent(input.name)}=${encodeURIComponent(input.value)}`).join("&"));
+  await list.close();
+  const form = await openForm(context, SITE, `backup/backupfilesedit.php?${query}`);
+  try {
+    await deleteDraftFile(form, (await formValue(form, "files_filemanager"))!, name);
+    await submitForm(form, "submitbutton");
+  } finally {
+    await form.close();
+  }
 }
 
 /** The ids of a course's activities, as the person sees them. */
@@ -134,6 +161,7 @@ describe("reports and course life cycle", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "suite-backup-"));
     cleanup(async () => rmSync(dir, { recursive: true, force: true }));
     const { file } = await (await as("teacher")).backupCourse(scratch.id, dir, { timeoutMs: 180_000 });
+    cleanup(() => removeBackupFile("teacher", scratch.id, file.name));
     assert.ok(file.name.endsWith(".mbz"));
     assert.ok(file.size > 0);
     assert.equal(path.dirname(file.path), dir);
@@ -155,6 +183,138 @@ describe("reports and course life cycle", () => {
     assert.equal(merged.length, 2);
     // The teacher can't create courses.
     await assert.rejects((await as("teacher")).restoreCourse(backupFile, { into: "new", categoryId: CATEGORY }), BackupError);
+  });
+
+  /** Part of the content course backed up: its file, and its activities' names by section, in order. */
+  let part: { file: string; sections: string[][] } | undefined;
+
+  it("backupCourse: part of the content course (a whole section, a page and a file from others), without people's data", SLOW, async () => {
+    const teacher = await as("teacher");
+    const original = await teacher.courseStructure(COURSE);
+    const whole = original.find((s) => s.activities.length > 0)!;
+    const others = original.filter((s) => s !== whole);
+    const page = others.flatMap((s) => s.activities).find((a) => a.type === "page");
+    const pageSection = others.find((s) => s.activities.includes(page!));
+    const resource = others.filter((s) => s !== pageSection).flatMap((s) => s.activities).find((a) => a.type === "resource");
+    assert.ok(page && resource, "the content course has a page and a file outside its first section with content");
+    const dir = mkdtempSync(path.join(tmpdir(), "suite-part-"));
+    cleanup(async () => rmSync(dir, { recursive: true, force: true }));
+    const { file, changed } = await teacher.backupCourse(COURSE, dir, { sections: [whole.id], activities: [page.id, resource.id], timeoutMs: 600_000 });
+    cleanup(() => removeBackupFile("teacher", scratch.id, file.name));
+    assert.match(changed, /without people's data/);
+    // The file: what was asked, no one's data (no users, no grades, submissions, posts or logs).
+    const info = await readBackupInfo(file.path);
+    const held = info.activities.filter((a) => a.included).map((a) => a.id);
+    assert.deepEqual(held.sort(), [...whole.activities.map((a) => a.id), page.id, resource.id].sort());
+    assert.ok(["users", "logs", "comments", "userscompletion", "grade_histories", "role_assignments"].every((name) => info.settings[name] !== "1"), JSON.stringify(info.settings));
+    const entries = readTgz(readFileSync(file.path));
+    assert.ok(!entries.some(([name]) => /(^|\/)(users|logs|logstores|comments|completion)\.xml$/.test(name)), entries.map(([name]) => name).join(", "));
+    const xml = entries.filter(([name]) => name.endsWith(".xml")).map(([, content]) => content.toString("utf8")).join("\n");
+    assert.ok(!/<(grade_grade|submission|post|user|attempt|log) /.test(xml), "no one's grades, submissions, posts, attempts or logs");
+    // The content course is only read.
+    assert.deepEqual(await activityIds("teacher", COURSE), original.flatMap((s) => s.activities.map((a) => a.id)));
+    await assert.rejects(teacher.backupCourse(COURSE, dir, { activities: [999_999] }), { code: "not-found" });
+    await assert.rejects((await as("student")).backupCourse(COURSE, dir, { sections: [whole.id] }), BackupError);
+    part = { file: file.path, sections: [whole.activities.map((a) => a.name), [page.name], [resource.name]] };
+  });
+
+  it("restoreCourse: part of a course into one section of the scratch course, and as new sections after it, with its files", SLOW, async () => {
+    assert.ok(part, "backupCourse made the part's file");
+    const teacher = await as("teacher");
+    const { sectionId: target } = await teacher.addSection(scratch.id, { name: `Driver check target ${stamp}` });
+    assert.ok(target);
+    const before = await teacher.courseStructure(scratch.id);
+    const names = (structure: CourseSection[], ids: number[]) => ids.map((id) => structure.flatMap((s) => s.activities).find((a) => a.id === id)?.name);
+
+    const into = await teacher.restoreCourse(part.file, { into: scratch.id, sectionId: target, timeoutMs: 600_000 });
+    let now = await teacher.courseStructure(scratch.id);
+    assert.deepEqual(into.sectionIds, []);
+    assert.deepEqual(now.map((s) => [s.id, s.title]), before.map((s) => [s.id, s.title]), "no section added, none renamed");
+    assert.deepEqual(now.find((s) => s.id === target)!.activities.map((a) => a.id), into.activityIds);
+    assert.deepEqual(names(now, into.activityIds!), part.sections.flat());
+    for (const section of before.filter((s) => s.id !== target)) assert.deepEqual(now.find((s) => s.id === section.id)!.activities.map((a) => a.id), section.activities.map((a) => a.id));
+    // The file resource came with its file.
+    const restoredFile = now.find((s) => s.id === target)!.activities.find((a) => a.type === "resource")!;
+    assert.ok(((await teacher.activitySettings(restoredFile.id)).files ?? []).length > 0, "the restored resource has its file");
+
+    const after = await teacher.restoreCourse(part.file, { into: scratch.id, afterSectionId: target, timeoutMs: 600_000 });
+    now = await teacher.courseStructure(scratch.id);
+    const at = now.findIndex((s) => s.id === target);
+    assert.equal(after.sectionIds!.length, part.sections.length);
+    assert.deepEqual(now.slice(at + 1, at + 1 + part.sections.length).map((s) => s.id), after.sectionIds);
+    assert.deepEqual(after.sectionIds!.map((id) => now.find((s) => s.id === id)!.activities.map((a) => a.name)), part.sections);
+    assert.deepEqual(after.activityIds, after.sectionIds!.flatMap((id) => now.find((s) => s.id === id)!.activities.map((a) => a.id)));
+    // The course's own sections keep their names and activities.
+    for (const section of before) {
+      const kept = now.find((s) => s.id === section.id)!;
+      assert.equal(kept.title, section.title);
+      assert.deepEqual(kept.activities.map((a) => a.id).filter((id) => !into.activityIds!.includes(id)), section.activities.map((a) => a.id));
+    }
+  });
+
+  it("restoreCourse: a backup from a newer Moodle, or with a module the site lacks, refused before the wizard", SLOW, async () => {
+    assert.ok(part, "backupCourse made the part's file");
+    const teacher = await as("teacher");
+    const dir = mkdtempSync(path.join(tmpdir(), "suite-edited-"));
+    cleanup(async () => rmSync(dir, { recursive: true, force: true }));
+    const entries = readTgz(readFileSync(part.file));
+    const edited = (name: string, change: (xml: string) => string) => {
+      const file = path.join(dir, name);
+      writeFileSync(file, writeTgz(entries.map(([entry, content]) => [entry, entry === "moodle_backup.xml" ? change(content.toString("utf8")) : content])));
+      return file;
+    };
+    const newer = edited("newer.mbz", (xml) => xml.replace(/<moodle_release>[^<]*<\/moodle_release>/, "<moodle_release>9.9 (Build: 20991231)</moodle_release>"));
+    const lacking = edited("lacking.mbz", (xml) => xml.replace("<modulename>page</modulename>", "<modulename>nosuchmodule</modulename>"));
+    const before = await activityIds("teacher", scratch.id);
+    await assert.rejects(teacher.restoreCourse(newer, { into: scratch.id }), (error: Error) => error instanceof BackupError && /Moodle 9\.9 \(Build: 20991231\), newer than this site's/.test(error.message));
+    await assert.rejects(teacher.restoreCourse(lacking, { into: scratch.id }), (error: Error) => error instanceof BackupError && /nosuchmodule/.test(error.message));
+    assert.deepEqual(await activityIds("teacher", scratch.id), before);
+  });
+
+  it("backupContents: a part that depends on what it left out, read; restoreCourse: its warnings in another course", SLOW, async () => {
+    const teacher = await as("teacher");
+    const sections = await teacher.courseStructure(scratch.id);
+    // In the scratch course: "Loops", "Loops: check" restricted on its completion, and a page linking to it.
+    const loops = await teacher.createActivity({ courseId: scratch.id, sectionId: sections[0]!.id, type: "page", name: `Loops ${stamp}`, content: "<p>A loop.</p>", completion: "manual", visibility: "shown" });
+    const check = await teacher.createActivity({
+      courseId: scratch.id,
+      sectionId: sections[0]!.id,
+      type: "page",
+      name: `Loops check ${stamp}`,
+      content: "<p>Try it.</p>",
+      visibility: "shown",
+      restrictions: { conditions: [{ type: "completion", activityId: loops.activityId!, state: "complete" }] },
+    });
+    const intro = await teacher.createActivity({ courseId: scratch.id, sectionId: sections[0]!.id, type: "page", name: `Intro ${stamp}`, content: `<p>See <a href="${SITE}mod/page/view.php?id=${loops.activityId}">loops</a>.</p>`, visibility: "shown" });
+    const dir = mkdtempSync(path.join(tmpdir(), "suite-deps-"));
+    cleanup(async () => rmSync(dir, { recursive: true, force: true }));
+    const { file } = await teacher.backupCourse(scratch.id, dir, { activities: [check.activityId!, intro.activityId!], timeoutMs: 600_000 });
+    cleanup(() => removeBackupFile("teacher", scratch.id, file.name));
+
+    const contents = await teacher.backupContents(file.path);
+    assert.equal(contents.type, "course");
+    assert.equal(contents.moodle.release.split(".")[0], "5");
+    assert.equal(contents.original.courseId, scratch.id);
+    assert.equal(contents.withUsers, false);
+    assert.ok(contents.plugins.includes("mod_page"));
+    assert.deepEqual(contents.activities.map((a) => a.id).sort(), [check.activityId!, intro.activityId!].sort());
+    const depends = (id: number) => contents.activities.find((a) => a.id === id)!.dependencies;
+    assert.deepEqual(depends(check.activityId!), [{ kind: "restriction", condition: "completion", activityId: loops.activityId }]);
+    assert.deepEqual(depends(intro.activityId!), [{ kind: "link", activityId: loops.activityId, module: "page" }]);
+
+    // Restored in another course, without Loops: the restriction and the link are broken there.
+    const other = await scratchCourse("lifecycle-target");
+    const restored = await teacher.restoreCourse(file.path, { into: other.id, timeoutMs: 600_000 });
+    const names = (await teacher.courseStructure(other.id)).flatMap((s) => s.activities).filter((a) => restored.activityIds!.includes(a.id));
+    const newCheck = names.find((a) => a.name === `Loops check ${stamp}`)!;
+    const newIntro = names.find((a) => a.name === `Intro ${stamp}`)!;
+    assert.deepEqual(
+      restored.warnings!.map((w) => [w.activityId, w.kind, w.condition ?? w.url]),
+      [
+        [newCheck.id, "restriction", "completion"],
+        [newIntro.id, "link", `${SITE}mod/page/view.php?id=${loops.activityId}`],
+      ].sort((a, b) => restored.activityIds!.indexOf(a[0] as number) - restored.activityIds!.indexOf(b[0] as number)),
+    );
   });
 
   it("importActivities: one activity of the content course imported into the scratch course", SLOW, async () => {
