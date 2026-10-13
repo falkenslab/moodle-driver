@@ -49,7 +49,7 @@ Starts an attempt, or continues the one in progress, exactly as the quiz page's 
 function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string; attemptId: number; questions: Question[] }>;
 ```
 
-A quiz with a time limit first asks for confirmation on a form of its own: the driver confirms it, which starts the clock. A quiz with a password isn't started: `QuizError` says it asks for one. `QuizError` also comes when the page has no start button (the person used all attempts, the quiz is closed), carrying the page's messages, and when the id isn't a quiz.
+A quiz with a time limit first asks for confirmation: Moodle shows its form in a dialog on the quiz's page (or as a page of its own when the button is pressed before the page's script is ready); the driver confirms it either way, which starts the clock. A quiz meant for a secure pop-up window opens the attempt in a new window, which the driver closes once it has the attempt's id. A quiz with a password isn't started: the driver never types a password, so `QuizError` says it asks for one and the person starts that attempt in Moodle. `QuizError` also comes when the page has no start button (the person used all attempts, the quiz is closed), carrying the page's messages, when Moodle refuses the attempt (its message), and when the id isn't a quiz.
 
 ## Questions and their fields
 

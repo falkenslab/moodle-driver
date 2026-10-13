@@ -43,10 +43,20 @@ describe("readQuestions", { skip: !browser && "no system browser" }, () => {
 
 const NAV = `<div id="mod_quiz_navblock"><a class="qnbutton" id="quiznavbutton1" data-quiz-page="0"></a><a class="qnbutton" id="quiznavbutton2" data-quiz-page="0"></a><a class="qnbutton" id="quiznavbutton3" data-quiz-page="1"></a></div>`;
 
-/** The quiz's pages, served from a state that keeps the answers saved and whether the attempt is finished. */
-function fakeQuiz() {
+/**
+ * The quiz's pages, served from a state that keeps the answers saved and whether the attempt is finished.
+ * With `preflight`, the view page holds Moodle's preflight form hidden, and its start button opens it in
+ * a dialog on the same page instead of posting (Moodle 5.2's mod_quiz/preflightcheck, reduced).
+ */
+function fakeQuiz({ preflight }: { preflight?: "timelimit" | "password" } = {}) {
   const saved: URLSearchParams[] = [];
+  const started: URLSearchParams[] = [];
   let finished = false;
+  const preflightForm = preflight
+    ? `<form method="post" action="${SITE}mod/quiz/startattempt.php" id="mod_quiz_preflight_form" style="display: none"><input type="hidden" name="cmid" value="26"><input type="hidden" name="_qf__mod_quiz_form_preflight_check_form" value="1">
+${preflight === "password" ? '<input type="password" name="quizpassword">' : '<div data-name="honestycheckmessage">Your attempt will have a time limit of 20 mins.</div>'}<input type="submit" name="submitbutton" value="Start attempt"><input type="submit" name="cancel" id="id_cancel" value="Cancel"></form>
+<script>document.querySelector(".quizstartbuttondiv [type=submit]").addEventListener("click", (e) => { e.preventDefault(); document.getElementById("mod_quiz_preflight_form").style.display = "block"; });</script>`
+    : "";
   const page = (body: string, bodyId: string) => moodlePage({ userId: 4, body, bodyId });
   const routes = async (context: BrowserContext) => {
     await context.route(`${SITE}mod/quiz/**`, (route: Route) => {
@@ -58,13 +68,14 @@ function fakeQuiz() {
         case "/mod/quiz/view.php":
           return html(
             page(
-              `<div id="region-main"><div id="intro">Practice quiz.</div><form method="post" action="${SITE}mod/quiz/startattempt.php"><input type="hidden" name="cmid" value="26"><button type="submit">Attempt quiz</button></form>
+              `<div id="region-main"><div id="intro">Practice quiz.</div><div class="singlebutton quizstartbuttondiv"><form method="post" action="${SITE}mod/quiz/startattempt.php"><input type="hidden" name="cmid" value="26"><button type="submit">Attempt quiz</button></form></div>
 <div class="quizinfo"><p>Attempts allowed: 3</p><p>Grading method: Highest grade</p></div>
-<div class="card"><table class="quizreviewsummary"><tr><th>Status</th><td>Finished</td></tr><tr><th>Grade</th><td>5.00 out of 10.00</td></tr></table><a href="${SITE}mod/quiz/review.php?attempt=8&amp;cmid=26">Review</a></div></div>`,
+<div class="card"><table class="quizreviewsummary"><tr><th>Status</th><td>Finished</td></tr><tr><th>Grade</th><td>5.00 out of 10.00</td></tr></table><a href="${SITE}mod/quiz/review.php?attempt=8&amp;cmid=26">Review</a></div>${preflightForm}</div>`,
               "page-mod-quiz-view",
             ),
           );
         case "/mod/quiz/startattempt.php":
+          started.push(new URLSearchParams(request.postData() ?? ""));
           return go("mod/quiz/attempt.php?attempt=9&cmid=26");
         case "/mod/quiz/attempt.php": {
           if (finished) return html(page("<p>This attempt is finished.</p>", "page-mod-quiz-attempt"));
@@ -100,16 +111,16 @@ function fakeQuiz() {
       }
     });
   };
-  return { saved, routes };
+  return { saved, started, routes };
 }
 
 describe("quiz attempts", { skip: !browser && "no system browser" }, () => {
-  async function site() {
+  async function site(options: Parameters<typeof fakeQuiz>[0] = {}) {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" } });
-    const quiz = fakeQuiz();
+    const quiz = fakeQuiz(options);
     await quiz.routes(context);
-    return { context, saved: quiz.saved };
+    return { context, saved: quiz.saved, started: quiz.started };
   }
   const fast = { trail: "fast" } as const;
 
@@ -158,6 +169,23 @@ describe("quiz attempts", { skip: !browser && "no system browser" }, () => {
     assert.deepEqual(await readReview(context, SITE, 9), done.review);
     await assert.rejects(finishQuizAttempt(context, SITE, 9), (error: unknown) => error instanceof QuizError && /can't be finished/.test(error.message));
     await assert.rejects(answerQuizQuestions(context, SITE, 9, [{ slot: 1, responses: { "q9:1_answer": "0" } }], fast), /isn't open/);
+    await context.close();
+  });
+
+  it("starts a timed quiz whose start button opens the preflight form in a dialog, confirming it (#56)", async () => {
+    const { context, started } = await site({ preflight: "timelimit" });
+    const start = await startQuizAttempt(context, SITE, 26);
+    assert.equal(start.attemptId, 9);
+    assert.equal(started.length, 1);
+    assert.equal(started[0]?.get("_qf__mod_quiz_form_preflight_check_form"), "1", "the preflight form is the one posted");
+    assert.equal(started[0]?.has("submitbutton"), true);
+    await context.close();
+  });
+
+  it("refuses a quiz with a password, posting nothing", async () => {
+    const { context, started } = await site({ preflight: "password" });
+    await assert.rejects(startQuizAttempt(context, SITE, 26), (error: unknown) => error instanceof QuizError && /asks for a password/.test(error.message));
+    assert.equal(started.length, 0);
     await context.close();
   });
 
