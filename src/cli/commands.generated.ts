@@ -631,7 +631,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "backupCourse",
-    "description": "Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too.",
+    "description": "Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema, confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup is waited for up to `timeoutMs` (ten minutes). Moodle keeps the file in the course's or the person's backup area too. With `sections` (section ids) or `activities` (course module ids: activities and resources), only those go in: a section with everything in it, an activity alone (with its section's name, which Moodle needs for it). A selection never carries people's data, nor what belongs to the course rather than to its content (blocks, filters, badges, course events, groups, competencies, custom fields, content bank, legacy files); the file is read afterwards to check that it holds what was asked and no people's data.",
     "params": [
       {
         "name": "courseId",
@@ -670,6 +670,24 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "boolean"
           }
+        },
+        {
+          "name": "sections",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          },
+          "description": "Ids of the sections to back up, each with everything in it."
+        },
+        {
+          "name": "activities",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          },
+          "description": "Course module ids of activities and resources to back up, each alone."
         },
         {
           "name": "timeoutMs",
@@ -3224,7 +3242,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "restoreCourse",
-    "description": "Restores a backup file (`.mbz`) through Moodle's restore wizard: into a new course in a category (`into: \"new\"`, with `categoryId`, which needs `moodle/course:create` there), or into an existing course (`into: <course id>`), its content added to the course's (`mode: \"merge\"`, the default) or replacing it (`\"replace\"`: the course's content is deleted first). A new course takes the backup's names unless `fullName` and `shortName` are given. Users' data is restored when `withUsers` and the backup has it. An asynchronous restore is waited for up to `timeoutMs` (ten minutes). Needs `moodle/restore:restorecourse` where it restores.",
+    "description": "Restores a backup file (`.mbz`) through Moodle's restore wizard: into a new course in a category (`into: \"new\"`, with `categoryId`, which needs `moodle/course:create` there), or into an existing course (`into: <course id>`), its content added to the course's (`mode: \"merge\"`, the default) or replacing it (`\"replace\"`: the course's content is deleted first). A new course takes the backup's names unless `fullName` and `shortName` are given. Users' data is restored when `withUsers` and the backup has it. An asynchronous restore is waited for up to `timeoutMs` (ten minutes). Needs `moodle/restore:restorecourse` where it restores. Before the wizard, the backup is read: one made on a newer Moodle than the site's, or holding activities of a type the site doesn't offer the person in that course, is refused (Moodle would warn only, or skip those activities without a word). Merged into an existing course, Moodle puts each of the backup's sections into the course's section of the same number (creating it when there's none) and each activity at the end of it; `sectionId` puts every restored activity at the end of that section instead, and `afterSectionId` makes each of the backup's sections a new section, in order, after that one (the driver restores, then moves what Moodle made: one move per section). With either, a section of the course that Moodle changed on the way (named, described, hidden or restricted as the backup's, when it had none) is put back. Returns the sections and activities the course has new, in the course's order.",
     "params": [
       {
         "name": "file",
@@ -3291,6 +3309,24 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "boolean"
           }
+        },
+        {
+          "name": "sectionId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Merged into an existing course: every restored activity at the end of this section."
+        },
+        {
+          "name": "afterSectionId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Merged into an existing course: the backup's sections as new sections after this one."
         },
         {
           "name": "timeoutMs",

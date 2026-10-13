@@ -82,6 +82,10 @@ The connected manager works in the browser's own context, and `close()` saves th
 
 The profile holds the browser's cookies and storage. Chromium drops session cookies (those without an expiry date, like Moodle's `MoodleSession`) when it closes, so the manager writes them to a file inside the profile (`SESSION_COOKIES_FILE`, readable only by the user) on `close()`, `saveSession()` and after logging in, and restores them on launch. Treat the whole profile folder as a secret.
 
+## Several sites, several accounts
+
+One profile can hold sessions on several sites at once: Moodle's session cookie (`MoodleSession`) belongs to the site's host and path, so sites on different hosts, or on different paths of one host (Moodle's default cookie path is the site's own), don't overwrite each other's. Two `Moodle` objects can then share one browser, `createMoodle({ site: other, browser: moodle.browser })`, the person logging in once on each site. The driver keeps one site's `sesskey` per browser at a time, so alternating sites in one browser reads the session page again at each switch (one request more), nothing else. Two accounts on the same site share that cookie, so each needs a profile of its own (`siteProfileDir` names one per site and account for the `moodle` command). This comes from how the driver and Moodle keep sessions, not from a test on two sites.
+
 ## Timeouts
 
 Navigations wait up to 60 seconds: the first pages after a site starts, or a save that makes Moodle regrade, can take long.
