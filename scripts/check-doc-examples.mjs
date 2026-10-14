@@ -12,8 +12,6 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const content = path.join(root, "docs", "content");
 const spanish = path.join(root, "docs", "i18n", "es", "docusaurus-plugin-content-docs", "current");
-// Generated from the code, in English only: Docusaurus shows the English page under /es/.
-const GENERATED = new Set(["reference/commands.md"]);
 const out = path.join(root, ".doccheck");
 
 function markdownFiles(dir) {
@@ -25,7 +23,7 @@ function markdownFiles(dir) {
 }
 
 const guide = (base, file) => path.relative(base, file).split(path.sep).join("/");
-const english = markdownFiles(content).map((file) => guide(content, file)).filter((name) => !GENERATED.has(name));
+const english = markdownFiles(content).map((file) => guide(content, file));
 const translated = new Set(existsSync(spanish) ? markdownFiles(spanish).map((file) => guide(spanish, file)) : []);
 const untranslated = english.filter((name) => !translated.has(name));
 const orphans = [...translated].filter((name) => !english.includes(name));

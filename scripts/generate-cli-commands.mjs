@@ -1,6 +1,6 @@
 // Generates the `moodle` command's table from the driver's types (ADR-012): one command per method of
 // the Moodle object, with its parameters, their types, the values they allow and their doc comments.
-// Writes src/cli/commands.generated.ts and docs/content/reference/commands.md. `--check` only compares
+// Writes src/cli/commands.generated.ts, docs/content/reference/commands.md (and its Spanish site copy). `--check` only compares
 // (exit 1 when they're stale), for tests and CI.
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -275,9 +275,26 @@ ${methods.join("\n")}
 }
 `;
 
+// The Spanish site's copy (ADR-015): its introduction in Spanish, the commands as in English, since
+// their text comes from the code's doc comments. Docusaurus resolves links between a Spanish page and
+// an English one only when both exist under the Spanish folder.
+const mdEs = `# Comandos
+
+Cada método del objeto \`Moodle\` como un comando de \`moodle\`, generado a partir de los tipos del driver: los mismos nombres (también en kebab-case), argumentos y opciones. Consulta [La línea de comandos](../getting-started/command-line.md) para instalarlo, iniciar sesión y las opciones globales.
+
+Cada uno se puede escribir también en \`moodle shell\`, sin el \`moodle\` delante, en un navegador que sigue abierto entre comandos (consulta [Una sesión interactiva](../getting-started/command-line.md#an-interactive-session)). Tras \`moodle open\`, los comandos \`moodle\` sueltos desde cualquier terminal trabajan en un navegador que queda abierto en segundo plano, hasta \`moodle close\` (consulta [Ver actuar comandos sueltos](../getting-started/command-line.md#watching-separate-commands-act)).
+
+Además de estos, \`moodle\` tiene sus propios comandos para la sesión y el navegador: \`login\`, \`sites\`, \`forget\`, \`shell\`, \`open\`, \`close\` y \`help\` (consulta [La línea de comandos](../getting-started/command-line.md)).
+
+:::note
+La descripción de cada comando sale de los comentarios del código, que están en inglés.
+:::
+${md.slice(md.indexOf("\n## "))}`;
+
 const outputs = [
   [path.join(root, "src", "cli", "commands.generated.ts"), ts_],
   [path.join(root, "docs", "content", "reference", "commands.md"), md],
+  [path.join(root, "docs", "i18n", "es", "docusaurus-plugin-content-docs", "current", "reference", "commands.md"), mdEs],
   [path.join(root, "src", "moodle-methods.generated.ts"), moodleMethods],
 ];
 let stale = false;

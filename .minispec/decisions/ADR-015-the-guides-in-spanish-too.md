@@ -2,7 +2,7 @@
 
 ## Decision
 
-The documentation site is in English and Spanish. English stays the source (ADR-008): every guide is written in `docs/content/` first, and its Spanish translation lives in `docs/i18n/es/docusaurus-plugin-content-docs/current/` under the same path, published under `/es/`. The API reference and the command reference are generated from the code's English doc comments and are not translated: the Spanish site shows them in English.
+The documentation site is in English and Spanish. English stays the source (ADR-008): every guide is written in `docs/content/` first, and its Spanish translation lives in `docs/i18n/es/docusaurus-plugin-content-docs/current/` under the same path, published under `/es/`. The API reference and the command reference are generated from the code's English doc comments and are not translated: the Spanish site shows the API reference in English, and `npm run cli:generate` writes the command reference's Spanish copy with a Spanish introduction and the commands in English (Docusaurus resolves links between Spanish pages and a page only when it exists under the Spanish folder).
 
 ## Motivation
 

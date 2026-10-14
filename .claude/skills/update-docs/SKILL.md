@@ -45,7 +45,7 @@ Search too: `grep -rn "<the function or option>" README.md .minispec CLAUDE.md` 
 
 ## 3b. The Spanish guides
 
-Every guide in `docs/content/` has its Spanish translation at the same path under `docs/i18n/es/docusaurus-plugin-content-docs/current/` (ADR-015); only the generated references (`api/`, `reference/commands.md`) are English only. A change to a guide changes its Spanish page in the same commit: the same facts, examples and links, translated, never summarized. A new guide gets its Spanish page; a renamed one, its Spanish page renamed. `npm run docs:check` fails when a guide exists in one language only.
+Every guide in `docs/content/` has its Spanish translation at the same path under `docs/i18n/es/docusaurus-plugin-content-docs/current/` (ADR-015); only the generated references are not translated (`api/`, shown in English; `reference/commands.md`, whose Spanish copy `npm run cli:generate` writes). A change to a guide changes its Spanish page in the same commit: the same facts, examples and links, translated, never summarized. A new guide gets its Spanish page; a renamed one, its Spanish page renamed. `npm run docs:check` fails when a guide exists in one language only.
 
 How to write a Spanish page:
 - Spanish from Spain, addressing the reader as `tú`, technical and plain, with the English page's structure, paragraph for paragraph, and the same Markdown rules (one line per paragraph and list item).
