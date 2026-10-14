@@ -72,7 +72,7 @@ interface Deadline {
 }
 ```
 
-Options (the object is required, its fields aren't):
+Options, all of them optional:
 
 - `courseId`: one course; without it, every course of the person's.
 - `days`: how far ahead, default 30.

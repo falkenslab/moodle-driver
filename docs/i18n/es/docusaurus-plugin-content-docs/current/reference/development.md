@@ -50,7 +50,7 @@ Se ejecuta bajo demanda, cuando quieres saber si el driver sigue funcionando en 
 
 ## Convenciones {#conventions}
 
-- Todo en inglés: código, comentarios, documentación, mensajes de commit.
+- Todo en inglés: código, comentarios, documentación, mensajes de commit; las guías de la web tienen además su traducción al español (ADR-015).
 - Una función recibe el contexto del navegador y el sitio, después los ids y después las opciones; devuelve datos simples.
 - Toda página que lee una función se abre con `openSitePage()`; los servicios pasan por `callService()`.
 - Lee Moodle por estructura (ids, atributos de datos, nombres de campos, ids del body, URL), nunca por el texto visible.

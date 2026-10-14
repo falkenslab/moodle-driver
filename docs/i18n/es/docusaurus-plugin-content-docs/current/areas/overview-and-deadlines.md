@@ -72,7 +72,7 @@ interface Deadline {
 }
 ```
 
-Opciones (el objeto es obligatorio, sus campos no):
+Opciones, todas ellas opcionales:
 
 - `courseId`: un curso; sin él, todos los cursos de la persona.
 - `days`: hasta dónde hacia delante, 30 por defecto.

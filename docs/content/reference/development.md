@@ -50,7 +50,7 @@ It runs on demand, when you want to know the driver still works on a real Moodle
 
 ## Conventions
 
-- Everything in English: code, comments, docs, commit messages.
+- Everything in English: code, comments, docs, commit messages; the site's guides also have a Spanish translation (ADR-015).
 - A function takes the browser context and the site, then ids, then options; it returns plain data.
 - Every page a function reads is opened with `openSitePage()`; services go through `callService()`.
 - Read Moodle by structure (ids, data attributes, field names, body ids, URLs), never by visible text.
