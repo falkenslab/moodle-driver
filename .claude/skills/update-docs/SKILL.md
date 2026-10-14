@@ -73,6 +73,17 @@ How to write a Spanish page:
 | log in, session, site, capability | iniciar sesión, sesión, sitio, capacidad |
 | the driver, fake Moodle, sandbox, data categories, trail | el driver, Moodle simulado, sandbox, categorías de datos, rastro |
 | browser profile, headless, working tab, background browser | perfil del navegador, sin ventana (headless), pestaña de trabajo, navegador en segundo plano |
+| override a grade or completion (verb / noun) | anular / anulación (quiz, assignment and lesson overrides stay "excepción") |
+| unenrol, self enrolment, guest access, enrolment key | dar de baja, automatriculación, acceso de invitados, clave de matriculación |
+| scale, aggregation, weight, rating / rate, mark | escala, agregación, peso, valoración / valorar, puntuación |
+| grading method, marking guide, remarks | método de calificación, guía de evaluación, observaciones |
+| workshop assessment, reviewer, assessment phase | evaluación, revisor, fase de evaluación |
+| dashboard, timeline, draft area, file picker, editing mode | área personal, línea de tiempo, área de borrador, selector de archivos, modo edición |
+| course module id, instance id, slot | id del módulo del curso, id de instancia, posición (`slot` in code) |
+| database entry, glossary entry | entrada de una base de datos, entrada de glosario |
+| the examples' headings: The program, Step by step, What it prints, Variations, When something goes wrong, Data it touches | El programa, Paso a paso, Lo que imprime, Variaciones, Cuando algo sale mal, Datos que toca |
+
+What stays English in a Spanish page: the driver's own output (`changed` sentences, its error messages, CLI tables) and literal values a program compares or the driver writes; Moodle's interface labels are quoted as Moodle's Spanish interface words them.
 
 ## 4. Build the site
 

@@ -185,7 +185,7 @@ const created = await moodle.createQuestion(bank.id, {
 });
 console.log(created.changed);
 
-// Una nueva versión con un enunciado más claro, como borrador hasta revisarla; y dos preguntas antiguas fuera.
+// Una nueva versión con un enunciado más claro, como borrador hasta revisarla; y las preguntas importadas arriba, borradas de nuevo.
 if (created.questionId) {
   const updated = await moodle.updateQuestion(bank.id, created.questionId, { text: "<p>¿Cuál de estos bucles no termina nunca?</p>" });
   if (updated.questionId) await moodle.setQuestionStatus(updated.questionId, "draft");

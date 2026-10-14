@@ -2,7 +2,7 @@
 
 Los cursos en los que está matriculada la persona, las secciones y actividades de un curso, sus tareas, lo que la persona aún tiene que hacer en él, cambiar los ajustes de un curso y reiniciarlo para un nuevo curso académico. Leer funciona para cualquier matriculado (estudiante o profesor); `updateCourse` requiere el derecho a editar los ajustes del curso, que tienen los profesores con permiso de edición y los gestores. Todo lo de aquí se lee mediante los servicios que usa la propia página del curso (`core_course_get_enrolled_courses_by_timeline_classification`, `core_courseformat_get_state`), así que no depende del idioma de la interfaz, salvo los detalles (las fechas y restricciones de las actividades, las descripciones de las secciones), que se leen de la página del curso tal como los muestra.
 
-**Términos:** [sección](../reference/glossary.md#section), [actividad](../reference/glossary.md#activity), [módulo](../reference/glossary.md#module), [id de módulo del curso](../reference/glossary.md#course-module-id), [finalización](../reference/glossary.md#completion).
+**Términos:** [sección](../reference/glossary.md#section), [actividad](../reference/glossary.md#activity), [módulo](../reference/glossary.md#module), [id del módulo del curso](../reference/glossary.md#course-module-id), [finalización](../reference/glossary.md#completion).
 
 Las firmas de abajo son las de las funciones. Cada operación es también un método del [objeto Moodle](../concepts/calling-functions.md) sin sus dos primeros parámetros (`fn(context, site, …)` es `moodle.fn(…)`), que es como las llaman los ejemplos; las primitivas de más bajo nivel están en `@falkenslab/moodle-driver/internals` (consulta [Bajar de nivel](../concepts/low-level.md)).
 
@@ -48,7 +48,7 @@ Con `details: false` (lo predeterminado) hace una sola llamada al servicio. Con 
 
 Cada `CourseSection` tiene `id`, `number` (0 es la sección general), `title`, `visible`, `restricted` (tiene restricciones de acceso), `url`, `parentSectionId` (para una subsección, la sección que la contiene), `summary` (solo con `details`: la descripción de la sección como HTML, tal como la presenta la página del curso, cuando tiene una; fíjala con [editSection](activities.md#addsection-editsection-and-deletesection)) y `activities`. Cada `CourseActivity` tiene:
 
-- `id`: el id de módulo del curso, que reciben todas las funciones de actividades.
+- `id`: el id del módulo del curso, que reciben todas las funciones de actividades.
 - `name`, `type`: el módulo, como `"page"`, `"assign"`, `"quiz"`, `"forum"` o `"resource"`.
 - `url`: la página de la actividad, cuando tiene una (un área de texto y medios no la tiene).
 - `visible`: visible para los estudiantes.
@@ -69,7 +69,7 @@ function activityDetails(context: BrowserContext, siteUrl: string, courseId: num
 ```
 
 - `courseState` devuelve `core_courseformat_get_state` interpretado, con los propios nombres de campo de Moodle (`section`, `cm`, `cmlist`, `uservisible`, `completionstate`…); el tipo enumera los campos que lee el driver, tal como los devuelven Moodle 4.0 a 5.2.
-- `activityDetails` lee la página del curso (y las páginas de sección que necesita) y devuelve, por id de módulo del curso, `{ id, dates: { label, value }[], restriction? }`.
+- `activityDetails` lee la página del curso (y las páginas de sección que necesita) y devuelve, por id del módulo del curso, `{ id, dates: { label, value }[], restriction? }`.
 
 ## pendingActivities
 
@@ -95,7 +95,7 @@ Las tareas del curso, en el orden del curso, a partir del mismo estado del curso
 function listAssignments(context: BrowserContext, siteUrl: string, courseId: number): Promise<CourseAssignment[]>;
 ```
 
-Cada `CourseAssignment` tiene `id` (el id de módulo del curso, para [tareas](assignments.md) y [calificar](grading.md)), `name`, `url`, `visible` y `section` (`{ number, title }`).
+Cada `CourseAssignment` tiene `id` (el id del módulo del curso, para [tareas](assignments.md) y [calificar](grading.md)), `name`, `url`, `visible` y `section` (`{ number, title }`).
 
 ## updateCourse
 

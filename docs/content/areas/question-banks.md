@@ -185,7 +185,7 @@ const created = await moodle.createQuestion(bank.id, {
 });
 console.log(created.changed);
 
-// A new version with a clearer text, kept as a draft until checked; and two old questions gone.
+// A new version with a clearer text, kept as a draft until checked; and the questions imported above deleted again.
 if (created.questionId) {
   const updated = await moodle.updateQuestion(bank.id, created.questionId, { text: "<p>Which of these loops never ends?</p>" });
   if (updated.questionId) await moodle.setQuestionStatus(updated.questionId, "draft");

@@ -30,7 +30,7 @@ Marca la finalización propia de la persona en una actividad con finalización m
 function setCompletion(context: BrowserContext, siteUrl: string, activityId: number, done: boolean): Promise<{ changed: string }>;
 ```
 
-- `activityId`: el id de la actividad (id de módulo del curso) (el `id` de `courseStructure`).
+- `activityId`: el id de la actividad (id del módulo del curso) (el `id` de `courseStructure`).
 - `done`: `true` para hecha, `false` para deshacerlo.
 
 Devuelve una frase ("Activity 5 marked done."). Pasa por el servicio que usa el botón (`core_completion_update_activity_completion_status_manually`).
@@ -90,7 +90,7 @@ interface CompletionCell {
 }
 ```
 
-- `activities`: las columnas del informe, por id de módulo del curso, nombre y módulo ("page", "quiz"…), leídas de los enlaces de la cabecera.
+- `activities`: las columnas del informe, por id del módulo del curso, nombre y módulo ("page", "quiz"…), leídas de los enlaces de la cabecera.
 - `userIds`: solo las filas de estas personas. El informe no tiene filtro por usuario: se leen sus páginas hasta encontrarlas a todas.
 - `participants`: uno por fila, solo con el id de usuario y el nombre completo. El informe también muestra otros campos de identidad (un correo, por ejemplo): no se leen.
 - `completion`: una celda por actividad, en el orden de las actividades. `tracking` dice si la actividad se completa a mano o automáticamente; `overridden` es `true` cuando la fijó un profesor, no la persona ni Moodle.

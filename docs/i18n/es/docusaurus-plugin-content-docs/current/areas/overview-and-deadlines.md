@@ -38,7 +38,7 @@ interface OverviewField {
 ```
 
 - `type`: un módulo ("assign", "quiz", "forum"…), o `"resource"` para todos los tipos de recurso a la vez (páginas, libros, archivos, carpetas, enlaces). Sin él, todos los tipos del curso: `"resource"` primero, y luego cada tipo que aún no haya traído.
-- `id` es el id de módulo del curso; `visible` es `false` para una actividad oculta a los estudiantes; `available: false` aparece solo cuando la persona no puede abrirla ahora.
+- `id` es el id del módulo del curso; `visible` es `false` para una actividad oculta a los estudiantes; `available: false` aparece solo cuando la persona no puede abrirla ahora.
 - `fields`: las columnas de la vista general salvo el nombre, en el orden de Moodle. `key` es la clave de columna de Moodle ("duedate", "submissions", "actions"…), estable en cualquier idioma; `label` es su encabezado en el idioma del sitio.
 
 El `text` de cada campo es lo que muestra la celda, sea cual sea el tipo de celda que usó Moodle:
@@ -78,7 +78,7 @@ Opciones, todas ellas opcionales:
 - `days`: hasta dónde hacia delante, 30 por defecto.
 - `pastDays`: hasta dónde hacia atrás, 7 por defecto, para que aparezca el trabajo vencido reciente.
 
-Cada fecha límite tiene el id de módulo del curso y el nombre de la actividad, su módulo, el nombre del evento ("Essay is due") y su tipo (el tipo de evento de Moodle, como `"due"` o `"close"`), su fecha como cadena ISO y si está vencida (`overdue`). `action` es lo que la persona puede hacer al respecto ("Añadir entrega", con `url` para hacerlo); `actionable` es `false` cuando aún no se puede hacer o ya no se puede. Moodle devuelve como mucho 50 eventos por llamada.
+Cada fecha límite tiene el id del módulo del curso y el nombre de la actividad, su módulo, el nombre del evento ("Essay is due") y su tipo (el tipo de evento de Moodle, como `"due"` o `"close"`), su fecha como cadena ISO y si está vencida (`overdue`). `action` es lo que la persona puede hacer al respecto ("Añadir entrega", con `url` para hacerlo); `actionable` es `false` cuando aún no se puede hacer o ya no se puede. Moodle devuelve como mucho 50 eventos por llamada.
 
 Lee `core_calendar_get_action_events_by_course` o `core_calendar_get_action_events_by_timesort`, como hace la línea de tiempo del área personal. Moodle da a los profesores pocos eventos de acción: sus recuentos de calificación están en `activitiesOverview` (la `alert` del campo de acciones de una tarea o de un cuestionario).
 
@@ -98,7 +98,7 @@ interface CourseUpdate {
 }
 ```
 
-- `id`: el id de módulo del curso de la actividad; `name` y `type` vienen del estado del curso (una actividad eliminada desde entonces no los tiene).
+- `id`: el id del módulo del curso de la actividad; `name` y `type` vienen del estado del curso (una actividad eliminada desde entonces no los tiene).
 - `changes`: lo que Moodle informa por actividad, por el nombre de su área (`"configuration"`, `"submissions"`, `"discussions"`, `"grades"`…), con la hora del cambio cuando Moodle la da y cuántos elementos cambiaron (nuevas entregas, mensajes…).
 
 Pasa por `core_course_get_updates_since`, el servicio que usa la app móvil de Moodle para saber qué refrescar. Solo se conservan los cambios de las actividades. Un curso que Moodle rechaza (que no existe, por ejemplo) deja pasar el `MoodleServiceError` de Moodle.

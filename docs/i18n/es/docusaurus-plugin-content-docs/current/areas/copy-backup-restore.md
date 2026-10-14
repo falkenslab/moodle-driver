@@ -54,7 +54,7 @@ function backupCourse(
 ```
 
 - El curso entero, sin los datos de sus personas salvo con `withUsers` (que necesita `moodle/backup:userinfo`; `anonymize` hace anónimos sus nombres, el propio ajuste de Moodle).
-- `sections` (ids de sección) y `activities` (ids del módulo del curso, tanto de actividades como de recursos, de la [estructura](courses.md#coursestructure) del curso) hacen copia de seguridad solo de una parte del curso: cada sección con todo lo que contiene (también sus subsecciones), cada actividad sola. Moodle necesita la sección de una actividad en la copia de seguridad para contenerla, así que la sección viene con su nombre y su descripción, y solo con las actividades elegidas. Una sección o actividad que el curso no tiene es un `MoodleError` con código `not-found`.
+- `sections` (ids de sección) y `activities` (ids de los módulos del curso, tanto de actividades como de recursos, de la [estructura](courses.md#coursestructure) del curso) hacen copia de seguridad solo de una parte del curso: cada sección con todo lo que contiene (también sus subsecciones), cada actividad sola. Moodle necesita la sección de una actividad en la copia de seguridad para contenerla, así que la sección viene con su nombre y su descripción, y solo con las actividades elegidas. Una sección o actividad que el curso no tiene es un `MoodleError` con código `not-found`.
 - `anonymous` hace que el archivo no nombre a nadie ni a ningún sitio, mediante [`anonymizeBackup`](#anonymizebackup): true si no se indica en una selección (`sections` o `activities`), false en un curso entero. No se puede combinar con `withUsers`.
 - `destDir` es una carpeta absoluta: el archivo se guarda ahí con el nombre que le da Moodle (`backup-moodle2-course-3-…mbz`), o `backup-moodle2-anonymous-<date>.mbz` cuando es anónimo, sin sobrescribir nunca (consulta [Archivos](files.md)). Moodle también lo conserva, tal como lo hizo Moodle, en el área de copias de seguridad del curso o de la persona, como las lista su página de restauración.
 
@@ -219,8 +219,8 @@ Importa actividades de otro curso, como "Importar" de Moodle.
 function importActivities(context: BrowserContext, siteUrl: string, fromCourseId: number, toCourseId: number, options?: { activityIds?: number[] }): Promise<{ changed: string; activityIds: number[] }>;
 ```
 
-- Todas las actividades de `fromCourseId`, o solo `activityIds` (ids del módulo del curso, de su [estructura](courses.md#coursestructure)), se añaden a `toCourseId` con su sección; nunca los datos de sus personas.
-- Devuelve los ids del módulo del curso nuevos que tiene `toCourseId` después.
+- Todas las actividades de `fromCourseId`, o solo `activityIds` (ids de los módulos del curso, de su [estructura](courses.md#coursestructure)), se añaden a `toCourseId` con su sección; nunca los datos de sus personas.
+- Devuelve los ids de los módulos del curso nuevos que tiene `toCourseId` después.
 
 Necesita `moodle/restore:restoretargetimport` en el curso al que se importa y `moodle/backup:backuptargetimport` en el otro, que los profesores con permiso de edición tienen en sus cursos.
 

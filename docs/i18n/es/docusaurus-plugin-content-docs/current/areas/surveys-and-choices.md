@@ -39,7 +39,7 @@ interface SurveyField {
 }
 ```
 
-- `activityId`: el id de la actividad (id de módulo del curso). `type`: su módulo, de la estructura del curso; sin él, el driver lo averigua por la página con la que responde cada módulo (una vez por actividad), a costa de una o dos páginas.
+- `activityId`: el id de la actividad (id del módulo del curso). `type`: su módulo, de la estructura del curso; sin él, el driver lo averigua por la página con la que responde cada módulo (una vez por actividad), a costa de una o dos páginas.
 - `canAnswer`: la página de la actividad enlaza a su formulario: está abierta y la persona aún no ha respondido (o puede volver a responder).
 - `intro`: la descripción de la actividad; `messages`: los avisos de la página ("You have already submitted", cerrada, aún no abierta).
 - `questions`: vacío cuando la persona no puede responder. Cada pregunta tiene la `page` en la que está (desde 0), su `number` y su `text` tal como se muestran, si es `required`, y sus `fields`.
@@ -88,7 +88,7 @@ interface Choice {
 }
 ```
 
-- `id`: el id de módulo del curso dado; `name` e `intro`: el nombre y la descripción de la actividad.
+- `id`: el id del módulo del curso dado; `name` e `intro`: el nombre y la descripción de la actividad.
 - `options`: el id de cada opción (lo que recibe `answerChoice`), su texto, si la persona la eligió y si está `full` (se alcanzó un límite de respuestas, así que no se puede elegir).
 - `multiple`: la consulta permite varias opciones a la vez.
 - `canAnswer`: el formulario está: la consulta está abierta y la persona puede responder, o cambiar su respuesta.

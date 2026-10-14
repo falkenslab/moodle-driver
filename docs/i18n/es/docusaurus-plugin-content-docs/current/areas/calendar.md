@@ -27,7 +27,7 @@ interface CalendarEvent {
 - `start`: una fecha ISO en UTC.
 - `durationMinutes`: solo para un evento con duración.
 - `courseId`: el curso al que pertenece, cuando pertenece a uno.
-- `activity`: para el evento de una actividad, su módulo ("assign", "quiz"…) y su id de instancia (el id propio del módulo, no el id de módulo del curso).
+- `activity`: para el evento de una actividad, su módulo ("assign", "quiz"…) y su id de instancia (el id propio del módulo, no el id del módulo del curso).
 
 ## upcomingEvents
 

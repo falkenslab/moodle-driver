@@ -1,6 +1,6 @@
 # Lecciones
 
-Recorrer una actividad de lección página a página, como lo hace un estudiante: leer la página en la que está la persona (contenido con sus botones, o una pregunta con su formulario), responderla y recibir la retroalimentación de Moodle y la página que sigue, hasta el final de la lección. Moodle guarda dónde está la persona, así que un programa lee y responde una página cada vez solo con el id de módulo del curso de la lección, entre llamadas y ejecuciones. La edición de lecciones por los profesores y sus informes no se cubren.
+Recorrer una actividad de lección página a página, como lo hace un estudiante: leer la página en la que está la persona (contenido con sus botones, o una pregunta con su formulario), responderla y recibir la retroalimentación de Moodle y la página que sigue, hasta el final de la lección. Moodle guarda dónde está la persona, así que un programa lee y responde una página cada vez solo con el id del módulo del curso de la lección, entre llamadas y ejecuciones. La edición de lecciones por los profesores y sus informes no se cubren.
 
 **Términos:** [página de lección](../reference/glossary.md#lesson-page), [rastro](../reference/glossary.md#trail).
 

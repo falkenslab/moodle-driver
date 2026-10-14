@@ -34,7 +34,7 @@ Las filas llegan en el orden del informe:
 
 - `kind`: `"category"` es la fila de encabezado de una categoría, `"item"` un elemento de calificación (de una actividad o manual), `"categoryTotal"` la fila del total de una categoría y `"courseTotal"` el total del curso. El informe muestra el encabezado de una categoría, luego sus elementos y luego su total.
 - `name`: el título de la fila tal como lo muestra el informe ("Quiz 1", "Programming total", "Course total").
-- `activityId` y `activityType`: para el elemento de una actividad, su id de módulo del curso y su módulo ("quiz", "assign"…), leídos del enlace de la fila. Los elementos manuales, las categorías y los totales no los tienen.
+- `activityId` y `activityType`: para el elemento de una actividad, su id del módulo del curso y su módulo ("quiz", "assign"…), leídos del enlace de la fila. Los elementos manuales, las categorías y los totales no los tienen.
 - `grade`, `range`, `percentage`, `weight`, `letter`, `feedback`, `contribution`: las columnas del informe como texto ("8.00", "0–10", "80.00 %", "Well done"). Una columna que el sitio oculta, una celda vacía o el "-" de Moodle dejan fuera el campo, así que un `grade` ausente significa que aún no está calificado (o que está oculto para la persona).
 
 El menú de acciones de la celda de calificación, cuyo texto está en el idioma del sitio, se quita antes de leer.
@@ -66,7 +66,7 @@ interface GradeColumn {
 
 - `group`: un id de grupo (consulta `groups` en [Participantes](participants.md)); sin él, el informe tal como se abre para la persona.
 - `userIds`: solo las filas de estas personas. El informe no tiene filtro por usuario: se leen sus páginas hasta encontrarlas a todas.
-- `columns`: una por elemento de calificación en el orden del informe, con `id` el id del elemento de calificación. `kind` es `"item"` para una actividad o un elemento manual, `"category"` para el total de una categoría y `"course"` para el total del curso. La columna de una actividad lleva su id de módulo del curso y su módulo.
+- `columns`: una por elemento de calificación en el orden del informe, con `id` el id del elemento de calificación. `kind` es `"item"` para una actividad o un elemento manual, `"category"` para el total de una categoría y `"course"` para el total del curso. La columna de una actividad lleva su id del módulo del curso y su módulo.
 - `rows`: una por participante, solo con el id de usuario y el nombre completo (sin correos ni otros campos de identidad). Cada calificación remite a una columna por `itemId`; una celda sin calificación ("-") no tiene campo `grade`.
 
 Lanza `GradebookError` cuando Moodle rechaza la página (el mensaje lleva el motivo de Moodle, como "no permission (View grader report)") o el curso no existe, y también cuando la tabla del informe no está porque Moodle está recalculando las calificaciones del curso: consulta [Recálculo](#recalculation).

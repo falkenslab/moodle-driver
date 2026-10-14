@@ -8,6 +8,7 @@
 With their own login: no web services, no tokens, no admin.
 
 [![Documentation](https://img.shields.io/badge/docs-falkenslab.github.io-f97316?logo=docusaurus&logoColor=white)](https://falkenslab.github.io/moodle-driver/)
+[![Documentación en español](https://img.shields.io/badge/docs-en%20español-f97316?logo=docusaurus&logoColor=white)](https://falkenslab.github.io/moodle-driver/es/)
 [![npm](https://img.shields.io/npm/v/@falkenslab/moodle-driver?color=cb3837&logo=npm)](https://www.npmjs.com/package/@falkenslab/moodle-driver)
 ![Node.js 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/types-included-3178c6?logo=typescript&logoColor=white)
