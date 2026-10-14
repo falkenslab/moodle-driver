@@ -1,25 +1,36 @@
 <div align="center">
 
-<img src="docs/static/img/logo.svg" alt="moodle-driver logo: a terminal prompt, >m_" width="112"/>
+<img src="https://raw.githubusercontent.com/falkenslab/moodle-driver/main/docs/static/img/logo.svg" alt="moodle-driver logo: a terminal prompt, >m_" width="112"/>
 
 # moodle-driver
 
 **Everything a person does in Moodle, from your Node.js code.**<br/>
 With their own login: no web services, no tokens, no admin.
 
-[![Documentation](https://img.shields.io/badge/docs-falkenslab.github.io-f97316?logo=docusaurus&logoColor=white)](https://falkenslab.github.io/moodle-driver/)
-[![Documentación en español](https://img.shields.io/badge/docs-en%20español-f97316?logo=docusaurus&logoColor=white)](https://falkenslab.github.io/moodle-driver/es/)
 [![npm](https://img.shields.io/npm/v/@falkenslab/moodle-driver?color=cb3837&logo=npm)](https://www.npmjs.com/package/@falkenslab/moodle-driver)
 ![Node.js 20+](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/types-included-3178c6?logo=typescript&logoColor=white)
 ![Moodle 4.x and 5.x](https://img.shields.io/badge/Moodle-4.x%20%7C%205.x-f98012?logo=moodle&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-16a34a)](LICENSE)
 
-<img src="docs/static/img/diagrams/at-a-glance.svg" alt="Your program calls moodle-driver, which works Moodle with the person's own login, and gets plain data back" width="900"/>
+**[Documentation](https://falkenslab.github.io/moodle-driver/)** · [Documentación en español](https://falkenslab.github.io/moodle-driver/es/)
+
+<img src="https://raw.githubusercontent.com/falkenslab/moodle-driver/main/docs/static/img/diagrams/at-a-glance.svg" alt="Your program calls moodle-driver, which works Moodle with the person's own login, and gets plain data back" width="900"/>
 
 </div>
 
-## ✨ In a few lines
+moodle-driver is a Node.js library, and a `moodle` command, that works a Moodle site the way a person does: it lists their courses, reads content, submits assignments and answers quizzes as a student, and builds courses, grades with rubrics, runs forums and the gradebook as a teacher. It drives a real browser logged in as that person, calling the same AJAX services and filling the same forms Moodle's own pages use, so it works on any Moodle 4.x or 5.x site with no web service tokens, no administrator and no plugin. Results are plain typed data, and every function declares the kind of data it touches.
+
+## ⚡ Quick start
+
+```bash
+npm install @falkenslab/moodle-driver playwright-core   # the library, in your project
+npm i -g @falkenslab/moodle-driver                      # the moodle command, everywhere
+```
+
+You need Node.js 20+, a Moodle 4.x or 5.x site, and Edge or Chrome (or let it download Chromium). See [installation](https://falkenslab.github.io/moodle-driver/getting-started/installation).
+
+Then, in your program:
 
 ```ts
 import { createMoodle } from "@falkenslab/moodle-driver";
@@ -38,7 +49,7 @@ That's it: no API keys, nothing to ask the administrator. The browser closes by 
 ## 🧰 What it can do
 
 <div align="center">
-<img src="docs/static/img/diagrams/what-it-can-do.svg" alt="As a student: agenda, content, assignments, quizzes, surveys, lessons, H5P and SCORM, grades, forums. As a teacher: build, copy, back up and reset courses, grade with rubrics and the marking workflow, extensions and overrides, quiz results and essays, question banks, the gradebook, enrolments, roles and groups, restrictions and completion, calendar, forums and logs. For your program: typed methods, a moodle command and shell, errors with codes, any AJAX service, data categories, a fake Moodle for tests." width="900"/>
+<img src="https://raw.githubusercontent.com/falkenslab/moodle-driver/main/docs/static/img/diagrams/what-it-can-do.svg" alt="As a student: agenda, content, assignments, quizzes, surveys, lessons, H5P and SCORM, grades, forums. As a teacher: build, copy, back up and reset courses, grade with rubrics and the marking workflow, extensions and overrides, quiz results and essays, question banks, the gradebook, enrolments, roles and groups, restrictions and completion, calendar, forums and logs. For your program: typed methods, a moodle command and shell, errors with codes, any AJAX service, data categories, a fake Moodle for tests." width="900"/>
 </div>
 
 ## 🚀 A taste
@@ -102,27 +113,18 @@ Tables at a terminal, JSON for scripts, errors with their code and an exit statu
 - 📦 **Plain data, typed.** JSON results, ISO dates, long lists a page at a time, errors with stable codes, TypeScript types included.
 - 🖥️ **A library and a command.** The same operations from your code or from a terminal.
 
-## 📦 Install
-
-```bash
-npm install @falkenslab/moodle-driver playwright-core   # the library, in your project
-npm i -g @falkenslab/moodle-driver                      # the moodle command, everywhere
-```
-
-You need Node.js 20+, a Moodle 4.x or 5.x site, and Edge or Chrome (or let it download Chromium). See [installation](https://falkenslab.github.io/moodle-driver/getting-started/installation).
-
 ## 📚 Documentation
 
-| | |
-| --- | --- |
-| 🏁 [Getting started](https://falkenslab.github.io/moodle-driver/getting-started/installation) | Install, log in, your first program |
-| 💡 [Concepts](https://falkenslab.github.io/moodle-driver/concepts/how-it-works) | How it works, the browser, errors, pace, data categories |
-| 🖥️ [Command line](https://falkenslab.github.io/moodle-driver/getting-started/command-line) | The `moodle` command: log in, run any operation, script it |
-| 🗺️ [Moodle areas](https://falkenslab.github.io/moodle-driver/areas/courses) | Every function, by area: courses, quizzes, grading, forums… |
-| 📖 [Examples](https://falkenslab.github.io/moodle-driver/examples) | Complete programs for real tasks, commented |
-| 📘 [Glossary](https://falkenslab.github.io/moodle-driver/reference/glossary) | Moodle's terms, explained for programmers |
-| ⌨️ [Commands](https://falkenslab.github.io/moodle-driver/reference/commands) | Every command, its arguments and options |
-| 🔎 [API reference](https://falkenslab.github.io/moodle-driver/api) | Generated from the code |
+Everything else is on the **[documentation site](https://falkenslab.github.io/moodle-driver/)**, also [in Spanish](https://falkenslab.github.io/moodle-driver/es/):
+
+- 🏁 **[Getting started](https://falkenslab.github.io/moodle-driver/getting-started/installation)**: install, log in, your first program.
+- 💡 **[Concepts](https://falkenslab.github.io/moodle-driver/concepts/how-it-works)**: how it works, the browser, errors, pace, data categories.
+- 🖥️ **[Command line](https://falkenslab.github.io/moodle-driver/getting-started/command-line)**: the `moodle` command, to log in, run any operation and script it.
+- 🗺️ **[Moodle areas](https://falkenslab.github.io/moodle-driver/areas/courses)**: every function, by area: courses, quizzes, grading, forums…
+- 📖 **[Examples](https://falkenslab.github.io/moodle-driver/examples)**: complete programs for real tasks, commented.
+- 📘 **[Glossary](https://falkenslab.github.io/moodle-driver/reference/glossary)**: Moodle's terms, explained for programmers.
+- ⌨️ **[Commands](https://falkenslab.github.io/moodle-driver/reference/commands)**: every command, its arguments and options.
+- 🔎 **[API reference](https://falkenslab.github.io/moodle-driver/api)**: generated from the code.
 
 ## 🛠️ Development
 
@@ -139,4 +141,10 @@ The design lives in [`.minispec/`](.minispec/) (start with `core/project.md` and
 
 ## 📄 License
 
-MIT © Falkenslab
+[MIT](LICENSE) © Falkenslab
+
+<div align="center">
+
+Made with 💖 by Falken's Lab Team
+
+</div>
