@@ -87,7 +87,8 @@ describe("reports and course life cycle", () => {
     const mine = (await teacher.courseLogs(COURSE, { userId: studentId, limit: 10 })).items;
     assert.ok(mine.length > 0, "the student did things in the content course");
     assert.ok(mine.every((entry) => entry.userId === studentId));
-    const views = (await teacher.courseLogs(COURSE, { action: "view", limit: 10 })).items;
+    // The suite's own report reads are views too, and crowd the newest ones: a wide enough window holds module views.
+    const views = (await teacher.courseLogs(COURSE, { action: "view", limit: 200 })).items;
     // Moodle files some reads under other words ("Tour started"): views hold the modules viewed, changes none of them.
     assert.ok(views.some((entry) => entry.activityId !== undefined && / viewed the '/.test(entry.description)));
     const changes = (await teacher.courseLogs(COURSE, { action: "change", limit: 30 })).items;
