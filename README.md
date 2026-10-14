@@ -65,6 +65,14 @@ const { changed } = await moodle.createActivity({ courseId: 3, sectionId: 7, typ
 console.log(changed); // Created page 42 "Loops" in section 2.
 ```
 
+**🤝 Sharing a unit with another teacher**, anonymous, restored on their site where they want it:
+
+```ts
+const { file } = await moodle.backupCourse(3, "/home/ada/catalog", { sections: [12], activities: [57] }); // no names, no origin
+const { activities } = await moodle.backupContents(file.path); // what it holds, read locally
+await colleague.restoreCourse(file.path, { into: 8, afterSectionId: 30 }); // as new sections after section 30
+```
+
 More, complete and commented: [📖 use-case examples](https://falkenslab.github.io/moodle-driver/examples).
 
 ## 🖥️ Or straight from the terminal
