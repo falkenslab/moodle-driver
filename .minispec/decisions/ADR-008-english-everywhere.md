@@ -11,3 +11,4 @@ The same rule as moodle-mcp (its ADR-006): the library is meant for other progra
 ## Consequences
 
 - Test fixtures may hold Spanish Moodle content, as data.
+- The documentation site's guides also have a Spanish translation, kept in step with the English source (ADR-015).

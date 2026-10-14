@@ -1,0 +1,70 @@
+{
+  "home.feature1.title": {
+    "message": "Sin servicios web, sin tokens"
+  },
+  "home.feature1.text": {
+    "message": "Funciona donde los servicios web están desactivados o no se permiten tokens: la persona inicia sesión una vez, con inicio de sesión único y doble factor incluidos, y el driver trabaja con esa sesión. Nunca maneja una contraseña."
+  },
+  "home.feature2.title": {
+    "message": "Control total como cualquier usuario"
+  },
+  "home.feature2.text": {
+    "message": "Todo lo que la persona puede hacer: leer cursos y contenidos, entregar y responder como estudiante, calificar, crear actividades, llevar foros y el libro de calificaciones como profesor."
+  },
+  "home.feature3.title": {
+    "message": "Los propios servicios de Moodle"
+  },
+  "home.feature3.text": {
+    "message": "Llama a los servicios AJAX que llaman las páginas de Moodle, con la sesión de la persona, y rellena los formularios de Moodle donde ningún servicio sirve, con la validación de Moodle."
+  },
+  "home.feature4.title": {
+    "message": "Cualquier idioma, cualquier tema"
+  },
+  "home.feature4.text": {
+    "message": "Lee Moodle por ids, atributos de datos, nombres de campo y URL, nunca por el texto visible. Los resultados son datos simples con fechas ISO."
+  },
+  "home.feature5.title": {
+    "message": "Al ritmo de una persona"
+  },
+  "home.feature5.text": {
+    "message": "Las acciones de estudiante pueden leer y responder página a página al ritmo de un lector, para que Moodle registre las vistas y la finalización como las de una persona."
+  },
+  "home.feature6.title": {
+    "message": "Preparado para políticas"
+  },
+  "home.feature6.text": {
+    "message": "Cada función declara los datos que toca: los propios, el contenido del curso, el trabajo de otros, la calificación, la comunicación. Permite solo los tipos en los que confías."
+  },
+  "home.title": {
+    "message": "Control total de Moodle con tu propio inicio de sesión"
+  },
+  "home.description": {
+    "message": "moodle-driver: una biblioteca de Node.js para trabajar en Moodle como cualquier usuario, con su propio inicio de sesión: sin servicios web, sin tokens, sin administrador"
+  },
+  "home.tagline": {
+    "message": "Control total de Moodle como cualquier usuario, con su propio inicio de sesión: sin servicios web, sin tokens, sin administrador."
+  },
+  "home.button.start": {
+    "message": "Empezar"
+  },
+  "home.button.areas": {
+    "message": "Áreas de Moodle"
+  },
+  "home.button.api": {
+    "message": "Referencia de la API"
+  },
+  "home.example.title": {
+    "message": "Inicia sesión una vez y trabaja en el sitio"
+  },
+  "home.example.text": {
+    "message": "La persona inicia sesión a mano en una ventana del navegador, una sola vez; la sesión queda en un perfil en disco. Cada operación es un método del objeto Moodle, recibe ids y opciones, y devuelve datos simples."
+  },
+  "theme.SearchPage.emptyResultsTitle": {
+    "message": "Buscar en la documentación",
+    "description": "The search page title for empty query"
+  },
+  "theme.SearchBar.label": {
+    "message": "Buscar",
+    "description": "The ARIA label and placeholder for search button"
+  }
+}

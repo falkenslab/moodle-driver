@@ -1,0 +1,90 @@
+{
+  "sidebar.guides.category.Getting started": {
+    "message": "Primeros pasos",
+    "description": "The label for category 'Getting started' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.Concepts": {
+    "message": "Conceptos",
+    "description": "The label for category 'Concepts' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.Examples": {
+    "message": "Ejemplos",
+    "description": "The label for category 'Examples' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.As a student": {
+    "message": "Como estudiante",
+    "description": "The label for category 'As a student' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.As a teacher": {
+    "message": "Como profesor",
+    "description": "The label for category 'As a teacher' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.For your program": {
+    "message": "Para tu programa",
+    "description": "The label for category 'For your program' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.Moodle areas": {
+    "message": "Áreas de Moodle",
+    "description": "The label for category 'Moodle areas' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.Testing": {
+    "message": "Pruebas",
+    "description": "The label for category 'Testing' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.Reference": {
+    "message": "Referencia",
+    "description": "The label for category 'Reference' in sidebar 'guides'"
+  },
+  "sidebar.api.category.index/Classes": {
+    "message": "Clases",
+    "description": "The label for category 'Classes' in sidebar 'api'"
+  },
+  "sidebar.api.category.index/Interfaces": {
+    "message": "Interfaces",
+    "description": "The label for category 'Interfaces' in sidebar 'api'"
+  },
+  "sidebar.api.category.index/Type Aliases": {
+    "message": "Alias de tipo",
+    "description": "The label for category 'Type Aliases' in sidebar 'api'"
+  },
+  "sidebar.api.category.index/Variables": {
+    "message": "Variables",
+    "description": "The label for category 'Variables' in sidebar 'api'"
+  },
+  "sidebar.api.category.index/Functions": {
+    "message": "Funciones",
+    "description": "The label for category 'Functions' in sidebar 'api'"
+  },
+  "sidebar.api.category.internals/Interfaces": {
+    "message": "Interfaces",
+    "description": "The label for category 'Interfaces' in sidebar 'api'"
+  },
+  "sidebar.api.category.internals/Type Aliases": {
+    "message": "Alias de tipo",
+    "description": "The label for category 'Type Aliases' in sidebar 'api'"
+  },
+  "sidebar.api.category.internals/Functions": {
+    "message": "Funciones",
+    "description": "The label for category 'Functions' in sidebar 'api'"
+  },
+  "sidebar.api.category.testing/Classes": {
+    "message": "Clases",
+    "description": "The label for category 'Classes' in sidebar 'api'"
+  },
+  "sidebar.api.category.testing/Interfaces": {
+    "message": "Interfaces",
+    "description": "The label for category 'Interfaces' in sidebar 'api'"
+  },
+  "sidebar.api.category.testing/Variables": {
+    "message": "Variables",
+    "description": "The label for category 'Variables' in sidebar 'api'"
+  },
+  "sidebar.api.category.testing/Functions": {
+    "message": "Funciones",
+    "description": "The label for category 'Functions' in sidebar 'api'"
+  },
+  "sidebar.api.doc.Overview": {
+    "message": "Visión general",
+    "description": "The label for the doc item 'Overview' in sidebar 'api', linking to the doc api/index"
+  }
+}

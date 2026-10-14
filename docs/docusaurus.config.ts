@@ -23,7 +23,13 @@ const config: Config = {
     hooks: { onBrokenMarkdownLinks: "throw" },
   },
 
-  i18n: { defaultLocale: "en", locales: ["en"] },
+  // English is the source; Spanish is a translation kept in step (ADR-015), under /es/. A page with
+  // no translation (the generated API and command references) shows in English there.
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "es"],
+    localeConfigs: { en: { label: "English", htmlLang: "en" }, es: { label: "Español", htmlLang: "es-ES" } },
+  },
 
   presets: [
     [
@@ -34,7 +40,12 @@ const config: Config = {
           routeBasePath: "/",
           sidebarPath: "./sidebars.ts",
           // The API reference is generated from src/'s doc comments: no page to edit there.
-          editUrl: ({ docPath }) => (docPath.startsWith("api/") ? undefined : `https://github.com/falkenslab/moodle-driver/edit/main/docs/content/${docPath}`),
+          editUrl: ({ docPath, locale }) =>
+            docPath.startsWith("api/") || docPath === "reference/commands.md"
+              ? undefined
+              : locale === "es"
+                ? `https://github.com/falkenslab/moodle-driver/edit/main/docs/i18n/es/docusaurus-plugin-content-docs/current/${docPath}`
+                : `https://github.com/falkenslab/moodle-driver/edit/main/docs/content/${docPath}`,
         },
         blog: false,
         theme: { customCss: "./src/css/custom.css" },
@@ -72,7 +83,7 @@ const config: Config = {
     "@docusaurus/theme-mermaid",
     [
       "@easyops-cn/docusaurus-search-local",
-      { hashed: true, docsDir: "content", docsRouteBasePath: "/", indexBlog: false, highlightSearchTermsOnTargetPage: true },
+      { hashed: true, language: ["en", "es"], docsDir: "content", docsRouteBasePath: "/", indexBlog: false, highlightSearchTermsOnTargetPage: true },
     ],
   ],
 
@@ -86,6 +97,7 @@ const config: Config = {
       items: [
         { type: "docSidebar", sidebarId: "guides", position: "left", label: "Guides" },
         { type: "docSidebar", sidebarId: "api", position: "left", label: "API reference" },
+        { type: "localeDropdown", position: "right" },
         { href: "https://github.com/falkenslab/moodle-driver/releases", label: "Releases", position: "right" },
         { href: "https://github.com/falkenslab/moodle-driver", label: "GitHub", position: "right" },
       ],

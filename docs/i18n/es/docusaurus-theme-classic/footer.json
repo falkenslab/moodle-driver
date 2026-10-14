@@ -1,0 +1,46 @@
+{
+  "link.title.Documentation": {
+    "message": "Documentación",
+    "description": "The title of the footer links column with title=Documentation in the footer"
+  },
+  "link.title.Project": {
+    "message": "Proyecto",
+    "description": "The title of the footer links column with title=Project in the footer"
+  },
+  "link.title.Related": {
+    "message": "Relacionado",
+    "description": "The title of the footer links column with title=Related in the footer"
+  },
+  "link.item.label.Getting started": {
+    "message": "Primeros pasos",
+    "description": "The label of footer link with label=Getting started linking to /getting-started/installation"
+  },
+  "link.item.label.Moodle areas": {
+    "message": "Áreas de Moodle",
+    "description": "The label of footer link with label=Moodle areas linking to /areas/courses"
+  },
+  "link.item.label.API reference": {
+    "message": "Referencia de la API",
+    "description": "The label of footer link with label=API reference linking to /api"
+  },
+  "link.item.label.GitHub": {
+    "message": "GitHub",
+    "description": "The label of footer link with label=GitHub linking to https://github.com/falkenslab/moodle-driver"
+  },
+  "link.item.label.Releases": {
+    "message": "Versiones",
+    "description": "The label of footer link with label=Releases linking to https://github.com/falkenslab/moodle-driver/releases"
+  },
+  "link.item.label.Design decisions (ADRs)": {
+    "message": "Decisiones de diseño (ADR)",
+    "description": "The label of footer link with label=Design decisions (ADRs) linking to https://github.com/falkenslab/moodle-driver/tree/main/.minispec/decisions"
+  },
+  "link.item.label.Playwright": {
+    "message": "Playwright",
+    "description": "The label of footer link with label=Playwright linking to https://playwright.dev"
+  },
+  "link.item.label.Moodle": {
+    "message": "Moodle",
+    "description": "The label of footer link with label=Moodle linking to https://moodle.org"
+  }
+}

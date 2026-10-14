@@ -1,0 +1,26 @@
+{
+  "title": {
+    "message": "moodle-driver",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "moodle-driver",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Guides": {
+    "message": "Guías",
+    "description": "Navbar item with label Guides"
+  },
+  "item.label.API reference": {
+    "message": "Referencia de la API",
+    "description": "Navbar item with label API reference"
+  },
+  "item.label.Releases": {
+    "message": "Versiones",
+    "description": "Navbar item with label Releases"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}

@@ -2,13 +2,18 @@
 // awaits something or uses `moodle.`) is written to .doccheck/ and compiled with tsc, so a change
 // to the API breaks the examples that use it. Blocks fenced as ```ts fragment are skipped: they're
 // pieces of a program, not programs. A block that doesn't create its own `moodle` gets one declared.
+// The Spanish guides (docs/i18n/es/, ADR-015) are checked the same way, and every English guide
+// must have its Spanish page: a guide added or renamed in one language only fails here.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const content = path.join(root, "docs", "content");
+const spanish = path.join(root, "docs", "i18n", "es", "docusaurus-plugin-content-docs", "current");
+// Generated from the code, in English only: Docusaurus shows the English page under /es/.
+const GENERATED = new Set(["reference/commands.md"]);
 const out = path.join(root, ".doccheck");
 
 function markdownFiles(dir) {
@@ -19,10 +24,20 @@ function markdownFiles(dir) {
   });
 }
 
+const guide = (base, file) => path.relative(base, file).split(path.sep).join("/");
+const english = markdownFiles(content).map((file) => guide(content, file)).filter((name) => !GENERATED.has(name));
+const translated = new Set(existsSync(spanish) ? markdownFiles(spanish).map((file) => guide(spanish, file)) : []);
+const untranslated = english.filter((name) => !translated.has(name));
+const orphans = [...translated].filter((name) => !english.includes(name));
+
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
 const sources = new Map();
-for (const file of markdownFiles(content)) {
+const pages = [
+  ...markdownFiles(content).map((file) => ({ base: content, file, shown: "docs/content" })),
+  ...(existsSync(spanish) ? markdownFiles(spanish).map((file) => ({ base: spanish, file, shown: "docs/i18n/es/docusaurus-plugin-content-docs/current" })) : []),
+];
+for (const { base, file, shown } of pages) {
   const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
   let index = 0;
   for (const match of text.matchAll(/^```ts([^\n]*)\n([\s\S]*?)^```/gm)) {
@@ -32,12 +47,12 @@ for (const file of markdownFiles(content)) {
     const ownMoodle = /\b(const|let|using) moodle\b/.test(code);
     // Under another name, so a block that imports `Moodle` itself doesn't clash with it.
     const prelude = (ownMoodle ? "" : 'import type { Moodle as DocCheckMoodle } from "@falkenslab/moodle-driver";\ndeclare const moodle: DocCheckMoodle;\n') + "export {};\n";
-    const relative = path.relative(content, file).split(path.sep).join("/");
-    const name = `${relative.replace(/\.md$/, "").replace(/[/\\]/g, "_")}_${index}.ts`;
+    const relative = guide(base, file);
+    const name = `${base === spanish ? "es_" : ""}${relative.replace(/\.md$/, "").replace(/[/\\]/g, "_")}_${index}.ts`;
     writeFileSync(path.join(out, name), prelude + code);
     // The block's first line in the Markdown file, for the report.
     const line = text.slice(0, match.index).split("\n").length + 1;
-    sources.set(name, { file: `docs/content/${relative}`, line, offset: prelude.split("\n").length - 1 });
+    sources.set(name, { file: `${shown}/${relative}`, line, offset: prelude.split("\n").length - 1 });
   }
 }
 writeFileSync(
@@ -70,8 +85,13 @@ try {
 }
 const checked = sources.size;
 rmSync(out, { recursive: true, force: true });
+if (untranslated.length > 0 || orphans.length > 0) {
+  failed = true;
+  for (const name of untranslated) process.stderr.write(`docs/content/${name} has no Spanish page in docs/i18n/es/docusaurus-plugin-content-docs/current/.\n`);
+  for (const name of orphans) process.stderr.write(`docs/i18n/es/docusaurus-plugin-content-docs/current/${name} has no English page in docs/content/.\n`);
+}
 if (failed) {
-  process.stderr.write(`\nThe documentation's examples don't compile against src/ (${checked} checked).\n`);
+  process.stderr.write(`\nThe documentation's examples don't compile against src/ (${checked} checked), or a guide is missing in one language.\n`);
   process.exit(1);
 }
-console.log(`${checked} documentation examples compile against src/.`);
+console.log(`${checked} documentation examples compile against src/, and every guide is in English and Spanish.`);
