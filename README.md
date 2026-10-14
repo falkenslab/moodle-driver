@@ -139,10 +139,6 @@ npm run docs:check     # every example in the docs compiles against the code
 
 The design lives in [`.minispec/`](.minispec/) (start with `core/project.md` and the decisions). Extracted from moodle-mcp, its first consumer.
 
-## 📄 License
-
-[MIT](LICENSE) © Falkenslab
-
 <div align="center">
 
 Made with 💖 by Falken's Lab Team
