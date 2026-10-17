@@ -1,11 +1,13 @@
 // Question banks (Moodle 5: shared banks are qbank activities; quizzes keep private ones), their
 // questions read from the bank page by field names and icons, questions imported from a GIFT or
-// Moodle XML file through the import form, and single questions made through their edit form.
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+// Moodle XML file through the import form and exported through the export form, and single
+// questions made through their edit form. Categories are in categories.ts.
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { BrowserContext, Page } from "playwright-core";
-import { checkLocalFiles } from "../../core/files.js";
+import { checkLocalFiles, type DownloadedFile } from "../../core/files.js";
+import { siteFetch } from "../../core/http.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
 import { callService } from "../../core/ajax.js";
@@ -123,7 +125,7 @@ const bankModules = new Map<string, string>();
  * categories for any activity whose bank page is opened (confirmed empirically, 5.2). The module
  * comes from its settings form, which changes nothing.
  */
-async function checkBank(context: BrowserContext, siteUrl: string, activityId: number): Promise<void> {
+export async function checkBank(context: BrowserContext, siteUrl: string, activityId: number): Promise<void> {
   const key = `${siteUrl}|${activityId}`;
   let module = bankModules.get(key);
   if (!module) {
@@ -249,6 +251,65 @@ export async function importQuestions(
   }
   const created = (await questions(context, siteUrl, activityId)).questions.filter((q) => !before.has(q.id));
   return { changed: `Imported ${created.length} question${created.length === 1 ? "" : "s"} into bank ${activityId}.`, questions: created };
+}
+
+/**
+ * Exports a bank's questions, or a category's (its subcategories' included), to a local GIFT or
+ * Moodle XML file, through the bank's export form; `file` (an absolute path) is written, replacing
+ * one there. The file names each question's category, as Moodle writes it by default, so importing
+ * it without a category recreates them. Hidden questions aren't exported, and a question's latest
+ * version only.
+ */
+export async function exportQuestions(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  { format, categoryId, file }: { format: "gift" | "xml"; categoryId?: number; file: string },
+): Promise<DownloadedFile> {
+  if (format !== "gift" && format !== "xml") throw new QuestionBankError(`Questions export as "gift" or "xml", not "${String(format)}".`);
+  if (!file || !path.isAbsolute(file)) throw new MoodleError(`Give the file to write as an absolute path: "${file}".`, "invalid-input");
+  await checkBank(context, siteUrl, activityId);
+  const page = await openForm(context, siteUrl, `question/bank/exportquestions/export.php?cmid=${activityId}`).catch((error: unknown) => {
+    if (error instanceof NotLoggedInError) throw error;
+    throw new QuestionBankError(`You can't export bank ${activityId}'s questions: it takes Moodle's capability moodle/question:viewall (or viewmine, for your own).`);
+  });
+  let link: string | null;
+  try {
+    // Without a category, the bank's Top, which the form lists first: everything under it (confirmed empirically, 5.2).
+    const category =
+      (await categoryOption(page, categoryId)) ??
+      (await page.evaluate(() => (globalThis as unknown as { document: { querySelector(s: string): { value: string } | null } }).document.querySelector('form.mform select[name="category"] option')?.value));
+    await setFields(page, { format, ...(category ? { category } : {}) });
+    // The answer page links the file and sends the tab there a second later, as a download that
+    // replaces it: the filled form is sent as the tab would send it, but with the session's own
+    // requests, and the file fetched from the link in the answer.
+    const { action, body } = await page.evaluate(() => {
+      const g = globalThis as unknown as {
+        document: { querySelector(s: string): { action: string } | null };
+        FormData: new (form: unknown) => { append(name: string, value: string): void } & Iterable<[string, string]>;
+        URLSearchParams: new (init: Iterable<[string, string]>) => { toString(): string };
+      };
+      const form = g.document.querySelector("form.mform");
+      const data = new g.FormData(form);
+      data.append("submitbutton", "1");
+      return { action: form?.action ?? "", body: new g.URLSearchParams(data).toString() };
+    });
+    const answer = await siteFetch(context, action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+    const href = /href="([^"]*\/pluginfile\.php\/[^"]*\/question\/export\/[^"]*)"/.exec(answer.body)?.[1];
+    link = href ? href.replaceAll("&amp;", "&") : null;
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  if (!link) throw new QuestionBankError(`Moodle didn't export bank ${activityId}'s questions: its export page gave no file.`);
+  const response = await siteFetch(context, new URL(link, siteUrl).href);
+  // Nothing to export answers with Moodle's error page ("no questions"), not a file.
+  if (response.status !== 200 || /^\s*<!DOCTYPE html/i.test(response.body)) {
+    const reason = /class="errormessage"[^>]*>([\s\S]*?)<\//.exec(response.body)?.[1]?.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().replace(/\.$/, "");
+    throw new QuestionBankError(`Moodle didn't export ${categoryId === undefined ? `bank ${activityId}` : `category ${categoryId}`}: ${reason || "it has no questions to export"}.`);
+  }
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, response.body, "utf8");
+  return { path: file, name: path.basename(file), size: Buffer.byteLength(response.body, "utf8"), contentType: format === "xml" ? "application/xml" : "text/plain" };
 }
 
 /** The question types `createQuestion` makes through their form; others are imported (GIFT, Moodle XML). */

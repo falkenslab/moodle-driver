@@ -112,6 +112,7 @@ export {
   questionBanks,
   questions,
   importQuestions,
+  exportQuestions,
   createQuestion,
   updateQuestion,
   deleteQuestions,
@@ -125,6 +126,7 @@ export {
   type QuestionType,
   type QuestionInput,
 } from "./areas/questions/banks.js";
+export { questionCategories, addQuestionCategory, editQuestionCategory, deleteQuestionCategory, moveQuestions, type QuestionCategory } from "./areas/questions/categories.js";
 
 // Forums, surveys, choices, lessons, H5P.
 export { forumGrades, gradeForumUser, type ForumGrade, type ForumGrades } from "./areas/forums/grading.js";

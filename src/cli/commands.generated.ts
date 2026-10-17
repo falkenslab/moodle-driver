@@ -430,6 +430,51 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addQuestionCategory",
+    "description": "Adds a category to a bank, as the categories page's \"Add category\" does: at the top level, or inside `parentId`, with an optional description (HTML). Returns the category made.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "parentId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addQuestionsToQuiz",
     "description": "Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.",
     "params": [
@@ -2112,6 +2157,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteQuestionCategory",
+    "description": "Deletes a bank's category as its delete action does. Its subcategories move up to its parent, as Moodle does. A category with questions takes `moveTo`, the bank's category its questions go to, which Moodle asks for before deleting; without it nothing is deleted. Moodle keeps a bank's last top-level category.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "categoryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "moveTo",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "deleteQuestions",
     "description": "Deletes questions from a bank, every version of each, as the bank's delete action does: asked, then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.",
     "params": [
@@ -2581,6 +2663,59 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "editQuestionCategory",
+    "description": "Changes a bank's category as its \"Edit settings\" does, only what's given: its name, its description (HTML), or its parent (`parentId`, which moves it with its subcategories and questions; the bank's Top, the top-level categories' `parentId`, moves it to the top level). Returns the category afterwards.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "categoryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "parentId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "editQuizSlot",
     "description": "Changes one slot of a quiz (by its place, from 1): its maximum mark, through the slots' service, and where it is, as dragging it on the edit page does: after another slot (`moveAfter`, 0 for first) and on a page. Moodle lets the mark change after attempts (it regrades them), not the rest.",
     "params": [
@@ -2853,6 +2988,55 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "string"
           },
           "description": "The folder to save the file in (an absolute path); the `Moodle` object's `downloadDir` when left out there."
+        }
+      ]
+    }
+  },
+  {
+    "name": "exportQuestions",
+    "description": "Exports a bank's questions, or a category's (its subcategories' included), to a local GIFT or Moodle XML file, through the bank's export form; `file` (an absolute path) is written, replacing one there. The file names each question's category, as Moodle writes it by default, so importing it without a category recreates them. Hidden questions aren't exported, and a question's latest version only.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "format",
+          "optional": false,
+          "type": "\"xml\" | \"gift\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "xml",
+              "gift"
+            ]
+          }
+        },
+        {
+          "name": "categoryId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "file",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
         }
       ]
     }
@@ -3610,6 +3794,36 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "moveQuestions",
+    "description": "Moves questions into a category of a bank, several at once, as the bank's bulk \"Move to\" does (Moodle's core_question_move_questions service). A question keeps its id and versions.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "questionIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
+        }
+      },
+      {
+        "name": "categoryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "myGrades",
     "description": "The person's own grade report for a course.",
     "params": [
@@ -3882,6 +4096,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "questionCategories",
+    "description": "A bank's categories as its categories page shows them, parents before their subcategories: each one's id, name, parent, description and the questions directly in it. The bank's hidden \"Top\" category isn't one of them: it's the `parentId` of the top-level ones. Reading the page takes the capability to manage the bank's categories, which `questions` doesn't, so it's a function of its own.",
+    "params": [
+      {
+        "name": "activityId",
         "optional": false,
         "type": "number",
         "value": {

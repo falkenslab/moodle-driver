@@ -60,6 +60,11 @@ export interface MoodleMethods {
    */
   addLessonPage(activityId: number, input: import("./areas/lessons/pages.js").LessonPageInput, options?: { after?: number | undefined; }): Promise<{ changed: string; pageId: number; pageIds: number[]; }>;
   /**
+   * Adds a category to a bank, as the categories page's "Add category" does: at the top level, or
+   * inside `parentId`, with an optional description (HTML). Returns the category made.
+   */
+  addQuestionCategory(activityId: number, options: { name: string; parentId?: number | undefined; description?: string | undefined; }): Promise<{ changed: string; category: import("./areas/questions/categories.js").QuestionCategory; }>;
+  /**
    * Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a
    * page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz
    * already attempted can't change its questions: Moodle refuses, and so does this.
@@ -421,6 +426,13 @@ export interface MoodleMethods {
    */
   deletePost(postId: number): Promise<{ changed: string; discussionId?: number | undefined; replies: number; discussionDeleted: boolean; }>;
   /**
+   * Deletes a bank's category as its delete action does. Its subcategories move up to its parent, as
+   * Moodle does. A category with questions takes `moveTo`, the bank's category its questions go to,
+   * which Moodle asks for before deleting; without it nothing is deleted. Moodle keeps a bank's last
+   * top-level category.
+   */
+  deleteQuestionCategory(activityId: number, categoryId: number, options?: { moveTo?: number | undefined; }): Promise<{ changed: string; }>;
+  /**
    * Deletes questions from a bank, every version of each, as the bank's delete action does: asked,
    * then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.
    */
@@ -481,6 +493,12 @@ export interface MoodleMethods {
    */
   editPost(postId: number, changes: import("./areas/forums/posts.js").PostChanges): Promise<{ changed: string; post?: import("./areas/forums/posts.js").ForumPost | undefined; }>;
   /**
+   * Changes a bank's category as its "Edit settings" does, only what's given: its name, its description
+   * (HTML), or its parent (`parentId`, which moves it with its subcategories and questions; the bank's
+   * Top, the top-level categories' `parentId`, moves it to the top level). Returns the category afterwards.
+   */
+  editQuestionCategory(activityId: number, categoryId: number, changes: { name?: string | undefined; description?: string | undefined; parentId?: number | undefined; }): Promise<{ changed: string; category: import("./areas/questions/categories.js").QuestionCategory; }>;
+  /**
    * Changes one slot of a quiz (by its place, from 1): its maximum mark, through the slots' service,
    * and where it is, as dragging it on the edit page does: after another slot (`moveAfter`, 0 for
    * first) and on a page. Moodle lets the mark change after attempts (it regrades them), not the rest.
@@ -506,6 +524,14 @@ export interface MoodleMethods {
    * Throws `EnrolmentError` when the person can't manage the course's enrolment methods.
    */
   enrolmentMethods(courseId: number): Promise<import("./areas/participants/methods.js").EnrolmentMethod[]>;
+  /**
+   * Exports a bank's questions, or a category's (its subcategories' included), to a local GIFT or
+   * Moodle XML file, through the bank's export form; `file` (an absolute path) is written, replacing
+   * one there. The file names each question's category, as Moodle writes it by default, so importing
+   * it without a category recreates them. Hidden questions aren't exported, and a question's latest
+   * version only.
+   */
+  exportQuestions(activityId: number, options: { format: "xml" | "gift"; categoryId?: number | undefined; file: string; }): Promise<import("./core/files.js").DownloadedFile>;
   /** Submits an attempt for grading, and gives its review when the quiz shows it. */
   finishQuizAttempt(attemptId: number): Promise<{ changed: string; attemptId: number; finished: true; review: { summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; } | undefined; }>;
   /**
@@ -639,6 +665,11 @@ export interface MoodleMethods {
   moveBookChapter(activityId: number, chapterId: number, options: { direction: "up" | "down"; }): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /** Moves a page of a lesson after page `after` (0 puts it first), as the editor's move link does; returns the pages in order. */
   moveLessonPage(activityId: number, pageId: number, after: number): Promise<{ changed: string; pageIds: number[]; }>;
+  /**
+   * Moves questions into a category of a bank, several at once, as the bank's bulk "Move to" does
+   * (Moodle's core_question_move_questions service). A question keeps its id and versions.
+   */
+  moveQuestions(activityId: number, questionIds: number[], categoryId: number): Promise<{ changed: string; questionIds: number[]; categoryId: number; }>;
   /** The person's own grade report for a course. */
   myGrades(courseId: number): Promise<import("./areas/grades/user-report.js").GradeRow[]>;
   /**
@@ -721,6 +752,13 @@ export interface MoodleMethods {
   potentialUsers(courseId: number, search?: string): Promise<import("./areas/participants/enrolments.js").PotentialUser[]>;
   /** A course's question banks: its shared ones and the activities' own, as the banks page lists them. */
   questionBanks(courseId: number): Promise<import("./areas/questions/banks.js").QuestionBank[]>;
+  /**
+   * A bank's categories as its categories page shows them, parents before their subcategories: each
+   * one's id, name, parent, description and the questions directly in it. The bank's hidden "Top"
+   * category isn't one of them: it's the `parentId` of the top-level ones. Reading the page takes the
+   * capability to manage the bank's categories, which `questions` doesn't, so it's a function of its own.
+   */
+  questionCategories(activityId: number): Promise<import("./areas/questions/categories.js").QuestionCategory[]>;
   /**
    * A bank's categories and every question in them, category by category. With `limit`, `questions` is
    * a page of them in that order (see "Long lists" in the docs' concepts), the categories all: the bank

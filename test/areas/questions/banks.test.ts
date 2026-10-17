@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { QuestionBankError, createQuestion, deleteQuestions, importQuestions, questionBanks, questions, setQuestionStatus, updateQuestion } from "../../../src/index.js";
+import { QuestionBankError, createQuestion, deleteQuestions, exportQuestions, importQuestions, questionBanks, questions, setQuestionStatus, updateQuestion } from "../../../src/index.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -29,7 +29,9 @@ function fakeBanks(
   const posted: URLSearchParams[] = [];
   const deleted = new Set<number>();
   const hidden = new Set<number>();
-  const page = (bodyId: string, body: string) => moodlePage({ userId: 3, bodyId, body });
+  // The export files fetched.
+  const fetched: string[] = [];
+  const page =(bodyId: string, body: string) => moodlePage({ userId: 3, bodyId, body });
   const html = (route: Route, body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
   const go = (route: Route, to: string) => html(route, `<script>location.replace("${SITE}${to}")</script>`);
   const row = (q: { id: number; name: string; type: string }) =>
@@ -86,6 +88,26 @@ function fakeBanks(
             ),
           );
         }
+        case "/question/bank/exportquestions/export.php": {
+          if (route.request().method() === "POST") {
+            const form = new URLSearchParams(route.request().postData() ?? "");
+            posted.push(form);
+            const [cat] = (form.get("category") ?? "").split(",");
+            const file = `${SITE}pluginfile.php/70/question/export/${cat}/${form.get("format")}/withcategories/withcontexts/questions.txt?forcedownload=1`;
+            // As Moodle's: the link, and the page sending itself to the file (a second later in Moodle, at once here).
+            return html(route, page("page-question-bank-exportquestions-export", `<div id="region-main"><div class="box">Your file should download: <a href="${file}">${file}</a></div><script>setTimeout(() => location.replace(${JSON.stringify(file)}), 0)</script></div>`));
+          }
+          return html(
+            route,
+            page(
+              "page-question-bank-exportquestions-export",
+              `<form class="mform" method="post" action="${SITE}question/bank/exportquestions/export.php"><input type="hidden" name="cmid" value="${activityId}">
+<input type="radio" name="format" value="gift"><input type="radio" name="format" value="xml">
+<select name="category"><option value="13,70">Top</option><option value="14,70" selected>Default</option><option value="15,70">Empty</option></select>
+<input type="checkbox" name="cattofile" value="1" checked><input type="checkbox" name="contexttofile" value="1" checked><input type="submit" name="submitbutton" value="Export questions"></form>`,
+            ),
+          );
+        }
         case "/repository/repository_ajax.php": {
           const body = route.request().postDataBuffer()?.toString("utf8") ?? "";
           uploads.push(body);
@@ -128,11 +150,17 @@ function fakeBanks(
           return go(route, "question/edit.php?cmid=36");
         }
         default:
+          if (url.pathname.startsWith("/pluginfile.php/70/question/export/")) {
+            fetched.push(url.pathname);
+            // An empty category answers with Moodle's error page.
+            if (url.pathname.includes("/export/15/")) return html(route, page("page-site-index", `<div data-rel="fatalerror"><p class="errormessage">No questions were found that could be exported. Make sure that you have selected a category to export that contains questions.</p></div>`));
+            return route.fulfill({ status: 200, contentType: "text/plain", body: "// question: 20  name: Loop\n::Loop::Which loop? {=while ~for}\n" });
+          }
           return route.fallback();
       }
     });
   };
-  return { routes, uploads, posted, deleted, hidden, listed };
+  return { routes, uploads, posted, deleted, hidden, listed, fetched };
 }
 
 async function open(fake: ReturnType<typeof fakeBanks>): Promise<BrowserContext> {
@@ -205,6 +233,27 @@ describe("importQuestions", { skip: !browser && "no system browser" }, () => {
     await writeFile(path.join(dir, "q.xml"), "<quiz></quiz>");
     await assert.rejects(importQuestions(context, SITE, 36, { format: "xml", file: path.join(dir, "missing.xml") }), /There's no file at/);
     await assert.rejects(importQuestions(context, SITE, 36, { format: "xml" }), /as a file or as text/);
+    await context.close();
+  });
+});
+
+describe("exportQuestions", { skip: !browser && "no system browser" }, () => {
+  it("exports the whole bank (its Top) or a category through the form, and writes the file", async () => {
+    const fake = fakeBanks();
+    const context = await open(fake);
+    const dir = await mkdtemp(path.join(tmpdir(), "qbank-export-"));
+    const file = path.join(dir, "out", "bank.gift.txt");
+    const saved = await exportQuestions(context, SITE, 36, { format: "gift", file });
+    assert.deepEqual(saved, { path: file, name: "bank.gift.txt", size: 62, contentType: "text/plain" });
+    assert.match(await readFile(file, "utf8"), /::Loop::/);
+    assert.deepEqual([fake.posted[0]?.get("format"), fake.posted[0]?.get("category")], ["gift", "13,70"]);
+    await exportQuestions(context, SITE, 36, { format: "xml", categoryId: 14, file });
+    assert.deepEqual(fake.fetched, ["/pluginfile.php/70/question/export/13/gift/withcategories/withcontexts/questions.txt", "/pluginfile.php/70/question/export/14/xml/withcategories/withcontexts/questions.txt"]);
+    await assert.rejects(exportQuestions(context, SITE, 36, { format: "gift", categoryId: 15, file }), /Moodle didn't export category 15: No questions were found that could be exported. Make sure that you have selected a category to export that contains questions.$/);
+    await assert.rejects(exportQuestions(context, SITE, 36, { format: "gift", categoryId: 99, file }), /The bank has no category 99/);
+    await assert.rejects(exportQuestions(context, SITE, 36, { format: "gift", file: "relative.txt" }), /absolute path/);
+    await assert.rejects(exportQuestions(context, SITE, 36, { format: "aiken" as "gift", file }), /"gift" or "xml"/);
+    await rm(dir, { recursive: true, force: true });
     await context.close();
   });
 });
