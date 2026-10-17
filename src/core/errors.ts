@@ -58,7 +58,9 @@ export type MoodleErrorCode =
   | "badge"
   | "badges-disabled"
   | "note"
-  | "notes-disabled";
+  | "notes-disabled"
+  | "competency"
+  | "competencies-disabled";
 
 /** Every error the driver throws on purpose: one class to catch, a stable `code` to tell them apart. */
 export class MoodleError extends Error {

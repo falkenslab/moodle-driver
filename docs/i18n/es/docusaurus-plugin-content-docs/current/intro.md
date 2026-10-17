@@ -37,7 +37,7 @@ moodle-driver inicia sesión como lo hace la persona, en una ventana del navegad
 | Glosarios | Leer, añadir, cambiar y eliminar entradas, aprobarlas, añadir categorías, exportar e importar entradas en el XML de Moodle |
 | Lecciones, H5P y SCORM | Recorrer una lección página a página; leer el tipo y los intentos de una actividad H5P; leer los intentos y los SCO de un SCORM, abrir su reproductor, crear uno a partir de un paquete |
 | Calificaciones | Las calificaciones de la persona, el informe del calificador y las exportaciones de calificaciones de Moodle, calificar y anular calificaciones en el libro de calificaciones, la configuración del libro de calificaciones (elementos manuales, categorías, ponderaciones), importaciones CSV, escalas y letras de calificación |
-| Finalización e insignias | Marcar actividades como hechas, anular la finalización, leer el informe de progreso; insignias del curso: crearlas, fijar sus criterios, habilitarlas, otorgarlas a mano |
+| Finalización, insignias y competencias | Marcar actividades como hechas, anular la finalización, leer el informe de progreso; insignias del curso: crearlas, fijar sus criterios, habilitarlas, otorgarlas a mano; competencias: añadirlas a un curso, vincularlas a actividades, valorar a los participantes |
 | Personas | Participantes con sus roles y grupos, inactividad; matricular y desmatricular, asignar roles, grupos y agrupamientos, métodos de matriculación, anotaciones sobre ellos; enviar un mensaje a varios a la vez |
 | Registros e informes | Los registros de un curso por usuario, actividad, acción y fecha; las visitas por actividad; quién participó en una actividad |
 | Vista general | La vista general de actividades, fechas límite, novedades del curso |

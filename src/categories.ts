@@ -247,6 +247,14 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   addNote: ["others-personal", "others-write"],
   editNote: ["others-personal", "others-write"],
   deleteNote: ["others-personal", "others-write"],
+  // Competencies: the frameworks and the course's competencies and links are course content; a participant's rating judges them.
+  competencyFrameworks: CONTENT,
+  courseCompetencies: CONTENT,
+  addCourseCompetency: CONTENT,
+  removeCourseCompetency: CONTENT,
+  setActivityCompetencies: CONTENT,
+  competencyRating: ["own", "others-personal"],
+  rateCompetency: ["others-personal", "others-write"],
 
   // Completion: the person's own, deciding someone else's, everyone's report.
   setCompletion: OWN,

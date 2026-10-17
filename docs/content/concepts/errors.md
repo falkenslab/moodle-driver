@@ -103,6 +103,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `NoGradeReportError`, `GradebookError` | [Grades and gradebook](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Completion](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Badges](../areas/badges.md): a missing badge capability (named), a criterion Moodle doesn't offer; a site with badges off |
+| `CompetencyError`, `CompetenciesDisabledError` | [Competencies](../areas/competencies.md): a missing competency capability (named), a competency that isn't the course's, a participant who can't be rated; a site with competencies off |
 | `NoParticipantsError`, `EnrolmentError` | [Participants](../areas/participants.md): can't see the participants; Moodle refused to enrol, unenrol or give a role |
 | `NoteError`, `NotesDisabledError` | [Participants](../areas/participants.md#notes-about-participants): a missing notes capability (named), no such note; a site with notes off |
 | `ReportError` | [Logs and reports](../areas/logs-and-reports.md): the person can't see the report, or the activity isn't the course's |
