@@ -158,6 +158,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   assignmentSubmissions: PERSONAL,
   gradeSubmission: ["others-personal", "others-write"],
   rubric: CONTENT,
+  setGradingDefinition: CONTENT,
   grantExtension: ["others-write"],
   setWorkflowState: ["others-write"],
   allocateMarker: ["others-write"],

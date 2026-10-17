@@ -1,6 +1,6 @@
 # Calificar
 
-El lado del profesor en una tarea, en los foros y en los talleres: las calificaciones de foro completo con `forumGrades` y `gradeForumUser`, las valoraciones de mensajes de foro, entradas de glosario y entradas de bases de datos con `rate`, y las fases y evaluaciones de un taller con `workshopInfo`, `setWorkshopPhase` y `assessWorkshopSubmission`. En una tarea: las entregas de todos con su contenido y sus fechas, calificar a un participante como lo hace el calificador de Moodle (una calificación simple o una escala, los niveles de una rúbrica, las puntuaciones de una guía de evaluación, observaciones y comentarios de retroalimentación), leer el método de calificación y sus criterios, y conceder ampliaciones del plazo; los archivos de retroalimentación van con la calificación. También se cubren las tareas con entregas en grupo y el flujo de trabajo de calificación: quién entrega por qué grupo, calificar a todo un grupo a la vez, los estados del flujo de trabajo, los evaluadores y la publicación de calificaciones. Necesita permisos de profesor en la tarea (las capacidades de calificación de Moodle); a un estudiante, Moodle se lo rechaza. Calificar pasa por el propio panel y servicio del calificador (`core_get_fragment` con el `gradingpanel` de `mod_assign`, y luego `mod_assign_submit_grading_form`), y los campos se encuentran por sus nombres en el formulario, así que funciona en cualquier idioma. El lado del estudiante está en [tareas](assignments.md); las excepciones de los cuestionarios, en [cuestionarios](quizzes.md).
+El lado del profesor en una tarea, en los foros y en los talleres: las calificaciones de foro completo con `forumGrades` y `gradeForumUser`, las valoraciones de mensajes de foro, entradas de glosario y entradas de bases de datos con `rate`, y las fases y evaluaciones de un taller con `workshopInfo`, `setWorkshopPhase` y `assessWorkshopSubmission`. En una tarea: las entregas de todos con su contenido y sus fechas, calificar a un participante como lo hace el calificador de Moodle (una calificación simple o una escala, los niveles de una rúbrica, las puntuaciones de una guía de evaluación, observaciones y comentarios de retroalimentación), leer el método de calificación y sus criterios, definir una rúbrica o una guía de evaluación, y conceder ampliaciones del plazo; los archivos de retroalimentación van con la calificación. También se cubren las tareas con entregas en grupo y el flujo de trabajo de calificación: quién entrega por qué grupo, calificar a todo un grupo a la vez, los estados del flujo de trabajo, los evaluadores y la publicación de calificaciones. Necesita permisos de profesor en la tarea (las capacidades de calificación de Moodle); a un estudiante, Moodle se lo rechaza. Calificar pasa por el propio panel y servicio del calificador (`core_get_fragment` con el `gradingpanel` de `mod_assign`, y luego `mod_assign_submit_grading_form`), y los campos se encuentran por sus nombres en el formulario, así que funciona en cualquier idioma. El lado del estudiante está en [tareas](assignments.md); las excepciones de los cuestionarios, en [cuestionarios](quizzes.md).
 
 **Términos:** [tarea](../reference/glossary.md#assignment), [entrega](../reference/glossary.md#submission), [método de calificación](../reference/glossary.md#grading-method), [ampliación del plazo](../reference/glossary.md#extension), [escala](../reference/glossary.md#scale), [taller](../reference/glossary.md#workshop).
 
@@ -116,6 +116,38 @@ interface GradingCriterion {
 `method` es `"simple"` para una calificación sencilla o una escala (sin criterios), y `"rubric"` o `"guide"` para la calificación avanzada. Un criterio de rúbrica tiene su `description` y sus `levels` (`id` para `gradeSubmission`, la `definition` del nivel y su `score`). Un criterio de guía tiene su nombre corto como `description`, su descripción para los estudiantes (`details`) y para los evaluadores (`markers`), y su `maxScore`.
 
 Se lee del panel de calificación del primer participante de la tarea con entrega, así que lanza `GradingError` cuando la tarea no tiene participantes. Cuando nadie ha entregado todavía, el panel es el del primer participante, y Moodle le crea una entrega vacía (`"new"`) al abrirlo. Lanza `NotAnAssignmentError` cuando el id no es una tarea que la persona pueda calificar.
+
+## setGradingDefinition
+
+Establece el método de calificación avanzada de una tarea, una rúbrica o una guía de evaluación, y guarda su definición lista para usarse, como lo hacen la página de calificación avanzada de Moodle y su editor de rúbricas o de guías.
+
+```ts
+function setGradingDefinition(context: BrowserContext, siteUrl: string, activityId: number, definition: GradingDefinitionInput): Promise<{ changed: string; assignment: { id: number }; method: "rubric" | "guide"; criteria: GradingCriterion[] }>;
+
+type GradingDefinitionInput =
+  | { method: "rubric"; name: string; description?: string; criteria: { description: string; levels: { definition: string; score: number }[] }[] }
+  | { method: "guide"; name: string; description?: string; criteria: { shortName: string; description?: string; markers?: string; maxScore: number }[]; comments?: string[] };
+```
+
+`name` es el nombre de la definición y `description` su descripción (HTML). Cada criterio de una rúbrica tiene una descripción y dos niveles como mínimo, y cada nivel su definición y su puntuación. Cada criterio de una guía tiene un nombre corto, una descripción para los estudiantes y los evaluadores (`description`), otra solo para los evaluadores (`markers`) y una puntuación máxima; `comments` son sus comentarios de uso frecuente. Los criterios, los niveles y los comentarios van en el orden dado.
+
+Cuando la tarea no tiene una definición para ese método, se crea una; cuando ya la tiene, se sustituye entera (criterios, niveles y comentarios), así que sus ids cambian. El método de calificación se establece cuando es otro. Devuelve la definición tal como la lee [`rubric`](#rubric), con los ids que recibe `gradeSubmission`, pero leída del editor de la definición, no de un panel de calificación: no crea una entrega a nadie.
+
+El editor de Moodle deja cambiar una definición libremente solo mientras no se ha calificado nada con ella; después, guardarla pide recalificar. Por eso una definición ya usada para calificar se rechaza con `GradingError` antes de cambiar nada (tampoco el método): cámbiala en el editor de Moodle, o bórrala antes en la página de calificación avanzada de la tarea. También lanza `GradingError` cuando la persona no puede gestionar los formularios de calificación (la capacidad `moodle/grade:managegradingforms` de Moodle, que tienen los profesores y no los profesores sin permiso de edición) o cuando el editor de Moodle no guarda la definición (con sus motivos); `MoodleError` (`invalid-input`) antes de abrir nada, para una definición que el editor no aceptaría (sin nombre, sin criterios, un criterio de rúbrica con menos de dos niveles, puntuaciones más altas que suman 0, una puntuación máxima negativa); y `NotAnAssignmentError` cuando el id no es una tarea que la persona pueda calificar.
+
+```ts
+const rubric = await moodle.setGradingDefinition(1234, {
+  method: "rubric",
+  name: "Bucles",
+  criteria: [
+    { description: "Explica un bucle", levels: [{ definition: "No", score: 0 }, { definition: "En parte", score: 1 }, { definition: "Con claridad", score: 2 }] },
+    { description: "Da un ejemplo", levels: [{ definition: "Ninguno", score: 0 }, { definition: "Correcto", score: 2 }] },
+  ],
+});
+console.log(rubric.changed);
+const [explains, example] = rubric.criteria;
+await moodle.gradeSubmission(1234, 7, { rubric: { [explains!.id]: explains!.levels![2]!.id, [example!.id]: example!.levels![1]!.id } });
+```
 
 ## grantExtension
 
@@ -391,4 +423,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Categorías de datos {#data-categories}
 
-`assignmentSubmissions` es `others-personal`. `gradeSubmission` es `others-personal` y `others-write` (lee el panel y decide sobre alguien). `rubric` es `course-content`, y `grantExtension`, `setWorkflowState` y `allocateMarker` son `others-write`. `forumGrades` es `others-personal`, `gradeForumUser`, `others-personal` y `others-write`, y `rate`, `others-write`. `workshopInfo` es `others-personal`, `setWorkshopPhase`, `others-write` (abre y cierra el trabajo de los participantes), y `assessWorkshopSubmission`, `others-personal` y `others-write`. Consulta [categorías de datos](../concepts/data-categories.md).
+`assignmentSubmissions` es `others-personal`. `gradeSubmission` es `others-personal` y `others-write` (lee el panel y decide sobre alguien). `rubric` y `setGradingDefinition` son `course-content`, y `grantExtension`, `setWorkflowState` y `allocateMarker` son `others-write`. `forumGrades` es `others-personal`, `gradeForumUser`, `others-personal` y `others-write`, y `rate`, `others-write`. `workshopInfo` es `others-personal`, `setWorkshopPhase`, `others-write` (abre y cierra el trabajo de los participantes), y `assessWorkshopSubmission`, `others-personal` y `others-write`. Consulta [categorías de datos](../concepts/data-categories.md).

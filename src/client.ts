@@ -26,6 +26,7 @@ import { assessWorkshopSubmission, setWorkshopPhase, workshopInfo } from "./area
 import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
 import { myGrades } from "./areas/grades/user-report.js";
 import { allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension, rubric, setWorkflowState } from "./areas/assignments/grading.js";
+import { setGradingDefinition } from "./areas/assignments/definitions.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
 import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
@@ -165,6 +166,7 @@ const SITE_FUNCTIONS = {
   setDiscussionState,
   setDiscussionSubscription,
   setGrade,
+  setGradingDefinition,
   setQuizOverride,
   setQuizPages,
   setQuestionStatus,

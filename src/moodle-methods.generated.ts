@@ -710,6 +710,20 @@ export interface MoodleMethods {
    */
   setGrade(courseId: number, itemId: number, userId: number, options: import("./areas/grades/singleview.js").SetGradeOptions): Promise<{ changed: string; grade: import("./areas/grades/singleview.js").GradebookGrade; }>;
   /**
+   * Sets an assignment's advanced grading method (a rubric or a marking guide) and saves its
+   * definition through Moodle's editor form, ready for use, as "Define new grading form from scratch"
+   * and "Save rubric and make it ready" (or the guide's) do: one is created where there is none, and
+   * the one there is replaced (its criteria, levels and comments, so their ids change). Moodle's
+   * editor offers to save as a draft only while nothing has been graded with the definition: without
+   * that, it would ask to regrade on saving, so the driver refuses with `GradingError` before anything
+   * changes (the method too). Returns the definition as `rubric` reads it, read from the editor form,
+   * not from a grading panel, so it creates no submission. Throws `GradingError` when the person lacks
+   * `moodle/grade:managegradingforms` or Moodle refuses the definition, `NotAnAssignmentError` when
+   * the id isn't an assignment they can grade, and `MoodleError` (`invalid-input`) for a definition
+   * Moodle's editor wouldn't take (no criteria, a rubric criterion with fewer than two levels…).
+   */
+  setGradingDefinition(activityId: number, definition: import("./areas/assignments/definitions.js").GradingDefinitionInput): Promise<import("./areas/assignments/definitions.js").SavedGradingDefinition>;
+  /**
    * Adds and removes a group's members (user ids), as its members page does. Only the course's
    * participants can be added: ids the page doesn't offer (not enrolled, or already members) and
    * members not in it are left as they were and named in `changed`. Returns the members afterwards.
