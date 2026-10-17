@@ -1,17 +1,21 @@
 // Building a course and its completion, against the sandbox: activities and sections made, changed,
-// moved and deleted on a scratch course by the teacher, read back as the teacher and the student.
+// moved and deleted on a scratch course by the teacher, read back as the teacher and the student;
+// activity completion there, and course completion on a scratch course of its own.
 import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
-import { ActivitySettingsError, BookError, CompletionError, MoodleError, type CourseActivity, type CourseSection } from "../../src/index.js";
-import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { setTimeout as sleep } from "node:timers/promises";
+import { ActivitySettingsError, BookError, CompletionError, MoodleError, type CourseActivity, type CourseCompletionStatus, type CourseSection } from "../../src/index.js";
+import { openSitePage } from "../../src/internals.js";
+import { COURSE, SITE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { pngFile, scormPackage, textFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
 const SLOW = { timeout: 900_000 };
 const SETUP = { timeout: 1_800_000 };
+const EDITING_TEACHER = 3;
 
 const activities = (sections: CourseSection[]): CourseActivity[] => sections.flatMap((s) => s.activities);
 const activityIn = (sections: CourseSection[], id: number) => activities(sections).find((a) => a.id === id);
@@ -372,5 +376,119 @@ describe("building a course", () => {
       ]);
       assert.deepEqual((await (await as("student")).bookChapters(bookId)).map((c) => c.id), [one]);
     });
+  });
+});
+
+/**
+ * A participant's course completion once Moodle's "Calculate regular completion data" task
+ * (`completion_regular_task`) has run: a course grade criterion is reviewed only there. The task is
+ * run now as the admin's "Run now" does, in the webserver's PHP CLI; where Moodle can't (the sandbox
+ * doesn't set the path to PHP), the sandbox's cron container runs it every minute, and the status is
+ * read again until `done` holds, for up to five minutes.
+ */
+async function afterCompletionTask(courseId: number, user: number, done: (status: CourseCompletionStatus) => boolean): Promise<CourseCompletionStatus> {
+  const context = await (await as("admin")).context();
+  const task = encodeURIComponent("\\core\\task\\completion_regular_task");
+  const page = await openSitePage(context, SITE, `admin/tool/task/schedule_task.php?task=${task}`);
+  try {
+    const sesskey = await page.evaluate(() => (globalThis as unknown as { M: { cfg: { sesskey: string } } }).M.cfg.sesskey);
+    await page.goto(`${SITE}admin/tool/task/schedule_task.php?task=${task}&confirm=1&sesskey=${sesskey}`, { waitUntil: "load" });
+  } finally {
+    await page.close();
+  }
+  const teacher = await as("teacher");
+  let status: CourseCompletionStatus | undefined;
+  for (let i = 0; i < 30; i++) {
+    status = (await teacher.courseCompletionStatus(courseId, { userId: user }))[0];
+    if (status && done(status)) return status;
+    await sleep(10_000);
+  }
+  assert.fail(`Moodle's completion task didn't change the status in five minutes: ${JSON.stringify(status)}`);
+}
+
+// Course completion (not activity completion): its criteria on a scratch course of its own, and the
+// student's status before and after meeting them.
+describe("course completion", () => {
+  let course: ScratchCourse;
+  let pageId: number;
+  let itemId: number;
+  let student: number;
+
+  before(async () => {
+    course = await scratchCourse("completion");
+    const teacher = await as("teacher");
+    pageId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "page", name: "Driver check completion page", content: "<p>x</p>", visibility: "shown", completion: "manual" })).activityId!;
+    itemId = (await teacher.addGradeItem(course.id, { name: "Driver check completion item", maxGrade: 10 })).item!.id;
+    student = await userId("student");
+  }, SETUP);
+
+  it("courseCompletionCriteria: none yet, the course's activity offered; refused to the student", SLOW, async () => {
+    const criteria = await (await as("teacher")).courseCompletionCriteria(course.id);
+    assert.deepEqual([criteria.enabled, criteria.locked, criteria.overall, criteria.activities, criteria.grade, criteria.roles], [true, false, "all", undefined, undefined, undefined]);
+    assert.ok(criteria.offered.activities.some((a) => a.id === pageId));
+    assert.ok(criteria.offered.roles.some((r) => r.id === EDITING_TEACHER));
+    await assert.rejects((await as("student")).courseCompletionCriteria(course.id), CompletionError);
+  });
+
+  it("setCourseCompletionCriteria: an activity, a course grade and the teacher's mark, all required, read back", SLOW, async () => {
+    const teacher = await as("teacher");
+    await assert.rejects(teacher.setCourseCompletionCriteria(course.id, { activities: { activityIds: [999_999] } }), CompletionError);
+    const result = await teacher.setCourseCompletionCriteria(course.id, { overall: "all", activities: { activityIds: [pageId] }, grade: 5, roles: { roleIds: [EDITING_TEACHER] } });
+    const { offered, ...criteria } = result.criteria;
+    assert.ok(offered.activities.length > 0);
+    assert.deepEqual(criteria, { enabled: true, locked: false, overall: "all", activities: { activityIds: [pageId], all: true }, grade: 5, roles: { roleIds: [EDITING_TEACHER], all: true } });
+  });
+
+  it("courseCompletionStatus: the student has met nothing; refused to the student", SLOW, async () => {
+    const [status] = await (await as("teacher")).courseCompletionStatus(course.id, { userId: student });
+    assert.equal(status?.complete, false);
+    assert.deepEqual(
+      status?.criteria.map((c) => [c.type, c.activityId, c.met]),
+      [
+        ["activity", pageId, false],
+        ["grade", undefined, false],
+        ["role", undefined, false],
+      ],
+    );
+    assert.equal(status?.markable, true);
+    const page = await (await as("teacher")).courseCompletionStatus(course.id, { limit: 1 });
+    assert.equal(page.items.length, 1);
+    await assert.rejects((await as("student")).courseCompletionStatus(course.id), CompletionError);
+  });
+
+  it("courseCompletionStatus: the activity done and the grade given (after the completion task), the course still waits for the teacher", SLOW, async () => {
+    const teacher = await as("teacher");
+    await (await as("student")).setCompletion(pageId, true);
+    await teacher.setGrade(course.id, itemId, student, { grade: 8 });
+    // The course grade criterion is reviewed only by Moodle's scheduled task: run now as the admin.
+    const status = await afterCompletionTask(course.id, student, (s) => s.criteria[1]?.met === true);
+    assert.deepEqual(status.criteria.map((c) => c.met), [true, true, false]);
+    assert.ok(status.criteria[0]?.metAt);
+    assert.equal(status.complete, false);
+  });
+
+  it("markCourseComplete: the teacher's mark completes the course; the criteria are locked now", SLOW, async () => {
+    const teacher = await as("teacher");
+    await assert.rejects((await as("student")).markCourseComplete(course.id, student), CompletionError);
+    const result = await teacher.markCourseComplete(course.id, student);
+    assert.match(result.changed, /marked complete/);
+    // Moodle completes the course in its completion task too, when the mark itself doesn't.
+    const status = result.status.complete ? result.status : await afterCompletionTask(course.id, student, (s) => s.complete);
+    assert.deepEqual([status.complete, status.criteria.map((c) => c.met)], [true, [true, true, true]]);
+    assert.ok(status.completedAt);
+    assert.match((await teacher.markCourseComplete(course.id, student)).changed, /already/);
+    const locked = await teacher.courseCompletionCriteria(course.id);
+    assert.deepEqual([locked.locked, locked.overall, locked.activities, locked.grade, locked.roles], [true, "all", { activityIds: [pageId], all: true }, 5, { roleIds: [EDITING_TEACHER], all: true }]);
+    await assert.rejects(teacher.setCourseCompletionCriteria(course.id, { self: true }), CompletionError);
+  });
+
+  it("setCourseCompletionCriteria: unlocked, the student's course completion is gone, the new criterion added", SLOW, async () => {
+    const teacher = await as("teacher");
+    const result = await teacher.setCourseCompletionCriteria(course.id, { self: true }, { unlock: true });
+    assert.match(result.changed, /unlocked/);
+    assert.deepEqual([result.criteria.locked, result.criteria.self, result.criteria.grade], [false, true, 5]);
+    const [status] = await teacher.courseCompletionStatus(course.id, { userId: student });
+    assert.equal(status?.complete, false);
+    assert.equal(status?.criteria.find((c) => c.type === "role")?.met, false);
   });
 });
