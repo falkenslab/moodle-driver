@@ -27,6 +27,7 @@ export type MoodleErrorCode =
   | "activity-settings"
   | "backup"
   | "not-viewable"
+  | "book"
   | "not-an-assignment"
   | "grading"
   | "submission"

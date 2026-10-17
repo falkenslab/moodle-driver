@@ -73,6 +73,7 @@ Images and files can go inside the HTML a function writes, as a person inserting
 | --- | --- |
 | `createActivity`, `updateActivity` | `description`, `content`, or an editor in `settings` (`"activityeditor[text]"`) ([activities](activities.md)). |
 | `addSection`, `editSection` | The section's `summary` ([activities](activities.md#addsection-editsection-and-deletesection)). |
+| `addBookChapter`, `editBookChapter` | The chapter's `content` ([content](content.md#a-books-chapters)). |
 | `startDiscussion`, `replyToPost`, `editPost` | The post's `message` ([forums](forums.md)). |
 | `updateCourse` | The course's `summary` ([courses](courses.md#updatecourse)). |
 

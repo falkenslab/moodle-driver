@@ -25,6 +25,13 @@ export interface MoodleMethods {
    * resource, folder or SCORM, and its restrictions and completion in plain terms. Teachers only.
    */
   activitySettings(activityId: number): Promise<{ id: number; module: string; courseId: number; name: string; description: string; fields: import("./areas/activities/build.js").FormField[]; files: import("./core/forms.js").DraftFile[] | undefined; restrictions: import("./areas/activities/conditions.js").Restrictions | undefined; completion: import("./areas/activities/conditions.js").Completion | undefined; }>;
+  /**
+   * Adds a chapter to a book through Moodle's chapter form, at the end or after another chapter, as a
+   * subchapter when asked, hidden when asked, with `embed`'s local files in its content. Gives the new
+   * chapter's id and the chapters afterwards. Throws `BookError` when the person can't edit the book
+   * or `afterChapterId` isn't in it.
+   */
+  addBookChapter(activityId: number, input: import("./areas/activities/books.js").BookChapterInput): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /** Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it. */
   addGradeCategory(courseId: number, options: { name: string; aggregation?: "mean" | "median" | "lowest" | "highest" | "mode" | "weighted-mean" | "simple-weighted-mean" | "mean-with-extra-credits" | "natural" | undefined; parentId?: number | undefined; }): Promise<{ changed: string; category?: import("./areas/grades/gradebook.js").GradebookCategory | undefined; }>;
   /**
@@ -130,6 +137,13 @@ export interface MoodleMethods {
    * stays as Moodle made it. `anonymous: false` keeps what Moodle wrote.
    */
   backupCourse(courseId: number, destDir: string, options?: { withUsers?: boolean | undefined; anonymize?: boolean | undefined; anonymous?: boolean | undefined; sections?: number[] | undefined; activities?: number[] | undefined; timeoutMs?: number | undefined; }): Promise<{ changed: string; file: import("./core/files.js").DownloadedFile; }>;
+  /**
+   * A book's chapters in order: each one's id, title, whether it is a subchapter or hidden, and its
+   * place; with `content`, its HTML and images too, each chapter's page read (Moodle logs a view of it).
+   * A teacher sees hidden chapters; a student's list leaves them out. Throws `BookError` when the
+   * activity isn't a book the person can read.
+   */
+  bookChapters(activityId: number, options?: { content?: boolean | undefined; }): Promise<import("./areas/activities/books.js").BookChapter[]>;
   /** One calendar event by its id, as `upcomingEvents` gives them. */
   calendarEvent(eventId: number): Promise<import("./areas/calendar/calendar.js").CalendarEvent>;
   /**
@@ -266,6 +280,11 @@ export interface MoodleMethods {
   deadlines(options?: { courseId?: number | undefined; days?: number | undefined; pastDays?: number | undefined; }): Promise<{ action?: { url?: string | undefined; count?: number | undefined; name: string; actionable: boolean; } | undefined; course?: { shortname?: string | undefined; id: number; } | undefined; event: string; kind: string; date: string; overdue: boolean; type?: string | undefined; activity: string; activityId?: number | undefined; }[]>;
   /** Deletes an activity, with its participants' data (submissions, posts, attempts); gives the course afterwards. */
   deleteActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Deletes a chapter, with its files, as the table of contents' delete does; deleting a chapter (not
+   * a subchapter) deletes its subchapters too. Throws `BookError` when the chapter isn't in the book.
+   */
+  deleteBookChapter(activityId: number, chapterId: number): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /** Deletes a calendar event the person can manage. */
   deleteEvent(eventId: number): Promise<{ changed: string; }>;
   /**
@@ -321,6 +340,12 @@ export interface MoodleMethods {
   duplicateActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
   editActivity(courseId: number, activityId: number, options: { name?: string | undefined; visibility?: "shown" | "hidden" | "stealth" | undefined; sectionId?: number | undefined; beforeActivityId?: number | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Changes a chapter's title, content (with `embed`'s local files in it) or whether it is a
+   * subchapter, through its form: only what's given changes. Throws `BookError` when the chapter isn't
+   * in the book, or the person can't edit it.
+   */
+  editBookChapter(activityId: number, chapterId: number, input: { title?: string | undefined; content?: string | undefined; subchapter?: boolean | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /**
    * Changes a post through Moodle's own post form (`post.php?edit=`), as its author (within the site's
    * editing time) or a moderator: only what's given changes. Returns the post afterwards. Throws
@@ -470,6 +495,13 @@ export interface MoodleMethods {
    * course's participants.
    */
   messageParticipants(courseId: number, text: string, selection?: import("./areas/messages/messages.js").ParticipantSelection): Promise<{ changed: string; sentTo: number[]; refused: { userId: number; reason: string; }[]; }>;
+  /**
+   * Moves a chapter one place up or down, as the table of contents' arrows do: a chapter moves with its
+   * subchapters, past the whole chapter before or after it; a subchapter moves alone, past one chapter
+   * or subchapter. Moodle may make a subchapter that ends up first a chapter. Throws `BookError` when
+   * the chapter isn't in the book.
+   */
+  moveBookChapter(activityId: number, chapterId: number, options: { direction: "up" | "down"; }): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /** The person's own grade report for a course. */
   myGrades(courseId: number): Promise<import("./areas/grades/user-report.js").GradeRow[]>;
   /**
@@ -672,6 +704,12 @@ export interface MoodleMethods {
   scorm(activityId: number): Promise<import("./areas/scorm/scorm.js").ScormActivity>;
   /** Sends a private message to a user, as the messaging drawer does; returns the message and its conversation. */
   sendMessage(userId: number, text: string): Promise<{ changed: string; messageId: number; conversationId?: number | undefined; }>;
+  /**
+   * Shows a chapter to students or hides it from them, as the table of contents' eye does: a chapter's
+   * subchapters are shown or hidden with it, and a subchapter of a hidden chapter stays hidden. Throws
+   * `BookError` when the chapter isn't in the book.
+   */
+  setBookChapterVisible(activityId: number, chapterId: number, options: { visible: boolean; }): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /**
    * Marks the person's own completion of an activity with manual completion, done or not, as its
    * "Mark as done" button does; doing it twice changes nothing. An activity that completes on its own

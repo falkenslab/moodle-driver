@@ -1,6 +1,6 @@
 # Content
 
-Reading the activities teachers fill with content: a page's or label's text, a book's chapters, a URL resource's target, and the files of a file resource or a folder. It's the student's side (a teacher can read them too): `activityContent` views the activity as a person would, so Moodle logs the view, and with the realistic trail it reads at a person's pace so views and completion look as they would for a person (see [student pace](../concepts/student-pace.md)). The driver doesn't watch, play or transcribe media: it gives a video's URL, and saves files with [downloadFile](files.md).
+Reading the activities teachers fill with content: a page's or label's text, a book's chapters, a URL resource's target, and the files of a file resource or a folder. It's the student's side (a teacher can read them too): `activityContent` views the activity as a person would, so Moodle logs the view, and with the realistic trail it reads at a person's pace so views and completion look as they would for a person (see [student pace](../concepts/student-pace.md)). The driver doesn't watch, play or transcribe media: it gives a video's URL, and saves files with [downloadFile](files.md). A book's chapters are also listed and written here, the teacher's side (see [A book's chapters](#a-books-chapters)).
 
 **Terms:** [activity](../reference/glossary.md#activity), [module](../reference/glossary.md#module), [course module id](../reference/glossary.md#course-module-id), [trail](../reference/glossary.md#trail).
 
@@ -61,6 +61,64 @@ Each `MediaItem` is `{ kind, url, title? }`, with `kind` one of `"video"`, `"aud
 - `NotViewableError` when the page doesn't show what the type should: the activity is of another type, or the person can't view it. The message points to the course structure for the right id and module.
 - `NotLoggedInError` without a session.
 
+## A book's chapters
+
+`createActivity` makes a book empty and `activityContent` reads its text; these functions list a book's chapters with their ids and write them, as a teacher does in the book itself: its chapter form (`mod/book/edit.php`) and the move, show/hide and delete links of its table of contents. No service lists or writes chapters. Each write returns `{ changed, chapterId, chapters }`: a sentence of what it did, the chapter's id (the new one's, for `addBookChapter`) and the book's chapters afterwards.
+
+```ts
+function bookChapters(context: BrowserContext, siteUrl: string, activityId: number, options?: { content?: boolean }): Promise<BookChapter[]>;
+function addBookChapter(context: BrowserContext, siteUrl: string, activityId: number, input: BookChapterInput): Promise<BookChapterChange>;
+function editBookChapter(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  chapterId: number,
+  input: { title?: string; content?: string; subchapter?: boolean; embed?: string[] },
+): Promise<BookChapterChange>;
+function moveBookChapter(context: BrowserContext, siteUrl: string, activityId: number, chapterId: number, options: { direction: "up" | "down" }): Promise<BookChapterChange>;
+function setBookChapterVisible(context: BrowserContext, siteUrl: string, activityId: number, chapterId: number, options: { visible: boolean }): Promise<BookChapterChange>;
+function deleteBookChapter(context: BrowserContext, siteUrl: string, activityId: number, chapterId: number): Promise<BookChapterChange>;
+
+interface BookChapter {
+  id: number;
+  title: string;
+  subchapter: boolean; // a subchapter of the chapter before it
+  hidden: boolean;
+  position: number; // its place in the book, from 1, subchapters counted
+  content?: string; // with content: the chapter's HTML
+  images?: ImageItem[]; // with content: its images, when it has any
+}
+
+interface BookChapterInput {
+  title: string;
+  content: string; // HTML; Moodle requires some
+  subchapter?: boolean;
+  hidden?: boolean; // shown by default
+  afterChapterId?: number; // at the end of the book without it
+  embed?: string[]; // local files the content names: <img src="shot.png">
+}
+```
+
+- `bookChapters` reads the table of contents. A teacher's comes from the chapter form's page, which shows no chapter, so it links every one, hidden ones too; anyone else's from the book's page, without the chapters they can't see. Titles come without the number Moodle puts before them in a numbered book ("1.1. "). With `content`, each chapter's page is opened (Moodle logs a view of it) and its HTML read as the book shows it, with its images' `pluginfile.php` URLs in `images`, to download with `downloadFile`.
+- `addBookChapter` adds after `afterChapterId`, or at the end: right after a chapter means before its subchapters, which then belong to the new chapter, as the table of contents' add link does. `subchapter` makes it a subchapter of the chapter before it; `hidden` hides it once saved. `embed` puts local images and files in the content (see [Embedding files in rich text](files.md#embedding-files-in-rich-text)).
+- `editBookChapter` changes only what's given; `embed` as in `addBookChapter`. The book's first chapter can't be a subchapter: Moodle freezes the field there.
+- `moveBookChapter` moves one place, as the table of contents' arrows: a chapter moves with its subchapters past the whole chapter before or after it, a subchapter alone past one. At the start or the end nothing moves, and `changed` says so.
+- `setBookChapterVisible` shows or hides it, only when it isn't so already; a chapter's subchapters are shown or hidden with it, and a subchapter of a hidden chapter stays hidden.
+- `deleteBookChapter` deletes it with its files; deleting a chapter deletes its subchapters too.
+
+Errors:
+
+- `BookError` when the activity isn't a book the person can read (the message has Moodle's), when a write comes from someone who can't edit its chapters (a student), when a chapter isn't in the book (the message lists the ones it has), and when the first chapter would be a subchapter.
+- A `MoodleError` (`invalid-input`) when a file to embed and the content don't match, before anything is sent.
+- `FormError` when Moodle refuses the chapter form (a title or content missing); `NotLoggedInError` without a session.
+
+```ts fragment
+const { chapterId } = await moodle.addBookChapter(812, { title: "Loops", content: '<p>How a loop runs:</p><p><img src="loop.png" alt="A loop"></p>', embed: ["/home/ada/loop.png"] });
+await moodle.addBookChapter(812, { title: "While loops", content: "<p>Until a condition fails.</p>", subchapter: true, afterChapterId: chapterId });
+await moodle.setBookChapterVisible(812, chapterId, { visible: false });
+for (const chapter of await moodle.bookChapters(812)) console.log(`${chapter.position}. ${chapter.subchapter ? "  " : ""}${chapter.title}${chapter.hidden ? " (hidden)" : ""}`);
+```
+
 ## Example
 
 ```ts
@@ -90,4 +148,4 @@ for (const file of folder.files ?? []) {
 
 ## Data categories
 
-`activityContent` is `course-content`. `readTexts`, `readMedia`, `readImages`, `readingSeconds` and `pause` are `none`: they only parse a page or wait. For reading any activity's module, `moduleCategories(module)` returns `course-content` for pages, books, labels, URLs, files and folders. See [data categories](../concepts/data-categories.md).
+`activityContent` is `course-content`, and so are `bookChapters`, `addBookChapter`, `editBookChapter`, `moveBookChapter`, `setBookChapterVisible` and `deleteBookChapter`. `readTexts`, `readMedia`, `readImages`, `readingSeconds` and `pause` are `none`: they only parse a page or wait. For reading any activity's module, `moduleCategories(module)` returns `course-content` for pages, books, labels, URLs, files and folders. See [data categories](../concepts/data-categories.md).
