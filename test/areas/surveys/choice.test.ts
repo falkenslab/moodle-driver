@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
-import { ChoiceError, answerChoice, getChoice } from "../../../src/index.js";
+import { ChoiceError, answerChoice, choiceResults, getChoice } from "../../../src/index.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -60,6 +60,59 @@ describe("choices", { skip: !browser && "no system browser" }, () => {
     const closed = await open(fakeChoice({ open: false }));
     await assert.rejects(answerChoice(closed, SITE, 40, [1]), (error: Error) => error instanceof ChoiceError && /Moodle says: Sorry, this activity closed on 1 October\./.test(error.message));
     await closed.close();
+  });
+
+  it("choiceResults: each option's count and who chose it, the unanswered column apart, as the responses report shows them", async () => {
+    // Shaped like Moodle 5.2's report.php for a teacher who can delete responses: a column per option
+    // (the unanswered one first, id 0), the counts in the first row, the people in the second.
+    const toggle = (id: number) => `<div><div class="form-check p-0"><input id="select-response-option-${id}" type="checkbox"><label class="accesshide">Select all</label></div></div>`;
+    const person = (userId: number, option: number, name: string, unanswered = false) =>
+      `<div class="mb-1"><input id="attempt-user${userId}-option${option}" name="${unanswered ? "userid[]" : "attemptid[]"}" type="checkbox"><label class="accesshide">${name}</label><a href="${SITE}user/view.php?id=${userId}&amp;course=2"><span class="userinitials" title="${name}">XX</span>${name}</a></div>`;
+    const report = `<h2>Responses</h2><form id="attemptsform"><table class="results names table">
+<thead><tr><th class="header c0">Choice options</th><th class="data header c1"><div class="text-center">Not answered yet${toggle(0)}</div></th><th class="data header c2"><div class="text-center">for${toggle(1)}</div></th><th class="data header c3"><div class="text-center">while${toggle(2)}</div></th></tr></thead>
+<tbody><tr><th>Number of responses</th><td class="data"><div class="text-center">1</div></td><td class="data"><div class="text-center">0<br>Limit: 3</div></td><td class="data"><div class="text-center">2</div></td></tr>
+<tr class="lastrow"><th>Users who chose this option</th><td class="data">${person(7, 0, "Eva Ruiz", true)}</td><td class="data"></td><td class="data">${person(4, 2, "Ana Student")}${person(5, 2, "Luis Gil")}</td></tr></tbody></table></form>`;
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, bodies: { "/mod/choice/report.php": `<div id="region-main"><div role="main">${report}</div></div>` } });
+    const results = await choiceResults(context, SITE, 40);
+    assert.deepEqual(results, {
+      id: 40,
+      options: [
+        { id: 1, text: "for", count: 0, users: [] },
+        {
+          id: 2,
+          text: "while",
+          count: 2,
+          users: [
+            { userId: 4, fullName: "Ana Student" },
+            { userId: 5, fullName: "Luis Gil" },
+          ],
+        },
+      ],
+      notAnswered: [{ userId: 7, fullName: "Eva Ruiz" }],
+    });
+    await context.close();
+  });
+
+  it("choiceResults: the options with nothing counted when nobody answered, and Moodle's refusal named", async () => {
+    // With no answers Moodle shows no table: the options come from the choice's own page.
+    const context = await open(fakeChoice());
+    await context.route(`${SITE}mod/choice/report.php**`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-choice-report", body: `<div id="region-main"><h2>Responses</h2><h3>No users yet</h3></div>` }) }));
+    assert.deepEqual(
+      (await choiceResults(context, SITE, 40)).options.map((o) => [o.id, o.text, o.count]),
+      [
+        [1, "for", 0],
+        [2, "while", 0],
+        [3, "do-while", 0],
+      ],
+    );
+    await context.close();
+    const refused = await browser!.newContext();
+    await serveFakeMoodle(refused, { user: { id: 4, fullName: "Student" } });
+    const error = `<div data-rel="fatalerror" class="box errorbox alert alert-danger"><p class="errormessage">Sorry, but you do not currently have permissions to do that (View responses).</p></div>`;
+    await refused.route(`${SITE}mod/choice/report.php**`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 4, bodyId: "page-mod-choice-report", body: error }) }));
+    await assert.rejects(choiceResults(refused, SITE, 40), (e: Error) => e instanceof ChoiceError && /mod\/choice:readresponses/.test(e.message) && /View responses/.test(e.message));
+    await refused.close();
   });
 
   it("refuses another module's id, whose error page keeps the choice's body id", async () => {

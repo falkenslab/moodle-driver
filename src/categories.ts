@@ -203,6 +203,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Surveys.
   getSurvey: ["course-content", "own"],
   submitSurvey: OWN,
+  // A teacher's reports: the questions, everyone's answers (named where not anonymous) and their counts.
+  surveyResults: ["course-content", "others-aggregate", "others-personal"],
 
   // Participants and groups.
   participants: PERSONAL,
@@ -322,6 +324,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],
   answerChoice: OWN,
+  // The responses report: counts, and who chose each option.
+  choiceResults: ["course-content", "others-aggregate", "others-personal"],
 };
 
 // Modules whose activities hold only what teachers made: nobody else's work or responses.

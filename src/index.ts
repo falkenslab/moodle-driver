@@ -134,7 +134,8 @@ export { workshopAllocation, allocateReviewer, removeReviewer, allocateRandomly,
 export { NotAForumError, ForumError } from "./areas/forums/discussions.js";
 export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, setDiscussionSubscription, editPost, deletePost, type ForumDiscussion, type ForumPost, type DiscussionPosts, type PostInput, type PostChanges } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";
-export { getChoice, answerChoice, ChoiceError, type Choice } from "./areas/surveys/choice.js";
+export { surveyResults, type SurveyResults, type SurveyResponse, type SurveyResultQuestion, type SurveyOptionCount } from "./areas/surveys/results.js";
+export { getChoice, answerChoice, choiceResults, ChoiceError, type Choice, type ChoiceResults, type ChoiceRespondent } from "./areas/surveys/choice.js";
 export { lessonPage, answerLessonPage, LessonError, type LessonField, type LessonPage } from "./areas/lessons/lessons.js";
 export {
   lessonPages,

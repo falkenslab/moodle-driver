@@ -1,10 +1,11 @@
-// Doing activities as a student, against the sandbox: a choice, a lesson, a feedback survey, a SCORM
-// and an H5P activity, each made by the teacher (the H5P by the admin) on a scratch course.
+// Doing activities as a student, against the sandbox: a choice, a lesson, a feedback survey, a
+// questionnaire, a SCORM and an H5P activity, each made by the teacher (the H5P by the admin) on a
+// scratch course; the choice's and surveys' results read back as the teacher.
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { ActivitySettingsError, ChoiceError, LessonError, MoodleError, NotAnH5PActivityError, ScormError, SurveyError, type FieldValue, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
-import { SITE, as, scratchCourse, type ScratchCourse } from "./harness.js";
+import { COURSE, SITE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { notAScormPackage, revisedScormPackage, scormPackage, siteFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
@@ -73,6 +74,21 @@ describe("doing activities", () => {
       const changed = await student.answerChoice(choiceId, [blue!.id]);
       assert.deepEqual(changed.choice.answer, ["Blue"]);
       assert.deepEqual((await student.getChoice(choiceId)).answer, ["Blue"]);
+    });
+
+    it("choiceResults: the student's answer, counted and named, read as the teacher", SLOW, async () => {
+      const results = await (await as("teacher")).choiceResults(choiceId);
+      const { options } = await (await as("student")).getChoice(choiceId);
+      assert.deepEqual(
+        results.options.map((o) => [o.id, o.text, o.count]),
+        options.map((o) => [o.id, o.text, o.text === "Blue" ? 1 : 0]),
+      );
+      const me = await (await as("student")).whoAmI();
+      assert.deepEqual(results.options.find((o) => o.text === "Blue")!.users, [{ userId: me.userId, fullName: me.fullName }]);
+      assert.equal(results.notAnswered, undefined);
+      // The student can't read the report; a page isn't a choice.
+      await assert.rejects((await as("student")).choiceResults(choiceId), ChoiceError);
+      await assert.rejects((await as("teacher")).choiceResults(pageId), ChoiceError);
     });
   });
 
@@ -251,7 +267,8 @@ describe("doing activities", () => {
 
     before(async () => {
       const teacher = await as("teacher");
-      feedbackId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "feedback", name: "Driver feedback", visibility: "shown" })).activityId!;
+      // Not anonymous (2): the teacher's report names who answered.
+      feedbackId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "feedback", name: "Driver feedback", visibility: "shown", settings: { anonymous: 2 } })).activityId!;
       await saveForm(teacher, `mod/feedback/edit_item.php?cmid=${feedbackId}&typ=multichoice`, { name: "Did it help?", label: "help", subtype: "r", values: "Yes\nNo", required: true }, "save_item");
       await saveForm(teacher, `mod/feedback/edit_item.php?cmid=${feedbackId}&typ=textfield`, { name: "What would you change?", label: "change" }, "save_item");
     }, SETUP);
@@ -280,6 +297,122 @@ describe("doing activities", () => {
       const after = await student.getSurvey(feedbackId);
       assert.equal(after.canAnswer, false);
       await assert.rejects(student.submitSurvey(feedbackId, { [text.name]: "Again" }, { type: "feedback" }), SurveyError);
+    });
+
+    it("surveyResults: the student's feedback, named, its counts and answers read as the teacher", SLOW, async () => {
+      const results = await (await as("teacher")).surveyResults(feedbackId);
+      assert.equal(results.type, "feedback");
+      assert.equal(results.responses.length, 1);
+      const response = results.responses[0]!;
+      assert.equal(response.anonymous, false);
+      assert.equal(response.userId, await userId("student"));
+      assert.equal(response.fullName, (await (await as("student")).whoAmI()).fullName);
+      assert.deepEqual(
+        results.questions.map((q) => [q.text, q.type]),
+        [
+          ["Did it help?", "multichoice"],
+          ["What would you change?", "textfield"],
+        ],
+      );
+      assert.deepEqual(results.questions[0]!.counts, [
+        { option: "Yes", count: 1 },
+        { option: "No", count: 0 },
+      ]);
+      assert.deepEqual(results.questions[0]!.answers, [{ responseId: response.id, values: ["Yes"] }]);
+      assert.deepEqual(results.questions[1]!.answers, [{ responseId: response.id, values: ["Nothing"] }]);
+      await assert.rejects((await as("student")).surveyResults(feedbackId, { type: "feedback" }), SurveyError);
+    });
+
+    it("surveyResults: the content course's anonymous feedback, several options in one answer", SLOW, async () => {
+      // Course 3 is only read: its feedback (anonymous, seeded with answers) shows what the scratch one doesn't.
+      const teacher = await as("teacher");
+      const feedback = (await teacher.courseStructure(COURSE)).flatMap((s) => s.activities).find((a) => a.type === "feedback");
+      assert.ok(feedback, "course 3 has a feedback");
+      const results = await teacher.surveyResults(feedback.id);
+      assert.ok(results.responses.length > 0);
+      for (const response of results.responses) {
+        assert.deepEqual([response.anonymous, response.userId, response.fullName], [true, undefined, undefined]);
+        assert.ok(response.number! > 0);
+      }
+      assert.ok(results.questions.length > 0 && !results.questions.some((q) => q.type === "pagebreak"));
+      for (const question of results.questions) {
+        for (const answer of question.answers) assert.ok(results.responses.some((r) => r.id === answer.responseId));
+        // The counts add up to the options chosen.
+        if (question.counts) assert.equal(question.counts.reduce((n, c) => n + c.count, 0), question.answers.reduce((n, a) => n + a.values.length, 0), question.text);
+      }
+      const numeric = results.questions.find((q) => q.type === "numeric" && q.answers.length > 0);
+      if (numeric) assert.equal(typeof numeric.average, "number");
+    });
+  });
+
+  describe("questionnaire survey", () => {
+    let questionnaireId: number;
+
+    before(async () => {
+      const teacher = await as("teacher");
+      questionnaireId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "questionnaire", name: "Driver questionnaire", visibility: "shown" })).activityId!;
+      // Its questions through the question form (questions.php, action=question): radio buttons (4), a text box (2), a number (10).
+      const question = (typeId: number, values: Record<string, FieldValue>) =>
+        saveForm(teacher, `mod/questionnaire/questions.php?id=${questionnaireId}&action=question&type_id=${typeId}`, { required: "n", ...values }, "submitbutton");
+      await question(4, { name: "level", "content[text]": "<p>The level was</p>", allchoices: "Low\nRight\nHigh" });
+      await question(2, { name: "best", "content[text]": "<p>The best part</p>" });
+      await question(10, { name: "hours", "content[text]": "<p>Hours a week</p>" });
+    }, SETUP);
+
+    it("surveyResults: the student's questionnaire, named, its counts and answers read as the teacher", SLOW, async () => {
+      // Unanswered, its page doesn't link to the report yet.
+      await assert.rejects((await as("teacher")).surveyResults(questionnaireId), SurveyError);
+      const student = await as("student");
+      const { questions } = await student.getSurvey(questionnaireId);
+      const [level, best, hours] = questions.map((q) => q.fields[0]!);
+      const right = level!.options!.find((o) => o.label === "Right")!.value;
+      await student.submitSurvey(questionnaireId, { [level!.name]: right, [best!.name]: "The examples", [hours!.name]: "5" });
+
+      const results = await (await as("teacher")).surveyResults(questionnaireId);
+      assert.equal(results.type, "questionnaire");
+      assert.equal(results.responses.length, 1);
+      const response = results.responses[0]!;
+      assert.deepEqual([response.anonymous, response.fullName], [false, (await student.whoAmI()).fullName]);
+      assert.deepEqual(
+        results.questions.map((q) => [q.text, q.type]),
+        [
+          ["The level was", "radio"],
+          ["The best part", "text"],
+          ["Hours a week", "numeric"],
+        ],
+      );
+      assert.deepEqual(results.questions[0]!.counts, [
+        { option: "Low", count: 0 },
+        { option: "Right", count: 1 },
+        { option: "High", count: 0 },
+      ]);
+      assert.deepEqual(results.questions[1]!.answers, [{ responseId: response.id, values: ["The examples"] }]);
+      assert.equal(results.questions[2]!.average, 5);
+      // Students have mod/questionnaire:readallresponses too: a questionnaire's "Students can view ALL
+      // responses" setting decides, and this one lets the student read them after answering.
+      assert.equal((await student.surveyResults(questionnaireId, { type: "questionnaire" })).responses.length, 1);
+      await assert.rejects((await as("teacher")).surveyResults(pageId, { type: "questionnaire" }), SurveyError);
+    });
+
+    it("surveyResults: the content course's questionnaire, every kind of question", SLOW, async () => {
+      // Course 3 is only read: its questionnaire (seeded) has check boxes, a dropdown, yes/no and a rate question.
+      const teacher = await as("teacher");
+      const questionnaire = (await teacher.courseStructure(COURSE)).flatMap((s) => s.activities).find((a) => a.type === "questionnaire");
+      assert.ok(questionnaire, "course 3 has a questionnaire");
+      const results = await teacher.surveyResults(questionnaire.id);
+      assert.ok(results.responses.length > 0);
+      for (const question of results.questions) {
+        assert.ok(question.id > 0 && question.text, JSON.stringify(question));
+        for (const answer of question.answers) assert.ok(results.responses.some((r) => r.id === answer.responseId));
+      }
+      const rate = results.questions.find((q) => q.type === "rate");
+      assert.ok(rate && rate.rows!.length > 0, "a rate question with rows");
+      for (const row of rate.rows!) assert.equal(row.counts.reduce((n, c) => n + c.count, 0), rate.answers.filter((a) => a.values.some((v) => v.startsWith(`${row.row}: `))).length);
+      for (const type of ["check", "drop", "yesno"]) {
+        const question = results.questions.find((q) => q.type === type);
+        assert.ok(question?.counts, `a ${type} question with counts`);
+        assert.equal(question.counts.reduce((n, c) => n + c.count, 0), question.answers.reduce((n, a) => n + a.values.length, 0), type);
+      }
     });
   });
 
