@@ -1,6 +1,6 @@
 # Grading
 
-The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop's phases and assessments with `workshopInfo`, `setWorkshopPhase` and `assessWorkshopSubmission`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
+The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop's phases and assessments with `workshopInfo`, `setWorkshopPhase` and `assessWorkshopSubmission`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, defining a rubric or a marking guide, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
 **Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale), [workshop](../reference/glossary.md#workshop).
 
@@ -116,6 +116,38 @@ interface GradingCriterion {
 `method` is `"simple"` for a plain grade or a scale (with no criteria), `"rubric"` or `"guide"` for advanced grading. A rubric criterion has its `description` and its `levels` (`id` for `gradeSubmission`, the level's `definition` and its `score`). A guide criterion has its short name as `description`, its description for students (`details`) and for markers (`markers`), and its `maxScore`.
 
 It's read from the grading panel of the assignment's first participant with a submission, so it throws `GradingError` when the assignment has no participants. Where nobody has submitted yet, the panel is the first participant's, and Moodle creates an empty submission (`"new"`) for them on opening it. It throws `NotAnAssignmentError` when the id isn't an assignment the person can grade.
+
+## setGradingDefinition
+
+Sets an assignment's advanced grading method, a rubric or a marking guide, and saves its definition ready for use, as Moodle's advanced grading page and its rubric or guide editor do.
+
+```ts
+function setGradingDefinition(context: BrowserContext, siteUrl: string, activityId: number, definition: GradingDefinitionInput): Promise<{ changed: string; assignment: { id: number }; method: "rubric" | "guide"; criteria: GradingCriterion[] }>;
+
+type GradingDefinitionInput =
+  | { method: "rubric"; name: string; description?: string; criteria: { description: string; levels: { definition: string; score: number }[] }[] }
+  | { method: "guide"; name: string; description?: string; criteria: { shortName: string; description?: string; markers?: string; maxScore: number }[]; comments?: string[] };
+```
+
+`name` is the definition's name and `description` its description (HTML). A rubric's criteria each have a description and two levels at least, each level its definition and score. A guide's criteria each have a short name, a description for students and markers (`description`), one for markers only (`markers`) and a maximum score; `comments` are its frequently used comments. The criteria, levels and comments go in the order given.
+
+Where the assignment has no definition for that method, one is created; where it has one, it's replaced whole (criteria, levels and comments), so their ids change. The grading method is set when it's another one. It returns the definition as [`rubric`](#rubric) reads it, with the ids `gradeSubmission` takes, but read from the definition's editor, not from a grading panel: it creates no submission for anyone.
+
+Moodle's editor lets a definition be changed freely only while nothing has been graded with it; after that, saving asks to regrade. So a definition already used for grading is refused with `GradingError`, before anything changes (the method neither): change it in Moodle's editor, or delete it in the assignment's advanced grading page first. It throws `GradingError` too when the person can't manage grading forms (Moodle's capability `moodle/grade:managegradingforms`, which editing teachers have and non-editing teachers don't) or when Moodle's editor doesn't save the definition (with its reasons); `MoodleError` (`invalid-input`) before opening anything, for a definition the editor wouldn't take (no name, no criteria, a rubric criterion with fewer than two levels, highest scores that add up to 0, a negative maximum score); and `NotAnAssignmentError` when the id isn't an assignment the person can grade.
+
+```ts
+const rubric = await moodle.setGradingDefinition(1234, {
+  method: "rubric",
+  name: "Loops",
+  criteria: [
+    { description: "Explains a loop", levels: [{ definition: "No", score: 0 }, { definition: "Partly", score: 1 }, { definition: "Clearly", score: 2 }] },
+    { description: "Gives an example", levels: [{ definition: "None", score: 0 }, { definition: "Right", score: 2 }] },
+  ],
+});
+console.log(rubric.changed);
+const [explains, example] = rubric.criteria;
+await moodle.gradeSubmission(1234, 7, { rubric: { [explains!.id]: explains!.levels![2]!.id, [example!.id]: example!.levels![1]!.id } });
+```
 
 ## grantExtension
 
@@ -391,4 +423,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` is `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), and `assessWorkshopSubmission` `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), and `assessWorkshopSubmission` `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).

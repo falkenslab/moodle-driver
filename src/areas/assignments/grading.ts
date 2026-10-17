@@ -306,7 +306,9 @@ export async function readGradingDefinition(page: Page, panelHtml: string): Prom
         }));
         return [{ id, description: text(row.querySelector("td.description")), levels }];
       }
-      const max = Number(text(row.querySelector(".criteriondescriptionscore")));
+      // Grading shows the maximum beside the score input ("/4"), not in the description's score
+      // block, which only previews have (its renderer, and the sandbox, 5.2).
+      const max = Number(text(row.querySelector(".criteriondescriptionscore")) || /^\/\s*([\d.]+)$/.exec(text(row.querySelector("td.score div")))?.[1]);
       const details = text(row.querySelector(".criteriondescription"));
       const markers = text(row.querySelector(".criteriondescriptionmarkers"));
       return [{ id, description: text(row.querySelector(".criterionshortname")), ...(details ? { details } : {}), ...(markers ? { markers } : {}), ...(max ? { maxScore: max } : {}) }];

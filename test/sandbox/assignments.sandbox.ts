@@ -240,6 +240,87 @@ describe("assignments", () => {
       assert.equal(seen.graded, true);
     });
 
+    it("setGradingDefinition: a rubric defined, read back and replaced; a marking guide defined, used, then refused", SLOW, async () => {
+      const teacher = await as("teacher");
+      const assignment = await createAssignment(course, "Driver check definitions", { assignsubmission_onlinetext_enabled: true });
+      const rubric = await teacher.setGradingDefinition(assignment, {
+        method: "rubric",
+        name: "Driver check rubric",
+        description: "<p>How it's graded</p>",
+        criteria: [
+          {
+            description: "Content",
+            levels: [
+              { definition: "Poor", score: 0 },
+              { definition: "Good", score: 5 },
+              { definition: "Great", score: 10 },
+            ],
+          },
+          {
+            description: "Style",
+            levels: [
+              { definition: "Plain", score: 0 },
+              { definition: "Clear", score: 2.5 },
+            ],
+          },
+        ],
+      });
+      assert.deepEqual(
+        rubric.criteria.map((c) => [c.description, c.levels?.map((l) => [l.definition, l.score])]),
+        [
+          [
+            "Content",
+            [
+              ["Poor", 0],
+              ["Good", 5],
+              ["Great", 10],
+            ],
+          ],
+          [
+            "Style",
+            [
+              ["Plain", 0],
+              ["Clear", 2.5],
+            ],
+          ],
+        ],
+      );
+      const { changed, ...definition } = rubric;
+      assert.match(changed, /set its grading method to rubric/);
+      assert.deepEqual(await teacher.rubric(assignment), definition);
+      const replaced = await teacher.setGradingDefinition(assignment, { method: "rubric", name: "Driver check rubric", criteria: [{ description: "Only", levels: [{ definition: "No", score: 0 }, { definition: "Yes", score: 1 }] }] });
+      assert.match(replaced.changed, /^Replaced/);
+      assert.deepEqual(replaced.criteria.map((c) => c.description), ["Only"]);
+      assert.deepEqual((await teacher.rubric(assignment)).criteria, replaced.criteria);
+
+      const guide = await teacher.setGradingDefinition(assignment, {
+        method: "guide",
+        name: "Driver check guide",
+        criteria: [
+          { shortName: "Clarity", description: "Is it clear", markers: "Look at the intro", maxScore: 4 },
+          { shortName: "Depth", maxScore: 6 },
+        ],
+        comments: ["Well done"],
+      });
+      assert.deepEqual(
+        guide.criteria.map((c) => ({ ...c, id: 0 })),
+        [
+          { id: 0, description: "Clarity", details: "Is it clear", markers: "Look at the intro", maxScore: 4 },
+          { id: 0, description: "Depth", maxScore: 6 },
+        ],
+      );
+      const guideDefinition = { assignment: guide.assignment, method: guide.method, criteria: guide.criteria };
+      assert.deepEqual(await teacher.rubric(assignment), guideDefinition);
+      // Graded with it: changing it would make Moodle ask to regrade, so it's refused and stays.
+      const [clarity, depth] = guide.criteria;
+      await teacher.gradeSubmission(assignment, studentId, { guide: { [clarity!.id]: 3, [depth!.id]: 5 }, notify: false });
+      const another = { method: "rubric" as const, name: "Driver check refused", criteria: [{ description: "X", levels: [{ definition: "A", score: 0 }, { definition: "B", score: 1 }] }] };
+      await assert.rejects(teacher.setGradingDefinition(assignment, { method: "guide", name: "Driver check refused", criteria: [{ shortName: "X", maxScore: 1 }] }), /already been used for grading/);
+      assert.deepEqual(await teacher.rubric(assignment), guideDefinition);
+      // The student can't manage grading forms.
+      await assert.rejects((await as("student")).setGradingDefinition(assignment, another), GradingError);
+    });
+
     it("gradeSubmission: a workflow state refused without the marking workflow", SLOW, async () => {
       const teacher = await as("teacher");
       await assert.rejects(teacher.gradeSubmission(simple, studentId, { workflowState: "inmarking" }), GradingError);

@@ -3732,6 +3732,61 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "setGradingDefinition",
+    "description": "Sets an assignment's advanced grading method (a rubric or a marking guide) and saves its definition through Moodle's editor form, ready for use, as \"Define new grading form from scratch\" and \"Save rubric and make it ready\" (or the guide's) do: one is created where there is none, and the one there is replaced (its criteria, levels and comments, so their ids change). Moodle's editor offers to save as a draft only while nothing has been graded with the definition: without that, it would ask to regrade on saving, so the driver refuses with `GradingError` before anything changes (the method too). Returns the definition as `rubric` reads it, read from the editor form, not from a grading panel, so it creates no submission. Throws `GradingError` when the person lacks `moodle/grade:managegradingforms` or Moodle refuses the definition, `NotAnAssignmentError` when the id isn't an assignment they can grade, and `MoodleError` (`invalid-input`) for a definition Moodle's editor wouldn't take (no criteria, a rubric criterion with fewer than two levels…).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "definition",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "method",
+          "optional": false,
+          "type": "\"rubric\"",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The rubric's name, as the advanced grading page lists it."
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its description (HTML), shown to students where Moodle shows it."
+        },
+        {
+          "name": "criteria",
+          "optional": false,
+          "type": "{ description: string; levels: { definition: string; score: number; }[]; }[]",
+          "value": {
+            "kind": "json"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "setGroupMembers",
     "description": "Adds and removes a group's members (user ids), as its members page does. Only the course's participants can be added: ids the page doesn't offer (not enrolled, or already members) and members not in it are left as they were and named in `changed`. Returns the members afterwards.",
     "params": [

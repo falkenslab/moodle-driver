@@ -202,6 +202,17 @@ describe("rubric", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("reads a marking guide's criteria with their maximum, shown beside the score input when grading", async () => {
+    const context = await browser!.newContext();
+    const { state } = rubricSite(43);
+    // Moodle 5.2's guide in a grading panel: the maximum is "/4" after the score input, not a description score block.
+    const guidePanel = `<form class="gradeform mform"><div class="gradingform_guide"><table><tr class="criterion" id="advancedgrading-criteria-11"><td class="criterionname"><div class="criterionshortname">Clarity</div><div class="criteriondescription">Is it clear</div><div class="criteriondescriptionmarkers">Look at the intro</div></td><td class="remark"><textarea name="advancedgrading[criteria][11][remark]"></textarea></td><td class="score"><input type="text" name="advancedgrading[criteria][11][score]"><div>/4</div></td></tr></table></div></form>`;
+    state.services!.core_get_fragment = () => ({ html: guidePanel, javascript: "" });
+    await serveFakeMoodle(context, state);
+    assert.deepEqual((await rubric(context, SITE, 43)).criteria, [{ id: 11, description: "Clarity", details: "Is it clear", markers: "Look at the intro", maxScore: 4 }]);
+    await context.close();
+  });
+
   it("grades by levels and remarks, and gives the total Moodle computes", async () => {
     const context = await browser!.newContext();
     const { state, submitted } = rubricSite(42);

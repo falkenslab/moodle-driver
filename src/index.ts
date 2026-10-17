@@ -75,6 +75,7 @@ export { activityContent, CONTENT_TYPES, NotViewableError, type ContentType, typ
 // Assignments.
 export { NotAnAssignmentError, GradingError, WORKFLOW_STATES, type PluginContent, type WorkflowState } from "./areas/assignments/grader.js";
 export { assignmentSubmissions, gradeSubmission, rubric, grantExtension, setWorkflowState, allocateMarker, type Submission, type SubmissionOptions, type GradingCriterion, type GradingDefinition } from "./areas/assignments/grading.js";
+export { setGradingDefinition, type GradingDefinitionInput, type RubricDefinitionInput, type GuideDefinitionInput, type SavedGradingDefinition } from "./areas/assignments/definitions.js";
 export { studentAssignment, saveSubmission, submitForGrading, SubmissionError, type StudentAssignment } from "./areas/assignments/student.js";
 
 // Quizzes and question banks.
