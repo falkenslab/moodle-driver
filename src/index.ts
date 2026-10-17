@@ -106,6 +106,16 @@ export {
   type Question,
 } from "./areas/quizzes/attempts.js";
 export { quizResults, type QuizAttemptResult, type QuizResults, type QuizResultsOptions } from "./areas/quizzes/results.js";
+export {
+  quizStatistics,
+  type QuizStatistics,
+  type QuizStatisticsAttempts,
+  type QuizStatisticsFigures,
+  type QuizStatisticsOptions,
+  type QuizSlotStatistics,
+  type QuizQuestionStatistics,
+  type QuizResponseCount,
+} from "./areas/quizzes/statistics.js";
 export { questionsToGrade, gradeQuizQuestion, type QuestionToGrade } from "./areas/quizzes/grading.js";
 export { quizStructure, addQuestionsToQuiz, editQuizSlot, removeQuizSlot, setQuizPages, addQuizSection, type QuizSlot, type QuizSection, type QuizChange } from "./areas/quizzes/structure.js";
 export {

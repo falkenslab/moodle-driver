@@ -28,7 +28,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Content | Read pages, books, labels, URLs, files and folders, with their media |
 | Building a course | Create, update, move, duplicate and delete activities and sections; their files, descriptions, access restrictions and completion conditions; read an activity's settings |
 | Assignments | Submit as a student; read everyone's submissions, grade (simple, rubrics, marking guides, feedback files, whole groups), the marking workflow and markers, grant extensions as a teacher |
-| Quizzes | Attempt a quiz page by page; read results, grade essays by hand; read, add, remove, move and paginate the quiz's questions; set overrides |
+| Quizzes | Attempt a quiz page by page; read results and statistics, grade essays by hand; read, add, remove, move and paginate the quiz's questions; set overrides |
 | Question banks | List banks and questions, import and export GIFT or Moodle XML, create, edit and delete single questions, organize categories and move questions between them |
 | Forums | Read discussions and posts, reply, start discussions, edit and delete posts, pin and lock, grade the forum as a whole, rate posts (and glossary entries, database records) |
 | Workshops | Read a workshop's phase, submissions and assessments, switch its phase, allocate reviewers (by hand, at random, scheduled), assess a submission, submit, prepare and assess example submissions, calculate and override the grades |

@@ -57,6 +57,7 @@ import { enrolmentMethods, setEnrolmentMethod } from "./areas/participants/metho
 import { enrolUsers, potentialUsers, setUserRoles, unenrolUser } from "./areas/participants/enrolments.js";
 import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
+import { quizStatistics } from "./areas/quizzes/statistics.js";
 import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
 import { addQuestionsToQuiz, addQuizSection, editQuizSlot, quizStructure, removeQuizSlot, setQuizPages } from "./areas/quizzes/structure.js";
 import { logOut, openSitePage } from "./core/session.js";
@@ -214,6 +215,7 @@ const SITE_FUNCTIONS = {
   questionsToGrade,
   quizInfo,
   quizResults,
+  quizStatistics,
   quizStructure,
   rate,
   workshopInfo,

@@ -5374,6 +5374,60 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "quizStatistics",
+    "description": "A quiz's statistics report: the quiz's figures (attempts, averages, median, standard deviation, skewness, kurtosis, internal consistency, error ratio, standard error) and per question its facility index, standard deviation, weights, discrimination index and efficiency; a random slot's questions and a question's variants each with their own; with `responses`, how often each response was given. Figures as the report shows them. Moodle calculates the report when it's opened with nothing stored (confirmed empirically, Moodle 5.2), so a read never waits for its scheduled task; what it stored stays until `recalculate` (or Moodle's own recalculation, an hour after an attempt): `calculatedNow` and `calculated` say which, how old and how many attempts finished since. Throws `QuizError` when the person can't see the report (it takes `quiz/statistics:view`), the activity isn't a quiz, it has no questions, or no attempt is finished and graded (attempts waiting for manual grading don't count).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "attempts",
+          "optional": true,
+          "type": "QuizStatisticsAttempts",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "highest",
+              "all",
+              "first",
+              "last"
+            ]
+          },
+          "description": "The attempts to calculate from; the quiz's grading method by default, as the report."
+        },
+        {
+          "name": "recalculate",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Clear what Moodle has stored and calculate it again now (\"Recalculate now\"), for attempts finished since."
+        },
+        {
+          "name": "responses",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Also each question's analysis of responses, from its own page (one page per question, sub-question and variant)."
+        }
+      ]
+    }
+  },
+  {
     "name": "quizStructure",
     "description": "A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark, and its sections.",
     "params": [
