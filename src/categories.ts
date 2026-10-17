@@ -335,6 +335,17 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   exportDatabaseEntries: PERSONAL,
   importDatabaseEntries: ["course-content", "others-write"],
 
+  // Glossaries: entries carry their authors; a teacher changing, deleting or approving someone else's entry decides about it.
+  glossaryEntries: ["course-content", "others-personal"],
+  addGlossaryEntry: CONTENT,
+  editGlossaryEntry: ["course-content", "others-write"],
+  deleteGlossaryEntry: ["course-content", "others-write"],
+  setGlossaryEntryApproved: ["course-content", "others-write"],
+  glossaryCategories: CONTENT,
+  addGlossaryCategory: CONTENT,
+  exportGlossaryEntries: ["course-content", "others-personal"],
+  importGlossaryEntries: CONTENT,
+
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],
   answerChoice: OWN,

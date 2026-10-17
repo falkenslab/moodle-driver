@@ -62,6 +62,10 @@ More time for one participant to submit an assignment, past its due date and cut
 
 See [survey](#survey): Moodle's `feedback` module is a survey activity, not the feedback comments a teacher writes when grading (those are `gradeSubmission`'s `feedback` input, see [grading method](#grading-method)). Files a teacher attaches to that feedback (a corrected PDF, an audio comment) are an assignment's feedback files: `gradeSubmission`'s `feedbackFiles`, read by the student in `studentAssignment` and by the teacher in `assignmentSubmissions` ([Grading](../areas/grading.md)).
 
+### Glossary {#glossary-activity}
+
+An activity, module `glossary`, where participants (or only teachers) add entries: a concept, its definition, other words it is found by (aliases) and optionally categories and attached files; a glossary may make students' entries wait for a teacher's approval. The driver reads its entries with `glossaryEntries`, writes them with `addGlossaryEntry`, `editGlossaryEntry` and `deleteGlossaryEntry`, approves them with `setGlossaryEntryApproved`, works its categories with `glossaryCategories` and `addGlossaryCategory`, and moves entries in Moodle's XML with `exportGlossaryEntries` and `importGlossaryEntries`; `rate` rates its entries. See [Glossaries](../areas/glossaries.md).
+
 ### Grade category
 
 A group of grade items in the gradebook that combines its children's grades into a total, with an aggregation method (natural, mean, highest…); the course itself is the top category. The driver reads them with `gradebookSetup` (`GradebookCategory`, with `id`, `itemId` for its total's grade item, `parentId`, `aggregation`, `weight`), creates one with `addGradeCategory` (`aggregation` one of `GRADE_AGGREGATIONS`), changes or deletes one with `updateGradeCategory` and `deleteGradeCategory`, and moves items into one with `updateGradeItem`; `myGrades` rows of `kind` `"category"` and `"categoryTotal"` show them. See [Grades and gradebook](../areas/grades-and-gradebook.md).

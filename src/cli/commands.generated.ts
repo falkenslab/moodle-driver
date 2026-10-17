@@ -296,6 +296,117 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addGlossaryCategory",
+    "description": "Adds a category to a glossary, as its categories page does; with `autoLink`, Moodle links the category's name wherever it appears in the course, as it does entries. Gives the category's id and the glossary's categories afterwards. Throws `GlossaryError` when the person can't manage the glossary's categories (mod/glossary:managecategories, which teachers have) or one has that name already (Moodle compares names ignoring case).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "autoLink",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "addGlossaryEntry",
+    "description": "Adds an entry to a glossary as the person, through Moodle's entry form: its concept, definition (with `embed`'s local files in it), aliases, categories and attached local files. A student's entry waits for a teacher's approval when the glossary asks for it. Gives the entry's id and the entry. Throws `GlossaryError` when the glossary doesn't take entries from the person (mod/glossary:write) or a category isn't in it, `FormError` with Moodle's reasons when it refuses the entry (a concept already there, where duplicates aren't allowed).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "input",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "concept",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "definition",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The definition, as HTML; Moodle requires one."
+        },
+        {
+          "name": "aliases",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Other words the entry is found and linked by."
+        },
+        {
+          "name": "categoryIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          },
+          "description": "The categories to put it in, by id (`glossaryCategories`)."
+        },
+        {
+          "name": "attachments",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to attach to the entry."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to embed in the definition, which names each by its file name (`<img src=\"shot.png\">`)."
+        }
+      ]
+    }
+  },
+  {
     "name": "addGradeCategory",
     "description": "Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it.",
     "params": [
@@ -2153,6 +2264,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteGlossaryEntry",
+    "description": "Deletes an entry, with its files, as its delete link does after Moodle's confirmation. A student deletes their own entries while the site's editing time lasts; a teacher, anyone's. Throws `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "entryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "deleteGradeCategory",
     "description": "Deletes a grade category. Moodle moves what it held (items and categories) into its parent and deletes the grades of its total; the course's own category can't be deleted.",
     "params": [
@@ -2641,6 +2774,88 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "editGlossaryEntry",
+    "description": "Changes an entry through its form: only what's given (`attachments` replaces its attachments, `[]` removes them). A student changes their own entries while the site's editing time lasts (or always, when the glossary lets them); a teacher changes anyone's. An entry saved by someone who can approve it comes out approved, as Moodle saves it (confirmed empirically, 5.2). Throws `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry in the glossary), `FormError` with Moodle's reasons when it refuses the changes.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "entryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "concept",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "definition",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The definition, as HTML; Moodle requires one."
+        },
+        {
+          "name": "aliases",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Other words the entry is found and linked by."
+        },
+        {
+          "name": "categoryIds",
+          "optional": true,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          },
+          "description": "The categories to put it in, by id (`glossaryCategories`)."
+        },
+        {
+          "name": "attachments",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to attach to the entry."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to embed in the definition, which names each by its file name (`<img src=\"shot.png\">`)."
+        }
+      ]
+    }
+  },
+  {
     "name": "editLessonPage",
     "description": "Changes a page of a lesson through its form in the lesson editor, with what's given: its title, contents, buttons or answers (given, they replace them all: the form's other rows are blanked, and Moodle drops blank ones), options and other fields. A page keeps its type. A jump to a page the lesson doesn't have is an error before anything is saved.",
     "params": [
@@ -2667,6 +2882,15 @@ export const COMMANDS: readonly CommandSpec[] = [
       "open": false,
       "fields": [
         {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to embed in the contents, answers or responses."
+        },
+        {
           "name": "title",
           "optional": true,
           "type": "string",
@@ -2682,15 +2906,6 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "string"
           },
           "description": "The page's contents (HTML); local files it names (`<img src=\"shot.png\">`) go in `embed`."
-        },
-        {
-          "name": "embed",
-          "optional": true,
-          "type": "string[]",
-          "value": {
-            "kind": "strings"
-          },
-          "description": "Local files (absolute paths) to embed in the contents, answers or responses."
         },
         {
           "name": "buttons",
@@ -3101,6 +3316,35 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "exportGlossaryEntries",
+    "description": "Saves a glossary's approved entries into `destDir` as Moodle's XML (`export.xml`, with their aliases, categories and files; Moodle leaves the waiting ones out, confirmed on 5.2), as the glossary's \"Export entries\" does; the file imports into a glossary with `importGlossaryEntries`. Returns the file as `downloadFile` does (never overwriting one). Throws `GlossaryError` when the person can't export the glossary (mod/glossary:export).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "destDir",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "exportGrades",
     "description": "Saves a course's grades into `destDir` as Moodle exports them for a teacher: a spreadsheet (`xlsx`, `ods`), comma-separated text (`csv`) or XML, with the items, group, display and feedback chosen as in the export form. Returns the file as `downloadFile` does (never overwriting one). Throws `GradebookError` when the site has that format's export plugin disabled (naming the ones it has), when an item isn't in the course, or when Moodle refuses the export.",
     "params": [
@@ -3350,6 +3594,86 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "glossaryCategories",
+    "description": "A glossary's categories, by id and name, in Moodle's order (by name): from the glossary's category view, or, when its display format has none (\"Simple, dictionary style\"), from the entry form. Throws `NotAGlossaryError` when the activity isn't a glossary the person can open, `GlossaryError` when the display format shows no categories and the person can't add entries either.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "glossaryEntries",
+    "description": "A glossary's entries, in the glossary's order (by concept; the approval page's by creation): each one's id, concept, definition (HTML), aliases, categories, author, whether it's approved, and its attachments. What the person sees: approved entries and their own waiting for approval; with `pending`, the entries waiting for approval (for who can approve them). By `letter`, or a `search` of concepts, aliases and definitions; paged with `limit` and `offset`. An entry the page names no id for (a student's own waiting for approval, once its editing time is over) is left out. Throws `NotAGlossaryError` when the activity isn't a glossary the person can open, `GlossaryError` when the approval page is refused (it takes mod/glossary:approve).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "letter",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Only the entries whose concept starts with this letter (one character)."
+        },
+        {
+          "name": "search",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Only the entries whose concept, aliases or definition hold these words, as the glossary's search with \"Search full text\" does."
+        },
+        {
+          "name": "pending",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "The entries waiting for approval, from the approval page (it takes mod/glossary:approve), instead of the glossary's."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
+        }
+      ]
+    }
   },
   {
     "name": "gradeForumUser",
@@ -3762,6 +4086,43 @@ export const COMMANDS: readonly CommandSpec[] = [
               "tab",
               "colon"
             ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "importGlossaryEntries",
+    "description": "Imports the entries of a glossary's XML (as `exportGlossaryEntries` saves it) into this glossary, through its import form, as the teacher's own entries, approved. With `categories`, the entries' categories come too, added when the glossary lacks them. Moodle rejects an entry whose concept is already there (when the glossary takes no duplicates) or that has no concept or definition. Throws `GlossaryError` when the person can't import (mod/glossary:import) or Moodle can't read the file.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "file",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "categories",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
           }
         }
       ]
@@ -5326,6 +5687,36 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "setGlossaryEntryApproved",
+    "description": "Approves an entry waiting for approval, or takes an approval back (the entry then waits again, hidden from everyone but its author and who can approve), as the approve and \"Undo approval\" links do. Throws `GlossaryError` when the person can't approve (mod/glossary:approve, which teachers have) or the glossary shows them no such entry.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "entryId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "approved",
+        "optional": false,
+        "type": "boolean",
+        "value": {
+          "kind": "boolean"
+        }
+      }
+    ]
   },
   {
     "name": "setGrade",

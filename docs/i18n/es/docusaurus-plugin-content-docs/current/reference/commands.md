@@ -111,6 +111,38 @@ moodle add-database-field <activityId> --options
 | `--required` | `boolean` |  |
 | `--options` | `DatabaseFieldOptions` |  |
 
+## addGlossaryCategory
+
+Adds a category to a glossary, as its categories page does; with `autoLink`, Moodle links the category's name wherever it appears in the course, as it does entries. Gives the category's id and the glossary's categories afterwards. Throws `GlossaryError` when the person can't manage the glossary's categories (mod/glossary:managecategories, which teachers have) or one has that name already (Moodle compares names ignoring case).
+
+```bash
+moodle add-glossary-category <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--name` (required) | `string` |  |
+| `--auto-link` | `boolean` |  |
+
+## addGlossaryEntry
+
+Adds an entry to a glossary as the person, through Moodle's entry form: its concept, definition (with `embed`'s local files in it), aliases, categories and attached local files. A student's entry waits for a teacher's approval when the glossary asks for it. Gives the entry's id and the entry. Throws `GlossaryError` when the glossary doesn't take entries from the person (mod/glossary:write) or a category isn't in it, `FormError` with Moodle's reasons when it refuses the entry (a concept already there, where duplicates aren't allowed).
+
+```bash
+moodle add-glossary-entry <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--concept` (required) | `string` |  |
+| `--definition` (required) | `string` | The definition, as HTML; Moodle requires one. |
+| `--aliases` | `string[]` | Other words the entry is found and linked by. |
+| `--category-ids` | `number[]` | The categories to put it in, by id (`glossaryCategories`). |
+| `--attachments` | `string[]` | Local files (absolute paths) to attach to the entry. |
+| `--embed` | `string[]` | Local files (absolute paths) to embed in the definition, which names each by its file name (`<img src="shot.png">`). |
+
 ## addGradeCategory
 
 Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it.
@@ -834,6 +866,19 @@ moodle delete-event <eventId>
 | --- | --- | --- |
 | `eventId` | `number` |  |
 
+## deleteGlossaryEntry
+
+Deletes an entry, with its files, as its delete link does after Moodle's confirmation. A student deletes their own entries while the site's editing time lasts; a teacher, anyone's. Throws `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry).
+
+```bash
+moodle delete-glossary-entry <activityId> <entryId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `entryId` | `number` |  |
+
 ## deleteGradeCategory
 
 Deletes a grade category. Moodle moves what it held (items and categories) into its parent and deletes the grades of its total; the course's own category can't be deleted.
@@ -1054,6 +1099,25 @@ moodle edit-database-field <activityId> <fieldId> --options
 | `--required` | `boolean` |  |
 | `--options` | `DatabaseFieldOptions` |  |
 
+## editGlossaryEntry
+
+Changes an entry through its form: only what's given (`attachments` replaces its attachments, `[]` removes them). A student changes their own entries while the site's editing time lasts (or always, when the glossary lets them); a teacher changes anyone's. An entry saved by someone who can approve it comes out approved, as Moodle saves it (confirmed empirically, 5.2). Throws `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry in the glossary), `FormError` with Moodle's reasons when it refuses the changes.
+
+```bash
+moodle edit-glossary-entry <activityId> <entryId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `entryId` | `number` |  |
+| `--concept` | `string` |  |
+| `--definition` | `string` | The definition, as HTML; Moodle requires one. |
+| `--aliases` | `string[]` | Other words the entry is found and linked by. |
+| `--category-ids` | `number[]` | The categories to put it in, by id (`glossaryCategories`). |
+| `--attachments` | `string[]` | Local files (absolute paths) to attach to the entry. |
+| `--embed` | `string[]` | Local files (absolute paths) to embed in the definition, which names each by its file name (`<img src="shot.png">`). |
+
 ## editLessonPage
 
 Changes a page of a lesson through its form in the lesson editor, with what's given: its title, contents, buttons or answers (given, they replace them all: the form's other rows are blanked, and Moodle drops blank ones), options and other fields. A page keeps its type. A jump to a page the lesson doesn't have is an error before anything is saved.
@@ -1066,9 +1130,9 @@ moodle edit-lesson-page <activityId> <pageId> --options
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `pageId` | `number` |  |
+| `--embed` | `string[]` | Local files (absolute paths) to embed in the contents, answers or responses. |
 | `--title` | `string` |  |
 | `--contents` | `string` | The page's contents (HTML); local files it names (`<img src="shot.png">`) go in `embed`. |
-| `--embed` | `string[]` | Local files (absolute paths) to embed in the contents, answers or responses. |
 | `--buttons` | `{ label: string; jumpTo?: LessonJump; }[]` | A content page's buttons, in order (given, they replace them all). |
 | `--answers` | `LessonAnswer[]` | A question page's answers, in order (given, they replace them all); an essay or structural page's single row. |
 | `--multiple-answers` | `boolean` |  |
@@ -1186,6 +1250,19 @@ moodle export-database-entries <activityId> <file> [--options]
 | `--times` | `boolean` | When each entry was added and changed. |
 | `--approval` | `boolean` | Whether each entry is approved, for a database that needs approval. |
 
+## exportGlossaryEntries
+
+Saves a glossary's approved entries into `destDir` as Moodle's XML (`export.xml`, with their aliases, categories and files; Moodle leaves the waiting ones out, confirmed on 5.2), as the glossary's "Export entries" does; the file imports into a glossary with `importGlossaryEntries`. Returns the file as `downloadFile` does (never overwriting one). Throws `GlossaryError` when the person can't export the glossary (mod/glossary:export).
+
+```bash
+moodle export-glossary-entries <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--dest-dir` (required) | `string` |  |
+
 ## exportGrades
 
 Saves a course's grades into `destDir` as Moodle exports them for a teacher: a spreadsheet (`xlsx`, `ods`), comma-separated text (`csv`) or XML, with the items, group, display and feedback chosen as in the export form. Returns the file as `downloadFile` does (never overwriting one). Throws `GradebookError` when the site has that format's export plugin disabled (naming the ones it has), when an item isn't in the course, or when Moodle refuses the export.
@@ -1282,6 +1359,35 @@ moodle get-survey <activityId> [type]
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `type` (optional) | `SurveyType` |  |
+
+## glossaryCategories
+
+A glossary's categories, by id and name, in Moodle's order (by name): from the glossary's category view, or, when its display format has none ("Simple, dictionary style"), from the entry form. Throws `NotAGlossaryError` when the activity isn't a glossary the person can open, `GlossaryError` when the display format shows no categories and the person can't add entries either.
+
+```bash
+moodle glossary-categories <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
+## glossaryEntries
+
+A glossary's entries, in the glossary's order (by concept; the approval page's by creation): each one's id, concept, definition (HTML), aliases, categories, author, whether it's approved, and its attachments. What the person sees: approved entries and their own waiting for approval; with `pending`, the entries waiting for approval (for who can approve them). By `letter`, or a `search` of concepts, aliases and definitions; paged with `limit` and `offset`. An entry the page names no id for (a student's own waiting for approval, once its editing time is over) is left out. Throws `NotAGlossaryError` when the activity isn't a glossary the person can open, `GlossaryError` when the approval page is refused (it takes mod/glossary:approve).
+
+```bash
+moodle glossary-entries <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--letter` | `string` | Only the entries whose concept starts with this letter (one character). |
+| `--search` | `string` | Only the entries whose concept, aliases or definition hold these words, as the glossary's search with "Search full text" does. |
+| `--pending` | `boolean` | The entries waiting for approval, from the approval page (it takes mod/glossary:approve), instead of the glossary's. |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## gradeForumUser
 
@@ -1439,6 +1545,20 @@ moodle import-database-entries <activityId> <file> [--options]
 | `activityId` | `number` |  |
 | `file` | `string` |  |
 | `--delimiter` | `"comma" \| "semicolon" \| "tab" \| "colon"` |  |
+
+## importGlossaryEntries
+
+Imports the entries of a glossary's XML (as `exportGlossaryEntries` saves it) into this glossary, through its import form, as the teacher's own entries, approved. With `categories`, the entries' categories come too, added when the glossary lacks them. Moodle rejects an entry whose concept is already there (when the glossary takes no duplicates) or that has no concept or definition. Throws `GlossaryError` when the person can't import (mod/glossary:import) or Moodle can't read the file.
+
+```bash
+moodle import-glossary-entries <activityId> <file> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `file` | `string` |  |
+| `--categories` | `boolean` |  |
 
 ## importQuestions
 
@@ -2113,6 +2233,20 @@ moodle set-enrolment-method <courseId> <method> --options
 | `--role-id` | `number` | The role it gives (manual and self enrolment). |
 | `--max-users` | `number` | Self enrolment: the most users it enrols; 0 for no limit. |
 | `--welcome` | `string \| false` | Manual and self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none. |
+
+## setGlossaryEntryApproved
+
+Approves an entry waiting for approval, or takes an approval back (the entry then waits again, hidden from everyone but its author and who can approve), as the approve and "Undo approval" links do. Throws `GlossaryError` when the person can't approve (mod/glossary:approve, which teachers have) or the glossary shows them no such entry.
+
+```bash
+moodle set-glossary-entry-approved <activityId> <entryId> <approved>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `entryId` | `number` |  |
+| `approved` | `boolean` |  |
 
 ## setGrade
 
