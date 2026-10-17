@@ -140,6 +140,112 @@ describe("doing activities", () => {
     });
   });
 
+  describe("lesson pages", () => {
+    let lessonId: number;
+    const ids: Record<string, number> = {};
+
+    before(async () => {
+      const made = await (await as("teacher")).createActivity({ courseId: course.id, sectionId: course.sectionId, type: "lesson", name: "Driver check lesson pages", visibility: "shown" });
+      lessonId = made.activityId!;
+    }, SETUP);
+
+    it("addLessonPage: a branching lesson built from nothing, a jump to no page refused first", SLOW, async () => {
+      const teacher = await as("teacher");
+      assert.deepEqual(await teacher.lessonPages(lessonId), []);
+      const start = await teacher.addLessonPage(lessonId, {
+        type: "content",
+        title: "Start",
+        contents: "<p>Choose a way.</p>",
+        buttons: [
+          { label: "Take the question", jumpTo: "next-page" },
+          { label: "Leave", jumpTo: "end-of-lesson" },
+        ],
+      });
+      ids.start = start.pageId;
+      assert.deepEqual(start.pageIds, [ids.start]);
+      ids.right = (await teacher.addLessonPage(lessonId, { type: "content", title: "Right", contents: "<p>Well done.</p>", buttons: [{ label: "Finish", jumpTo: "end-of-lesson" }] })).pageId;
+      ids.wrong = (await teacher.addLessonPage(lessonId, { type: "content", title: "Wrong", contents: "<p>Not that one.</p>", buttons: [{ label: "Back to the start", jumpTo: ids.start }] })).pageId;
+      ids.end = (await teacher.addLessonPage(lessonId, { type: "end-of-branch", answers: [{ jumpTo: ids.start }] })).pageId;
+      await assert.rejects(teacher.addLessonPage(lessonId, { type: "content", title: "Nowhere", contents: "<p>x</p>", buttons: [{ label: "Go", jumpTo: 999_999 }] }), (error: Error) => error instanceof LessonError && /no page 999999/.test(error.message));
+      // The question goes last, then is moved after the start.
+      const question = await teacher.addLessonPage(lessonId, {
+        type: "multichoice",
+        title: "The question",
+        contents: "<p>Is the sky blue?</p>",
+        answers: [
+          { text: "Yes", response: "<p>Right.</p>", score: 1, jumpTo: ids.right },
+          { text: "No", response: "<p>Look again.</p>", score: 0, jumpTo: ids.wrong },
+        ],
+      });
+      ids.question = question.pageId;
+      assert.deepEqual(question.pageIds, [ids.start, ids.right, ids.wrong, ids.end, ids.question]);
+    });
+
+    it("moveLessonPage: the question after the start", SLOW, async () => {
+      const teacher = await as("teacher");
+      const moved = await teacher.moveLessonPage(lessonId, ids.question!, ids.start!);
+      assert.deepEqual(moved.pageIds, [ids.start, ids.question, ids.right, ids.wrong, ids.end]);
+      await assert.rejects(teacher.moveLessonPage(lessonId, ids.question!, ids.question!), LessonError);
+    });
+
+    it("editLessonPage: the question renamed, the rest kept", SLOW, async () => {
+      const teacher = await as("teacher");
+      assert.equal((await teacher.editLessonPage(lessonId, ids.question!, { title: "Sky colour" })).pageId, ids.question);
+    });
+
+    it("deleteLessonPage: a page added first, then deleted", SLOW, async () => {
+      const teacher = await as("teacher");
+      const extra = await teacher.addLessonPage(lessonId, { type: "essay", title: "Driver check extra", contents: "<p>Write.</p>" }, { after: 0 });
+      assert.equal(extra.pageIds[0], extra.pageId);
+      const deleted = await teacher.deleteLessonPage(lessonId, extra.pageId);
+      assert.deepEqual(deleted.pageIds, [ids.start, ids.question, ids.right, ids.wrong, ids.end]);
+      await assert.rejects(teacher.deleteLessonPage(lessonId, extra.pageId), LessonError);
+    });
+
+    it("lessonPages: the pages read back as set", SLOW, async () => {
+      const pages = await (await as("teacher")).lessonPages(lessonId);
+      assert.deepEqual(pages.map((p) => [p.id, p.type, p.title]), [
+        [ids.start, "content", "Start"],
+        [ids.question, "multichoice", "Sky colour"],
+        [ids.right, "content", "Right"],
+        [ids.wrong, "content", "Wrong"],
+        [ids.end, "end-of-branch", pages[4]!.title],
+      ]);
+      const [start, question, , wrong, end] = pages;
+      assert.match(start!.contents, /Choose a way\./);
+      assert.deepEqual(start!.buttons, [
+        { label: "Take the question", jumpTo: "next-page" },
+        { label: "Leave", jumpTo: "end-of-lesson" },
+      ]);
+      assert.deepEqual(wrong!.buttons, [{ label: "Back to the start", jumpTo: ids.start }]);
+      assert.deepEqual(end!.answers, [{ jumpTo: ids.start }]);
+      assert.match(question!.contents, /Is the sky blue\?/);
+      assert.equal(question!.multipleAnswers, false);
+      assert.deepEqual(
+        question!.answers!.map((a) => [a.text?.replace(/<[^>]+>/g, ""), a.response?.replace(/<[^>]+>/g, ""), a.score, a.jumpTo]),
+        [
+          ["Yes", "Right.", 1, ids.right],
+          ["No", "Look again.", 0, ids.wrong],
+        ],
+      );
+      await assert.rejects((await as("student")).lessonPages(lessonId), LessonError);
+    });
+
+    it("answerLessonPage: the built lesson played through as the student, the right answer leading to its page", SLOW, async () => {
+      const student = await as("student");
+      const first = await student.lessonPage(lessonId);
+      assert.deepEqual([first.kind, first.title, first.buttons?.map((b) => b.label)], ["content", "Start", ["Take the question", "Leave"]]);
+      const question = await student.answerLessonPage(lessonId, { button: "Take the question" });
+      assert.equal(question.page.kind, "question");
+      const field = question.page.fields![0]!;
+      const yes = field.options!.find((o) => o.label === "Yes")!.value;
+      const answered = await student.answerLessonPage(lessonId, { responses: { [field.name]: yes } });
+      assert.deepEqual([answered.page.kind, answered.page.title], ["content", "Right"]);
+      const done = await student.answerLessonPage(lessonId, { button: "Finish" });
+      assert.equal(done.page.kind, "end");
+    });
+  });
+
   describe("feedback survey", () => {
     let feedbackId: number;
 

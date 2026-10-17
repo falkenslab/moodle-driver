@@ -85,7 +85,7 @@ El id de una actividad en la tabla propia de su módulo (el id del cuestionario 
 
 ### Página de lección (lesson page) {#lesson-page}
 
-Una página de una actividad de lección (módulo `lesson`): una página de contenido con botones que saltan a otro sitio, o una página de pregunta con un formulario, tras la cual Moodle puede mostrar retroalimentación; Moodle guarda en qué página está la persona. El driver lee la actual con `lessonPage` (`LessonPage`, con `kind` `"content"`, `"question"`, `"feedback"` o `"end"`, `pageId`, `buttons[].jumpTo`, `fields`) y la responde con `answerLessonPage`, que devuelve la `page` siguiente. Consulta [Lecciones](../areas/lessons.md).
+Una página de una actividad de lección (módulo `lesson`): una página de contenido con botones que saltan a otro sitio, o una página de pregunta con un formulario, tras la cual Moodle puede mostrar retroalimentación; Moodle guarda en qué página está la persona. El driver lee la actual con `lessonPage` (`LessonPage`, con `kind` `"content"`, `"question"`, `"feedback"` o `"end"`, `pageId`, `buttons[].jumpTo`, `fields`) y la responde con `answerLessonPage`, que devuelve la `page` siguiente. Su profesor construye las páginas con `addLessonPage`, `editLessonPage`, `moveLessonPage` y `deleteLessonPage`, y las lee con `lessonPages` (`LessonPageDefinition`: un `type` de `LESSON_PAGE_TYPES`, sus `buttons` o `answers`, cada uno con un `jumpTo`: un id de página o uno de los saltos de Moodle por nombre, `LESSON_JUMPS`). Consulta [Lecciones](../areas/lessons.md).
 
 ### Registro (log) {#log}
 

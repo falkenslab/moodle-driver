@@ -85,7 +85,7 @@ The id of an activity in its module's own table (the quiz's id among quizzes, th
 
 ### Lesson page
 
-One page of a lesson activity (module `lesson`): a content page with buttons that jump elsewhere, or a question page with a form, after which Moodle may show feedback; Moodle keeps which page the person is on. The driver reads the current one with `lessonPage` (`LessonPage`, with `kind` `"content"`, `"question"`, `"feedback"` or `"end"`, `pageId`, `buttons[].jumpTo`, `fields`) and answers it with `answerLessonPage`, which returns the `page` that follows. See [Lessons](../areas/lessons.md).
+One page of a lesson activity (module `lesson`): a content page with buttons that jump elsewhere, or a question page with a form, after which Moodle may show feedback; Moodle keeps which page the person is on. The driver reads the current one with `lessonPage` (`LessonPage`, with `kind` `"content"`, `"question"`, `"feedback"` or `"end"`, `pageId`, `buttons[].jumpTo`, `fields`) and answers it with `answerLessonPage`, which returns the `page` that follows. Its teacher builds the pages with `addLessonPage`, `editLessonPage`, `moveLessonPage` and `deleteLessonPage`, and reads them with `lessonPages` (`LessonPageDefinition`: a `type` of `LESSON_PAGE_TYPES`, its `buttons` or `answers`, each with a `jumpTo`: a page id or one of Moodle's jumps by name, `LESSON_JUMPS`). See [Lessons](../areas/lessons.md).
 
 ### Log
 

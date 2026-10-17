@@ -95,6 +95,20 @@ moodle add-grade-item <courseId> --options
 | `--category-id` | `number` |  |
 | `--hidden` | `boolean` |  |
 
+## addLessonPage
+
+Adds a page to a lesson through Moodle's lesson editor, after page `after` (0 puts it first; by default it goes last): a content page with its buttons, a question page with its answers (their responses, scores and jumps), an essay, or a cluster, end of cluster or end of branch (which Moodle makes at once, then edited when more is given). A jump to a page the lesson doesn't have is an error before anything is saved. Returns the new page's id and the lesson's pages in order.
+
+```bash
+moodle add-lesson-page <activityId> <input> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `input` | `LessonPageInput` |  |
+| `--after` | `number` |  |
+
 ## addQuestionsToQuiz
 
 Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.
@@ -604,6 +618,19 @@ moodle delete-grouping <groupingId>
 | --- | --- | --- |
 | `groupingId` | `number` |  |
 
+## deleteLessonPage
+
+Deletes a page of a lesson, as the editor's delete link does once confirmed. Answers of other pages that jumped to it are left as Moodle leaves them. Returns the pages left, in order.
+
+```bash
+moodle delete-lesson-page <activityId> <pageId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `pageId` | `number` |  |
+
 ## deletePost
 
 Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a discussion's first post takes the whole discussion. Only a moderator deletes a post with replies, or someone else's. `replies` says how many replies went with it. Throws `ForumError` with Moodle's reason when it refuses.
@@ -698,6 +725,27 @@ moodle edit-activity <courseId> <activityId> --options
 | `--visibility` | `"shown" \| "hidden" \| "stealth"` |  |
 | `--section-id` | `number` |  |
 | `--before-activity-id` | `number` |  |
+
+## editLessonPage
+
+Changes a page of a lesson through its form in the lesson editor, with what's given: its title, contents, buttons or answers (given, they replace them all: the form's other rows are blanked, and Moodle drops blank ones), options and other fields. A page keeps its type. A jump to a page the lesson doesn't have is an error before anything is saved.
+
+```bash
+moodle edit-lesson-page <activityId> <pageId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `pageId` | `number` |  |
+| `--title` | `string` |  |
+| `--contents` | `string` | The page's contents (HTML); local files it names (`<img src="shot.png">`) go in `embed`. |
+| `--embed` | `string[]` | Local files (absolute paths) to embed in the contents, answers or responses. |
+| `--buttons` | `{ label: string; jumpTo?: LessonJump; }[]` | A content page's buttons, in order (given, they replace them all). |
+| `--answers` | `LessonAnswer[]` | A question page's answers, in order (given, they replace them all); an essay or structural page's single row. |
+| `--multiple-answers` | `boolean` |  |
+| `--case-sensitive` | `boolean` |  |
+| `--fields` | `Record<string, FieldValue>` | Any other field of the page's form, by name (`layout`, `display`…). |
 
 ## editPost
 
@@ -1031,6 +1079,18 @@ moodle lesson-page <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## lessonPages
+
+The pages of a lesson as its teacher has them in Moodle's lesson editor, in order: type, title, contents, and a content page's buttons or a question's answers with their responses, scores and jumps. Reads the editor's expanded view and each page's form; the person's choice of view (collapsed or expanded, which Moodle remembers) is put back afterwards. Takes a teacher's role.
+
+```bash
+moodle lesson-pages <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
 ## listAssignments
 
 The course's assignments, in the course's order, with the section each is in.
@@ -1096,6 +1156,20 @@ moodle message-participants <courseId> <text> [--options]
 | `courseId` | `number` |  |
 | `text` | `string` |  |
 | `--user-ids` (required) | `number[]` |  |
+
+## moveLessonPage
+
+Moves a page of a lesson after page `after` (0 puts it first), as the editor's move link does; returns the pages in order.
+
+```bash
+moodle move-lesson-page <activityId> <pageId> <after>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `pageId` | `number` |  |
+| `after` | `number` |  |
 
 ## myGrades
 
@@ -1843,9 +1917,9 @@ moodle update-question <activityId> <questionId> --options
 | `activityId` | `number` |  |
 | `questionId` | `number` |  |
 | `--name` | `string` |  |
+| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
 | `--text` | `string` | The question's text (HTML). |
-| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
 | `--correct` | `boolean` | True/false: the right answer. |
 | `--category-id` | `number` | The bank's category it goes in; a new question goes in the bank's default one when left out. |
 | `--default-mark` | `number` |  |

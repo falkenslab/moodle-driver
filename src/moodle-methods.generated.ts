@@ -34,6 +34,14 @@ export interface MoodleMethods {
    */
   addGradeItem(courseId: number, options: { name: string; maxGrade?: number | undefined; scaleId?: number | undefined; categoryId?: number | undefined; hidden?: boolean | undefined; }): Promise<{ changed: string; item?: import("./areas/grades/gradebook.js").GradebookItem | undefined; }>;
   /**
+   * Adds a page to a lesson through Moodle's lesson editor, after page `after` (0 puts it first; by
+   * default it goes last): a content page with its buttons, a question page with its answers (their
+   * responses, scores and jumps), an essay, or a cluster, end of cluster or end of branch (which Moodle
+   * makes at once, then edited when more is given). A jump to a page the lesson doesn't have is an
+   * error before anything is saved. Returns the new page's id and the lesson's pages in order.
+   */
+  addLessonPage(activityId: number, input: import("./areas/lessons/pages.js").LessonPageInput, options?: { after?: number | undefined; }): Promise<{ changed: string; pageId: number; pageIds: number[]; }>;
+  /**
    * Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a
    * page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz
    * already attempted can't change its questions: Moodle refuses, and so does this.
@@ -283,6 +291,11 @@ export interface MoodleMethods {
   /** Deletes a grouping, as its delete icon does once confirmed; its groups stay. */
   deleteGrouping(groupingId: number): Promise<{ changed: string; }>;
   /**
+   * Deletes a page of a lesson, as the editor's delete link does once confirmed. Answers of other
+   * pages that jumped to it are left as Moodle leaves them. Returns the pages left, in order.
+   */
+  deleteLessonPage(activityId: number, pageId: number): Promise<{ changed: string; pageIds: number[]; }>;
+  /**
    * Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a
    * discussion's first post takes the whole discussion. Only a moderator deletes a post with replies,
    * or someone else's. `replies` says how many replies went with it. Throws `ForumError` with
@@ -321,6 +334,13 @@ export interface MoodleMethods {
   duplicateActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
   editActivity(courseId: number, activityId: number, options: { name?: string | undefined; visibility?: "shown" | "hidden" | "stealth" | undefined; sectionId?: number | undefined; beforeActivityId?: number | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Changes a page of a lesson through its form in the lesson editor, with what's given: its title,
+   * contents, buttons or answers (given, they replace them all: the form's other rows are blanked, and
+   * Moodle drops blank ones), options and other fields. A page keeps its type. A jump to a page the
+   * lesson doesn't have is an error before anything is saved.
+   */
+  editLessonPage(activityId: number, pageId: number, changes: Partial<Omit<import("./areas/lessons/pages.js").LessonPageInput, "type">>): Promise<{ changed: string; pageId: number; }>;
   /**
    * Changes a post through Moodle's own post form (`post.php?edit=`), as its author (within the site's
    * editing time) or a moderator: only what's given changes. Returns the post afterwards. Throws
@@ -446,6 +466,13 @@ export interface MoodleMethods {
   importQuestions(activityId: number, options: { format: "xml" | "gift"; file?: string | undefined; text?: string | undefined; categoryId?: number | undefined; }): Promise<{ changed: string; questions: import("./areas/questions/banks.js").BankQuestion[]; }>;
   /** The lesson page the person is on (starting the lesson the first time). */
   lessonPage(activityId: number): Promise<import("./areas/lessons/lessons.js").LessonPage>;
+  /**
+   * The pages of a lesson as its teacher has them in Moodle's lesson editor, in order: type, title,
+   * contents, and a content page's buttons or a question's answers with their responses, scores and
+   * jumps. Reads the editor's expanded view and each page's form; the person's choice of view
+   * (collapsed or expanded, which Moodle remembers) is put back afterwards. Takes a teacher's role.
+   */
+  lessonPages(activityId: number): Promise<import("./areas/lessons/pages.js").LessonPageDefinition[]>;
   /** The course's assignments, in the course's order, with the section each is in. */
   listAssignments(courseId: number): Promise<import("./areas/courses/structure.js").CourseAssignment[]>;
   /** The courses the person is enrolled in, as teacher or student. */
@@ -470,6 +497,8 @@ export interface MoodleMethods {
    * course's participants.
    */
   messageParticipants(courseId: number, text: string, selection?: import("./areas/messages/messages.js").ParticipantSelection): Promise<{ changed: string; sentTo: number[]; refused: { userId: number; reason: string; }[]; }>;
+  /** Moves a page of a lesson after page `after` (0 puts it first), as the editor's move link does; returns the pages in order. */
+  moveLessonPage(activityId: number, pageId: number, after: number): Promise<{ changed: string; pageIds: number[]; }>;
   /** The person's own grade report for a course. */
   myGrades(courseId: number): Promise<import("./areas/grades/user-report.js").GradeRow[]>;
   /**
