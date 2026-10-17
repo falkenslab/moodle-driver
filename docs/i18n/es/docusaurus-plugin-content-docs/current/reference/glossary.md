@@ -46,6 +46,10 @@ Un hilo de mensajes privados de la mensajería de Moodle: entre dos personas (`p
 El id de una actividad en su curso, el `id` de la URL de la actividad (`mod/quiz/view.php?id=27`), escrito a menudo "cmid" en el código de Moodle; el driver lo llama id de la actividad. Todas las funciones de actividades lo reciben como un parámetro llamado `activityId`, sea cual sea el módulo, y los resultados lo dan como `id` para la propia actividad (`CourseActivity.id`) y como `activityId` donde hacen referencia a una (`GradeRow.activityId`, `CompletionCell.activityId`); nunca es el [id de instancia](#instance-id). Consulta [el objeto Moodle y las funciones](../concepts/calling-functions.md#ids).
 `moodle.quizInfo(27)`
 
+### Base de datos (database) {#database}
+
+Una actividad, módulo `data`, en la que los participantes añaden entradas con los campos que define un profesor (texto corto, lista desplegable, fecha, imagen…), listadas, mostradas y buscadas mediante sus plantillas; un preajuste le da campos y plantillas a la vez. El driver lee y escribe sus campos con `databaseFields`, `addDatabaseField`, `editDatabaseField` y `deleteDatabaseField`, sus plantillas con `databaseTemplates` y `setDatabaseTemplate`, y le da uno de los preajustes del sitio con `databasePresets` y `applyDatabasePreset`; `rate` valora sus entradas. Consulta [Bases de datos](../areas/databases.md).
+
 ### Ampliación del plazo (extension) {#extension}
 
 Más tiempo para que un participante haga la entrega de una tarea, más allá de su fecha de entrega y de su fecha límite: "Conceder ampliación del plazo" en la tabla de calificación. El driver la concede a uno o varios participantes con `grantExtension(activityId, userIds, until)`, y `assignmentSubmissions` la indica por participante como `extensionGranted` y `extensionDueDate`. En un cuestionario, lo equivalente es una [excepción](#override). Consulta [Calificación](../areas/grading.md).

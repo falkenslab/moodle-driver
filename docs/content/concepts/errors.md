@@ -97,6 +97,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `LessonError` | [Lessons](../areas/lessons.md) |
 | `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
 | `ScormError` | [SCORM](../areas/scorm.md) |
+| `NotADatabaseError`, `DatabaseError` | [Databases](../areas/databases.md): not a database; the person can't manage it, or Moodle refused a field, template or preset |
 | `NoGradeReportError`, `GradebookError` | [Grades and gradebook](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Completion](../areas/completion.md) |
 | `NoParticipantsError`, `EnrolmentError` | [Participants](../areas/participants.md): can't see the participants; Moodle refused to enrol, unenrol or give a role |

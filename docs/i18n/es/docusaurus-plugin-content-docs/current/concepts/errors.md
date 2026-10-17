@@ -97,6 +97,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `LessonError` | [Lecciones](../areas/lessons.md) |
 | `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
 | `ScormError` | [SCORM](../areas/scorm.md) |
+| `NotADatabaseError`, `DatabaseError` | [Bases de datos](../areas/databases.md): no es una base de datos; la persona no puede gestionarla, o Moodle rechazó un campo, una plantilla o un preajuste |
 | `NoGradeReportError`, `GradebookError` | [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Finalización](../areas/completion.md) |
 | `NoParticipantsError`, `EnrolmentError` | [Participantes](../areas/participants.md): no puede ver los participantes; Moodle se negó a matricular, desmatricular o asignar un rol |

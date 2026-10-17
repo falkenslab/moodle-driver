@@ -32,6 +32,8 @@ import { h5pActivity } from "./areas/h5p/h5p.js";
 import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
 import { addLessonPage, deleteLessonPage, editLessonPage, lessonPages, moveLessonPage } from "./areas/lessons/pages.js";
+import { addDatabaseField, databaseFields, deleteDatabaseField, editDatabaseField } from "./areas/databases/fields.js";
+import { applyDatabasePreset, databasePresets, databaseTemplates, setDatabaseTemplate } from "./areas/databases/templates.js";
 import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
@@ -61,6 +63,14 @@ import type { MoodleMethods } from "./moodle-methods.generated.js";
  */
 const SITE_FUNCTIONS = {
   activitiesOverview,
+  addDatabaseField,
+  applyDatabasePreset,
+  databaseFields,
+  databasePresets,
+  databaseTemplates,
+  deleteDatabaseField,
+  editDatabaseField,
+  setDatabaseTemplate,
   activityReport,
   activitySettings,
   addGradeCategory,

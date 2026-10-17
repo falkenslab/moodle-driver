@@ -296,6 +296,16 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   moveLessonPage: CONTENT,
   deleteLessonPage: CONTENT,
 
+  // Databases: their fields, templates and presets, what teachers make.
+  databaseFields: CONTENT,
+  addDatabaseField: CONTENT,
+  editDatabaseField: CONTENT,
+  deleteDatabaseField: CONTENT,
+  databaseTemplates: CONTENT,
+  setDatabaseTemplate: CONTENT,
+  databasePresets: CONTENT,
+  applyDatabasePreset: CONTENT,
+
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],
   answerChoice: OWN,

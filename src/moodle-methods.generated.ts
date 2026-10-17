@@ -32,6 +32,17 @@ export interface MoodleMethods {
    * or `afterChapterId` isn't in it.
    */
   addBookChapter(activityId: number, input: import("./areas/activities/books.js").BookChapterInput): Promise<import("./areas/activities/books.js").BookChapterChange>;
+  /**
+   * Adds a field to a database activity through Moodle's form for its type, as "Create a field" does:
+   * templates left at Moodle's default show it, and Moodle appends it to a saved single, add entry or
+   * RSS template that has no `##otherfields##` (not to the list template). Returns its id and the fields afterwards.
+   * Throws `MoodleError` (`invalid-input`) for a type that isn't one of `DATABASE_FIELD_TYPES`, an
+   * option the type doesn't take, a choice list without choices or a required date (Moodle's form
+   * offers it no such setting), before anything changes; `DatabaseError` with Moodle's reason when it
+   * refuses the field (a name the database already has, an image size that isn't a number, a maximum
+   * size its form doesn't offer); `NotADatabaseError` when the id isn't a database.
+   */
+  addDatabaseField(activityId: number, field: import("./areas/databases/fields.js").DatabaseFieldInput): Promise<{ changed: string; fieldId: number; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
   /** Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it. */
   addGradeCategory(courseId: number, options: { name: string; aggregation?: "mean" | "median" | "lowest" | "highest" | "mode" | "weighted-mean" | "simple-weighted-mean" | "mean-with-extra-credits" | "natural" | undefined; parentId?: number | undefined; }): Promise<{ changed: string; category?: import("./areas/grades/gradebook.js").GradebookCategory | undefined; }>;
   /**
@@ -74,6 +85,15 @@ export interface MoodleMethods {
   allocateMarker(activityId: number, userIds: number[], markerId: number | number[]): Promise<{ changed: string; }>;
   /** Answers a choice with one option (several where it allows them) by id, as "Save my choice" does; returns the choice afterwards. */
   answerChoice(activityId: number, optionIds: number[]): Promise<{ changed: string; choice: import("./areas/surveys/choice.js").Choice; }>;
+  /**
+   * Gives a database activity one of the site's presets (`databasePresets`), as "Use this preset" and
+   * "Apply preset" do: the preset's fields are added, a field with the same name and type is kept with
+   * what entries have in it, and every other field is deleted with its content; its templates replace
+   * the database's, and its other settings stay. Returns the fields afterwards. Throws `MoodleError`
+   * (`not-found`) for a preset the presets page doesn't list, `DatabaseError` when Moodle doesn't apply
+   * it or the person can't manage the database, `NotADatabaseError` when the id isn't a database.
+   */
+  applyDatabasePreset(activityId: number, presetId: string): Promise<{ changed: string; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
   /**
    * Assesses a submission as the person, through the workshop's assessment form (its grading
    * strategy's: accumulative, comments, number of errors or rubric), as "Assess" on the submission's
@@ -281,6 +301,27 @@ export interface MoodleMethods {
    */
   createQuestion(activityId: number, input: import("./areas/questions/banks.js").QuestionInput): Promise<{ changed: string; questionId?: number | undefined; }>;
   /**
+   * A database activity's fields, in the fields page's order: each one's id, name, type, description,
+   * whether it's required and its type's settings (`DatabaseFieldOptions`), read from its edit form.
+   * Throws `NotADatabaseError` when the id isn't a database, `DatabaseError` when the person can't
+   * manage it (it takes `mod/data:managetemplates`, which editing teachers have).
+   */
+  databaseFields(activityId: number): Promise<import("./areas/databases/fields.js").DatabaseField[]>;
+  /**
+   * The presets a database activity can be given, from its presets page: Moodle's own and those saved
+   * on the site that the person can see. Throws `DatabaseError` when the person can't manage the
+   * database, `NotADatabaseError` when the id isn't one.
+   */
+  databasePresets(activityId: number): Promise<import("./areas/databases/templates.js").DatabasePreset[]>;
+  /**
+   * A database activity's templates (`DATABASE_TEMPLATES`), as its templates page shows them: what was
+   * saved, or Moodle's default for the fields it has where nothing was (an empty header, footer or RSS
+   * title, CSS or JavaScript stays empty). Throws `DatabaseError` when the database has no fields yet
+   * (Moodle has no templates before the first) or the person can't manage it, `NotADatabaseError` when
+   * the id isn't a database.
+   */
+  databaseTemplates(activityId: number): Promise<import("./areas/databases/templates.js").DatabaseTemplates>;
+  /**
    * What the person has to do by a date (calendar action events: submit, attempt, grade…), from the
    * last `pastDays` to `days` ahead, in one course or all. Teachers' grading counts come from the
    * activities overview instead: Moodle gives them few action events.
@@ -293,6 +334,13 @@ export interface MoodleMethods {
    * a subchapter) deletes its subchapters too. Throws `BookError` when the chapter isn't in the book.
    */
   deleteBookChapter(activityId: number, chapterId: number): Promise<import("./areas/activities/books.js").BookChapterChange>;
+  /**
+   * Deletes a database field, as its delete action confirmed does: what entries have in it goes too, and
+   * its tags leave the templates. Returns the fields afterwards. Throws `MoodleError` (`not-found`)
+   * when the database has no such field, `DatabaseError` when Moodle refuses, `NotADatabaseError` when
+   * the id isn't a database.
+   */
+  deleteDatabaseField(activityId: number, fieldId: number): Promise<{ changed: string; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
   /** Deletes a calendar event the person can manage. */
   deleteEvent(eventId: number): Promise<{ changed: string; }>;
   /**
@@ -359,6 +407,15 @@ export interface MoodleMethods {
    * in the book, or the person can't edit it.
    */
   editBookChapter(activityId: number, chapterId: number, input: { title?: string | undefined; content?: string | undefined; subchapter?: boolean | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/books.js").BookChapterChange>;
+  /**
+   * Changes a database field through its edit form: what `changes` leaves out stays as it is (its
+   * options one by one). Renaming it renames its tag in the templates, as Moodle does. Its type can't
+   * change: delete it and add another. Returns the fields afterwards. Throws `MoodleError`
+   * (`not-found`) when the database has no such field, (`invalid-input`) for an option its type
+   * doesn't take; `DatabaseError` with Moodle's reason when it refuses the change;
+   * `NotADatabaseError` when the id isn't a database.
+   */
+  editDatabaseField(activityId: number, fieldId: number, changes: import("./areas/databases/fields.js").DatabaseFieldChanges): Promise<{ changed: string; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
   /**
    * Changes a page of a lesson through its form in the lesson editor, with what's given: its title,
    * contents, buttons or answers (given, they replace them all: the form's other rows are blanked, and
@@ -745,6 +802,17 @@ export interface MoodleMethods {
    * gives a `CompletionError`.
    */
   setCompletion(activityId: number, done: boolean): Promise<{ changed: string; }>;
+  /**
+   * Saves one of a database's templates (`DATABASE_TEMPLATES`) as it is, without Moodle's HTML editor
+   * in between, as its templates page's Save does; `null` resets it to Moodle's default (for the list
+   * template alone: its header and footer stay). Fields go in as `[[name]]`, Moodle's other tags as
+   * `##tag##` (the templates page lists them). Returns every template afterwards. Throws
+   * `MoodleError` (`invalid-input`) for a template that isn't one of `DATABASE_TEMPLATES`;
+   * `DatabaseError` when the database has no fields yet, Moodle doesn't keep the template (an add
+   * entry template with a field's tag twice) or the person can't manage it; `NotADatabaseError` when
+   * the id isn't a database.
+   */
+  setDatabaseTemplate(activityId: number, template: "list" | "listHeader" | "listFooter" | "single" | "add" | "search" | "rss" | "rssTitle" | "css" | "js", html: string | null): Promise<{ changed: string; templates: import("./areas/databases/templates.js").DatabaseTemplates; }>;
   /**
    * Pins or unpins, locks or unlocks a discussion, as the discussion list's menu does; what's already
    * so is left alone. Returns the discussion as the forum lists it afterwards.
