@@ -96,6 +96,7 @@ const sidebars: SidebarsConfig = {
         "areas/lessons",
         "areas/h5p",
         "areas/scorm",
+        "areas/external-tools",
         "areas/databases",
         "areas/glossaries",
         "areas/grades-and-gradebook",

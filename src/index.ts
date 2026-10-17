@@ -268,6 +268,7 @@ export { autoCreateGroups, importGroups, type AutoCreateGroupsOptions, type Auto
 export { enrolmentMethods, setEnrolmentMethod, type EnrolmentMethod, type EnrolmentMethodSettings } from "./areas/participants/methods.js";
 export { potentialUsers, enrolUsers, unenrolUser, setUserRoles, EnrolmentError, type PotentialUser } from "./areas/participants/enrolments.js";
 export { notes, addNote, editNote, deleteNote, NoteError, NotesDisabledError, type ParticipantNote, type NoteContext, type NoteOptions, type NoteFields, type NoteChange } from "./areas/participants/notes.js";
+export { externalTools, addExternalTool, setExternalToolInChooser, deleteExternalTool, externalToolLaunchUrl, ExternalToolError, type ExternalTool, type NewExternalTool } from "./areas/lti/tools.js";
 export { courseBadges, createBadge, setBadgeCriteria, setBadgeEnabled, awardBadge, BadgeError, BadgesDisabledError, type CourseBadge, type BadgeCriteria, type BadgeCriteriaChanges, type NewBadge } from "./areas/badges/badges.js";
 export { upcomingEvents, calendarEvent, createEvent, updateEvent, deleteEvent, CalendarError, type CalendarEvent, type EventChanges } from "./areas/calendar/calendar.js";
 export { notifications, markNotificationsRead, conversations, conversation, sendMessage, messageParticipants, MessageError, type Notification, type NotificationOptions, type ConversationSummary, type Conversation, type ConversationMessage, type ParticipantSelection } from "./areas/messages/messages.js";

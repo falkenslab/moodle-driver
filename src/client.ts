@@ -6,6 +6,7 @@ import { parseSiteUrl, type BrowserOptions, type Trail } from "./options.js";
 import { activitySettings, addSection, createActivity, deleteActivity, deleteSection, duplicateActivity, editActivity, editSection, updateActivity } from "./areas/activities/build.js";
 import { callService } from "./core/ajax.js";
 import { awardBadge, courseBadges, createBadge, setBadgeCriteria, setBadgeEnabled } from "./areas/badges/badges.js";
+import { addExternalTool, deleteExternalTool, externalToolLaunchUrl, externalTools, setExternalToolInChooser } from "./areas/lti/tools.js";
 import { calendarEvent, createEvent, deleteEvent, updateEvent, upcomingEvents } from "./areas/calendar/calendar.js";
 import { answerChoice, choiceResults, getChoice } from "./areas/surveys/choice.js";
 import { activityReport, courseLogs, participationReport } from "./areas/reports/reports.js";
@@ -91,6 +92,11 @@ const SITE_FUNCTIONS = {
   setBadgeCriteria,
   setBadgeEnabled,
   awardBadge,
+  externalTools,
+  addExternalTool,
+  setExternalToolInChooser,
+  deleteExternalTool,
+  externalToolLaunchUrl,
   activitiesOverview,
   addDatabaseEntry,
   addDatabaseField,

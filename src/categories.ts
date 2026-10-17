@@ -345,6 +345,13 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   setBadgeEnabled: ["course-content", "others-write"],
   awardBadge: ["others-write"],
 
+  // External tools: what teachers set up (a tool's secret is never returned); the launch URL is the person's own.
+  externalTools: CONTENT,
+  addExternalTool: CONTENT,
+  setExternalToolInChooser: CONTENT,
+  deleteExternalTool: CONTENT,
+  externalToolLaunchUrl: OWN,
+
   // The calendar: the person's upcoming events; course events are what teachers set.
   upcomingEvents: ["own", "course-content"],
   calendarEvent: ["own", "course-content"],

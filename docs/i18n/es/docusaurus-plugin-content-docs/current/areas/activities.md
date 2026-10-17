@@ -26,7 +26,7 @@ Crea una actividad o un recurso de cualquier tipo al final de una sección, medi
 function createActivity(
   context: BrowserContext,
   siteUrl: string,
-  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[] },
+  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[]; toolId?: number },
 ): Promise<CourseChange>;
 
 interface ActivityFields {
@@ -54,6 +54,8 @@ interface ActivityFields {
 - `embed`: rutas locales absolutas de imágenes y archivos que poner dentro del HTML de `description`, `content` o un editor de `settings` (`"activityeditor[text]"`), que nombra cada uno por su nombre de archivo: `content: '<img src="shot.png">', embed: ["/home/ada/shot.png"]`. Se suben al área de borrador propia de ese editor, como inserta una imagen el editor de Moodle, y se guardan con el texto (consulta [Insertar archivos en texto enriquecido](files.md#embedding-files-in-rich-text)).
 
 `activityId` es el id de la nueva actividad, que se encuentra comparando el curso antes y después (en un banco de preguntas compartido, `qbank`, que nunca aparece en la página del curso, comparando los bancos de preguntas del curso); cuando no aparece ninguna actividad nueva, `changed` lo dice y `activityId` es undefined.
+
+Una actividad de herramienta externa (`type: "lti"`) se crea a partir de una de las herramientas del curso: `toolId` es su id, tal como la lista `externalTools` (consulta [Herramientas externas](external-tools.md)). Moodle 5 ya no configura una herramienta dentro de la actividad, así que `type: "lti"` sin `toolId` es un `MoodleError` (`invalid-input`), y también lo es `toolId` con otro tipo.
 
 Un libro (`type: "book"`) se crea sin capítulos: `addBookChapter` y las demás funciones de capítulos los escriben (consulta [Los capítulos de un libro](content.md#a-books-chapters)).
 

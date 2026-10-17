@@ -166,6 +166,22 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     await context.close();
   });
 
+  it("opens an external tool activity's form with its tool, and refuses one without a tool", async () => {
+    // The sandbox showed it: Moodle 5.2 refuses add=lti without a typeid ("manual creation … no longer supported").
+    const { context, posts } = await site();
+    const opened: string[] = [];
+    context.on("request", (request) => {
+      if (request.url().includes("/course/modedit.php") && request.method() === "GET") opened.push(new URL(request.url()).search);
+    });
+    const result = await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "lti", toolId: 4, name: "Simulator" });
+    assert.equal(result.activityId, 40);
+    assert.deepEqual(opened, ["?add=lti&course=5&section=1&return=0&typeid=4"]);
+    await assert.rejects(createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "lti", name: "X" }), { code: "invalid-input", message: /toolId/ });
+    await assert.rejects(createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "page", toolId: 4, name: "X" }), { code: "invalid-input", message: /external tool/ });
+    assert.equal(posts.length, 1);
+    await context.close();
+  });
+
   it("updates only what's given", async () => {
     const { context, posts } = await site();
     await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "resource", name: "Brief" });
