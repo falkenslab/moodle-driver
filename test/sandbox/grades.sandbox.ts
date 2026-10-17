@@ -1,12 +1,12 @@
 // Grades and the gradebook, against the sandbox: reads on course 3, the gradebook's setup and grades
 // changed on a scratch course.
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
-import { GradebookError, NoGradeReportError, type GradebookCategory, type GradebookItem } from "../../src/index.js";
-import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { GradebookError, NoGradeReportError, type GradeScale, type GradebookCategory, type GradebookItem } from "../../src/index.js";
+import { COURSE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 /** Course 3's assignment and its grade item, as the sandbox seeds them (read only). */
 const ASSIGNMENT = 35;
@@ -79,6 +79,7 @@ describe("grades and the gradebook", () => {
     let item: GradebookItem;
     /** A second item, moved to the top level beside the category: so weights have something to share with. */
     let other: GradebookItem;
+    let scale: GradeScale;
 
     before(async () => {
       course = await scratchCourse("grades");
@@ -167,6 +168,83 @@ describe("grades and the gradebook", () => {
       } finally {
         await rm(folder, { recursive: true, force: true });
       }
+    });
+
+    it("importGrades: a CSV previewed, then imported into the manual item, read back with graderReport", SLOW, async () => {
+      const teacher = await as("teacher");
+      const folder = await mkdtemp(path.join(tmpdir(), "suite-import-"));
+      try {
+        const file = path.join(folder, "grades.csv");
+        await writeFile(file, `User ID,Suite item,Suite comment\n${studentId},35,Suite imported\n`);
+        const options = { mapFrom: "User ID", mapTo: "id" as const, columns: { "Suite item": item.id, "Suite comment": { feedback: item.id } } };
+        const preview = await teacher.importGrades(course.id, file, { ...options, preview: true });
+        assert.equal(preview.imported, false);
+        assert.deepEqual(preview.preview, { columns: ["User ID", "Suite item", "Suite comment"], rows: [[String(studentId), "35", "Suite imported"]] });
+        // Previewing imports nothing.
+        const before = (await teacher.graderReport(course.id)).rows.find((r) => r.userId === studentId);
+        assert.equal(Number(before?.grades.find((g) => g.itemId === item.id)?.grade), 30);
+        const imported = await teacher.importGrades(course.id, file, options);
+        assert.equal(imported.imported, true);
+        const after = (await teacher.graderReport(course.id)).rows.find((r) => r.userId === studentId);
+        assert.equal(Number(after?.grades.find((g) => g.itemId === item.id)?.grade), 35);
+        // Someone Moodle can't find: nothing imported, Moodle's reason given.
+        await writeFile(file, `User ID,Suite item\n999999,10\n`);
+        await assert.rejects(teacher.importGrades(course.id, file, { ...options, columns: { "Suite item": item.id } }), (error: Error) => error instanceof GradebookError && /999999/.test(error.message));
+        await assert.rejects(teacher.importGrades(course.id, file, { ...options, columns: { "No such column": item.id } }), /no column "No such column"/);
+        await assert.rejects((await as("student")).importGrades(course.id, file, options), (error: Error) => error instanceof GradebookError && /moodle\/grade:import/.test(error.message));
+      } finally {
+        await rm(folder, { recursive: true, force: true });
+      }
+    });
+
+    it("addScale: a course scale, beside the site's in courseScales", SLOW, async () => {
+      const teacher = await as("teacher");
+      const added = await teacher.addScale(course.id, { name: "Driver check scale", items: ["Poor", "Fair", "Good"], description: "<p>Suite scale</p>" });
+      assert.ok(added.scale);
+      scale = added.scale;
+      assert.deepEqual([scale.name, scale.items, scale.used, scale.site], ["Driver check scale", ["Poor", "Fair", "Good"], false, false]);
+      const scales = await teacher.courseScales(course.id);
+      assert.ok(scales.some((s) => s.id === scale.id && !s.site));
+      // The sandbox's site has Moodle's standard scales, with ids a teacher's page doesn't link.
+      assert.ok(scales.some((s) => s.site && s.id > 0 && s.items.length > 1));
+      // The course can't have the same values twice.
+      await assert.rejects(teacher.addScale(course.id, { name: "Driver check again", items: ["Poor", "Fair", "Good"] }), GradebookError);
+      await assert.rejects((await as("student")).courseScales(course.id), (error: Error) => error instanceof GradebookError && /moodle\/course:managescales/.test(error.message));
+    });
+
+    it("courseScales: a scale an item grades with is used", SLOW, async () => {
+      const teacher = await as("teacher");
+      const graded = (await teacher.addGradeItem(course.id, { name: "Suite scale item", scaleId: scale.id })).item!;
+      try {
+        assert.equal((await teacher.courseScales(course.id)).find((s) => s.id === scale.id)?.used, true);
+      } finally {
+        await teacher.deleteGradeItem(course.id, graded.id);
+      }
+    });
+
+    it("editScale: an unused scale's values and name", SLOW, async () => {
+      const teacher = await as("teacher");
+      const edited = await teacher.editScale(course.id, scale.id, { name: "Driver check scale renamed", items: ["Poor", "Fair", "Good", "Great"] });
+      assert.deepEqual([edited.scale?.name, edited.scale?.items], ["Driver check scale renamed", ["Poor", "Fair", "Good", "Great"]]);
+    });
+
+    it("setGradeLetters: the course's own letters, read back with gradeLetters, then the site's again", SLOW, async () => {
+      const teacher = await as("teacher");
+      const original = await teacher.gradeLetters(course.id);
+      assert.ok(original.letters.length > 0);
+      // Put back whatever happens, as it was.
+      const putBack = () => teacher.setGradeLetters(course.id, original.overridden ? original.letters : null);
+      cleanup(putBack);
+      const set = await teacher.setGradeLetters(course.id, [
+        { letter: "Pass", minGrade: 50 },
+        { letter: "Fail", minGrade: 0 },
+      ]);
+      assert.deepEqual([set.overridden, set.letters], [true, [{ letter: "Pass", minGrade: 50 }, { letter: "Fail", minGrade: 0 }]]);
+      assert.deepEqual(await teacher.gradeLetters(course.id), { overridden: true, letters: set.letters });
+      const back = await putBack();
+      assert.deepEqual(back.letters, original.letters);
+      assert.equal(back.overridden, original.overridden);
+      await assert.rejects((await as("student")).gradeLetters(course.id), (error: Error) => error instanceof GradebookError && /moodle\/grade:manageletters/.test(error.message));
     });
 
     it("deleteGradeItem: the manual item and its grades go", SLOW, async () => {

@@ -27,6 +27,8 @@ import { rate } from "./areas/ratings/ratings.js";
 import { assessWorkshopSubmission, setWorkshopPhase, workshopInfo } from "./areas/workshops/workshops.js";
 import { allocateRandomly, allocateReviewer, removeReviewer, scheduleAllocation, workshopAllocation } from "./areas/workshops/allocation.js";
 import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
+import { importGrades } from "./areas/grades/import.js";
+import { addScale, courseScales, editScale, gradeLetters, setGradeLetters } from "./areas/grades/scales.js";
 import { myGrades } from "./areas/grades/user-report.js";
 import { allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension, rubric, setWorkflowState } from "./areas/assignments/grading.js";
 import { setGradingDefinition } from "./areas/assignments/definitions.js";
@@ -248,6 +250,12 @@ const SITE_FUNCTIONS = {
   updateGradeCategory,
   updateEvent,
   updateGradeItem,
+  importGrades,
+  courseScales,
+  addScale,
+  editScale,
+  gradeLetters,
+  setGradeLetters,
   updateQuestion,
   userById,
   whoAmI,

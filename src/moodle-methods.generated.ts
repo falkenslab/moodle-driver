@@ -104,6 +104,13 @@ export interface MoodleMethods {
    */
   addQuizSection(activityId: number, options: { firstSlot: number; heading: string; shuffle?: boolean | undefined; }): Promise<import("./areas/quizzes/structure.js").QuizChange & { sectionId: number; }>;
   /**
+   * Adds a scale to a course (its own, not the site's): its name and values from the lowest to the
+   * highest. Returns it as `courseScales` reads it. Throws `GradebookError` with Moodle's reason when
+   * it refuses (the course already has a scale with these values), and naming the capability when the
+   * person can't manage the course's scales.
+   */
+  addScale(courseId: number, fields: import("./areas/grades/scales.js").ScaleFields & { name: string; items: string[]; }): Promise<{ changed: string; scale?: import("./areas/grades/scales.js").GradeScale | undefined; }>;
+  /**
    * Adds a section after another one (at the end without it), named when a name is given, with a
    * description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`).
    */
@@ -352,6 +359,12 @@ export interface MoodleMethods {
   courseLogs(courseId: number, options?: import("./areas/reports/reports.js").CourseLogOptions): Promise<import("./areas/reports/reports.js").LogEntry[] | import("./core/paging.js").ListPage<import("./areas/reports/reports.js").LogEntry>>;
   /** A user's roles in a course, from their profile there: role links carry the role id in any language. */
   courseRoles(userId: number, courseId: number): Promise<{ id: number; name: string; }[]>;
+  /**
+   * A course's scales: its own, and the site's standard scales (`site`), with their values and whether
+   * something grades with them. Throws `GradebookError` naming the capability when the person can't
+   * manage the course's scales.
+   */
+  courseScales(courseId: number): Promise<import("./areas/grades/scales.js").GradeScale[]>;
   /**
    * A course's sections and activities; with `details`, each activity's dates and restriction and each
    * section's description, from the course page (slower).
@@ -603,6 +616,13 @@ export interface MoodleMethods {
    */
   editQuizSlot(activityId: number, slot: number, options: { maxMark?: number | undefined; moveAfter?: number | undefined; page?: number | undefined; }): Promise<import("./areas/quizzes/structure.js").QuizChange>;
   /**
+   * Changes a scale of the course: its name, values or description. A scale something grades with
+   * keeps its values (Moodle freezes them): changing them throws `GradebookError`, its name and
+   * description still change. A site scale is changed only by someone who can manage the site's
+   * scales. Returns the scale afterwards.
+   */
+  editScale(courseId: number, scaleId: number, fields: import("./areas/grades/scales.js").ScaleFields): Promise<{ changed: string; scale?: import("./areas/grades/scales.js").GradeScale | undefined; }>;
+  /**
    * Renames, shows or hides, describes (`summary`, HTML, with `embed`'s local files in it), restricts
    * (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
    */
@@ -726,6 +746,12 @@ export interface MoodleMethods {
    */
   gradeForumUser(activityId: number, userId: number, options: { grade: string | number | null; notify?: boolean | undefined; }): Promise<{ changed: string; grade: Omit<import("./areas/forums/grading.js").ForumGrade, "fullName">; }>;
   /**
+   * A course's grade letters, from the highest boundary to the lowest: its own when `overridden`, the
+   * site's defaults otherwise. Throws `GradebookError` naming the capability when the person can't
+   * manage them.
+   */
+  gradeLetters(courseId: number): Promise<import("./areas/grades/scales.js").GradeLetters>;
+  /**
    * Grades one question of a finished attempt by hand, with a comment, through Moodle's comment form
    * (the review's "Make comment or override mark"): an essay waiting for grading, or any question whose
    * mark the teacher overrides. The mark is in the question's points (0 to its maximum in the quiz).
@@ -789,6 +815,17 @@ export interface MoodleMethods {
    * `GlossaryError` when the person can't import (mod/glossary:import) or Moodle can't read the file.
    */
   importGlossaryEntries(activityId: number, file: string, options?: { categories?: boolean | undefined; }): Promise<import("./areas/glossaries/transfer.js").GlossaryImport>;
+  /**
+   * Imports grades from a CSV file into a course's gradebook, as Moodle's CSV import does: the column
+   * `mapFrom` identifies each person by `mapTo`, and `columns` says which grade item (or which item's
+   * feedback) each other column goes into. With `preview`, the file is only uploaded and Moodle's
+   * preview of it returned: its headers and rows as Moodle reads them, nothing imported. Moodle imports
+   * all or nothing: a person not found, or a grade it refuses, imports no grade, and its messages
+   * come in the `GradebookError`. Throws `GradebookError` too when the file has no such column, when
+   * an item can't take imported grades (an activity's, locked, or not in the course), and naming the
+   * capabilities when the person can't import grades.
+   */
+  importGrades(courseId: number, file: string, options: import("./areas/grades/import.js").ImportGradesOptions): Promise<import("./areas/grades/import.js").ImportGradesResult>;
   /**
    * Imports questions into a bank from a GIFT or Moodle XML file (a local path) or text, through the
    * bank's import form; returns the questions created. A file Moodle can't parse comes back as a
@@ -1158,6 +1195,11 @@ export interface MoodleMethods {
    * is locked, or Moodle refuses the value (out of range, a scale item it doesn't have).
    */
   setGrade(courseId: number, itemId: number, userId: number, options: import("./areas/grades/singleview.js").SetGradeOptions): Promise<{ changed: string; grade: import("./areas/grades/singleview.js").GradebookGrade; }>;
+  /**
+   * Sets a course's own grade letters (overriding the site's), each from its `minGrade` percent; `null`
+   * goes back to the site's defaults. Returns the letters afterwards.
+   */
+  setGradeLetters(courseId: number, letters: import("./areas/grades/scales.js").GradeLetter[] | null): Promise<{ changed: string; } & import("./areas/grades/scales.js").GradeLetters>;
   /**
    * Sets an assignment's advanced grading method (a rubric or a marking guide) and saves its
    * definition through Moodle's editor form, ready for use, as "Define new grading form from scratch"

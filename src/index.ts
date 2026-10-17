@@ -198,6 +198,8 @@ export {
 } from "./areas/grades/gradebook.js";
 export { setGrade, type GradebookGrade, type SetGradeOptions } from "./areas/grades/singleview.js";
 export { exportGrades, GRADE_EXPORT_FORMATS, type GradeExportFormat, type GradeExportDisplay, type ExportGradesOptions } from "./areas/grades/export.js";
+export { importGrades, type ImportGradesOptions, type ImportGradesResult, type GradeImportPreview, type GradeImportUserField } from "./areas/grades/import.js";
+export { courseScales, addScale, editScale, gradeLetters, setGradeLetters, type GradeScale, type ScaleFields, type GradeLetter, type GradeLetters } from "./areas/grades/scales.js";
 export {
   courseLogs,
   activityReport,

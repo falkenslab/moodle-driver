@@ -264,6 +264,14 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   scheduleAllocation: ["others-write"],
   // Everyone's grades, as Moodle exports them.
   exportGrades: PERSONAL,
+  // Importing grades decides them; its preview shows the file, people and grades, as Moodle reads it.
+  importGrades: ["others-personal", "others-write"],
+  // Scales and grade letters: how the course shows grades.
+  courseScales: CONTENT,
+  addScale: CONTENT,
+  editScale: CONTENT,
+  gradeLetters: CONTENT,
+  setGradeLetters: CONTENT,
 
   // Question banks: what teachers write.
   questionBanks: CONTENT,

@@ -234,6 +234,19 @@ moodle add-quiz-section <activityId> --options
 | `--heading` (required) | `string` |  |
 | `--shuffle` | `boolean` |  |
 
+## addScale
+
+Adds a scale to a course (its own, not the site's): its name and values from the lowest to the highest. Returns it as `courseScales` reads it. Throws `GradebookError` with Moodle's reason when it refuses (the course already has a scale with these values), and naming the capability when the person can't manage the course's scales.
+
+```bash
+moodle add-scale <courseId> <fields>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `fields` | `ScaleFields & { name: string; items: string[]; }` |  |
+
 ## addSection
 
 Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`).
@@ -619,6 +632,18 @@ moodle course-roles <userId> <courseId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `userId` | `number` |  |
+| `courseId` | `number` |  |
+
+## courseScales
+
+A course's scales: its own, and the site's standard scales (`site`), with their values and whether something grades with them. Throws `GradebookError` naming the capability when the person can't manage the course's scales.
+
+```bash
+moodle course-scales <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
 | `courseId` | `number` |  |
 
 ## courseStructure
@@ -1187,6 +1212,22 @@ moodle edit-quiz-slot <activityId> <slot> --options
 | `--move-after` | `number` |  |
 | `--page` | `number` |  |
 
+## editScale
+
+Changes a scale of the course: its name, values or description. A scale something grades with keeps its values (Moodle freezes them): changing them throws `GradebookError`, its name and description still change. A site scale is changed only by someone who can manage the site's scales. Returns the scale afterwards.
+
+```bash
+moodle edit-scale <courseId> <scaleId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `scaleId` | `number` |  |
+| `--name` | `string` |  |
+| `--items` | `string[]` | Its values, from the lowest to the highest (no commas inside: Moodle separates them with commas). |
+| `--description` | `string` | Its description (HTML). |
+
 ## editSection
 
 Renames, shows or hides, describes (`summary`, HTML, with `embed`'s local files in it), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
@@ -1404,6 +1445,18 @@ moodle grade-forum-user <activityId> <userId> --options
 | `--grade` (required) | `string \| number` |  |
 | `--notify` | `boolean` |  |
 
+## gradeLetters
+
+A course's grade letters, from the highest boundary to the lowest: its own when `overridden`, the site's defaults otherwise. Throws `GradebookError` naming the capability when the person can't manage them.
+
+```bash
+moodle grade-letters <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+
 ## gradeQuizQuestion
 
 Grades one question of a finished attempt by hand, with a comment, through Moodle's comment form (the review's "Make comment or override mark"): an essay waiting for grading, or any question whose mark the teacher overrides. The mark is in the question's points (0 to its maximum in the quiz). Returns the attempt's grade afterwards when the results report shows it.
@@ -1559,6 +1612,25 @@ moodle import-glossary-entries <activityId> <file> [--options]
 | `activityId` | `number` |  |
 | `file` | `string` |  |
 | `--categories` | `boolean` |  |
+
+## importGrades
+
+Imports grades from a CSV file into a course's gradebook, as Moodle's CSV import does: the column `mapFrom` identifies each person by `mapTo`, and `columns` says which grade item (or which item's feedback) each other column goes into. With `preview`, the file is only uploaded and Moodle's preview of it returned: its headers and rows as Moodle reads them, nothing imported. Moodle imports all or nothing: a person not found, or a grade it refuses, imports no grade, and its messages come in the `GradebookError`. Throws `GradebookError` too when the file has no such column, when an item can't take imported grades (an activity's, locked, or not in the course), and naming the capabilities when the person can't import grades.
+
+```bash
+moodle import-grades <courseId> <file> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `file` | `string` |  |
+| `--map-from` (required) | `string` | The CSV column (its header) that identifies each person. |
+| `--map-to` (required) | `GradeImportUserField` | What that column holds: Moodle's user id, username, ID number or email address. |
+| `--columns` (required) | `Record<string, number \| { feedback: number; }>` | The CSV columns to import, by header: into a grade item (its id, from `gradebookSetup`), or as that item's feedback (`{ feedback: <item id> }`). The file's other columns are ignored. |
+| `--preview` | `boolean` | Only upload the file and give Moodle's preview of it, without importing anything. |
+| `--separator` | `"comma" \| "semicolon" \| "tab" \| "colon"` | The file's separator; a comma when left out. |
+| `--encoding` | `string` | The file's encoding, one Moodle offers; UTF-8 when left out. |
 
 ## importQuestions
 
@@ -2265,6 +2337,19 @@ moodle set-grade <courseId> <itemId> <userId> --options
 | `--feedback` | `string` | Feedback text; an empty string removes it. |
 | `--override` | `boolean` | Override the activity's or category's grade. Giving a grade or feedback to an activity's or a category's item overrides it unless this says `false`; `false` alone gives the grade back to the activity. |
 | `--excluded` | `boolean` | Leave the grade out of the totals. |
+
+## setGradeLetters
+
+Sets a course's own grade letters (overriding the site's), each from its `minGrade` percent; `null` goes back to the site's defaults. Returns the letters afterwards.
+
+```bash
+moodle set-grade-letters <courseId> <letters>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `letters` | `GradeLetter[]` |  |
 
 ## setGradingDefinition
 

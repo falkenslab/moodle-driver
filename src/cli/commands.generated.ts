@@ -696,6 +696,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addScale",
+    "description": "Adds a scale to a course (its own, not the site's): its name and values from the lowest to the highest. Returns it as `courseScales` reads it. Throws `GradebookError` with Moodle's reason when it refuses (the course already has a scale with these values), and naming the capability when the person can't manage the course's scales.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "fields",
+        "optional": false,
+        "type": "ScaleFields & { name: string; items: string[]; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
     "name": "addSection",
     "description": "Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is, and `embed`'s local files in it (`<img src=\"shot.png\">`).",
     "params": [
@@ -1711,6 +1733,20 @@ export const COMMANDS: readonly CommandSpec[] = [
           "kind": "number"
         }
       },
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "courseScales",
+    "description": "A course's scales: its own, and the site's standard scales (`site`), with their values and whether something grades with them. Throws `GradebookError` naming the capability when the person can't manage the course's scales.",
+    "params": [
       {
         "name": "courseId",
         "optional": false,
@@ -3116,6 +3152,61 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "editScale",
+    "description": "Changes a scale of the course: its name, values or description. A scale something grades with keeps its values (Moodle freezes them): changing them throws `GradebookError`, its name and description still change. A site scale is changed only by someone who can manage the site's scales. Returns the scale afterwards.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "scaleId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "fields",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "items",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Its values, from the lowest to the highest (no commas inside: Moodle separates them with commas)."
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its description (HTML)."
+        }
+      ]
+    }
+  },
+  {
     "name": "editSection",
     "description": "Renames, shows or hides, describes (`summary`, HTML, with `embed`'s local files in it), restricts (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.",
     "params": [
@@ -3721,6 +3812,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "gradeLetters",
+    "description": "A course's grade letters, from the highest boundary to the lowest: its own when `overridden`, the site's defaults otherwise. Throws `GradebookError` naming the capability when the person can't manage them.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "gradeQuizQuestion",
     "description": "Grades one question of a finished attempt by hand, with a comment, through Moodle's comment form (the review's \"Make comment or override mark\"): an essay waiting for grading, or any question whose mark the teacher overrides. The mark is in the question's points (0 to its maximum in the quiz). Returns the attempt's grade afterwards when the results report shows it.",
     "params": [
@@ -4124,6 +4229,101 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "boolean"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "importGrades",
+    "description": "Imports grades from a CSV file into a course's gradebook, as Moodle's CSV import does: the column `mapFrom` identifies each person by `mapTo`, and `columns` says which grade item (or which item's feedback) each other column goes into. With `preview`, the file is only uploaded and Moodle's preview of it returned: its headers and rows as Moodle reads them, nothing imported. Moodle imports all or nothing: a person not found, or a grade it refuses, imports no grade, and its messages come in the `GradebookError`. Throws `GradebookError` too when the file has no such column, when an item can't take imported grades (an activity's, locked, or not in the course), and naming the capabilities when the person can't import grades.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "file",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "mapFrom",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The CSV column (its header) that identifies each person."
+        },
+        {
+          "name": "mapTo",
+          "optional": false,
+          "type": "GradeImportUserField",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "id",
+              "username",
+              "idnumber",
+              "email"
+            ]
+          },
+          "description": "What that column holds: Moodle's user id, username, ID number or email address."
+        },
+        {
+          "name": "columns",
+          "optional": false,
+          "type": "Record<string, number | { feedback: number; }>",
+          "value": {
+            "kind": "json"
+          },
+          "description": "The CSV columns to import, by header: into a grade item (its id, from `gradebookSetup`), or as that item's feedback (`{ feedback: <item id> }`). The file's other columns are ignored."
+        },
+        {
+          "name": "preview",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Only upload the file and give Moodle's preview of it, without importing anything."
+        },
+        {
+          "name": "separator",
+          "optional": true,
+          "type": "\"comma\" | \"semicolon\" | \"tab\" | \"colon\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "comma",
+              "semicolon",
+              "tab",
+              "colon"
+            ]
+          },
+          "description": "The file's separator; a comma when left out."
+        },
+        {
+          "name": "encoding",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The file's encoding, one Moodle offers; UTF-8 when left out."
         }
       ]
     }
@@ -5790,6 +5990,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "setGradeLetters",
+    "description": "Sets a course's own grade letters (overriding the site's), each from its `minGrade` percent; `null` goes back to the site's defaults. Returns the letters afterwards.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "letters",
+        "optional": false,
+        "type": "GradeLetter[]",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
   },
   {
     "name": "setGradingDefinition",
