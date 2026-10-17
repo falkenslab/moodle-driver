@@ -218,6 +218,19 @@ export {
   type ActivityParticipant,
 } from "./areas/reports/reports.js";
 export { setCompletion, overrideCompletion, completionReport, CompletionError, type CompletionCell, type CompletionReport } from "./areas/completion/completion.js";
+export {
+  courseCompletionCriteria,
+  setCourseCompletionCriteria,
+  courseCompletionStatus,
+  markCourseComplete,
+  type CompletionAggregation,
+  type CourseCompletionCriteria,
+  type CourseCompletionChanges,
+  type CourseCriterionType,
+  type CourseCriterionStatus,
+  type CourseCompletionStatus,
+  type CourseCompletionStatusOptions,
+} from "./areas/completion/course.js";
 export { participants, participantFilters, groups, NoParticipantsError, type Participant, type ParticipantOptions, type CourseGroup } from "./areas/participants/participants.js";
 export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, createGrouping, deleteGrouping, setGroupingGroups, type GroupSettings, type GroupingSettings, type Grouping } from "./areas/participants/groups.js";
 export { enrolmentMethods, setEnrolmentMethod, type EnrolmentMethod, type EnrolmentMethodSettings } from "./areas/participants/methods.js";

@@ -644,6 +644,34 @@ moodle course-badges <courseId>
 | --- | --- | --- |
 | `courseId` | `number` |  |
 
+## courseCompletionCriteria
+
+A course's completion criteria, from its "Course completion" settings form: the overall aggregation, each kind of criterion set (activities, other courses, a date, days enrolled, unenrolment, a course grade, self completion, roles that mark it), what the form offers, whether completion is enabled and whether the criteria are locked (someone has met one). This is course completion, not activity completion (`completionReport`). Throws `CompletionError` when the person can't set the course's criteria (it takes moodle/course:update) or the course doesn't exist.
+
+```bash
+moodle course-completion-criteria <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+
+## courseCompletionStatus
+
+Each participant's course completion, from the course completion report (`report/completion`): whether they've completed the course and when, and each criterion met and when; in the report's order (by last name), one participant's or one group's when given. The report (and this) is about course completion; `completionReport` is the activity completion (progress) report. Moodle works out course completion as participants meet criteria, some of them (a course grade, a date, days enrolled) only in its scheduled tasks (cron): until they run, a criterion met may not show yet. Without `limit`, every participant; with it, a page (see "Long lists" in the docs' concepts). The report is read in full (its CSV export) and cut. Throws `CompletionError` when the person can't see it (it takes report/completion:view), or the course has no completion criteria.
+
+```bash
+moodle course-completion-status <courseId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--user-id` | `number` | Only this participant. |
+| `--group` | `number` | Only this group's participants. |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
+
 ## courseLogs
 
 A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format. Without `limit`, the first 100 entries (from `offset`) as a list; with it, a page of them (see "Long lists" in the docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the first page, since only the driver filters by it).
@@ -1788,6 +1816,19 @@ Logs the person out of Moodle through the user menu's logout link (it carries th
 moodle log-out
 ```
 
+## markCourseComplete
+
+Marks a participant's course completion by hand, as the course completion report's link does: the course's "Manual completion by others" criterion for a role the person holds in the course. That criterion met, Moodle completes the course when the rest of the criteria allow it (any one, or all met). A participant already marked is left as is. Returns their completion afterwards. Throws `CompletionError` when the person can't see the report (report/completion:view), when the course has no role criterion for a role they hold (it takes moodle/course:markcomplete), when completion isn't enabled, and when the user isn't a tracked participant.
+
+```bash
+moodle mark-course-complete <courseId> <userId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `userId` | `number` |  |
+
 ## markNotificationsRead
 
 Marks all the person's notifications read, as the popover's "Mark all as read" does; doing it twice changes nothing.
@@ -2332,6 +2373,20 @@ moodle set-completion <activityId> <done>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `done` | `boolean` |  |
+
+## setCourseCompletionCriteria
+
+Sets a course's completion criteria through its "Course completion" settings form, as a teacher does: a criterion given replaces that kind's settings, `null` (or `false`) removes it, one not given stays as it is; `overall` sets whether all criteria or any one complete the course. Once someone has met a criterion, Moodle locks the criteria: `unlock` unlocks them first, which deletes every participant's course completion data (not their activity completion), as the form's button says. Returns the criteria afterwards. Throws `CompletionError` when the person can't set them (it takes moodle/course:update), when completion is off on the site or in the course, when they're locked and `unlock` isn't given, and for activities or roles the form doesn't offer (naming them); `FormError` with Moodle's message when it refuses the form (a course that doesn't track completion as a prerequisite).
+
+```bash
+moodle set-course-completion-criteria <courseId> <changes> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `changes` | `CourseCompletionChanges` |  |
+| `--unlock` | `boolean` |  |
 
 ## setDatabaseEntryApproved
 

@@ -229,6 +229,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   setCompletion: OWN,
   overrideCompletion: ["others-write"],
   completionReport: PERSONAL,
+  // Course completion: its criteria (course content), everyone's status, marking someone complete.
+  courseCompletionCriteria: CONTENT,
+  setCourseCompletionCriteria: CONTENT,
+  courseCompletionStatus: PERSONAL,
+  markCourseComplete: ["others-write"],
 
   // Reports on what people did: the logs and each one's participation; the views per activity identify no one.
   courseLogs: PERSONAL,

@@ -39,11 +39,15 @@ The activity where participants pick one or several options a teacher offers (mo
 
 ### Completion
 
-Moodle's activity completion: whether each participant has done each activity, marked by hand (manual) or by Moodle when a condition is met (automatic), in one of four states the driver names `incomplete`, `complete`, `complete-pass` and `complete-fail` (`COMPLETION_STATES`, `CompletionState`). The person's own comes with `courseStructure` (each activity's `completion`), `setCompletion` marks it, `overrideCompletion` sets someone else's as a teacher, and `completionReport` reads the progress report ("Activity completion" in the interface), each cell with `state`, `tracking` and `overridden`. An activity's rules are its `completion` in `createActivity`, `updateActivity` and `activitySettings`. See [Completion](../areas/completion.md).
+Moodle's activity completion: whether each participant has done each activity, marked by hand (manual) or by Moodle when a condition is met (automatic), in one of four states the driver names `incomplete`, `complete`, `complete-pass` and `complete-fail` (`COMPLETION_STATES`, `CompletionState`). The person's own comes with `courseStructure` (each activity's `completion`), `setCompletion` marks it, `overrideCompletion` sets someone else's as a teacher, and `completionReport` reads the progress report ("Activity completion" in the interface), each cell with `state`, `tracking` and `overridden`. An activity's rules are its `completion` in `createActivity`, `updateActivity` and `activitySettings`. Not [course completion](#course-completion), which is about the course as a whole. See [Completion](../areas/completion.md).
 
 ### Conversation
 
 A thread of private messages in Moodle's messaging: between two people (`private`), a course group's (`group`), or the person's notes to themselves (`self`). The driver lists the person's with `conversations` (`ConversationSummary`, with `id`, `type`, `members` and `unread`), reads one with `conversation(conversationId)`, and sends a private message with `sendMessage`, which returns `messageId` and `conversationId`. See [Messages](../areas/messages.md).
+
+### Course completion
+
+Whether a participant has completed a course as a whole, by the criteria its "Course completion" settings set (activities completed, other courses, a date, days enrolled, unenrolment, a course grade, self completion, a role's mark), all of them or any one. Moodle locks the criteria once someone has met one. The driver reads and sets them with `courseCompletionCriteria` and `setCourseCompletionCriteria` (`CourseCompletionCriteria`, with `locked` and `unlock`), reads each participant's from the course completion report with `courseCompletionStatus` (`CourseCompletionStatus`, with `complete` and each criterion `met`), and marks someone complete with `markCourseComplete`. Some criteria are reviewed only by Moodle's scheduled completion task. Not [activity completion](#completion) (the progress report). See [Completion](../areas/completion.md#course-completion).
 
 ### Course module id
 

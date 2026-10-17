@@ -13,6 +13,7 @@ import { backupCourse, copyCourse, importActivities, restoreCourse } from "./are
 import { backupContents, type BackupContents } from "./areas/backup/contents.js";
 import { anonymizeBackup } from "./areas/backup/anonymous.js";
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
+import { courseCompletionCriteria, courseCompletionStatus, markCourseComplete, setCourseCompletionCriteria } from "./areas/completion/course.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
 import { addBookChapter, bookChapters, deleteBookChapter, editBookChapter, moveBookChapter, setBookChapterVisible } from "./areas/activities/books.js";
 import { listCourses, updateCourse } from "./areas/courses/list.js";
@@ -124,6 +125,8 @@ const SITE_FUNCTIONS = {
   conversations,
   courseAbilities,
   courseActivityTypes,
+  courseCompletionCriteria,
+  courseCompletionStatus,
   courseLogs,
   courseRoles,
   courseStructure,
@@ -180,6 +183,7 @@ const SITE_FUNCTIONS = {
   listAssignments,
   listCourses,
   logOut,
+  markCourseComplete,
   markNotificationsRead,
   moveBookChapter,
   myGrades,
@@ -241,6 +245,7 @@ const SITE_FUNCTIONS = {
   messageParticipants,
   setBookChapterVisible,
   setCompletion,
+  setCourseCompletionCriteria,
   setDiscussionState,
   setDiscussionSubscription,
   setGrade,
