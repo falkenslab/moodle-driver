@@ -52,7 +52,7 @@ El id de una actividad en su curso, el `id` de la URL de la actividad (`mod/quiz
 
 ### Base de datos (database) {#database}
 
-Una actividad, módulo `data`, en la que los participantes añaden entradas con los campos que define un profesor (texto corto, lista desplegable, fecha, imagen…), listadas, mostradas y buscadas mediante sus plantillas; un preajuste le da campos y plantillas a la vez. El driver lee y escribe sus campos con `databaseFields`, `addDatabaseField`, `editDatabaseField` y `deleteDatabaseField`, sus plantillas con `databaseTemplates` y `setDatabaseTemplate`, y le da uno de los preajustes del sitio con `databasePresets` y `applyDatabasePreset`; `rate` valora sus entradas. Consulta [Bases de datos](../areas/databases.md).
+Una actividad, módulo `data`, en la que los participantes añaden entradas con los campos que define un profesor (texto corto, lista desplegable, fecha, imagen…), listadas, mostradas y buscadas mediante sus plantillas; un preajuste le da campos y plantillas a la vez. El driver lee y escribe sus campos con `databaseFields`, `addDatabaseField`, `editDatabaseField` y `deleteDatabaseField`, sus plantillas con `databaseTemplates` y `setDatabaseTemplate`, y le da uno de los preajustes del sitio con `databasePresets` y `applyDatabasePreset`; sus entradas se leen con `databaseEntries`, se escriben con `addDatabaseEntry`, `editDatabaseEntry` y `deleteDatabaseEntry`, se aprueban con `setDatabaseEntryApproved`, se mueven como CSV con `exportDatabaseEntries` e `importDatabaseEntries`, y se valoran con `rate`. Consulta [Bases de datos](../areas/databases.md).
 
 ### Ampliación del plazo (extension) {#extension}
 

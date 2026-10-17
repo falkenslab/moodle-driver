@@ -157,6 +157,7 @@ export { scorm, openScorm, ScormError, type ScoStatus, type ScormSco, type Scorm
 export { NotADatabaseError, DatabaseError } from "./areas/databases/database.js";
 export { databaseFields, addDatabaseField, editDatabaseField, deleteDatabaseField, DATABASE_FIELD_TYPES, type DatabaseFieldType, type DatabaseField, type DatabaseFieldInput, type DatabaseFieldChanges, type DatabaseFieldOptions } from "./areas/databases/fields.js";
 export { databaseTemplates, setDatabaseTemplate, databasePresets, applyDatabasePreset, DATABASE_TEMPLATES, type DatabaseTemplate, type DatabaseTemplates, type DatabasePreset } from "./areas/databases/templates.js";
+export { databaseEntries, addDatabaseEntry, editDatabaseEntry, deleteDatabaseEntry, setDatabaseEntryApproved, exportDatabaseEntries, importDatabaseEntries, type DatabaseEntry, type DatabaseEntryField, type DatabaseEntryFile, type DatabaseEntryValue, type DatabaseEntryOptions, type DatabaseEntryInput, type DatabaseEntryValues, type DatabaseExportOptions } from "./areas/databases/entries.js";
 
 // Grades, completion, participants, calendar, messages.
 export { myGrades, NoGradeReportError, type GradeRow } from "./areas/grades/user-report.js";

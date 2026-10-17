@@ -1,10 +1,13 @@
 // Databases against the sandbox: a database made by the teacher on the scratch course, given its
 // fields and a list template through the driver, then an entry added by the student through Moodle's
-// own form; a second database given a preset.
+// own form; a second database given a preset. A third, needing approval, has its entries added by
+// the teacher and the student through the driver, read, edited, approved, exported, imported and deleted.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { before, describe, it } from "node:test";
-import { DatabaseError, MoodleError, NotADatabaseError, type DatabaseField, type Moodle } from "../../src/index.js";
-import { SITE, as, scratchCourse, type ScratchCourse } from "./harness.js";
+import { DatabaseError, MoodleError, NotADatabaseError, type DatabaseEntry, type DatabaseField, type Moodle } from "../../src/index.js";
+import { SITE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { pngFile, textFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
 const SLOW = { timeout: 900_000 };
@@ -137,5 +140,103 @@ describe("databases", () => {
     assert.ok(applied.fields.some((f) => f.type === "picture"), JSON.stringify(applied.fields));
     assert.deepEqual(await teacher.databaseFields(galleryId), applied.fields);
     assert.ok((await teacher.databaseTemplates(galleryId)).list.includes("[["));
+  });
+});
+
+describe("database entries", () => {
+  let databaseId: number;
+  let fields: DatabaseField[];
+  let studentEntry: number;
+  let teacherEntry: number;
+  const id = (name: string) => String(fields.find((f) => f.name === name)!.id);
+  const valuesOf = (entry: DatabaseEntry | undefined) => Object.fromEntries((entry?.values ?? []).map((v) => [v.name ?? v.fieldId, v.value]));
+
+  before(async () => {
+    const course = await scratchCourse("entries");
+    const teacher = await as("teacher");
+    databaseId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "data", name: "Driver check entries", visibility: "shown", settings: { approval: 1 } })).activityId!;
+    await teacher.addDatabaseField(databaseId, { type: "text", name: "Title", required: true });
+    await teacher.addDatabaseField(databaseId, { type: "menu", name: "Colour", options: { choices: ["Red", "Blue"] } });
+    await teacher.addDatabaseField(databaseId, { type: "date", name: "Born" });
+    fields = (await teacher.addDatabaseField(databaseId, { type: "picture", name: "Photo" })).fields;
+  }, SETUP);
+
+  it("databaseEntries: none in a new database", SLOW, async () => {
+    assert.deepEqual(await (await as("teacher")).databaseEntries(databaseId), []);
+  });
+
+  it("addDatabaseEntry: the student's with a picture, by field name; the teacher's by field id; what the form doesn't take refused", SLOW, async () => {
+    const student = await as("student");
+    await assert.rejects(student.addDatabaseEntry(databaseId, { Title: "x", Colour: "Green" }), (error: Error) => error instanceof MoodleError && error.code === "invalid-input" && /offers "Red", "Blue"/.test(error.message));
+    await assert.rejects(student.addDatabaseEntry(databaseId, { Nope: "x" }), (error: Error) => error instanceof MoodleError && error.code === "invalid-input");
+    // Moodle's own refusal: the required title missing.
+    await assert.rejects(student.addDatabaseEntry(databaseId, { Colour: "Red" }), DatabaseError);
+    studentEntry = (await student.addDatabaseEntry(databaseId, { Title: "Driver check student", Colour: "Blue", [id("Born")]: "2001-03-05", Photo: pngFile("photo.png") })).entryId;
+    teacherEntry = (await (await as("teacher")).addDatabaseEntry(databaseId, { [id("Title")]: "Driver check teacher", [id("Colour")]: "Red" })).entryId;
+    assert.ok(studentEntry > 0 && teacherEntry > studentEntry);
+  });
+
+  it("databaseEntries: the teacher reads both with their values; the student, the values of their own; search and paging", SLOW, async () => {
+    const teacher = await as("teacher");
+    const entries = await teacher.databaseEntries(databaseId);
+    const mine = entries.find((e) => e.id === studentEntry);
+    assert.equal(mine?.author?.userId, await userId("student"));
+    assert.equal(mine?.approved, false);
+    assert.ok(mine?.created && mine.modified && Math.abs(Date.parse(mine.created) - Date.now()) < 3_600_000, JSON.stringify(mine));
+    const values = valuesOf(mine);
+    assert.deepEqual([values.Title, values.Colour, values.Born], ["Driver check student", "Blue", "2001-03-05"]);
+    assert.match(JSON.stringify(values.Photo), /"name":"photo\.png","url":"http:\/\/localhost:8080\/pluginfile\.php\/\d+\/mod_data\/content\/\d+\/photo\.png"/);
+    assert.equal(entries.find((e) => e.id === teacherEntry)?.approved, true, "the teacher's own entries need no approval");
+    const seen = await (await as("student")).databaseEntries(databaseId);
+    assert.deepEqual(seen.map((e) => e.id).sort(), [studentEntry, teacherEntry].sort());
+    assert.equal(seen.find((e) => e.id === teacherEntry)?.values, undefined);
+    assert.equal(valuesOf(seen.find((e) => e.id === studentEntry)).Title, "Driver check student");
+    assert.deepEqual((await teacher.databaseEntries(databaseId, { search: "Driver check teacher" })).map((e) => e.id), [teacherEntry]);
+    const page = await teacher.databaseEntries(databaseId, { limit: 1 });
+    assert.deepEqual([page.items.length, page.more], [1, true]);
+  });
+
+  it("editDatabaseEntry: the student's colour, the rest as it was; the teacher's refused to the student", SLOW, async () => {
+    await (await as("student")).editDatabaseEntry(databaseId, studentEntry, { Colour: "Red" });
+    await assert.rejects((await as("student")).editDatabaseEntry(databaseId, teacherEntry, { Colour: "Blue" }), DatabaseError);
+    const values = valuesOf((await (await as("teacher")).databaseEntries(databaseId)).find((e) => e.id === studentEntry));
+    assert.deepEqual([values.Title, values.Colour], ["Driver check student", "Red"]);
+    assert.match(JSON.stringify(values.Photo), /photo\.png/);
+  });
+
+  it("setDatabaseEntryApproved: refused to the student; approved by the teacher, taken back", SLOW, async () => {
+    await assert.rejects((await as("student")).setDatabaseEntryApproved(databaseId, studentEntry, true), DatabaseError);
+    const teacher = await as("teacher");
+    await teacher.setDatabaseEntryApproved(databaseId, studentEntry, true);
+    assert.equal((await teacher.databaseEntries(databaseId)).find((e) => e.id === studentEntry)?.approved, true);
+    await teacher.setDatabaseEntryApproved(databaseId, studentEntry, false);
+    assert.equal((await teacher.databaseEntries(databaseId)).find((e) => e.id === studentEntry)?.approved, false);
+  });
+
+  it("exportDatabaseEntries: a CSV of both entries with their times and approval; refused to the student", SLOW, async () => {
+    const file = textFile("driver-check-export.csv", "");
+    assert.equal((await (await as("teacher")).exportDatabaseEntries(databaseId, file, { times: true, approval: true })).entries, 2);
+    const [header, ...rows] = readFileSync(file, "utf8").trim().split("\n");
+    assert.match(header!, /^Title,Colour,Born,Photo,/);
+    assert.ok(rows.some((row) => row.startsWith('"Driver check student",Red,')), rows.join("\n"));
+    await assert.rejects((await as("student")).exportDatabaseEntries(databaseId, file), DatabaseError);
+  });
+
+  it("importDatabaseEntries: an entry from a CSV, then deleted; refused to the student", SLOW, async () => {
+    const file = textFile("driver-check-import.csv", "Title,Colour\nDriver check imported,Blue\n");
+    await assert.rejects((await as("student")).importDatabaseEntries(databaseId, file), DatabaseError);
+    const teacher = await as("teacher");
+    assert.equal((await teacher.importDatabaseEntries(databaseId, file)).added, 1);
+    const [imported] = await teacher.databaseEntries(databaseId, { search: "Driver check imported" });
+    assert.equal(valuesOf(imported).Colour, "Blue");
+    await teacher.deleteDatabaseEntry(databaseId, imported!.id);
+  });
+
+  it("deleteDatabaseEntry: the teacher's refused to the student; both deleted by the teacher", SLOW, async () => {
+    await assert.rejects((await as("student")).deleteDatabaseEntry(databaseId, teacherEntry), DatabaseError);
+    const teacher = await as("teacher");
+    await teacher.deleteDatabaseEntry(databaseId, studentEntry);
+    await teacher.deleteDatabaseEntry(databaseId, teacherEntry);
+    assert.deepEqual(await teacher.databaseEntries(databaseId), []);
   });
 });

@@ -97,7 +97,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `LessonError` | [Lessons](../areas/lessons.md) |
 | `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
 | `ScormError` | [SCORM](../areas/scorm.md) |
-| `NotADatabaseError`, `DatabaseError` | [Databases](../areas/databases.md): not a database; the person can't manage it, or Moodle refused a field, template or preset |
+| `NotADatabaseError`, `DatabaseError` | [Databases](../areas/databases.md): not a database; the person can't manage it, or Moodle refused a field, template or preset, or an entry, its approval, its deletion, an export or an import |
 | `NoGradeReportError`, `GradebookError` | [Grades and gradebook](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Completion](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Badges](../areas/badges.md): a missing badge capability (named), a criterion Moodle doesn't offer; a site with badges off |

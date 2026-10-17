@@ -33,6 +33,16 @@ export interface MoodleMethods {
    */
   addBookChapter(activityId: number, input: import("./areas/activities/books.js").BookChapterInput): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /**
+   * Adds an entry to a database activity through its "Add entry" form, as the person would: `values` by
+   * field id or name (see `DatabaseEntryInput`); fields left out stay as the form has them (a date
+   * field's form starts at today, and Moodle saves it). Local files go up to the field's draft area,
+   * as the file picker does. Returns the new entry's id. Throws `MoodleError` (`invalid-input`) for a
+   * field the form hasn't or a value it doesn't take, before anything is saved; `DatabaseError` when
+   * Moodle refuses the person (it takes `mod/data:writeentry`, within the database's dates and entry
+   * limits) or the entry (a required field without a value…, with Moodle's messages); `NotADatabaseError`.
+   */
+  addDatabaseEntry(activityId: number, values: import("./areas/databases/entries.js").DatabaseEntryValues): Promise<{ changed: string; entryId: number; }>;
+  /**
    * Adds a field to a database activity through Moodle's form for its type, as "Create a field" does:
    * templates left at Moodle's default show it, and Moodle appends it to a saved single, add entry or
    * RSS template that has no `##otherfields##` (not to the list template). Returns its id and the fields afterwards.
@@ -360,6 +370,39 @@ export interface MoodleMethods {
    */
   createQuestion(activityId: number, input: import("./areas/questions/banks.js").QuestionInput): Promise<{ changed: string; questionId?: number | undefined; }>;
   /**
+   * A database activity's entries, in its list's order (the person's sort, or the database's), each
+   * with its author, when it was added and changed, whether it's approved, and its fields' values for
+   * the entries the person can edit (read from their edit forms; files with their URLs). `search` is
+   * Moodle's simple search. With `limit`, a page of them (see "Long lists" in the docs' concepts), read
+   * from the list's pages that hold it. Moodle's services for entries are only for its mobile app: the
+   * list and each entry's single view are read through what Moodle's tags write in the database's
+   * templates (its default ones and presets have them). Throws `NotADatabaseError` when the id isn't a
+   * database, `DatabaseError` when the person can't see its entries or its list template shows no link to them.
+   */
+  databaseEntries(activityId: number, options: import("./core/paging.js").WithLimit<import("./areas/databases/entries.js").DatabaseEntryOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/databases/entries.js").DatabaseEntry>>;
+  /**
+   * A database activity's entries, in its list's order (the person's sort, or the database's), each
+   * with its author, when it was added and changed, whether it's approved, and its fields' values for
+   * the entries the person can edit (read from their edit forms; files with their URLs). `search` is
+   * Moodle's simple search. With `limit`, a page of them (see "Long lists" in the docs' concepts), read
+   * from the list's pages that hold it. Moodle's services for entries are only for its mobile app: the
+   * list and each entry's single view are read through what Moodle's tags write in the database's
+   * templates (its default ones and presets have them). Throws `NotADatabaseError` when the id isn't a
+   * database, `DatabaseError` when the person can't see its entries or its list template shows no link to them.
+   */
+  databaseEntries(activityId: number, options?: import("./core/paging.js").WithoutLimit<import("./areas/databases/entries.js").DatabaseEntryOptions>): Promise<import("./areas/databases/entries.js").DatabaseEntry[]>;
+  /**
+   * A database activity's entries, in its list's order (the person's sort, or the database's), each
+   * with its author, when it was added and changed, whether it's approved, and its fields' values for
+   * the entries the person can edit (read from their edit forms; files with their URLs). `search` is
+   * Moodle's simple search. With `limit`, a page of them (see "Long lists" in the docs' concepts), read
+   * from the list's pages that hold it. Moodle's services for entries are only for its mobile app: the
+   * list and each entry's single view are read through what Moodle's tags write in the database's
+   * templates (its default ones and presets have them). Throws `NotADatabaseError` when the id isn't a
+   * database, `DatabaseError` when the person can't see its entries or its list template shows no link to them.
+   */
+  databaseEntries(activityId: number, options?: import("./areas/databases/entries.js").DatabaseEntryOptions): Promise<import("./areas/databases/entries.js").DatabaseEntry[] | import("./core/paging.js").ListPage<import("./areas/databases/entries.js").DatabaseEntry>>;
+  /**
    * A database activity's fields, in the fields page's order: each one's id, name, type, description,
    * whether it's required and its type's settings (`DatabaseFieldOptions`), read from its edit form.
    * Throws `NotADatabaseError` when the id isn't a database, `DatabaseError` when the person can't
@@ -393,6 +436,13 @@ export interface MoodleMethods {
    * a subchapter) deletes its subchapters too. Throws `BookError` when the chapter isn't in the book.
    */
   deleteBookChapter(activityId: number, chapterId: number): Promise<import("./areas/activities/books.js").BookChapterChange>;
+  /**
+   * Deletes an entry of a database activity, as its Delete action confirmed does: its values and files
+   * go with it. Throws `DatabaseError` when Moodle doesn't delete it: the database has no such entry,
+   * or the person can't (someone else's takes `mod/data:manageentries`; authors delete theirs while
+   * Moodle lets them change it); `NotADatabaseError`.
+   */
+  deleteDatabaseEntry(activityId: number, entryId: number): Promise<{ changed: string; }>;
   /**
    * Deletes a database field, as its delete action confirmed does: what entries have in it goes too, and
    * its tags leave the templates. Returns the fields afterwards. Throws `MoodleError` (`not-found`)
@@ -467,6 +517,14 @@ export interface MoodleMethods {
    */
   editBookChapter(activityId: number, chapterId: number, input: { title?: string | undefined; content?: string | undefined; subchapter?: boolean | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /**
+   * Changes an entry of a database activity through its edit form: what `values` leaves out stays as it
+   * is (files included). Returns the entry's id. Throws `MoodleError` (`invalid-input`) as
+   * `addDatabaseEntry` does; `DatabaseError` when Moodle doesn't let the person edit it (someone
+   * else's takes `mod/data:manageentries`; authors change theirs while Moodle lets them: not once
+   * approved, unless the database allows it) or refuses the values; `NotADatabaseError`.
+   */
+  editDatabaseEntry(activityId: number, entryId: number, values: import("./areas/databases/entries.js").DatabaseEntryValues): Promise<{ changed: string; entryId: number; }>;
+  /**
    * Changes a database field through its edit form: what `changes` leaves out stays as it is (its
    * options one by one). Renaming it renames its tag in the templates, as Moodle does. Its type can't
    * change: delete it and add another. Returns the fields afterwards. Throws `MoodleError`
@@ -514,6 +572,15 @@ export interface MoodleMethods {
    * Throws `EnrolmentError` when the person can't manage the course's enrolment methods.
    */
   enrolmentMethods(courseId: number): Promise<import("./areas/participants/methods.js").EnrolmentMethod[]>;
+  /**
+   * Exports a database activity's entries to a CSV file (`file`, an absolute path, replaced if it's
+   * there), as its "Export entries" page does with a comma: a column per field that Moodle exports (not
+   * images and files, which go only in its zip), by the field's name, and `options`' columns. Every
+   * entry of the person's group, approved or not. Returns where it wrote it and how many entries.
+   * Throws `DatabaseError` when Moodle refuses the export (it takes `mod/data:viewalluserpresets`,
+   * which teachers have) or the database has no fields; `NotADatabaseError`.
+   */
+  exportDatabaseEntries(activityId: number, file: string, options?: import("./areas/databases/entries.js").DatabaseExportOptions): Promise<{ file: string; entries: number; }>;
   /** Submits an attempt for grading, and gives its review when the quiz shows it. */
   finishQuizAttempt(attemptId: number): Promise<{ changed: string; attemptId: number; finished: true; review: { summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; } | undefined; }>;
   /**
@@ -599,6 +666,16 @@ export interface MoodleMethods {
    * that it didn't have before, by id.
    */
   importActivities(fromCourseId: number, toCourseId: number, options?: { activityIds?: number[] | undefined; }): Promise<{ changed: string; activityIds: number[]; }>;
+  /**
+   * Imports entries into a database activity from a CSV file (an absolute path), as its "Import entries"
+   * page does: a header row with the fields' names (as `exportDatabaseEntries` writes it; its user,
+   * time and approval columns are taken or skipped as Moodle does: a `Username` column makes that user
+   * the author), `delimiter` between values (a comma unless given), UTF-8. Returns how many entries
+   * Moodle added. Throws `DatabaseError` when Moodle refuses the person (it takes
+   * `mod/data:manageentries`) or the file (a column that isn't a field…, with Moodle's message);
+   * `NotADatabaseError`.
+   */
+  importDatabaseEntries(activityId: number, file: string, options?: { delimiter?: "comma" | "semicolon" | "tab" | "colon" | undefined; }): Promise<{ changed: string; added: number; }>;
   /**
    * Imports questions into a bank from a GIFT or Moodle XML file (a local path) or text, through the
    * bank's import form; returns the questions created. A file Moodle can't parse comes back as a
@@ -900,6 +977,13 @@ export interface MoodleMethods {
    * gives a `CompletionError`.
    */
   setCompletion(activityId: number, done: boolean): Promise<{ changed: string; }>;
+  /**
+   * Approves an entry of a database activity, or takes its approval back, as its Approve and Undo
+   * approval actions do: an entry waiting for approval shows only to its author and to those who can
+   * approve. Throws `DatabaseError` when Moodle doesn't do it: the person lacks `mod/data:approve`, or
+   * the database has no such entry; `NotADatabaseError`.
+   */
+  setDatabaseEntryApproved(activityId: number, entryId: number, approved: boolean): Promise<{ changed: string; approved: boolean; }>;
   /**
    * Saves one of a database's templates (`DATABASE_TEMPLATES`) as it is, without Moodle's HTML editor
    * in between, as its templates page's Save does; `null` resets it to Moodle's default (for the list

@@ -33,7 +33,7 @@ moodle-driver inicia sesión como lo hace la persona, en una ventana del navegad
 | Foros | Leer debates y mensajes, responder, abrir debates, editar y eliminar mensajes, fijar y bloquear, calificar el foro en su conjunto, valorar mensajes (y entradas de glosario, registros de bases de datos) |
 | Talleres | Leer la fase de un taller, sus entregas y evaluaciones, cambiar su fase, asignar revisores (a mano, al azar, programada), evaluar una entrega |
 | Encuestas y consultas | Responder cuestionarios de encuesta, actividades de retroalimentación y consultas; leer las respuestas de todos como profesor |
-| Bases de datos | Dar a una actividad de base de datos sus campos, plantillas y preajustes |
+| Bases de datos | Dar a una actividad de base de datos sus campos, plantillas y preajustes; leer, añadir, editar, aprobar y eliminar sus entradas, exportarlas e importarlas como CSV |
 | Lecciones, H5P y SCORM | Recorrer una lección página a página; leer el tipo y los intentos de una actividad H5P; leer los intentos y los SCO de un SCORM, abrir su reproductor, crear uno a partir de un paquete |
 | Calificaciones | Las calificaciones de la persona, el informe del calificador y las exportaciones de calificaciones de Moodle, calificar y anular calificaciones en el libro de calificaciones, la configuración del libro de calificaciones (elementos manuales, categorías, ponderaciones) |
 | Finalización e insignias | Marcar actividades como hechas, anular la finalización, leer el informe de progreso; insignias del curso: crearlas, fijar sus criterios, habilitarlas, otorgarlas a mano |

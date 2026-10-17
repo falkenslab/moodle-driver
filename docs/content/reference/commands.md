@@ -77,6 +77,19 @@ moodle add-book-chapter <activityId> --options
 | `--after-chapter-id` | `number` | The chapter it goes after; at the end of the book without it. |
 | `--embed` | `string[]` | Local files (absolute paths) to embed in the content, which names each by its file name (`<img src="shot.png">`). |
 
+## addDatabaseEntry
+
+Adds an entry to a database activity through its "Add entry" form, as the person would: `values` by field id or name (see `DatabaseEntryInput`); fields left out stay as the form has them (a date field's form starts at today, and Moodle saves it). Local files go up to the field's draft area, as the file picker does. Returns the new entry's id. Throws `MoodleError` (`invalid-input`) for a field the form hasn't or a value it doesn't take, before anything is saved; `DatabaseError` when Moodle refuses the person (it takes `mod/data:writeentry`, within the database's dates and entry limits) or the entry (a required field without a value…, with Moodle's messages); `NotADatabaseError`.
+
+```bash
+moodle add-database-entry <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--<name> <value>` | | Any other field of `values` |
+
 ## addDatabaseField
 
 Adds a field to a database activity through Moodle's form for its type, as "Create a field" does: templates left at Moodle's default show it, and Moodle appends it to a saved single, add entry or RSS template that has no `##otherfields##` (not to the list template). Returns its id and the fields afterwards. Throws `MoodleError` (`invalid-input`) for a type that isn't one of `DATABASE_FIELD_TYPES`, an option the type doesn't take, a choice list without choices or a required date (Moodle's form offers it no such setting), before anything changes; `DatabaseError` with Moodle's reason when it refuses the field (a name the database already has, an image size that isn't a number, a maximum size its form doesn't offer); `NotADatabaseError` when the id isn't a database.
@@ -673,6 +686,21 @@ moodle create-question <activityId> --options
 | `--default-mark` | `number` |  |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
 
+## databaseEntries
+
+A database activity's entries, in its list's order (the person's sort, or the database's), each with its author, when it was added and changed, whether it's approved, and its fields' values for the entries the person can edit (read from their edit forms; files with their URLs). `search` is Moodle's simple search. With `limit`, a page of them (see "Long lists" in the docs' concepts), read from the list's pages that hold it. Moodle's services for entries are only for its mobile app: the list and each entry's single view are read through what Moodle's tags write in the database's templates (its default ones and presets have them). Throws `NotADatabaseError` when the id isn't a database, `DatabaseError` when the person can't see its entries or its list template shows no link to them.
+
+```bash
+moodle database-entries <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--search` | `string` | Moodle's simple search: entries with this text in any field. |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
+
 ## databaseFields
 
 A database activity's fields, in the fields page's order: each one's id, name, type, description, whether it's required and its type's settings (`DatabaseFieldOptions`), read from its edit form. Throws `NotADatabaseError` when the id isn't a database, `DatabaseError` when the person can't manage it (it takes `mod/data:managetemplates`, which editing teachers have).
@@ -748,6 +776,19 @@ moodle delete-book-chapter <activityId> <chapterId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `chapterId` | `number` |  |
+
+## deleteDatabaseEntry
+
+Deletes an entry of a database activity, as its Delete action confirmed does: its values and files go with it. Throws `DatabaseError` when Moodle doesn't delete it: the database has no such entry, or the person can't (someone else's takes `mod/data:manageentries`; authors delete theirs while Moodle lets them change it); `NotADatabaseError`.
+
+```bash
+moodle delete-database-entry <activityId> <entryId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `entryId` | `number` |  |
 
 ## deleteDatabaseField
 
@@ -949,6 +990,20 @@ moodle edit-book-chapter <activityId> <chapterId> --options
 | `--subchapter` | `boolean` |  |
 | `--embed` | `string[]` |  |
 
+## editDatabaseEntry
+
+Changes an entry of a database activity through its edit form: what `values` leaves out stays as it is (files included). Returns the entry's id. Throws `MoodleError` (`invalid-input`) as `addDatabaseEntry` does; `DatabaseError` when Moodle doesn't let the person edit it (someone else's takes `mod/data:manageentries`; authors change theirs while Moodle lets them: not once approved, unless the database allows it) or refuses the values; `NotADatabaseError`.
+
+```bash
+moodle edit-database-entry <activityId> <entryId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `entryId` | `number` |  |
+| `--<name> <value>` | | Any other field of `values` |
+
 ## editDatabaseField
 
 Changes a database field through its edit form: what `changes` leaves out stays as it is (its options one by one). Renaming it renames its tag in the templates, as Moodle does. Its type can't change: delete it and add another. Returns the fields afterwards. Throws `MoodleError` (`not-found`) when the database has no such field, (`invalid-input`) for an option its type doesn't take; `DatabaseError` with Moodle's reason when it refuses the change; `NotADatabaseError` when the id isn't a database.
@@ -1065,6 +1120,22 @@ moodle enrolment-methods <courseId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` | `number` |  |
+
+## exportDatabaseEntries
+
+Exports a database activity's entries to a CSV file (`file`, an absolute path, replaced if it's there), as its "Export entries" page does with a comma: a column per field that Moodle exports (not images and files, which go only in its zip), by the field's name, and `options`' columns. Every entry of the person's group, approved or not. Returns where it wrote it and how many entries. Throws `DatabaseError` when Moodle refuses the export (it takes `mod/data:viewalluserpresets`, which teachers have) or the database has no fields; `NotADatabaseError`.
+
+```bash
+moodle export-database-entries <activityId> <file> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `file` | `string` |  |
+| `--user-details` | `boolean` | The author's full name, username and email (Moodle's "Include user details", which takes `mod/data:exportuserinfo`). |
+| `--times` | `boolean` | When each entry was added and changed. |
+| `--approval` | `boolean` | Whether each entry is approved, for a database that needs approval. |
 
 ## exportGrades
 
@@ -1290,6 +1361,20 @@ moodle import-activities <fromCourseId> <toCourseId> [--options]
 | `fromCourseId` | `number` |  |
 | `toCourseId` | `number` |  |
 | `--activity-ids` | `number[]` |  |
+
+## importDatabaseEntries
+
+Imports entries into a database activity from a CSV file (an absolute path), as its "Import entries" page does: a header row with the fields' names (as `exportDatabaseEntries` writes it; its user, time and approval columns are taken or skipped as Moodle does: a `Username` column makes that user the author), `delimiter` between values (a comma unless given), UTF-8. Returns how many entries Moodle added. Throws `DatabaseError` when Moodle refuses the person (it takes `mod/data:manageentries`) or the file (a column that isn't a field…, with Moodle's message); `NotADatabaseError`.
+
+```bash
+moodle import-database-entries <activityId> <file> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `file` | `string` |  |
+| `--delimiter` | `"comma" \| "semicolon" \| "tab" \| "colon"` |  |
 
 ## importQuestions
 
@@ -1861,6 +1946,20 @@ moodle set-completion <activityId> <done>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `done` | `boolean` |  |
+
+## setDatabaseEntryApproved
+
+Approves an entry of a database activity, or takes its approval back, as its Approve and Undo approval actions do: an entry waiting for approval shows only to its author and to those who can approve. Throws `DatabaseError` when Moodle doesn't do it: the person lacks `mod/data:approve`, or the database has no such entry; `NotADatabaseError`.
+
+```bash
+moodle set-database-entry-approved <activityId> <entryId> <approved>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `entryId` | `number` |  |
+| `approved` | `boolean` |  |
 
 ## setDatabaseTemplate
 

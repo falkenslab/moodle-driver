@@ -320,6 +320,14 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   setDatabaseTemplate: CONTENT,
   databasePresets: CONTENT,
   applyDatabasePreset: CONTENT,
+  // A database's entries: what participants add; others' when reading, exporting or moderating them.
+  databaseEntries: PERSONAL,
+  addDatabaseEntry: CONTENT,
+  editDatabaseEntry: ["course-content", "others-write"],
+  deleteDatabaseEntry: ["course-content", "others-write"],
+  setDatabaseEntryApproved: ["course-content", "others-write"],
+  exportDatabaseEntries: PERSONAL,
+  importDatabaseEntries: ["course-content", "others-write"],
 
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],

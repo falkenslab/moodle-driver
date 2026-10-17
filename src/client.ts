@@ -36,6 +36,7 @@ import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/l
 import { addLessonPage, deleteLessonPage, editLessonPage, lessonPages, moveLessonPage } from "./areas/lessons/pages.js";
 import { addDatabaseField, databaseFields, deleteDatabaseField, editDatabaseField } from "./areas/databases/fields.js";
 import { applyDatabasePreset, databasePresets, databaseTemplates, setDatabaseTemplate } from "./areas/databases/templates.js";
+import { addDatabaseEntry, databaseEntries, deleteDatabaseEntry, editDatabaseEntry, exportDatabaseEntries, importDatabaseEntries, setDatabaseEntryApproved } from "./areas/databases/entries.js";
 import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
@@ -71,13 +72,18 @@ const SITE_FUNCTIONS = {
   setBadgeEnabled,
   awardBadge,
   activitiesOverview,
+  addDatabaseEntry,
   addDatabaseField,
   applyDatabasePreset,
+  databaseEntries,
   databaseFields,
   databasePresets,
   databaseTemplates,
+  deleteDatabaseEntry,
   deleteDatabaseField,
+  editDatabaseEntry,
   editDatabaseField,
+  setDatabaseEntryApproved,
   setDatabaseTemplate,
   activityReport,
   activitySettings,
@@ -136,7 +142,9 @@ const SITE_FUNCTIONS = {
   grantExtension,
   groups,
   h5pActivity,
+  exportDatabaseEntries,
   importActivities,
+  importDatabaseEntries,
   scorm,
   importQuestions,
   lessonPage,
