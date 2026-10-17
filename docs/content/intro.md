@@ -37,6 +37,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Glossaries | Read, add, change and delete entries, approve them, add categories, export and import entries in Moodle's XML |
 | Lessons, H5P and SCORM | Go through a lesson page by page; read an H5P activity's type and attempts; list, upload, rename, download and delete a course's content bank; read a SCORM's attempts and SCOs, open its player, create one from a package |
 | External tools | List a course's LTI tools, add and delete the course's own, show them in the activity chooser, create an activity from one, give the person its launch URL |
+| BigBlueButton | Read a meeting's state, schedule and recordings, give the person's join URL; publish, unpublish and delete recordings |
 | Grades | The person's grades, the grader report and Moodle's grade exports, grading and overriding in the gradebook, the gradebook setup (manual items, categories, weights), CSV imports, scales and grade letters |
 | Completion, badges and competencies | Mark activities done, override completion, read the progress report; course badges: create them, set their criteria, enable them, award them by hand; competencies: add them to a course, link them to activities, rate participants |
 | People | Participants with roles and groups, inactivity; enrol and unenrol, set roles, groups and groupings, enrolment methods, notes about them; message several at once |

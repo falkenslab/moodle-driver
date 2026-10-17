@@ -98,6 +98,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `LessonError` | [Lecciones](../areas/lessons.md) |
 | `NotAnH5PActivityError`, `ContentBankError` | [H5P](../areas/h5p.md): no es una actividad H5P; falta una capacidad del banco de contenido (nombrada), no existe ese contenido, un paquete que Moodle rechazó |
 | `ScormError` | [SCORM](../areas/scorm.md) |
+| `BigBlueButtonError`, `BigBlueButtonServerError` | [BigBlueButton](../areas/bigbluebutton.md): no es un BigBlueButton; falta una capacidad (nombrada) o el motivo por el que la persona no puede entrar ahora; un sitio cuyo servidor BigBlueButton no está configurado o no responde |
 | `NotADatabaseError`, `DatabaseError` | [Bases de datos](../areas/databases.md): no es una base de datos; la persona no puede gestionarla, o Moodle rechazó un campo, una plantilla o un preajuste, o una entrada, su aprobación, su eliminación, una exportación o una importación |
 | `NotAGlossaryError`, `GlossaryError` | [Glosarios](../areas/glossaries.md): no es un glosario; falta una capacidad del glosario (nombrada), la entrada es de otra persona, se acabó el tiempo de edición, no existe esa entrada |
 | `NoGradeReportError`, `GradebookError` | [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md) |

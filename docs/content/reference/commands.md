@@ -581,6 +581,30 @@ moodle backup-course <courseId> <destDir> [--options]
 | `--activities` | `number[]` | Course module ids of activities and resources to back up, each alone. |
 | `--timeout-ms` | `number` |  |
 
+## bigBlueButton
+
+A BigBlueButton activity as the person sees it: the meeting's state and schedule, whether the person can join now and as what, and its recordings (all of them for those with mod/bigbluebuttonbn:managerecordings, the published ones for the rest). Reads the activity's page (Moodle logs a view) and the meeting from the BigBlueButton server, through Moodle. Throws `BigBlueButtonServerError` when the site's server isn't configured or doesn't answer, never an empty state.
+
+```bash
+moodle big-blue-button <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
+## bigBlueButtonJoinUrl
+
+The person's URL to join a BigBlueButton meeting: Moodle's join page, which creates the meeting if needed and sends the person into it. For the person to open in their browser; the driver never joins. Throws `BigBlueButtonError` saying why when the person can't join now (not open yet, closed, waiting for a moderator, full, or no mod/bigbluebuttonbn:join).
+
+```bash
+moodle big-blue-button-join-url <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
 ## bookChapters
 
 A book's chapters in order: each one's id, title, whether it is a subchapter or hidden, and its place; with `content`, its HTML and images too, each chapter's page read (Moodle logs a view of it). A teacher sees hidden chapters; a student's list leaves them out. Throws `BookError` when the activity isn't a book the person can read.
@@ -1340,6 +1364,19 @@ moodle delete-questions <activityId> <questionIds>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `questionIds` | `number[]` |  |
+
+## deleteRecording
+
+Deletes a recording of a BigBlueButton activity, on the BigBlueButton server too unless it was imported (then only its link here goes). Takes mod/bigbluebuttonbn:managerecordings and :deleterecordings.
+
+```bash
+moodle delete-recording <activityId> <recordingId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `recordingId` | `number` |  |
 
 ## deleteSection
 
@@ -3117,6 +3154,20 @@ moodle set-quiz-pages <activityId> --options
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `--per-page` (required) | `number` |  |
+
+## setRecordingPublished
+
+Publishes or unpublishes a recording of a BigBlueButton activity: an unpublished recording is hidden from students (listed only to those who manage recordings) and its playbacks are off. Takes mod/bigbluebuttonbn:managerecordings and :publishrecordings or :unpublishrecordings. Returns the recording afterwards; nothing changes when it's already so.
+
+```bash
+moodle set-recording-published <activityId> <recordingId> <published>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `recordingId` | `number` |  |
+| `published` | `boolean` |  |
 
 ## setUserRoles
 

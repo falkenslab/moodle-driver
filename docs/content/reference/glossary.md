@@ -29,6 +29,10 @@ A course, or part of one (its content, and its people's data when asked), saved 
 
 A course's (or the site's) award a person earns, shown with its image on their profile: Moodle issues it when its criteria are met (completing activities or the course, a teacher awarding it by hand…), once it's enabled. While enabled its criteria can't change, and once someone has it Moodle locks it. The driver works course badges: `courseBadges` reads them (`CourseBadge`), `createBadge` makes one, `setBadgeCriteria` sets what earns it, `setBadgeEnabled` enables or disables it and `awardBadge` awards it by hand. See [Badges](../areas/badges.md).
 
+### BigBlueButton
+
+An open-source web conferencing system; in a course it's a BigBlueButton activity, module `bigbluebuttonbn`, a meeting room with an optional schedule, where people join as moderators or viewers and whose sessions may be recorded. Moodle talks to the site's BigBlueButton server (its URL and shared secret, set by an administrator) for the meeting and its recordings, which those who manage recordings publish (students see only published ones), protect or delete. The driver reads it with `bigBlueButton` (`BigBlueButtonActivity`, with `status`, `canJoin` and `recordings`), gives the person's join URL with `bigBlueButtonJoinUrl`, and changes recordings with `setRecordingPublished` and `deleteRecording`; it never joins a meeting. See [BigBlueButton](../areas/bigbluebutton.md).
+
 ### Block
 
 A box in a region of a page beside its content (on a course page, Boost's block drawer, region `side-pre`): a text block (type `html`) with a teacher's welcome or links, upcoming events, recent activity… Each is an instance with an id, a region and a weight that orders it there; teachers add, configure, move, hide and delete them in editing mode. The driver reads a course's with `courseBlocks` (`CourseBlock`) and changes them with `addBlock`, `configureBlock`, `moveBlock` and `deleteBlock`. See [Blocks](../areas/blocks.md).

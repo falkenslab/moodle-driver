@@ -42,6 +42,8 @@ export type MoodleErrorCode =
   | "not-an-h5p-activity"
   | "content-bank"
   | "scorm"
+  | "bigbluebutton"
+  | "bigbluebutton-server"
   | "workshop"
   | "lesson"
   | "message"
