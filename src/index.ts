@@ -156,6 +156,22 @@ export { scorm, openScorm, ScormError, type ScoStatus, type ScormSco, type Scorm
 export { NotADatabaseError, DatabaseError } from "./areas/databases/database.js";
 export { databaseFields, addDatabaseField, editDatabaseField, deleteDatabaseField, DATABASE_FIELD_TYPES, type DatabaseFieldType, type DatabaseField, type DatabaseFieldInput, type DatabaseFieldChanges, type DatabaseFieldOptions } from "./areas/databases/fields.js";
 export { databaseTemplates, setDatabaseTemplate, databasePresets, applyDatabasePreset, DATABASE_TEMPLATES, type DatabaseTemplate, type DatabaseTemplates, type DatabasePreset } from "./areas/databases/templates.js";
+export { NotAGlossaryError, GlossaryError } from "./areas/glossaries/glossary.js";
+export {
+  glossaryEntries,
+  addGlossaryEntry,
+  editGlossaryEntry,
+  deleteGlossaryEntry,
+  setGlossaryEntryApproved,
+  type GlossaryEntry,
+  type GlossaryAttachment,
+  type GlossaryEntryOptions,
+  type GlossaryEntryInput,
+  type GlossaryEntryChanges,
+  type GlossaryEntryChange,
+} from "./areas/glossaries/entries.js";
+export { glossaryCategories, addGlossaryCategory, type GlossaryCategory, type GlossaryCategoryChange } from "./areas/glossaries/categories.js";
+export { exportGlossaryEntries, importGlossaryEntries, type GlossaryImport } from "./areas/glossaries/transfer.js";
 
 // Grades, completion, participants, calendar, messages.
 export { myGrades, NoGradeReportError, type GradeRow } from "./areas/grades/user-report.js";

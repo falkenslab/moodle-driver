@@ -43,6 +43,23 @@ export interface MoodleMethods {
    * size its form doesn't offer); `NotADatabaseError` when the id isn't a database.
    */
   addDatabaseField(activityId: number, field: import("./areas/databases/fields.js").DatabaseFieldInput): Promise<{ changed: string; fieldId: number; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
+  /**
+   * Adds a category to a glossary, as its categories page does; with `autoLink`, Moodle links the
+   * category's name wherever it appears in the course, as it does entries. Gives the category's id and
+   * the glossary's categories afterwards. Throws `GlossaryError` when the person can't manage the
+   * glossary's categories (mod/glossary:managecategories, which teachers have) or one has that name
+   * already (Moodle compares names ignoring case).
+   */
+  addGlossaryCategory(activityId: number, options: { name: string; autoLink?: boolean | undefined; }): Promise<import("./areas/glossaries/categories.js").GlossaryCategoryChange>;
+  /**
+   * Adds an entry to a glossary as the person, through Moodle's entry form: its concept, definition
+   * (with `embed`'s local files in it), aliases, categories and attached local files. A student's entry
+   * waits for a teacher's approval when the glossary asks for it. Gives the entry's id and the entry.
+   * Throws `GlossaryError` when the glossary doesn't take entries from the person (mod/glossary:write)
+   * or a category isn't in it, `FormError` with Moodle's reasons when it refuses the entry (a concept
+   * already there, where duplicates aren't allowed).
+   */
+  addGlossaryEntry(activityId: number, input: import("./areas/glossaries/entries.js").GlossaryEntryInput): Promise<import("./areas/glossaries/entries.js").GlossaryEntryChange>;
   /** Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it. */
   addGradeCategory(courseId: number, options: { name: string; aggregation?: "mean" | "median" | "lowest" | "highest" | "mode" | "weighted-mean" | "simple-weighted-mean" | "mean-with-extra-credits" | "natural" | undefined; parentId?: number | undefined; }): Promise<{ changed: string; category?: import("./areas/grades/gradebook.js").GradebookCategory | undefined; }>;
   /**
@@ -395,6 +412,12 @@ export interface MoodleMethods {
   /** Deletes a calendar event the person can manage. */
   deleteEvent(eventId: number): Promise<{ changed: string; }>;
   /**
+   * Deletes an entry, with its files, as its delete link does after Moodle's confirmation. A student
+   * deletes their own entries while the site's editing time lasts; a teacher, anyone's. Throws
+   * `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry).
+   */
+  deleteGlossaryEntry(activityId: number, entryId: number): Promise<import("./areas/glossaries/entries.js").GlossaryEntryChange>;
+  /**
    * Deletes a grade category. Moodle moves what it held (items and categories) into its parent and
    * deletes the grades of its total; the course's own category can't be deleted.
    */
@@ -468,6 +491,15 @@ export interface MoodleMethods {
    */
   editDatabaseField(activityId: number, fieldId: number, changes: import("./areas/databases/fields.js").DatabaseFieldChanges): Promise<{ changed: string; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
   /**
+   * Changes an entry through its form: only what's given (`attachments` replaces its attachments, `[]`
+   * removes them). A student changes their own entries while the site's editing time lasts (or always,
+   * when the glossary lets them); a teacher changes anyone's. An entry saved by someone who can approve
+   * it comes out approved, as Moodle saves it (confirmed empirically, 5.2). Throws `GlossaryError` when Moodle refuses
+   * (someone else's entry, the editing time over, no such entry in the glossary), `FormError` with
+   * Moodle's reasons when it refuses the changes.
+   */
+  editGlossaryEntry(activityId: number, entryId: number, changes: Partial<import("./areas/glossaries/entries.js").GlossaryEntryInput>): Promise<import("./areas/glossaries/entries.js").GlossaryEntryChange>;
+  /**
    * Changes a page of a lesson through its form in the lesson editor, with what's given: its title,
    * contents, buttons or answers (given, they replace them all: the form's other rows are blanked, and
    * Moodle drops blank ones), options and other fields. A page keeps its type. A jump to a page the
@@ -506,6 +538,13 @@ export interface MoodleMethods {
    * Throws `EnrolmentError` when the person can't manage the course's enrolment methods.
    */
   enrolmentMethods(courseId: number): Promise<import("./areas/participants/methods.js").EnrolmentMethod[]>;
+  /**
+   * Saves a glossary's approved entries into `destDir` as Moodle's XML (`export.xml`, with their
+   * aliases, categories and files; Moodle leaves the waiting ones out, confirmed on 5.2), as the
+   * glossary's "Export entries" does; the file imports into a glossary with `importGlossaryEntries`.
+   * Returns the file as `downloadFile` does (never overwriting one). Throws `GlossaryError` when the person can't export the glossary (mod/glossary:export).
+   */
+  exportGlossaryEntries(activityId: number, options: { destDir: string; }): Promise<import("./core/files.js").DownloadedFile>;
   /** Submits an attempt for grading, and gives its review when the quiz shows it. */
   finishQuizAttempt(attemptId: number): Promise<{ changed: string; attemptId: number; finished: true; review: { summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; } | undefined; }>;
   /**
@@ -537,6 +576,46 @@ export interface MoodleMethods {
   getChoice(activityId: number): Promise<import("./areas/surveys/choice.js").Choice>;
   /** A survey (questionnaire or feedback): whether it can be answered, its intro and messages, and its questions page by page. Its module is found when not given. */
   getSurvey(activityId: number, type?: import("./areas/surveys/surveys.js").SurveyType): Promise<{ questions: import("./areas/surveys/surveys.js").SurveyQuestion[]; canAnswer: boolean; intro: string; messages: string[]; }>;
+  /**
+   * A glossary's categories, by id and name, in Moodle's order (by name): from the glossary's category
+   * view, or, when its display format has none ("Simple, dictionary style"), from the entry form. Throws
+   * `NotAGlossaryError` when the activity isn't a glossary the person can open, `GlossaryError` when
+   * the display format shows no categories and the person can't add entries either.
+   */
+  glossaryCategories(activityId: number): Promise<import("./areas/glossaries/categories.js").GlossaryCategory[]>;
+  /**
+   * A glossary's entries, in the glossary's order (by concept; the approval page's by creation): each
+   * one's id, concept, definition (HTML), aliases, categories, author, whether it's approved, and its
+   * attachments. What the person sees: approved entries and their own waiting for approval; with
+   * `pending`, the entries waiting for approval (for who can approve them). By `letter`, or a `search`
+   * of concepts, aliases and definitions; paged with `limit` and `offset`. An entry the page names no id
+   * for (a student's own waiting for approval, once its editing time is over) is left out. Throws
+   * `NotAGlossaryError` when the activity isn't a glossary the person can open, `GlossaryError` when the
+   * approval page is refused (it takes mod/glossary:approve).
+   */
+  glossaryEntries(activityId: number, options: import("./core/paging.js").WithLimit<import("./areas/glossaries/entries.js").GlossaryEntryOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/glossaries/entries.js").GlossaryEntry>>;
+  /**
+   * A glossary's entries, in the glossary's order (by concept; the approval page's by creation): each
+   * one's id, concept, definition (HTML), aliases, categories, author, whether it's approved, and its
+   * attachments. What the person sees: approved entries and their own waiting for approval; with
+   * `pending`, the entries waiting for approval (for who can approve them). By `letter`, or a `search`
+   * of concepts, aliases and definitions; paged with `limit` and `offset`. An entry the page names no id
+   * for (a student's own waiting for approval, once its editing time is over) is left out. Throws
+   * `NotAGlossaryError` when the activity isn't a glossary the person can open, `GlossaryError` when the
+   * approval page is refused (it takes mod/glossary:approve).
+   */
+  glossaryEntries(activityId: number, options?: import("./core/paging.js").WithoutLimit<import("./areas/glossaries/entries.js").GlossaryEntryOptions>): Promise<import("./areas/glossaries/entries.js").GlossaryEntry[]>;
+  /**
+   * A glossary's entries, in the glossary's order (by concept; the approval page's by creation): each
+   * one's id, concept, definition (HTML), aliases, categories, author, whether it's approved, and its
+   * attachments. What the person sees: approved entries and their own waiting for approval; with
+   * `pending`, the entries waiting for approval (for who can approve them). By `letter`, or a `search`
+   * of concepts, aliases and definitions; paged with `limit` and `offset`. An entry the page names no id
+   * for (a student's own waiting for approval, once its editing time is over) is left out. Throws
+   * `NotAGlossaryError` when the activity isn't a glossary the person can open, `GlossaryError` when the
+   * approval page is refused (it takes mod/glossary:approve).
+   */
+  glossaryEntries(activityId: number, options?: import("./areas/glossaries/entries.js").GlossaryEntryOptions): Promise<import("./areas/glossaries/entries.js").GlossaryEntry[] | import("./core/paging.js").ListPage<import("./areas/glossaries/entries.js").GlossaryEntry>>;
   /**
    * Gives a person their whole-forum grade, as the forum's grader does: points (out of the forum's
    * maximum), or a scale item by name or value; `null` takes the grade away. Moodle's forum grader
@@ -591,6 +670,14 @@ export interface MoodleMethods {
    * that it didn't have before, by id.
    */
   importActivities(fromCourseId: number, toCourseId: number, options?: { activityIds?: number[] | undefined; }): Promise<{ changed: string; activityIds: number[]; }>;
+  /**
+   * Imports the entries of a glossary's XML (as `exportGlossaryEntries` saves it) into this glossary,
+   * through its import form, as the teacher's own entries, approved. With `categories`, the entries'
+   * categories come too, added when the glossary lacks them. Moodle rejects an entry whose concept is
+   * already there (when the glossary takes no duplicates) or that has no concept or definition. Throws
+   * `GlossaryError` when the person can't import (mod/glossary:import) or Moodle can't read the file.
+   */
+  importGlossaryEntries(activityId: number, file: string, options?: { categories?: boolean | undefined; }): Promise<import("./areas/glossaries/transfer.js").GlossaryImport>;
   /**
    * Imports questions into a bank from a GIFT or Moodle XML file (a local path) or text, through the
    * bank's import form; returns the questions created. A file Moodle can't parse comes back as a
@@ -925,6 +1012,13 @@ export interface MoodleMethods {
    * refuses the form (a key required by the site, an end before the start).
    */
   setEnrolmentMethod(courseId: number, method: number | { type: string; }, settings: import("./areas/participants/methods.js").EnrolmentMethodSettings): Promise<{ changed: string; method: import("./areas/participants/methods.js").EnrolmentMethod; }>;
+  /**
+   * Approves an entry waiting for approval, or takes an approval back (the entry then waits again,
+   * hidden from everyone but its author and who can approve), as the approve and "Undo approval" links
+   * do. Throws `GlossaryError` when the person can't approve (mod/glossary:approve, which teachers have)
+   * or the glossary shows them no such entry.
+   */
+  setGlossaryEntryApproved(activityId: number, entryId: number, approved: boolean): Promise<import("./areas/glossaries/entries.js").GlossaryEntryChange>;
   /**
    * Sets a person's grade in a grade item through the gradebook's single view report, as a teacher
    * does there: a manual item takes the grade; an activity's or a category's is overridden (Moodle

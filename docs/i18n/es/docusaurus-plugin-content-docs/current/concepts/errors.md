@@ -98,6 +98,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
 | `ScormError` | [SCORM](../areas/scorm.md) |
 | `NotADatabaseError`, `DatabaseError` | [Bases de datos](../areas/databases.md): no es una base de datos; la persona no puede gestionarla, o Moodle rechazó un campo, una plantilla o un preajuste |
+| `NotAGlossaryError`, `GlossaryError` | [Glosarios](../areas/glossaries.md): no es un glosario; falta una capacidad del glosario (nombrada), la entrada es de otra persona, se acabó el tiempo de edición, no existe esa entrada |
 | `NoGradeReportError`, `GradebookError` | [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Finalización](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Insignias](../areas/badges.md): falta una capacidad de insignias (que se nombra), un criterio que Moodle no ofrece; un sitio con las insignias desactivadas |

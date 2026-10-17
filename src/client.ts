@@ -36,6 +36,9 @@ import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/l
 import { addLessonPage, deleteLessonPage, editLessonPage, lessonPages, moveLessonPage } from "./areas/lessons/pages.js";
 import { addDatabaseField, databaseFields, deleteDatabaseField, editDatabaseField } from "./areas/databases/fields.js";
 import { applyDatabasePreset, databasePresets, databaseTemplates, setDatabaseTemplate } from "./areas/databases/templates.js";
+import { addGlossaryEntry, deleteGlossaryEntry, editGlossaryEntry, glossaryEntries, setGlossaryEntryApproved } from "./areas/glossaries/entries.js";
+import { addGlossaryCategory, glossaryCategories } from "./areas/glossaries/categories.js";
+import { exportGlossaryEntries, importGlossaryEntries } from "./areas/glossaries/transfer.js";
 import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
@@ -78,6 +81,15 @@ const SITE_FUNCTIONS = {
   deleteDatabaseField,
   editDatabaseField,
   setDatabaseTemplate,
+  glossaryEntries,
+  addGlossaryEntry,
+  editGlossaryEntry,
+  deleteGlossaryEntry,
+  setGlossaryEntryApproved,
+  glossaryCategories,
+  addGlossaryCategory,
+  exportGlossaryEntries,
+  importGlossaryEntries,
   activityReport,
   activitySettings,
   addGradeCategory,

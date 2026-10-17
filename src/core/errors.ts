@@ -52,6 +52,8 @@ export type MoodleErrorCode =
   | "survey"
   | "not-a-database"
   | "database"
+  | "not-a-glossary"
+  | "glossary"
   | "badge"
   | "badges-disabled";
 
