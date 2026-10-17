@@ -268,6 +268,13 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   sendMessage: ["communication"],
   messageParticipants: ["communication"],
 
+  // Badges: what teachers set up, and how many have one; enabling awards it to whoever meets its criteria, awarding by hand decides about someone.
+  courseBadges: ["course-content", "own", "others-aggregate"],
+  createBadge: CONTENT,
+  setBadgeCriteria: CONTENT,
+  setBadgeEnabled: ["course-content", "others-write"],
+  awardBadge: ["others-write"],
+
   // The calendar: the person's upcoming events; course events are what teachers set.
   upcomingEvents: ["own", "course-content"],
   calendarEvent: ["own", "course-content"],

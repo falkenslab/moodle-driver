@@ -127,7 +127,7 @@ Complete programs for real tasks, commented, are in the [examples](https://falke
 | 🏗️ Building courses | Sections and activities of any type, settings, restrictions and completion, images embedded in rich text |
 | 📝 Assignments and grading | Submissions, rubrics and marking guides, the marking workflow, extensions, feedback files |
 | ❓ Quizzes and questions | Attempts, results, manual grading, quiz layout and overrides, question banks with GIFT and Moodle XML import |
-| 📊 Gradebook and reports | The grader report, grade items and categories, exports, completion, activity and participation reports, logs |
+| 📊 Gradebook and reports | The grader report, grade items and categories, exports, completion and badges, activity and participation reports, logs |
 | 👥 Participants and groups | Enrolments and their methods, roles, groups and groupings |
 | 💬 Forums and messages | Discussions, replies, ratings and subscriptions, workshops, notifications and conversations |
 | 📅 Calendar and to-dos | Events, deadlines, what's pending and what changed |
