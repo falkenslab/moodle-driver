@@ -226,6 +226,76 @@ interface QuizAttemptResult {
 
 People come as user id and full name: hiding who they are is the calling program's job. The report lists the attempts of enrolled users. Throws `QuizError` with Moodle's message when the person can't see the report (a student, or the id isn't a quiz).
 
+## quizStatistics
+
+A quiz's statistics report, which questions work and which don't: the quiz's figures and, per question, its facility index, standard deviation, weights, discrimination index and discriminative efficiency; a random slot's questions and a question's variants each with their own; with `responses`, how often each response was given.
+
+```ts
+function quizStatistics(context: BrowserContext, siteUrl: string, activityId: number, options?: {
+  attempts?: "highest" | "all" | "first" | "last";
+  recalculate?: boolean;
+  responses?: boolean;
+}): Promise<QuizStatistics>;
+
+interface QuizStatistics {
+  quiz: { id: number };
+  attempts?: "highest" | "all" | "first" | "last";
+  calculatedNow: boolean;
+  calculated?: { ago: string; attemptsSince: number };
+  figures: {
+    firstAttemptsCount?: number;
+    allAttemptsCount?: number;
+    firstAttemptsAverage?: string;
+    allAttemptsAverage?: string;
+    lastAttemptsAverage?: string;
+    highestAttemptsAverage?: string;
+    median?: string;
+    standardDeviation?: string;
+    skewness?: string;
+    kurtosis?: string;
+    internalConsistency?: string; // Cronbach's alpha
+    errorRatio?: string;
+    standardError?: string;
+  };
+  questions: QuizSlotStatistics[];
+}
+
+interface QuizQuestionStatistics {
+  number?: string;
+  name: string;
+  type?: string; // "truefalse", "multichoice", "random"...
+  questionId?: number;
+  variant?: number;
+  attempts?: string;
+  facility?: string;
+  standardDeviation?: string;
+  randomGuessScore?: string;
+  intendedWeight?: string;
+  effectiveWeight?: string;
+  discriminationIndex?: string;
+  discriminativeEfficiency?: string;
+  dubious?: true;
+  responses?: { part?: string; model?: string; response?: string; credit?: string; count: number; tries?: number[]; frequency?: string }[];
+}
+
+interface QuizSlotStatistics extends QuizQuestionStatistics {
+  slot: number;
+  parts?: QuizQuestionStatistics[];
+}
+```
+
+- `attempts`: the attempts the figures come from, as the report's "Calculate statistics from" offers; by default the quiz's grading method, as in the report. The result says which were used.
+- `recalculate` (default `false`): clear what Moodle stored and calculate it again now, as the report's "Recalculate now" button does.
+- `responses` (default `false`): also each question's "Analysis of responses", read from its own page (one page per question, and per part of a random slot or a question with variants). A type Moodle doesn't analyse (an essay) has none.
+- Figures are as the report shows them, in the site's format ("66.67%", "1.7321"); a figure Moodle leaves blank (a standard deviation with one attempt, a kurtosis with few) is left out. `attempts` of a question is a text too, since a summary of parts shows a range.
+- `dubious`: Moodle marks the question as possibly not pulling its weight (a discriminative efficiency under 15%).
+- `parts`: for a random slot, the questions it drew (with their bank `questionId`); for a question with variants, each `variant`.
+- `responses[]`: `model` is the model response (the class the responses fall in) and `response` the response given, when the type shows them; `part` the part of a question with several; `count` how many gave it (`tries` per try, when the quiz allows several); `credit` and `frequency` as shown.
+
+Moodle calculates the report when it's opened and has nothing stored (confirmed empirically, Moodle 5.2), so a read never waits for Moodle's scheduled task: `calculatedNow` is then `true`. What it stored stays until "Recalculate now" or Moodle's own recalculation (an ad hoc task an hour after an attempt is submitted or deleted): `calculated` says how long ago it was calculated and how many attempts were finished since, so a program can decide to `recalculate`. Calculating takes time on a large quiz, and while another calculation of the same figures runs Moodle waits for it, or after a while shows none (then a `QuizError` says to try again later).
+
+Nobody is named: the figures and counts are over every attempt. The labels of the quiz's figures and of the responses' columns are matched against Moodle's own strings in the person's language (`core_get_strings`). Throws `QuizError` when the person can't see the report (it takes the capability `quiz/statistics:view`, a teacher's), the id isn't a quiz, the quiz has no questions, or no attempt is finished and graded (attempts waiting for manual grading don't count).
+
 ## questionsToGrade
 
 The questions of a quiz that wait for grading by hand, as its manual grading report lists them, each with the finished attempts whose answer requires grading.
@@ -442,6 +512,11 @@ for (const attempt of attempts) {
   for (const q of attempt.questions) console.log(`  Q${q.slot} ${q.result ?? ""} ${q.response ?? ""}`);
 }
 
+// Which questions work: every attempt, recalculated now.
+const stats = await moodle.quizStatistics(27, { attempts: "all", recalculate: true });
+console.log(`${stats.figures.allAttemptsCount} attempts, internal consistency ${stats.figures.internalConsistency ?? "-"}`);
+for (const q of stats.questions) console.log(`  Q${q.slot} ${q.name}: facility ${q.facility ?? "-"}, discrimination ${q.discriminationIndex ?? "-"}${q.dubious ? " (dubious)" : ""}`);
+
 // One more week and an extra attempt for user 7.
 await moodle.setQuizOverride(27, 7, { close: new Date("2026-11-30T18:00:00Z"), attempts: 3 });
 
@@ -460,6 +535,7 @@ The single steps these are built on (starting an attempt, saving a page, finishi
 - `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`: `own`.
 - `readReview`: `own` and `others-personal`, since a teacher may review someone else's attempt.
 - `quizResults`, `questionsToGrade`: `others-personal`.
+- `quizStatistics`: `course-content` and `others-aggregate` (figures and counts over everyone's attempts, nobody named).
 - `gradeQuizQuestion`: `others-personal` and `others-write`.
 - `quizStructure`, `addQuestionsToQuiz`, `removeQuizSlot`, `setQuizPages`, `addQuizSection`: `course-content`.
 - `editQuizSlot`: `course-content` and `others-write` (a new maximum mark regrades the attempts already made).

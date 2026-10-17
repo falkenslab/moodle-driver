@@ -2281,6 +2281,21 @@ moodle quiz-results <activityId> [--options]
 | `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
 | `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
+## quizStatistics
+
+A quiz's statistics report: the quiz's figures (attempts, averages, median, standard deviation, skewness, kurtosis, internal consistency, error ratio, standard error) and per question its facility index, standard deviation, weights, discrimination index and efficiency; a random slot's questions and a question's variants each with their own; with `responses`, how often each response was given. Figures as the report shows them. Moodle calculates the report when it's opened with nothing stored (confirmed empirically, Moodle 5.2), so a read never waits for its scheduled task; what it stored stays until `recalculate` (or Moodle's own recalculation, an hour after an attempt): `calculatedNow` and `calculated` say which, how old and how many attempts finished since. Throws `QuizError` when the person can't see the report (it takes `quiz/statistics:view`), the activity isn't a quiz, it has no questions, or no attempt is finished and graded (attempts waiting for manual grading don't count).
+
+```bash
+moodle quiz-statistics <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--attempts` | `QuizStatisticsAttempts` | The attempts to calculate from; the quiz's grading method by default, as the report. |
+| `--recalculate` | `boolean` | Clear what Moodle has stored and calculate it again now ("Recalculate now"), for attempts finished since. |
+| `--responses` | `boolean` | Also each question's analysis of responses, from its own page (one page per question, sub-question and variant). |
+
 ## quizStructure
 
 A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark, and its sections.

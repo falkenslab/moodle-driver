@@ -1208,6 +1208,19 @@ export interface MoodleMethods {
    * "Long lists" in the docs' concepts), read from the one page of the report's own paging that holds it.
    */
   quizResults(activityId: number, options?: import("./areas/quizzes/results.js").QuizResultsOptions): Promise<import("./areas/quizzes/results.js").QuizResults<import("./areas/quizzes/results.js").QuizAttemptResult[] | import("./core/paging.js").ListPage<import("./areas/quizzes/results.js").QuizAttemptResult>>>;
+  /**
+   * A quiz's statistics report: the quiz's figures (attempts, averages, median, standard deviation,
+   * skewness, kurtosis, internal consistency, error ratio, standard error) and per question its
+   * facility index, standard deviation, weights, discrimination index and efficiency; a random slot's
+   * questions and a question's variants each with their own; with `responses`, how often each response
+   * was given. Figures as the report shows them. Moodle calculates the report when it's opened with
+   * nothing stored (confirmed empirically, Moodle 5.2), so a read never waits for its scheduled task;
+   * what it stored stays until `recalculate` (or Moodle's own recalculation, an hour after an attempt):
+   * `calculatedNow` and `calculated` say which, how old and how many attempts finished since. Throws `QuizError` when the
+   * person can't see the report (it takes `quiz/statistics:view`), the activity isn't a quiz, it has no
+   * questions, or no attempt is finished and graded (attempts waiting for manual grading don't count).
+   */
+  quizStatistics(activityId: number, options?: import("./areas/quizzes/statistics.js").QuizStatisticsOptions): Promise<import("./areas/quizzes/statistics.js").QuizStatistics>;
   /** A quiz's questions as its edit page lists them: slots with their page, question, type, name and mark, and its sections. */
   quizStructure(activityId: number): Promise<{ quiz: { id: number; }; slots: import("./areas/quizzes/structure.js").QuizSlot[]; sections: import("./areas/quizzes/structure.js").QuizSection[]; }>;
   /**

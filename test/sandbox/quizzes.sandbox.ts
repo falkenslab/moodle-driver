@@ -3,7 +3,7 @@
 // driver and the teacher grades (an essay by hand).
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
-import { FormError, QuizError, type BankQuestion, type Moodle, type Question } from "../../src/index.js";
+import { FormError, QuizError, type BankQuestion, type Moodle, type Question, type QuizStatistics } from "../../src/index.js";
 import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 const GIFT = `::Quiz TF:: The sandbox runs Moodle. {T}
@@ -65,6 +65,30 @@ describe("quizzes", () => {
       if (!quizId) return t.skip("course 3 has no visible quiz");
       const { attempts } = await teacher.quizResults(quizId);
       for (const attempt of attempts) assert.ok(attempt.id > 0 && attempt.userId > 0 && attempt.fullName);
+    });
+
+    it("quizStatistics: a quiz of the content course with attempts, all and first, as the teacher", SLOW, async (t) => {
+      // Read only: what Moodle stored is read, or calculated and stored as the report does when opened; never recalculated here.
+      const quizzes = (await teacher.courseStructure(COURSE)).flatMap((s) => s.activities).filter((a) => a.type === "quiz");
+      let all: QuizStatistics | undefined;
+      let quiz: number | undefined;
+      for (const { id: candidate } of quizzes) {
+        all = await teacher.quizStatistics(candidate, { attempts: "all" }).catch(() => undefined);
+        if (all) {
+          quiz = candidate;
+          break;
+        }
+      }
+      if (!all || !quiz) return t.skip("course 3 has no quiz with graded attempts");
+      assert.equal(all.attempts, "all");
+      assert.ok(all.figures.allAttemptsCount! >= all.figures.firstAttemptsCount! && all.figures.firstAttemptsCount! >= 1, JSON.stringify(all.figures));
+      const { slots } = await teacher.quizStructure(quiz);
+      assert.deepEqual(all.questions.map((q) => q.slot), slots.filter((s) => s.type !== "description").map((s) => s.slot));
+      assert.ok(all.questions.every((q) => q.name && q.attempts), JSON.stringify(all.questions));
+      const first = await teacher.quizStatistics(quiz, { attempts: "first" });
+      assert.equal(first.attempts, "first");
+      assert.equal(first.figures.firstAttemptsCount, all.figures.firstAttemptsCount);
+      for (const q of first.questions.filter((q) => !q.parts)) assert.equal(Number(q.attempts), first.figures.firstAttemptsCount, JSON.stringify(q));
     });
 
     it("quizResults: a student can't read them", SLOW, async (t) => {
@@ -283,6 +307,82 @@ describe("quizzes", () => {
       await assert.rejects(student.startQuizAttempt(quizId), QuizError);
       // A second override for the same user is refused.
       await assert.rejects(teacher.setQuizOverride(quizId, await userId("student"), { attempts: 2 }), QuizError);
+    });
+  });
+
+  describe("a quiz's statistics (#78)", () => {
+    let quizId: number;
+    let bankIds: number[];
+    // The student's answers, right for each of the bank's questions (the random slot may draw any).
+    const answers = (questions: Question[]) =>
+      questions.map((q) => {
+        const choice = q.fields.find((f) => f.kind === "choice");
+        const text = q.fields.find((f) => f.kind === "text" && /_answer$/.test(f.name));
+        const pick = (label: string) => ({ [choice!.name]: choice!.options!.find((o) => o.label === label)!.value });
+        if (q.type === "truefalse") return { slot: q.slot, responses: pick("True") };
+        if (q.type === "multichoice") return { slot: q.slot, responses: pick("4") };
+        return { slot: q.slot, responses: { [text!.name]: q.type === "shortanswer" ? "Paris" : "A loop repeats a block." } };
+      });
+    // An attempt by the student, answered and finished; an essay drawn by the random slot graded, so the attempt counts.
+    const attempt = async () => {
+      const { attemptId, questions } = await student.startQuizAttempt(quizId);
+      await student.answerQuizQuestions(attemptId, answers(questions), { trail: "fast" });
+      await student.finishQuizAttempt(attemptId);
+      for (const q of questions.filter((q) => q.type === "essay")) await teacher.gradeQuizQuestion(attemptId, q.slot, { mark: 1 });
+    };
+
+    before(async () => {
+      quizId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "quiz", name: "Driver check statistics", visibility: "shown" })).activityId!;
+      bankIds = bank.map((q) => q.id);
+      await teacher.addQuestionsToQuiz(quizId, { questionIds: [id("Quiz TF"), id("Quiz MC"), id("Quiz SA")] });
+      await teacher.addQuestionsToQuiz(quizId, { random: { categoryId, count: 1 } });
+    });
+
+    it("quizStatistics: a quiz without attempts, and a student, refused", SLOW, async () => {
+      await assert.rejects(teacher.quizStatistics(quizId), (error: unknown) => error instanceof QuizError && /no finished, graded attempts/.test(error.message));
+      await assert.rejects(student.quizStatistics(quizId), (error: unknown) => error instanceof QuizError && /quiz\/statistics:view/.test(error.message));
+    });
+
+    it("quizStatistics: the student's attempt, its figures, each question and its responses", SLOW, async () => {
+      await attempt();
+      const stats = await teacher.quizStatistics(quizId, { attempts: "all", responses: true });
+      assert.equal(stats.attempts, "all");
+      assert.deepEqual([stats.figures.firstAttemptsCount, stats.figures.allAttemptsCount], [1, 1]);
+      assert.match(stats.figures.allAttemptsAverage ?? "", /^100[.,]00\s?%$/);
+      assert.match(stats.figures.median ?? "", /%$/);
+      assert.equal(stats.calculatedNow, true);
+      assert.deepEqual(stats.questions.map((q) => [q.slot, q.type, q.attempts]), [
+        [1, "truefalse", "1"],
+        [2, "multichoice", "1"],
+        [3, "shortanswer", "1"],
+        [4, "random", "1"],
+      ]);
+      assert.equal(stats.questions[0]!.questionId, id("Quiz TF"));
+      assert.match(stats.questions[0]!.randomGuessScore ?? "", /^50[.,]00\s?%$/);
+      const tf = stats.questions[0]!.responses!;
+      assert.equal(tf.find((r) => r.count === 1)?.model, "True", JSON.stringify(tf));
+      assert.deepEqual(tf.map((r) => r.count).reduce((a, b) => a + b, 0), 1);
+      const sa = stats.questions[2]!.responses!;
+      assert.ok(sa.some((r) => r.model === "Paris" && r.count === 1), JSON.stringify(sa));
+      // The random slot: the question it drew, with its own figures and responses.
+      const parts = stats.questions[3]!.parts!;
+      assert.equal(parts.length, 1, JSON.stringify(stats.questions[3]));
+      assert.ok(bankIds.includes(parts[0]!.questionId!), JSON.stringify(parts));
+      assert.equal(parts[0]!.attempts, "1");
+      if (parts[0]!.type !== "essay") assert.ok(parts[0]!.responses?.some((r) => r.count === 1), JSON.stringify(parts));
+    });
+
+    it("quizStatistics: first attempts, stored until recalculated", SLOW, async () => {
+      await attempt();
+      const stored = await teacher.quizStatistics(quizId, { attempts: "all" });
+      assert.deepEqual([stored.figures.allAttemptsCount, stored.calculatedNow, stored.calculated?.attemptsSince], [1, false, 1]);
+      const fresh = await teacher.quizStatistics(quizId, { attempts: "all", recalculate: true });
+      assert.deepEqual([fresh.figures.allAttemptsCount, fresh.calculatedNow], [2, true]);
+      assert.ok(fresh.questions.every((q) => q.attempts === "2"), JSON.stringify(fresh.questions));
+      const first = await teacher.quizStatistics(quizId, { attempts: "first", recalculate: true });
+      assert.equal(first.attempts, "first");
+      assert.deepEqual([first.figures.firstAttemptsCount, first.figures.allAttemptsCount], [1, 2]);
+      assert.ok(first.questions.every((q) => q.attempts === "1"), JSON.stringify(first.questions));
     });
   });
 

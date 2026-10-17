@@ -226,6 +226,76 @@ interface QuizAttemptResult {
 
 Las personas vienen como id de usuario y nombre completo: ocultar quiénes son es tarea del programa que llama. El informe lista los intentos de los usuarios matriculados. Lanza `QuizError` con el mensaje de Moodle cuando la persona no puede ver el informe (un estudiante, o el id no es un cuestionario).
 
+## quizStatistics
+
+El informe de estadísticas de un cuestionario, qué preguntas funcionan y cuáles no: las cifras del cuestionario y, por pregunta, su índice de facilidad, su desviación estándar, sus pesos, su índice de discriminación y su eficiencia discriminativa; las preguntas de una posición aleatoria y las variantes de una pregunta, cada una con las suyas; con `responses`, cuántas veces se dio cada respuesta.
+
+```ts
+function quizStatistics(context: BrowserContext, siteUrl: string, activityId: number, options?: {
+  attempts?: "highest" | "all" | "first" | "last";
+  recalculate?: boolean;
+  responses?: boolean;
+}): Promise<QuizStatistics>;
+
+interface QuizStatistics {
+  quiz: { id: number };
+  attempts?: "highest" | "all" | "first" | "last";
+  calculatedNow: boolean;
+  calculated?: { ago: string; attemptsSince: number };
+  figures: {
+    firstAttemptsCount?: number;
+    allAttemptsCount?: number;
+    firstAttemptsAverage?: string;
+    allAttemptsAverage?: string;
+    lastAttemptsAverage?: string;
+    highestAttemptsAverage?: string;
+    median?: string;
+    standardDeviation?: string;
+    skewness?: string;
+    kurtosis?: string;
+    internalConsistency?: string; // alfa de Cronbach
+    errorRatio?: string;
+    standardError?: string;
+  };
+  questions: QuizSlotStatistics[];
+}
+
+interface QuizQuestionStatistics {
+  number?: string;
+  name: string;
+  type?: string; // "truefalse", "multichoice", "random"...
+  questionId?: number;
+  variant?: number;
+  attempts?: string;
+  facility?: string;
+  standardDeviation?: string;
+  randomGuessScore?: string;
+  intendedWeight?: string;
+  effectiveWeight?: string;
+  discriminationIndex?: string;
+  discriminativeEfficiency?: string;
+  dubious?: true;
+  responses?: { part?: string; model?: string; response?: string; credit?: string; count: number; tries?: number[]; frequency?: string }[];
+}
+
+interface QuizSlotStatistics extends QuizQuestionStatistics {
+  slot: number;
+  parts?: QuizQuestionStatistics[];
+}
+```
+
+- `attempts`: los intentos de los que salen las cifras, como los ofrece "Calcular estadísticas a partir de" del informe; por defecto, el método de calificación del cuestionario, como en el informe. El resultado dice cuáles se usaron.
+- `recalculate` (por defecto `false`): borra lo que Moodle guardó y lo calcula de nuevo ahora, como hace el botón "Recalcular ahora" del informe.
+- `responses` (por defecto `false`): también el "Análisis de respuestas" de cada pregunta, leído de su propia página (una página por pregunta, y por parte de una posición aleatoria o de una pregunta con variantes). Un tipo que Moodle no analiza (un ensayo) no tiene.
+- Las cifras vienen tal como las muestra el informe, en el formato del sitio ("66,67%", "1,7321"); una cifra que Moodle deja en blanco (una desviación estándar con un intento, una curtosis con pocos) se omite. `attempts` de una pregunta también es un texto, ya que un resumen de partes muestra un rango.
+- `dubious`: Moodle marca la pregunta como posiblemente poco útil (una eficiencia discriminativa por debajo del 15%).
+- `parts`: en una posición aleatoria, las preguntas que sacó (con su `questionId` del banco); en una pregunta con variantes, cada `variant`.
+- `responses[]`: `model` es la respuesta modelo (la clase en la que caen las respuestas) y `response` la respuesta dada, cuando el tipo las muestra; `part`, la parte de una pregunta que tiene varias; `count`, cuántos la dieron (`tries` por intento de respuesta, cuando el cuestionario permite varios); `credit` y `frequency`, tal como se muestran.
+
+Moodle calcula el informe cuando se abre y no tiene nada guardado (confirmado empíricamente, Moodle 5.2), así que una lectura nunca espera a la tarea programada de Moodle: `calculatedNow` es entonces `true`. Lo que guardó se queda hasta "Recalcular ahora" o el recálculo propio de Moodle (una tarea ad hoc una hora después de enviarse o borrarse un intento): `calculated` dice hace cuánto se calculó y cuántos intentos se terminaron desde entonces, para que un programa decida si usar `recalculate`. Calcular lleva tiempo en un cuestionario grande, y mientras corre otro cálculo de las mismas cifras Moodle lo espera, o pasado un rato no muestra ninguna (entonces un `QuizError` dice que se intente más tarde).
+
+No se nombra a nadie: las cifras y los recuentos son sobre todos los intentos. Las etiquetas de las cifras del cuestionario y de las columnas de las respuestas se comparan con los textos de Moodle en el idioma de la persona (`core_get_strings`). Lanza `QuizError` cuando la persona no puede ver el informe (requiere la capacidad `quiz/statistics:view`, la de un profesor), el id no es un cuestionario, el cuestionario no tiene preguntas o ningún intento está terminado y calificado (los intentos que esperan calificación manual no cuentan).
+
 ## questionsToGrade
 
 Las preguntas de un cuestionario que esperan calificación manual, tal como las lista su informe de calificación manual, cada una con los intentos terminados cuya respuesta requiere calificación.
@@ -442,6 +512,11 @@ for (const attempt of attempts) {
   for (const q of attempt.questions) console.log(`  P${q.slot} ${q.result ?? ""} ${q.response ?? ""}`);
 }
 
+// Qué preguntas funcionan: todos los intentos, recalculado ahora.
+const stats = await moodle.quizStatistics(27, { attempts: "all", recalculate: true });
+console.log(`${stats.figures.allAttemptsCount} intentos, consistencia interna ${stats.figures.internalConsistency ?? "-"}`);
+for (const q of stats.questions) console.log(`  P${q.slot} ${q.name}: facilidad ${q.facility ?? "-"}, discriminación ${q.discriminationIndex ?? "-"}${q.dubious ? " (dudosa)" : ""}`);
+
 // Una semana más y un intento extra para el usuario 7.
 await moodle.setQuizOverride(27, 7, { close: new Date("2026-11-30T18:00:00Z"), attempts: 3 });
 
@@ -460,6 +535,7 @@ Los pasos sueltos sobre los que se construyen estas funciones (empezar un intent
 - `startQuizAttempt`, `readAttempt`, `answerQuizQuestions`, `finishQuizAttempt`: `own`.
 - `readReview`: `own` y `others-personal`, ya que un profesor puede revisar el intento de otra persona.
 - `quizResults`, `questionsToGrade`: `others-personal`.
+- `quizStatistics`: `course-content` y `others-aggregate` (cifras y recuentos sobre los intentos de todos, sin nombrar a nadie).
 - `gradeQuizQuestion`: `others-personal` y `others-write`.
 - `quizStructure`, `addQuestionsToQuiz`, `removeQuizSlot`, `setQuizPages`, `addQuizSection`: `course-content`.
 - `editQuizSlot`: `course-content` y `others-write` (una nueva puntuación máxima recalifica los intentos ya hechos).
