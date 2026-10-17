@@ -40,6 +40,7 @@ export type MoodleErrorCode =
   | "gradebook"
   | "no-grade-report"
   | "not-an-h5p-activity"
+  | "content-bank"
   | "scorm"
   | "workshop"
   | "lesson"

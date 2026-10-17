@@ -96,7 +96,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `NotAForumError`, `ForumError` | [Foros](../areas/forums.md) |
 | `SurveyError`, `ChoiceError` | [Encuestas y consultas](../areas/surveys-and-choices.md) |
 | `LessonError` | [Lecciones](../areas/lessons.md) |
-| `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
+| `NotAnH5PActivityError`, `ContentBankError` | [H5P](../areas/h5p.md): no es una actividad H5P; falta una capacidad del banco de contenido (nombrada), no existe ese contenido, un paquete que Moodle rechazó |
 | `ScormError` | [SCORM](../areas/scorm.md) |
 | `NotADatabaseError`, `DatabaseError` | [Bases de datos](../areas/databases.md): no es una base de datos; la persona no puede gestionarla, o Moodle rechazó un campo, una plantilla o un preajuste, o una entrada, su aprobación, su eliminación, una exportación o una importación |
 | `NotAGlossaryError`, `GlossaryError` | [Glosarios](../areas/glossaries.md): no es un glosario; falta una capacidad del glosario (nombrada), la entrada es de otra persona, se acabó el tiempo de edición, no existe esa entrada |

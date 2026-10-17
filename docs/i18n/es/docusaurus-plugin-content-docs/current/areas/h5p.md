@@ -1,8 +1,8 @@
 # H5P
 
-Actividades H5P (módulo `h5pactivity`): qué contiene una actividad (su tipo de contenido H5P y su versión), si Moodle registra los intentos, y los intentos de la propia persona con sus puntuaciones. Los estudiantes leen sus intentos; un profesor lee los mismos datos de la actividad, sin intentos (su informe lista participantes en su lugar). El driver no reproduce contenido H5P: la reproducción ocurre en los iframes del contenido, que un programa maneja por su cuenta en la pestaña de trabajo del navegador.
+Actividades H5P (módulo `h5pactivity`): qué contiene una actividad (su tipo de contenido H5P y su versión), si Moodle registra los intentos, y los intentos de la propia persona con sus puntuaciones. Los estudiantes leen sus intentos; un profesor lee los mismos datos de la actividad, sin intentos (su informe lista participantes en su lugar). El driver no reproduce contenido H5P: la reproducción ocurre en los iframes del contenido, que un programa maneja por su cuenta en la pestaña de trabajo del navegador. También se lista el banco de contenido de un curso, donde los profesores guardan contenido H5P para reutilizarlo, y se sube a él, se renombra, se descarga y se borra.
 
-**Términos:** [h5p](../reference/glossary.md#h5p), [intento](../reference/glossary.md#attempt).
+**Términos:** [h5p](../reference/glossary.md#h5p), [intento](../reference/glossary.md#attempt), [banco de contenido](../reference/glossary.md#content-bank).
 
 Las firmas de abajo son las de las funciones. Cada operación es también un método del [objeto Moodle](../concepts/calling-functions.md) sin sus dos primeros parámetros (`fn(context, site, …)` es `moodle.fn(…)`), que es como las llaman los ejemplos; las primitivas de más bajo nivel están en `@falkenslab/moodle-driver/internals` (consulta [Bajar de nivel](../concepts/low-level.md)).
 
@@ -47,6 +47,66 @@ Se abren la página de la actividad, la del reproductor y el informe de intentos
 
 El contenido H5P se ejecuta como JavaScript dentro de iframes de la página de la actividad, con tantas interacciones como tipos de contenido hay. El driver no ofrece ninguna función para reproducirlo: el programa que quiera hacerlo maneja la página por su cuenta en la pestaña de trabajo del navegador, la misma pestaña que muestra el navegador cuando está visible (consulta [El navegador](../concepts/browser.md) y [Acceso de bajo nivel](../concepts/low-level.md)). `BrowserManager.tab()` devuelve esa pestaña como una `Page` de Playwright, abriendo el navegador si hace falta. Moodle registra los intentos hechos ahí como de la persona (cuando se registran), y `h5pActivity` los lee después.
 
+## El banco de contenido {#the-content-bank}
+
+El banco de contenido de un curso guarda contenido H5P aparte de sus actividades, para que los profesores lo reutilicen. Cada contenido tiene un id propio, que no es un id del módulo del curso. Abrir el banco de un curso requiere la capacidad de Moodle `moodle/contentbank:access`, que tienen los profesores y no los estudiantes; cada función lanza `ContentBankError` nombrando la capacidad que pide Moodle cuando se niega, o diciendo que no existe ese contenido.
+
+```ts
+function contentBank(context: BrowserContext, siteUrl: string, courseId: number): Promise<BankContent[]>;
+function uploadToContentBank(context: BrowserContext, siteUrl: string, courseId: number, file: string): Promise<BankContentUpload>;
+function renameContent(context: BrowserContext, siteUrl: string, contentId: number, name: string): Promise<{ changed: string; contentId: number; name: string }>;
+function downloadContent(context: BrowserContext, siteUrl: string, contentId: number, destDir: string): Promise<DownloadedFile>;
+function deleteContent(context: BrowserContext, siteUrl: string, contentId: number): Promise<{ changed: string; contentId: number }>;
+
+interface BankContent {
+  id: number;
+  name: string;
+  type: string;
+  contentType?: { library: string; version: string };
+  authorName: string;
+  modified?: string;
+  size: number;
+  uses: number;
+  unlisted: boolean;
+  fileUrl?: string;
+}
+
+interface BankContentUpload {
+  changed: string;
+  content: BankContent;
+}
+```
+
+- `contentBank`: los contenidos del curso, tal como los lista la página de su banco (`contentbank/index.php`), leyendo la página de cada contenido (`contentbank/view.php`) para su archivo: una petición por contenido, que Moodle registra como una visita. `type` es el tipo de contenido de Moodle, sacado de la extensión del archivo (`"h5p"`, el único que tiene Moodle); `contentType`, la librería H5P y su versión, sacadas del icono del contenido (falta cuando la librería no tiene); `authorName`, quién lo subió; `modified`, cuándo cambió por última vez (Moodle no muestra la fecha de creación); `size`, en bytes; `uses`, cuántas actividades usan su archivo; `unlisted`, si queda fuera de la lista para quien no puede ver el contenido no listado; `fileUrl`, el archivo del contenido (`pluginfile.php/<context>/contentbank/public/<id>/<file>`). El `name` de un contenido no listado lleva añadido el "(No listado)" de Moodle para quien no puede renombrarlo.
+- `uploadToContentBank`: sube un paquete `.h5p` local, como hace el botón "Subir" del banco (su formulario de subida, un área de borrador), y da el contenido nuevo, con el nombre del archivo. Requiere `moodle/contentbank:upload` y `contenttype/h5p:upload`. Un archivo de un tipo que el banco no admite se rechaza antes de enviar nada (`MoodleError`, `invalid-input`); un paquete que Moodle rechaza da el código de error de Moodle. Moodle despliega un paquete la primera vez que se muestra: uno que necesita librerías H5P que el sitio no tiene solo se muestra a quien puede instalarlas (`moodle/h5p:updatelibraries`, el administrador).
+- `renameContent`: el nombre nuevo del contenido (`core_contentbank_rename_content`); su archivo conserva su nombre. Moodle lo guarda como texto plano, y `name` es lo que muestra después la página del contenido. Requiere `moodle/contentbank:manageowncontent` para el contenido propio de la persona, `manageanycontent` para el de cualquiera; un nombre vacío es `invalid-input`.
+- `downloadContent`: guarda el archivo del contenido en `destDir` desde el enlace "Descargar" de su página, sin sobrescribir nunca, como hace `downloadFile` (que también puede guardar `fileUrl`). Requiere `moodle/contentbank:downloadcontent`.
+- `deleteContent`: borra el contenido (`core_contentbank_delete_content`), aunque lo usen actividades, como hace la página después de avisar. Requiere `moodle/contentbank:deleteowncontent` para el contenido propio de la persona, `deleteanycontent` para el de cualquiera.
+
+Una actividad H5P se crea a partir de un paquete local (`createActivity` con `type: "h5pactivity"`): para crear una a partir de un contenido del banco, descárgalo primero y pasa el archivo. La actividad tiene entonces su propia copia, no un enlace al del banco.
+
+```ts
+import { tmpdir } from "node:os";
+import { ContentBankError } from "@falkenslab/moodle-driver";
+
+// `moodle` es el objeto de createMoodle(), como en las páginas de primeros pasos.
+
+try {
+  const { content } = await moodle.uploadToContentBank(12, "/home/me/quiz.h5p");
+  await moodle.renameContent(content.id, "Comprobación de la semana 1");
+  for (const item of await moodle.contentBank(12)) {
+    console.log(`${item.id} ${item.name} (${item.contentType?.library ?? item.type}), usado ${item.uses} veces`);
+  }
+  // Una copia como actividad, en la sección cuyo id es 3.
+  const saved = await moodle.downloadContent(content.id, tmpdir());
+  await moodle.createActivity({ courseId: 12, sectionId: 3, type: "h5pactivity", name: "Comprobación de la semana 1", files: [saved.path] });
+  await moodle.deleteContent(content.id);
+} catch (error) {
+  if (error instanceof ContentBankError) console.error(error.message);
+  else throw error;
+}
+```
+
 ## Ejemplo {#example}
 
 ```ts
@@ -79,6 +139,7 @@ Los selectores dentro del reproductor dependen del tipo de contenido y de su ver
 ## Categorías de datos {#data-categories}
 
 - `h5pActivity`: `course-content` y `own` (el contenido y los intentos de la persona).
+- `contentBank`, `uploadToContentBank`, `renameContent`, `downloadContent`, `deleteContent`: `course-content` (lo que los profesores guardan en el banco, con el nombre de su autor).
 - `BrowserManager.tab`: `any`, ya que un programa puede abrir cualquier cosa en ella.
 
 Consulta [Categorías de datos](../concepts/data-categories.md).

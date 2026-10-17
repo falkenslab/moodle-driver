@@ -189,6 +189,7 @@ export {
   type LessonPageInput,
 } from "./areas/lessons/pages.js";
 export { h5pActivity, NotAnH5PActivityError, type H5PAttempt, type H5PActivity } from "./areas/h5p/h5p.js";
+export { contentBank, uploadToContentBank, renameContent, downloadContent, deleteContent, ContentBankError, type BankContent, type BankContentUpload } from "./areas/h5p/contentbank.js";
 export { scorm, openScorm, ScormError, type ScoStatus, type ScormSco, type ScormActivity, type OpenedScorm } from "./areas/scorm/scorm.js";
 export { NotADatabaseError, DatabaseError } from "./areas/databases/database.js";
 export { databaseFields, addDatabaseField, editDatabaseField, deleteDatabaseField, DATABASE_FIELD_TYPES, type DatabaseFieldType, type DatabaseField, type DatabaseFieldInput, type DatabaseFieldChanges, type DatabaseFieldOptions } from "./areas/databases/fields.js";
