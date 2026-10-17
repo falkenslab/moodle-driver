@@ -2,10 +2,13 @@
 // questionnaire, a SCORM and an H5P activity, each made by the teacher (the H5P by the admin) on a
 // scratch course; the choice's and surveys' results read back as the teacher.
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { before, describe, it } from "node:test";
-import { ActivitySettingsError, ChoiceError, LessonError, MoodleError, NotAnH5PActivityError, ScormError, SurveyError, type FieldValue, type Moodle } from "../../src/index.js";
+import { ActivitySettingsError, ChoiceError, ContentBankError, LessonError, MoodleError, NotAnH5PActivityError, ScormError, SurveyError, type FieldValue, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
-import { COURSE, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { COURSE, SITE, as, cleanup, quietly, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { notAScormPackage, revisedScormPackage, scormPackage, siteFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
@@ -615,6 +618,80 @@ describe("doing activities", () => {
       assert.equal(activity.tracked, true);
       assert.deepEqual(activity.attempts, []);
       await assert.rejects((await as("student")).h5pActivity(pageId), NotAnH5PActivityError);
+    });
+
+    describe("content bank", () => {
+      // The same package, uploaded by the teacher: its libraries are the site's since the admin's view above.
+      let contentId: number | undefined;
+      let file: string | undefined;
+
+      before(async () => {
+        file = await siteFile(`${SITE}h5p/tests/fixtures/multiple-choice-2-6.h5p`, "driver-check-bank.h5p");
+      }, SETUP);
+
+      it("uploadToContentBank: an .h5p package into the course's bank, listed by contentBank with its file", SLOW, async (t) => {
+        if (missing || !file) return t.skip(missing ?? "the sandbox doesn't serve an H5P package to upload");
+        const teacher = await as("teacher");
+        assert.deepEqual(await teacher.contentBank(course.id), []);
+        const uploaded = await teacher.uploadToContentBank(course.id, file);
+        contentId = uploaded.content.id;
+        cleanup(() => quietly(() => teacher.deleteContent(contentId!)));
+        assert.match(uploaded.changed, /driver-check-bank\.h5p/);
+        const bank = await teacher.contentBank(course.id);
+        assert.equal(bank.length, 1);
+        const [content] = bank;
+        assert.deepEqual({ ...content, modified: undefined }, { ...uploaded.content, modified: undefined });
+        assert.equal(content!.id, contentId);
+        assert.equal(content!.name, "driver-check-bank.h5p");
+        assert.equal(content!.type, "h5p");
+        assert.equal(content!.uses, 0);
+        assert.equal(content!.unlisted, false);
+        assert.ok(content!.size > 1000);
+        assert.ok(content!.authorName.length > 0);
+        assert.match(content!.modified ?? "", /^\d{4}-\d\d-\d\dT/);
+        assert.match(content!.fileUrl ?? "", new RegExp(`/pluginfile\\.php/\\d+/contentbank/public/${contentId}/driver-check-bank\\.h5p$`));
+        assert.equal(content!.contentType?.library, "H5P.MultiChoice");
+      });
+
+      it("renameContent: a new name, its file's kept", SLOW, async (t) => {
+        if (!contentId) return t.skip("nothing was uploaded");
+        const teacher = await as("teacher");
+        const renamed = await teacher.renameContent(contentId, "Driver check quiz");
+        assert.equal(renamed.name, "Driver check quiz");
+        const [content] = await teacher.contentBank(course.id);
+        assert.equal(content!.name, "Driver check quiz");
+        assert.match(content!.fileUrl ?? "", /driver-check-bank\.h5p$/);
+        await assert.rejects(teacher.renameContent(contentId, "  "), (error: unknown) => error instanceof MoodleError && error.code === "invalid-input");
+      });
+
+      it("downloadContent: the package saved, as big as the bank says", SLOW, async (t) => {
+        if (!contentId) return t.skip("nothing was uploaded");
+        const teacher = await as("teacher");
+        const dir = mkdtempSync(path.join(tmpdir(), "driver-bank-"));
+        try {
+          const saved = await teacher.downloadContent(contentId, dir);
+          assert.equal(saved.name, "driver-check-bank.h5p");
+          assert.equal(saved.size, statSync(file!).size);
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      });
+
+      it("contentBank: refused to a student, and a file the bank doesn't take refused", SLOW, async (t) => {
+        if (!contentId) return t.skip("nothing was uploaded");
+        await assert.rejects((await as("student")).contentBank(course.id), (error: unknown) => error instanceof ContentBankError && /moodle\/contentbank:access/.test(error.message));
+        await assert.rejects((await as("student")).deleteContent(contentId), (error: unknown) => error instanceof ContentBankError && /deleteowncontent/.test(error.message));
+        await assert.rejects((await as("teacher")).uploadToContentBank(course.id, notAScormPackage()), (error: unknown) => error instanceof MoodleError && error.code === "invalid-input");
+      });
+
+      it("deleteContent: gone from the bank, and a second time refused", SLOW, async (t) => {
+        if (!contentId) return t.skip("nothing was uploaded");
+        const teacher = await as("teacher");
+        assert.match((await teacher.deleteContent(contentId)).changed, new RegExp(`${contentId}`));
+        assert.deepEqual(await teacher.contentBank(course.id), []);
+        await assert.rejects(teacher.deleteContent(contentId), ContentBankError);
+        await assert.rejects(teacher.downloadContent(contentId, tmpdir()), ContentBankError);
+      });
     });
   });
 });

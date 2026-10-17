@@ -45,6 +45,10 @@ La actividad en la que los participantes eligen una o varias opciones que ofrece
 
 La finalización de actividades de Moodle: si cada participante ha hecho cada actividad, marcada a mano (manual) o por Moodle cuando se cumple una condición (automática), en uno de cuatro estados que el driver llama `incomplete`, `complete`, `complete-pass` y `complete-fail` (`COMPLETION_STATES`, `CompletionState`). La de la propia persona viene con `courseStructure` (la `completion` de cada actividad), `setCompletion` la marca, `overrideCompletion` fija la de otra persona como profesor, y `completionReport` lee el informe de progreso ("Finalización de actividad" en la interfaz), cada celda con `state`, `tracking` y `overridden`. Las reglas de una actividad son su `completion` en `createActivity`, `updateActivity` y `activitySettings`. No es la [finalización del curso](#course-completion), que trata del curso entero. Consulta [Finalización](../areas/completion.md).
 
+### Banco de contenido (content bank) {#content-bank}
+
+El almacén de contenido H5P de un curso (o de una categoría, o del sitio), aparte de sus actividades para que los profesores lo reutilicen; cada contenido tiene un id propio (`contentbank/view.php?id=4`), un nombre y un archivo. El driver trabaja el de un curso con `contentBank` (`BankContent`, con `id`, `name`, `fileUrl` y `uses`), `uploadToContentBank`, `renameContent`, `downloadContent` y `deleteContent`. Las copias de seguridad lo dejan fuera. Consulta [H5P](../areas/h5p.md#the-content-bank).
+
 ### Conversación (conversation) {#conversation}
 
 Un hilo de mensajes privados de la mensajería de Moodle: entre dos personas (`private`), de un grupo del curso (`group`), o las notas de la persona para sí misma (`self`). El driver lista las de la persona con `conversations` (`ConversationSummary`, con `id`, `type`, `members` y `unread`), lee una con `conversation(conversationId)` y envía un mensaje privado con `sendMessage`, que devuelve `messageId` y `conversationId`. Consulta [Mensajes](../areas/messages.md).

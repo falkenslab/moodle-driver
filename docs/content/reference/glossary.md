@@ -45,6 +45,10 @@ The activity where participants pick one or several options a teacher offers (mo
 
 Moodle's activity completion: whether each participant has done each activity, marked by hand (manual) or by Moodle when a condition is met (automatic), in one of four states the driver names `incomplete`, `complete`, `complete-pass` and `complete-fail` (`COMPLETION_STATES`, `CompletionState`). The person's own comes with `courseStructure` (each activity's `completion`), `setCompletion` marks it, `overrideCompletion` sets someone else's as a teacher, and `completionReport` reads the progress report ("Activity completion" in the interface), each cell with `state`, `tracking` and `overridden`. An activity's rules are its `completion` in `createActivity`, `updateActivity` and `activitySettings`. Not [course completion](#course-completion), which is about the course as a whole. See [Completion](../areas/completion.md).
 
+### Content bank
+
+A course's (or a category's, or the site's) store of H5P content, kept apart from its activities so teachers can reuse it; each content has an id of its own (`contentbank/view.php?id=4`), a name and a file. The driver works a course's with `contentBank` (`BankContent`, with `id`, `name`, `fileUrl` and `uses`), `uploadToContentBank`, `renameContent`, `downloadContent` and `deleteContent`. Backups leave it out. See [H5P](../areas/h5p.md#the-content-bank).
+
 ### Conversation
 
 A thread of private messages in Moodle's messaging: between two people (`private`), a course group's (`group`), or the person's notes to themselves (`self`). The driver lists the person's with `conversations` (`ConversationSummary`, with `id`, `type`, `members` and `unread`), reads one with `conversation(conversationId)`, and sends a private message with `sendMessage`, which returns `messageId` and `conversationId`. See [Messages](../areas/messages.md).

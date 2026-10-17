@@ -347,6 +347,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
 
   // H5P: the content (course content) and the person's own attempts.
   h5pActivity: ["course-content", "own"],
+  // The content bank: what teachers keep there to use in activities.
+  contentBank: CONTENT,
+  uploadToContentBank: CONTENT,
+  renameContent: CONTENT,
+  downloadContent: CONTENT,
+  deleteContent: CONTENT,
   scorm: ["course-content", "own"],
   openScorm: OWN,
 

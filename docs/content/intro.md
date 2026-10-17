@@ -35,7 +35,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Surveys and choices | Answer questionnaires, feedback activities and choices; read everyone's answers, and build a feedback's questions and templates, as a teacher |
 | Databases | Give a database activity its fields, templates and presets; read, add, edit, approve and delete its entries, export and import them as CSV |
 | Glossaries | Read, add, change and delete entries, approve them, add categories, export and import entries in Moodle's XML |
-| Lessons, H5P and SCORM | Go through a lesson page by page; read an H5P activity's type and attempts; read a SCORM's attempts and SCOs, open its player, create one from a package |
+| Lessons, H5P and SCORM | Go through a lesson page by page; read an H5P activity's type and attempts; list, upload, rename, download and delete a course's content bank; read a SCORM's attempts and SCOs, open its player, create one from a package |
 | Grades | The person's grades, the grader report and Moodle's grade exports, grading and overriding in the gradebook, the gradebook setup (manual items, categories, weights), CSV imports, scales and grade letters |
 | Completion and badges | Mark activities done, override completion, read the progress report; course badges: create them, set their criteria, enable them, award them by hand |
 | People | Participants with roles and groups, inactivity; enrol and unenrol, set roles, groups and groupings, enrolment methods; message several at once |

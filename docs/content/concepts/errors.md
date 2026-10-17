@@ -96,7 +96,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `NotAForumError`, `ForumError` | [Forums](../areas/forums.md) |
 | `SurveyError`, `ChoiceError` | [Surveys and choices](../areas/surveys-and-choices.md) |
 | `LessonError` | [Lessons](../areas/lessons.md) |
-| `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
+| `NotAnH5PActivityError`, `ContentBankError` | [H5P](../areas/h5p.md): not an H5P activity; a missing content bank capability (named), no such content, a package Moodle refused |
 | `ScormError` | [SCORM](../areas/scorm.md) |
 | `NotADatabaseError`, `DatabaseError` | [Databases](../areas/databases.md): not a database; the person can't manage it, or Moodle refused a field, template or preset, or an entry, its approval, its deletion, an export or an import |
 | `NotAGlossaryError`, `GlossaryError` | [Glossaries](../areas/glossaries.md): not a glossary; a missing glossary capability (named), someone else's entry, the editing time over, no such entry |

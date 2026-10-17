@@ -607,6 +607,18 @@ moodle configure-block <courseId> <blockId> --options
 | `--embed` | `string[]` | Local files the content names (`<img src="shot.png">`), put in it as Moodle's editor does. |
 | `--settings` | `Record<string, FieldValue>` | Any other field of the block's configure form, by its name, as `setFields` takes them (`bui_visible`, `config_…`). |
 
+## contentBank
+
+A course's content bank: each content with its name, type, author, last modification, size, the activities using it and its file URL. One page for the list, and one request per content for its file (each content's page, which Moodle logs as viewed). Throws `ContentBankError` when the person can't open the bank (moodle/contentbank:access, which teachers have and students don't).
+
+```bash
+moodle content-bank <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+
 ## conversation
 
 A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation). With `limit`, `messages` is a page of them (see "Long lists" in the docs' concepts) counted from the newest: the first page is the latest messages, `more` says there are older ones, and each page's messages still come oldest first. Moodle's service returns only the page.
@@ -1007,6 +1019,18 @@ moodle delete-book-chapter <activityId> <chapterId>
 | `activityId` | `number` |  |
 | `chapterId` | `number` |  |
 
+## deleteContent
+
+Deletes a content from its content bank, as its page's "Delete" does (`core_contentbank_delete_content`). Moodle deletes it even when activities use it (`uses`), as its page does once it has warned. Throws `ContentBankError` when there's no such content, or the person can't delete it (moodle/contentbank:deleteowncontent for their own, deleteanycontent for anyone's).
+
+```bash
+moodle delete-content <contentId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `contentId` | `number` |  |
+
 ## deleteDatabaseEntry
 
 Deletes an entry of a database activity, as its Delete action confirmed does: its values and files go with it. Throws `DatabaseError` when Moodle doesn't delete it: the database has no such entry, or the person can't (someone else's takes `mod/data:manageentries`; authors delete theirs while Moodle lets them change it); `NotADatabaseError`.
@@ -1225,6 +1249,19 @@ moodle discussion <discussionId> [--options]
 | `discussionId` | `number` |  |
 | `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
 | `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
+
+## downloadContent
+
+Saves a content's file (the `.h5p` package) into `destDir`, as its page's "Download" does, never overwriting (`downloadFile`). Throws `ContentBankError` when there's no such content the person can open, or they can't download it (moodle/contentbank:downloadcontent, which teachers have).
+
+```bash
+moodle download-content <contentId> <destDir>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `contentId` | `number` |  |
+| `destDir` | `string` |  |
 
 ## downloadFile
 
@@ -2386,6 +2423,19 @@ moodle remove-reviewer <activityId> --options
 | `--author-id` | `number` | The submission's author's user id. |
 | `--reviewer-id` (required) | `number` | The reviewer's user id. |
 
+## renameContent
+
+Renames a content of a content bank, as its page's "Rename" does (`core_contentbank_rename_content`); the file keeps its name. Throws `ContentBankError` when there's no such content, or the person can't manage it (moodle/contentbank:manageowncontent for their own, manageanycontent for anyone's), and a `MoodleError` (`invalid-input`) for an empty name.
+
+```bash
+moodle rename-content <contentId> <name>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `contentId` | `number` |  |
+| `name` | `string` |  |
+
 ## replyToPost
 
 Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given, the person's subscription to the discussion afterwards, read back (`subscribed`).
@@ -3095,6 +3145,19 @@ moodle update-question <activityId> <questionId> --options
 | `--sets` | `number` | Calculated types: how many sets of values to draw (10 by default; the `values` given set it). |
 | `--category-id` | `number` | The bank's category it goes in; a new question goes in the bank's default one when left out. |
 | `--default-mark` | `number` |  |
+
+## uploadToContentBank
+
+Uploads a local file (an `.h5p` package) to a course's content bank, as its "Upload" button does, and gives the content it made, named after the file. Moodle deploys an H5P package when it's first shown; one that needs H5P libraries the site doesn't have shows only to whoever may install them (moodle/h5p:updatelibraries, the admin). Throws `ContentBankError` when the person can't upload there (moodle/contentbank:upload) or Moodle refuses the file, and a `MoodleError` (`invalid-input`) for a file of a type the bank doesn't take.
+
+```bash
+moodle upload-to-content-bank <courseId> <file>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `file` | `string` |  |
 
 ## useFeedbackTemplate
 

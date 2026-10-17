@@ -322,6 +322,13 @@ export interface MoodleMethods {
    */
   configureBlock(courseId: number, blockId: number, changes: import("./areas/courses/blocks.js").BlockChanges): Promise<{ changed: string; block: import("./areas/courses/blocks.js").CourseBlock; }>;
   /**
+   * A course's content bank: each content with its name, type, author, last modification, size, the
+   * activities using it and its file URL. One page for the list, and one request per content for its
+   * file (each content's page, which Moodle logs as viewed). Throws `ContentBankError` when the person
+   * can't open the bank (moodle/contentbank:access, which teachers have and students don't).
+   */
+  contentBank(courseId: number): Promise<import("./areas/h5p/contentbank.js").BankContent[]>;
+  /**
    * A conversation's messages, oldest first, as text, and its members as `conversations()` gives them:
    * everyone but the person, whether they wrote in it or not (the person alone in their own conversation).
    * With `limit`, `messages` is a page of them (see "Long lists" in the docs' concepts) counted from
@@ -592,6 +599,13 @@ export interface MoodleMethods {
    */
   deleteBookChapter(activityId: number, chapterId: number): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /**
+   * Deletes a content from its content bank, as its page's "Delete" does (`core_contentbank_delete_content`).
+   * Moodle deletes it even when activities use it (`uses`), as its page does once it has warned.
+   * Throws `ContentBankError` when there's no such content, or the person can't
+   * delete it (moodle/contentbank:deleteowncontent for their own, deleteanycontent for anyone's).
+   */
+  deleteContent(contentId: number): Promise<{ changed: string; contentId: number; }>;
+  /**
    * Deletes an entry of a database activity, as its Delete action confirmed does: its values and files
    * go with it. Throws `DatabaseError` when Moodle doesn't delete it: the database has no such entry,
    * or the person can't (someone else's takes `mod/data:manageentries`; authors delete theirs while
@@ -691,6 +705,12 @@ export interface MoodleMethods {
    * so every post is read and cut, but only the page's messages are turned into text.
    */
   discussion(discussionId: number, options?: import("./core/paging.js").PageOptions): Promise<import("./areas/forums/posts.js").DiscussionPosts<import("./areas/forums/posts.js").ForumPost[] | import("./core/paging.js").ListPage<import("./areas/forums/posts.js").ForumPost>>>;
+  /**
+   * Saves a content's file (the `.h5p` package) into `destDir`, as its page's "Download" does, never
+   * overwriting (`downloadFile`). Throws `ContentBankError` when there's no such content the person can
+   * open, or they can't download it (moodle/contentbank:downloadcontent, which teachers have).
+   */
+  downloadContent(contentId: number, destDir: string): Promise<import("./core/files.js").DownloadedFile>;
   /** Duplicates an activity as the course page's "Duplicate" does (right after it, named with "(copy)"); gives the copy's id and the course afterwards. */
   duplicateActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
@@ -1251,6 +1271,13 @@ export interface MoodleMethods {
    */
   removeReviewer(activityId: number, options: import("./areas/workshops/allocation.js").WorkshopReviewerRemoval): Promise<{ changed: string; assessmentId: number; submission: import("./areas/workshops/allocation.js").WorkshopAllocatedSubmission; }>;
   /**
+   * Renames a content of a content bank, as its page's "Rename" does (`core_contentbank_rename_content`);
+   * the file keeps its name. Throws `ContentBankError` when there's no such content, or the person can't
+   * manage it (moodle/contentbank:manageowncontent for their own, manageanycontent for anyone's), and a
+   * `MoodleError` (`invalid-input`) for an empty name.
+   */
+  renameContent(contentId: number, name: string): Promise<{ changed: string; contentId: number; name: string; }>;
+  /**
    * Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given,
    * the person's subscription to the discussion afterwards, read back (`subscribed`).
    */
@@ -1594,6 +1621,15 @@ export interface MoodleMethods {
    * one returned, which quizzes using the latest version get from then on.
    */
   updateQuestion(activityId: number, questionId: number, input: Partial<Omit<import("./areas/questions/types.js").QuestionInput, "type">>): Promise<{ changed: string; questionId?: number | undefined; }>;
+  /**
+   * Uploads a local file (an `.h5p` package) to a course's content bank, as its "Upload" button does,
+   * and gives the content it made, named after the file. Moodle deploys an H5P package when it's
+   * first shown; one that needs H5P libraries the site doesn't have shows only to whoever may install
+   * them (moodle/h5p:updatelibraries, the admin). Throws `ContentBankError` when the person can't
+   * upload there (moodle/contentbank:upload) or Moodle refuses the file, and a `MoodleError`
+   * (`invalid-input`) for a file of a type the bank doesn't take.
+   */
+  uploadToContentBank(courseId: number, file: string): Promise<import("./areas/h5p/contentbank.js").BankContentUpload>;
   /**
    * Adds a template's items to a feedback, as its "Use this template" does: after the items it has,
    * or in their place with `replace` (Moodle's own default; here it's off, so nothing is lost

@@ -1691,6 +1691,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "contentBank",
+    "description": "A course's content bank: each content with its name, type, author, last modification, size, the activities using it and its file URL. One page for the list, and one request per content for its file (each content's page, which Moodle logs as viewed). Throws `ContentBankError` when the person can't open the bank (moodle/contentbank:access, which teachers have and students don't).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "conversation",
     "description": "A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation). With `limit`, `messages` is a page of them (see \"Long lists\" in the docs' concepts) counted from the newest: the first page is the latest messages, `more` says there are older ones, and each page's messages still come oldest first. Moodle's service returns only the page.",
     "params": [
@@ -2737,6 +2751,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteContent",
+    "description": "Deletes a content from its content bank, as its page's \"Delete\" does (`core_contentbank_delete_content`). Moodle deletes it even when activities use it (`uses`), as its page does once it has warned. Throws `ContentBankError` when there's no such content, or the person can't delete it (moodle/contentbank:deleteowncontent for their own, deleteanycontent for anyone's).",
+    "params": [
+      {
+        "name": "contentId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "deleteDatabaseEntry",
     "description": "Deletes an entry of a database activity, as its Delete action confirmed does: its values and files go with it. Throws `DatabaseError` when Moodle doesn't delete it: the database has no such entry, or the person can't (someone else's takes `mod/data:manageentries`; authors delete theirs while Moodle lets them change it); `NotADatabaseError`.",
     "params": [
@@ -3109,6 +3137,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "downloadContent",
+    "description": "Saves a content's file (the `.h5p` package) into `destDir`, as its page's \"Download\" does, never overwriting (`downloadFile`). Throws `ContentBankError` when there's no such content the person can open, or they can't download it (moodle/contentbank:downloadcontent, which teachers have).",
+    "params": [
+      {
+        "name": "contentId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "destDir",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ]
   },
   {
     "name": "downloadFile",
@@ -6181,6 +6231,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "renameContent",
+    "description": "Renames a content of a content bank, as its page's \"Rename\" does (`core_contentbank_rename_content`); the file keeps its name. Throws `ContentBankError` when there's no such content, or the person can't manage it (moodle/contentbank:manageowncontent for their own, manageanycontent for anyone's), and a `MoodleError` (`invalid-input`) for an empty name.",
+    "params": [
+      {
+        "name": "contentId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "name",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ]
+  },
+  {
     "name": "replyToPost",
     "description": "Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given, the person's subscription to the discussion afterwards, read back (`subscribed`).",
     "params": [
@@ -8238,6 +8310,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "uploadToContentBank",
+    "description": "Uploads a local file (an `.h5p` package) to a course's content bank, as its \"Upload\" button does, and gives the content it made, named after the file. Moodle deploys an H5P package when it's first shown; one that needs H5P libraries the site doesn't have shows only to whoever may install them (moodle/h5p:updatelibraries, the admin). Throws `ContentBankError` when the person can't upload there (moodle/contentbank:upload) or Moodle refuses the file, and a `MoodleError` (`invalid-input`) for a file of a type the bank doesn't take.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "file",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ]
   },
   {
     "name": "useFeedbackTemplate",
