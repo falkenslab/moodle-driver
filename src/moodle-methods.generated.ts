@@ -83,6 +83,30 @@ export interface MoodleMethods {
    * for release, released).
    */
   allocateMarker(activityId: number, userIds: number[], markerId: number | number[]): Promise<{ changed: string; }>;
+  /**
+   * Allocates submissions to reviewers at random, as Moodle's random allocation form does: `perSubmission`
+   * reviews for each submission, or `perReviewer` for each reviewer, keeping the current allocations
+   * unless `keepCurrent` is false (Moodle never removes an assessment already graded), among reviewers
+   * with a submission of their own unless `withoutSubmission`, with self-assessments when
+   * `selfAssessment` (and the workshop allows them), and without peers of the same group when
+   * `excludeSameGroup` (visible groups mode only). Returns a sentence of what changed, how many
+   * allocations were added and removed, Moodle's report of what it did (its lines, in the site's
+   * language) and the problems among them (not enough reviewers, graded assessments kept), and the
+   * allocation afterwards. Throws `WorkshopError` for a setting the workshop doesn't have or when the
+   * person can't allocate (`mod/workshop:allocate`); `FormError` when Moodle refuses the form.
+   */
+  allocateRandomly(activityId: number, settings: import("./areas/workshops/allocation.js").RandomAllocationSettings): Promise<{ changed: string; added: number; removed: number; report: string[]; problems: string[]; allocation: import("./areas/workshops/allocation.js").WorkshopAllocation; }>;
+  /**
+   * Allocates a reviewer to a submission, as the "Add reviewer" menu of Moodle's manual allocation
+   * page does, in any phase. The submission is given by its id or by its author's (`authorId`); the
+   * reviewer must be one Moodle offers for it: a participant who can assess peers in the course
+   * (enrolled as a student), and not the author unless the workshop allows self-assessment. Returns a
+   * sentence of what changed, the assessment Moodle made (or the one the reviewer already had: `added`
+   * is false then), and the submission's reviewers afterwards. Throws `WorkshopError` when the reviewer
+   * isn't one Moodle offers, the submission isn't there, or the person can't allocate
+   * (`mod/workshop:allocate`).
+   */
+  allocateReviewer(activityId: number, options: import("./areas/workshops/allocation.js").WorkshopReviewerChoice): Promise<{ changed: string; added: boolean; assessmentId: number; submission: import("./areas/workshops/allocation.js").WorkshopAllocatedSubmission; }>;
   /** Answers a choice with one option (several where it allows them) by id, as "Save my choice" does; returns the choice afterwards. */
   answerChoice(activityId: number, optionIds: number[]): Promise<{ changed: string; choice: import("./areas/surveys/choice.js").Choice; }>;
   /**
@@ -765,6 +789,16 @@ export interface MoodleMethods {
   /** Removes a slot (by its place, from 1) from a quiz, as the edit page's delete icon does; the question stays in its bank. */
   removeQuizSlot(activityId: number, slot: number): Promise<import("./areas/quizzes/structure.js").QuizChange>;
   /**
+   * Removes a reviewer's allocation to a submission, as the delete icon of Moodle's manual allocation
+   * page does: Moodle deletes the reviewer's assessment of it. An assessment the reviewer already
+   * graded is only deleted with `evenIfAssessed` (Moodle warns about it and the grade is lost). The
+   * submission is given by its id or its author's. Returns a sentence of what changed, the assessment
+   * removed, and the submission's reviewers afterwards. Throws `WorkshopError` when the reviewer isn't
+   * allocated to it, when the assessment is graded and `evenIfAssessed` isn't set, or when the person
+   * can't allocate (`mod/workshop:allocate`).
+   */
+  removeReviewer(activityId: number, options: import("./areas/workshops/allocation.js").WorkshopReviewerRemoval): Promise<{ changed: string; assessmentId: number; submission: import("./areas/workshops/allocation.js").WorkshopAllocatedSubmission; }>;
+  /**
    * Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given,
    * the person's subscription to the discussion afterwards, read back (`subscribed`).
    */
@@ -809,6 +843,17 @@ export interface MoodleMethods {
   rubric(activityId: number): Promise<{ assignment: { id: number; }; } & import("./areas/assignments/grading.js").GradingDefinition>;
   /** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */
   saveSubmission(activityId: number, input: { onlineText?: string | undefined; files?: string[] | undefined; }): Promise<{ changed: string; assignment: import("./areas/assignments/student.js").StudentAssignment; }>;
+  /**
+   * Turns the scheduled allocation on or off, as Moodle's scheduled allocation form does: when on,
+   * Moodle runs the random allocation by itself at the end of the submission phase (once the
+   * workshop's submissions deadline passes, by its cron), with the settings given here (those of
+   * `allocateRandomly`; the ones left out keep what the form has). Returns a sentence of what changed
+   * and the scheduled allocation afterwards, with Moodle's status of it (a workshop without a
+   * submissions deadline is never allocated). Throws `WorkshopError` for a setting the workshop doesn't
+   * have or when the person can't allocate (`mod/workshop:allocate`); `FormError` when Moodle refuses
+   * the form.
+   */
+  scheduleAllocation(activityId: number, options: import("./areas/workshops/allocation.js").ScheduledAllocationSettings): Promise<{ changed: string; } & import("./areas/workshops/allocation.js").ScheduledAllocation>;
   /**
    * A SCORM activity as the person sees it: its attempts (allowed and made), the grading method, the
    * grade reported and each attempt's, and its SCOs with the person's status and score in the last
@@ -1040,6 +1085,15 @@ export interface MoodleMethods {
   userById(userId: number): Promise<import("./areas/site/users.js").User | undefined>;
   /** Who the logged-in person is; with `courseId`, also their roles and abilities in that course. */
   whoAmI(courseId?: number): Promise<import("./areas/site/users.js").Me>;
+  /**
+   * A workshop's allocation, as Moodle's manual allocation page shows it to a teacher (every page of
+   * it, in the course's current group): each submission with its author and the reviewers allocated
+   * to it (with the id of the assessment Moodle made for each, assessed or not), and the participants
+   * who may be allocated as reviewers. A teacher's own assessments count as allocations too. Throws
+   * `WorkshopError` when the person can't allocate (Moodle's `mod/workshop:allocate`, a teacher's) or
+   * the id isn't a workshop's.
+   */
+  workshopAllocation(activityId: number): Promise<import("./areas/workshops/allocation.js").WorkshopAllocation>;
   /**
    * A workshop's phase, and its report as the workshop's page shows it to a teacher: every submission
    * (its author, title, and grade once calculated) and every assessment (reviewer, the submission's

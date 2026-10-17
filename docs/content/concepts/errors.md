@@ -89,7 +89,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `BackupError` | [Copy, backup and restore](../areas/copy-backup-restore.md): Moodle refused, or didn't finish in time |
 | `SubmissionError` | [Assignments](../areas/assignments.md): nothing to submit, can't edit the submission… |
 | `NotAnAssignmentError`, `GradingError` | [Grading](../areas/grading.md): not an assignment the person can grade; Moodle didn't save the grade |
-| `WorkshopError` | [Grading](../areas/grading.md#workshopinfo): not a workshop; Moodle refused to switch its phase or offers no assessment |
+| `WorkshopError` | [Grading](../areas/grading.md#workshopinfo): not a workshop; Moodle refused to switch its phase or offers no assessment; the person can't allocate (`mod/workshop:allocate`) or the reviewer isn't one Moodle offers |
 | `QuizError` | [Quizzes](../areas/quizzes.md): attempts, reviews, results, overrides, structure |
 | `QuestionBankError` | [Question banks](../areas/question-banks.md) |
 | `NotAForumError`, `ForumError` | [Forums](../areas/forums.md) |

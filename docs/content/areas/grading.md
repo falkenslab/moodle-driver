@@ -1,6 +1,6 @@
 # Grading
 
-The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop's phases and assessments with `workshopInfo`, `setWorkshopPhase` and `assessWorkshopSubmission`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, defining a rubric or a marking guide, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
+The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop's phases, allocation and assessments with `workshopInfo`, `setWorkshopPhase`, `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly`, `scheduleAllocation` and `assessWorkshopSubmission`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, defining a rubric or a marking guide, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
 **Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale), [workshop](../reference/glossary.md#workshop).
 
@@ -326,7 +326,7 @@ Switches a workshop to a phase, as the phase links on its page do.
 function setWorkshopPhase(context: BrowserContext, siteUrl: string, activityId: number, phase: WorkshopPhase): Promise<{ changed: string; phase: WorkshopPhase }>;
 ```
 
-It opens Moodle's confirmation (`mod/workshop/switchphase.php`) and confirms it, then reads the phase from the workshop's page it lands on. Any phase can be chosen, forwards or back. Switching does only that: a teacher allocates submissions to reviewers (Moodle's "Allocate submissions") and calculates grades on Moodle's pages. It throws `WorkshopError` with Moodle's reason when the person can't switch phases (a student), and `MoodleError` (`invalid-input`) for a phase that isn't one of the five.
+It opens Moodle's confirmation (`mod/workshop/switchphase.php`) and confirms it, then reads the phase from the workshop's page it lands on. Any phase can be chosen, forwards or back. Switching does only that: submissions are allocated to reviewers with the functions below (Moodle's "Allocate submissions"), and grades are calculated on Moodle's pages. It throws `WorkshopError` with Moodle's reason when the person can't switch phases (a student), and `MoodleError` (`invalid-input`) for a phase that isn't one of the five.
 
 ## assessWorkshopSubmission
 
@@ -355,6 +355,129 @@ interface WorkshopCriterion {
 A teacher who hasn't assessed the submission gets an assessment of their own, as "Assess" on the submission's page (`mod/workshop/submission.php`) does; one the person already made (a teacher's, or a reviewer's allocated one) is changed. The form (`mod/workshop/assessment.php`) is filled by its field names and saved with "Save and continue". Moodle only lets anyone assess in the assessment phase. It throws `WorkshopError` when Moodle offers no assessment (another phase, or the person isn't a reviewer or teacher), when a criterion's grade isn't one it takes (the error lists those it takes), when more criteria are given than the form has, or when the workshop has no overall feedback; `FormError` with Moodle's messages when it refuses the form (a criterion without a grade).
 
 Students submit to a workshop on Moodle's pages: the driver has no workshop submission.
+
+## workshopAllocation
+
+Who assesses whom in a workshop: its allocation, as Moodle's manual allocation page shows it to a teacher.
+
+```ts
+function workshopAllocation(context: BrowserContext, siteUrl: string, activityId: number): Promise<WorkshopAllocation>;
+
+interface WorkshopAllocation {
+  activityId: number;
+  submissions: WorkshopAllocatedSubmission[];
+  potentialReviewers: { userId: number; fullName: string }[];
+}
+
+interface WorkshopAllocatedSubmission {
+  id: number;
+  title: string;
+  authorId: number;
+  author: string;
+  reviewers: WorkshopReviewer[];
+}
+
+interface WorkshopReviewer {
+  assessmentId: number;
+  reviewerId: number;
+  reviewer: string;
+}
+```
+
+- `submissions`: one per participant who submitted, with the reviewers allocated to it. An allocation is an assessment Moodle creates, empty until the reviewer assesses: `assessmentId` is its id. A teacher's own assessment of a submission counts as an allocation too.
+- `potentialReviewers`: the participants Moodle offers as reviewers, those who can assess peers in the course (its students).
+
+It reads every page of the manual allocation page (`mod/workshop/allocation.php`) by its table's cell classes and links, in the course's current group, in any phase. It throws `WorkshopError` when the person can't allocate (Moodle's `mod/workshop:allocate`, a teacher's; for a student Moodle refuses) or the id isn't a workshop's.
+
+## allocateReviewer
+
+Allocates a reviewer to a submission, as the "Add reviewer" menu of the manual allocation page does.
+
+```ts
+function allocateReviewer(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  input: { submissionId?: number; authorId?: number; reviewerId: number },
+): Promise<{ changed: string; added: boolean; assessmentId: number; submission: WorkshopAllocatedSubmission }>;
+```
+
+- `submissionId` or `authorId`: the submission, by its id or its author's user id (one of the two).
+- `reviewerId`: the reviewer's user id; it must be one Moodle's menu offers for the submission (a participant who can assess peers, not the author unless the workshop allows self-assessment).
+- `added`: false when the reviewer was already allocated (nothing changes then); `assessmentId`: the allocation's assessment; `submission`: the submission and its reviewers afterwards.
+
+Moodle itself would allocate any user id it's given, someone outside the course too; the driver allocates only those its menu offers, and throws `WorkshopError` for anyone else (the error lists who it offers), for the author when self-assessment is off, for a submission it doesn't find (an author without one), and when the person can't allocate. Allocating works in any phase; reviewers assess in the assessment phase.
+
+## removeReviewer
+
+Removes a reviewer's allocation to a submission, as the delete icon of the manual allocation page does.
+
+```ts
+function removeReviewer(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  input: { submissionId?: number; authorId?: number; reviewerId: number; evenIfAssessed?: boolean },
+): Promise<{ changed: string; assessmentId: number; submission: WorkshopAllocatedSubmission }>;
+```
+
+Moodle deletes the reviewer's assessment of the submission. It asks first, and warns when the reviewer has already assessed it: the driver goes through that question and stops there with `WorkshopError` unless `evenIfAssessed` is set, since the assessment and its grade are lost. It also throws `WorkshopError` when the reviewer isn't allocated to the submission and when the person can't allocate.
+
+## allocateRandomly
+
+Allocates submissions to reviewers at random, as Moodle's random allocation form does.
+
+```ts
+function allocateRandomly(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  settings: RandomAllocationSettings,
+): Promise<{ changed: string; added: number; removed: number; report: string[]; problems: string[]; allocation: WorkshopAllocation }>;
+
+interface RandomAllocationSettings {
+  perSubmission?: number;
+  perReviewer?: number;
+  keepCurrent?: boolean;
+  withoutSubmission?: boolean;
+  selfAssessment?: boolean;
+  excludeSameGroup?: boolean;
+}
+```
+
+- `perSubmission` or `perReviewer` (one of the two): how many reviews each submission gets, or each reviewer does (Moodle's "Number of reviews").
+- `keepCurrent`: keep the allocations there are (the default), or remove them first (Moodle's "Remove current allocations"; it never removes an assessment already graded).
+- `withoutSubmission`: reviewers without a submission of their own too (off by default, as in Moodle's form).
+- `selfAssessment`: add each author's self-assessment, where the workshop allows self-assessment.
+- `excludeSameGroup`: no reviews by peers of the same group, in visible groups mode only (in separate groups Moodle allocates within each group).
+- `added`, `removed`: allocations added and removed, counted from the allocation before and after; `report`: Moodle's account of what it did, line by line, in the site's language; `problems`: the lines Moodle marks as errors (not enough reviewers, a graded assessment it kept); `allocation`: the allocation afterwards.
+
+It throws `WorkshopError` for a setting the workshop doesn't have (self-assessment off, not in visible groups mode) and when the person can't allocate, `MoodleError` (`invalid-input`) without a number of reviews or with both, and `FormError` when Moodle refuses the form.
+
+## scheduleAllocation
+
+Turns the scheduled allocation on or off, as Moodle's scheduled allocation form does.
+
+```ts
+function scheduleAllocation(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  settings: RandomAllocationSettings & { enabled: boolean },
+): Promise<{ changed: string } & ScheduledAllocation>;
+
+interface ScheduledAllocation {
+  enabled: boolean;
+  perSubmission?: number;
+  perReviewer?: number;
+  keepCurrent: boolean;
+  withoutSubmission: boolean;
+  selfAssessment: boolean;
+  status: string;
+}
+```
+
+When it's on, Moodle runs the random allocation by itself, with these settings, at the end of the submission phase: once the workshop's submissions deadline has passed, from its scheduled tasks. The settings left out keep what the form has. It returns the scheduled allocation as the form shows it afterwards, with `status`, Moodle's words about it (a workshop without a submissions deadline is never allocated, and the status says so). Errors as in `allocateRandomly`.
 
 ## Example
 
@@ -393,7 +516,10 @@ for (const person of forum.grades.filter((g) => g.grade === undefined)) {
 }
 await moodle.rate({ type: "forum-post", id: 11, discussionId: 6 }, 4);
 
-// A workshop: open the assessment phase and assess every submission with an accumulative form of two criteria.
+// A workshop: two reviewers for each submission, then open the assessment phase and assess every
+// submission with an accumulative form of two criteria.
+const allocated = await moodle.allocateRandomly(58, { perSubmission: 2 });
+if (allocated.problems.length > 0) console.log(allocated.problems.join("\n"));
 await moodle.setWorkshopPhase(58, "assessment");
 const workshop = await moodle.workshopInfo(58);
 for (const submission of workshop.submissions) {
@@ -423,4 +549,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), and `assessWorkshopSubmission` `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), and `assessWorkshopSubmission` `others-personal` and `others-write`. `workshopAllocation` is `others-personal`, `allocateReviewer`, `removeReviewer` and `allocateRandomly` `others-personal` and `others-write` (they decide who assesses whose work), and `scheduleAllocation` `others-write`. See [data categories](../concepts/data-categories.md).

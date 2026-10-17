@@ -1,6 +1,6 @@
 # Calificar
 
-El lado del profesor en una tarea, en los foros y en los talleres: las calificaciones de foro completo con `forumGrades` y `gradeForumUser`, las valoraciones de mensajes de foro, entradas de glosario y entradas de bases de datos con `rate`, y las fases y evaluaciones de un taller con `workshopInfo`, `setWorkshopPhase` y `assessWorkshopSubmission`. En una tarea: las entregas de todos con su contenido y sus fechas, calificar a un participante como lo hace el calificador de Moodle (una calificación simple o una escala, los niveles de una rúbrica, las puntuaciones de una guía de evaluación, observaciones y comentarios de retroalimentación), leer el método de calificación y sus criterios, definir una rúbrica o una guía de evaluación, y conceder ampliaciones del plazo; los archivos de retroalimentación van con la calificación. También se cubren las tareas con entregas en grupo y el flujo de trabajo de calificación: quién entrega por qué grupo, calificar a todo un grupo a la vez, los estados del flujo de trabajo, los evaluadores y la publicación de calificaciones. Necesita permisos de profesor en la tarea (las capacidades de calificación de Moodle); a un estudiante, Moodle se lo rechaza. Calificar pasa por el propio panel y servicio del calificador (`core_get_fragment` con el `gradingpanel` de `mod_assign`, y luego `mod_assign_submit_grading_form`), y los campos se encuentran por sus nombres en el formulario, así que funciona en cualquier idioma. El lado del estudiante está en [tareas](assignments.md); las excepciones de los cuestionarios, en [cuestionarios](quizzes.md).
+El lado del profesor en una tarea, en los foros y en los talleres: las calificaciones de foro completo con `forumGrades` y `gradeForumUser`, las valoraciones de mensajes de foro, entradas de glosario y entradas de bases de datos con `rate`, y las fases, la asignación y las evaluaciones de un taller con `workshopInfo`, `setWorkshopPhase`, `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly`, `scheduleAllocation` y `assessWorkshopSubmission`. En una tarea: las entregas de todos con su contenido y sus fechas, calificar a un participante como lo hace el calificador de Moodle (una calificación simple o una escala, los niveles de una rúbrica, las puntuaciones de una guía de evaluación, observaciones y comentarios de retroalimentación), leer el método de calificación y sus criterios, definir una rúbrica o una guía de evaluación, y conceder ampliaciones del plazo; los archivos de retroalimentación van con la calificación. También se cubren las tareas con entregas en grupo y el flujo de trabajo de calificación: quién entrega por qué grupo, calificar a todo un grupo a la vez, los estados del flujo de trabajo, los evaluadores y la publicación de calificaciones. Necesita permisos de profesor en la tarea (las capacidades de calificación de Moodle); a un estudiante, Moodle se lo rechaza. Calificar pasa por el propio panel y servicio del calificador (`core_get_fragment` con el `gradingpanel` de `mod_assign`, y luego `mod_assign_submit_grading_form`), y los campos se encuentran por sus nombres en el formulario, así que funciona en cualquier idioma. El lado del estudiante está en [tareas](assignments.md); las excepciones de los cuestionarios, en [cuestionarios](quizzes.md).
 
 **Términos:** [tarea](../reference/glossary.md#assignment), [entrega](../reference/glossary.md#submission), [método de calificación](../reference/glossary.md#grading-method), [ampliación del plazo](../reference/glossary.md#extension), [escala](../reference/glossary.md#scale), [taller](../reference/glossary.md#workshop).
 
@@ -326,7 +326,7 @@ Cambia un taller a una fase, como hacen los enlaces de fase de su página.
 function setWorkshopPhase(context: BrowserContext, siteUrl: string, activityId: number, phase: WorkshopPhase): Promise<{ changed: string; phase: WorkshopPhase }>;
 ```
 
-Abre la confirmación de Moodle (`mod/workshop/switchphase.php`) y la confirma, y luego lee la fase de la página del taller a la que llega. Se puede elegir cualquier fase, hacia delante o hacia atrás. Cambiar de fase solo hace eso: un profesor asigna las entregas a los revisores ("Asignar envíos" de Moodle) y calcula las calificaciones en las páginas de Moodle. Lanza `WorkshopError` con el motivo de Moodle cuando la persona no puede cambiar de fase (un estudiante), y `MoodleError` (`invalid-input`) con una fase que no es una de las cinco.
+Abre la confirmación de Moodle (`mod/workshop/switchphase.php`) y la confirma, y luego lee la fase de la página del taller a la que llega. Se puede elegir cualquier fase, hacia delante o hacia atrás. Cambiar de fase solo hace eso: las entregas se asignan a los revisores con las funciones de más abajo ("Asignar envíos" de Moodle), y las calificaciones se calculan en las páginas de Moodle. Lanza `WorkshopError` con el motivo de Moodle cuando la persona no puede cambiar de fase (un estudiante), y `MoodleError` (`invalid-input`) con una fase que no es una de las cinco.
 
 ## assessWorkshopSubmission
 
@@ -355,6 +355,129 @@ interface WorkshopCriterion {
 Un profesor que no ha evaluado la entrega recibe una evaluación propia, como hace "Evaluar" en la página de la entrega (`mod/workshop/submission.php`); una que la persona ya hizo (la de un profesor, o la asignada a un revisor) se cambia. El formulario (`mod/workshop/assessment.php`) se rellena por los nombres de sus campos y se guarda con "Guardar y continuar editando". Moodle solo deja evaluar en la fase de evaluación. Lanza `WorkshopError` cuando Moodle no ofrece ninguna evaluación (otra fase, o la persona no es revisor ni profesor), cuando la calificación de un criterio no es una que admita (el error lista las que admite), cuando se indican más criterios de los que tiene el formulario, o cuando el taller no tiene retroalimentación global; `FormError` con los mensajes de Moodle cuando rechaza el formulario (un criterio sin calificación).
 
 Los estudiantes entregan en un taller en las páginas de Moodle: el driver no tiene entrega de taller.
+
+## workshopAllocation
+
+Quién evalúa a quién en un taller: su asignación, tal como la muestra a un profesor la página de asignación manual de Moodle.
+
+```ts
+function workshopAllocation(context: BrowserContext, siteUrl: string, activityId: number): Promise<WorkshopAllocation>;
+
+interface WorkshopAllocation {
+  activityId: number;
+  submissions: WorkshopAllocatedSubmission[];
+  potentialReviewers: { userId: number; fullName: string }[];
+}
+
+interface WorkshopAllocatedSubmission {
+  id: number;
+  title: string;
+  authorId: number;
+  author: string;
+  reviewers: WorkshopReviewer[];
+}
+
+interface WorkshopReviewer {
+  assessmentId: number;
+  reviewerId: number;
+  reviewer: string;
+}
+```
+
+- `submissions`: una por cada participante que entregó, con los revisores asignados a ella. Una asignación es una evaluación que crea Moodle, vacía hasta que el revisor evalúa: `assessmentId` es su id. La evaluación propia de un profesor sobre una entrega también cuenta como asignación.
+- `potentialReviewers`: los participantes que Moodle ofrece como revisores, los que pueden evaluar a sus compañeros en el curso (sus estudiantes).
+
+Lee todas las páginas de la página de asignación manual (`mod/workshop/allocation.php`) por las clases de las celdas y los enlaces de su tabla, en el grupo actual del curso, en cualquier fase. Lanza `WorkshopError` cuando la persona no puede asignar (la capacidad `mod/workshop:allocate` de Moodle, de un profesor; a un estudiante, Moodle se lo rechaza) o el id no es de un taller.
+
+## allocateReviewer
+
+Asigna un revisor a una entrega, como hace el menú "Añadir revisor" de la página de asignación manual.
+
+```ts
+function allocateReviewer(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  input: { submissionId?: number; authorId?: number; reviewerId: number },
+): Promise<{ changed: string; added: boolean; assessmentId: number; submission: WorkshopAllocatedSubmission }>;
+```
+
+- `submissionId` o `authorId`: la entrega, por su id o por el id de usuario de su autor (uno de los dos).
+- `reviewerId`: el id de usuario del revisor; tiene que ser uno de los que el menú de Moodle ofrece para la entrega (un participante que puede evaluar a sus compañeros, no el autor salvo que el taller permita la autoevaluación).
+- `added`: false cuando el revisor ya estaba asignado (entonces no cambia nada); `assessmentId`: la evaluación de la asignación; `submission`: la entrega y sus revisores después.
+
+Moodle asignaría por sí mismo cualquier id de usuario que se le dé, también a alguien de fuera del curso; el driver asigna solo a quienes ofrece su menú, y lanza `WorkshopError` con cualquier otro (el error lista a quiénes ofrece), con el autor cuando la autoevaluación está desactivada, con una entrega que no encuentra (un autor sin entrega), y cuando la persona no puede asignar. Asignar funciona en cualquier fase; los revisores evalúan en la fase de evaluación.
+
+## removeReviewer
+
+Quita la asignación de un revisor a una entrega, como hace el icono de borrar de la página de asignación manual.
+
+```ts
+function removeReviewer(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  input: { submissionId?: number; authorId?: number; reviewerId: number; evenIfAssessed?: boolean },
+): Promise<{ changed: string; assessmentId: number; submission: WorkshopAllocatedSubmission }>;
+```
+
+Moodle borra la evaluación de la entrega por parte del revisor. Antes pregunta, y avisa cuando el revisor ya la ha evaluado: el driver pasa por esa pregunta y se detiene ahí con `WorkshopError` salvo que se indique `evenIfAssessed`, porque se pierden la evaluación y su calificación. También lanza `WorkshopError` cuando el revisor no está asignado a la entrega y cuando la persona no puede asignar.
+
+## allocateRandomly
+
+Asigna las entregas a los revisores al azar, como hace el formulario de asignación aleatoria de Moodle.
+
+```ts
+function allocateRandomly(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  settings: RandomAllocationSettings,
+): Promise<{ changed: string; added: number; removed: number; report: string[]; problems: string[]; allocation: WorkshopAllocation }>;
+
+interface RandomAllocationSettings {
+  perSubmission?: number;
+  perReviewer?: number;
+  keepCurrent?: boolean;
+  withoutSubmission?: boolean;
+  selfAssessment?: boolean;
+  excludeSameGroup?: boolean;
+}
+```
+
+- `perSubmission` o `perReviewer` (uno de los dos): cuántas revisiones recibe cada entrega, o hace cada revisor (el "Número de revisiones" de Moodle).
+- `keepCurrent`: conserva las asignaciones que hay (por defecto), o las quita antes (el "Eliminar las asignaciones actuales" de Moodle; nunca quita una evaluación ya calificada).
+- `withoutSubmission`: también revisores sin entrega propia (desactivado por defecto, como en el formulario de Moodle).
+- `selfAssessment`: añade la autoevaluación de cada autor, cuando el taller permite la autoevaluación.
+- `excludeSameGroup`: sin revisiones entre compañeros del mismo grupo, solo en el modo de grupos visibles (en grupos separados Moodle asigna dentro de cada grupo).
+- `added`, `removed`: las asignaciones añadidas y quitadas, contadas a partir de la asignación de antes y de después; `report`: el relato de Moodle de lo que hizo, línea a línea, en el idioma del sitio; `problems`: las líneas que Moodle marca como errores (no hay revisores suficientes, una evaluación calificada que conservó); `allocation`: la asignación después.
+
+Lanza `WorkshopError` con un ajuste que el taller no tiene (la autoevaluación desactivada, no está en modo de grupos visibles) y cuando la persona no puede asignar, `MoodleError` (`invalid-input`) sin número de revisiones o con los dos, y `FormError` cuando Moodle rechaza el formulario.
+
+## scheduleAllocation
+
+Activa o desactiva la asignación programada, como hace el formulario de asignación programada de Moodle.
+
+```ts
+function scheduleAllocation(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  settings: RandomAllocationSettings & { enabled: boolean },
+): Promise<{ changed: string } & ScheduledAllocation>;
+
+interface ScheduledAllocation {
+  enabled: boolean;
+  perSubmission?: number;
+  perReviewer?: number;
+  keepCurrent: boolean;
+  withoutSubmission: boolean;
+  selfAssessment: boolean;
+  status: string;
+}
+```
+
+Cuando está activada, Moodle ejecuta por sí mismo la asignación aleatoria, con estos ajustes, al final de la fase de envío: una vez pasada la fecha límite de envíos del taller, desde sus tareas programadas. Los ajustes que no se indican conservan lo que tiene el formulario. Devuelve la asignación programada tal como la muestra el formulario después, con `status`, lo que dice Moodle de ella (un taller sin fecha límite de envíos nunca se asigna, y el estado lo dice). Errores como en `allocateRandomly`.
 
 ## Ejemplo {#example}
 
@@ -393,7 +516,10 @@ for (const person of forum.grades.filter((g) => g.grade === undefined)) {
 }
 await moodle.rate({ type: "forum-post", id: 11, discussionId: 6 }, 4);
 
-// Un taller: abre la fase de evaluación y evalúa cada entrega con un formulario acumulativo de dos criterios.
+// Un taller: dos revisores para cada entrega, y luego abre la fase de evaluación y evalúa cada
+// entrega con un formulario acumulativo de dos criterios.
+const allocated = await moodle.allocateRandomly(58, { perSubmission: 2 });
+if (allocated.problems.length > 0) console.log(allocated.problems.join("\n"));
 await moodle.setWorkshopPhase(58, "assessment");
 const workshop = await moodle.workshopInfo(58);
 for (const submission of workshop.submissions) {
@@ -423,4 +549,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Categorías de datos {#data-categories}
 
-`assignmentSubmissions` es `others-personal`. `gradeSubmission` es `others-personal` y `others-write` (lee el panel y decide sobre alguien). `rubric` y `setGradingDefinition` son `course-content`, y `grantExtension`, `setWorkflowState` y `allocateMarker` son `others-write`. `forumGrades` es `others-personal`, `gradeForumUser`, `others-personal` y `others-write`, y `rate`, `others-write`. `workshopInfo` es `others-personal`, `setWorkshopPhase`, `others-write` (abre y cierra el trabajo de los participantes), y `assessWorkshopSubmission`, `others-personal` y `others-write`. Consulta [categorías de datos](../concepts/data-categories.md).
+`assignmentSubmissions` es `others-personal`. `gradeSubmission` es `others-personal` y `others-write` (lee el panel y decide sobre alguien). `rubric` y `setGradingDefinition` son `course-content`, y `grantExtension`, `setWorkflowState` y `allocateMarker` son `others-write`. `forumGrades` es `others-personal`, `gradeForumUser`, `others-personal` y `others-write`, y `rate`, `others-write`. `workshopInfo` es `others-personal`, `setWorkshopPhase`, `others-write` (abre y cierra el trabajo de los participantes), y `assessWorkshopSubmission`, `others-personal` y `others-write`. `workshopAllocation` es `others-personal`; `allocateReviewer`, `removeReviewer` y `allocateRandomly`, `others-personal` y `others-write` (deciden quién evalúa el trabajo de quién), y `scheduleAllocation`, `others-write`. Consulta [categorías de datos](../concepts/data-categories.md).
