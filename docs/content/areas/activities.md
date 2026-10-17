@@ -15,6 +15,7 @@ Every function here except `activitySettings` and `courseActivityTypes` returns 
 - `sectionId`: the section added, by `addSection`.
 - `url`: the activity's page, after creating or updating it.
 - `files`: a file resource's or folder's files, after `updateActivity` changed them (`DraftFile[]`, `{ name, size }`).
+- `scorm`: a SCORM as [scorm](scorm.md) reads it, after `updateActivity` gave it a new `package`.
 - `sections`: the course's `CourseSection[]` after the change, as [courseStructure](courses.md) gives them (without details).
 
 ## createActivity
@@ -65,7 +66,7 @@ Errors:
 Changes an existing activity through its form: only what's given changes, and the files already there stay unless `files` says otherwise.
 
 ```ts
-function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields & { files?: FileChanges }): Promise<CourseChange>;
+function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields & { files?: FileChanges; package?: string }): Promise<CourseChange>;
 
 interface FileChanges {
   add?: (string | DraftUpload)[]; // local paths, or { from, to } for another name or a subfolder
@@ -74,7 +75,7 @@ interface FileChanges {
 }
 ```
 
-It takes the same `ActivityFields` as `createActivity`, reading the activity's module and course from the form. Errors are the same `FormError` cases, and a `MoodleError` (`invalid-input`) for `content` on a type other than a page or label.
+It takes the same `ActivityFields` as `createActivity`, reading the activity's module and course from the form. `package` is a SCORM's new package, a local `.zip` (see [Replacing a SCORM's package](scorm.md#replacing-a-scorms-package)). Errors are the same `FormError` cases, and a `MoodleError` (`invalid-input`) for `content` on a type other than a page or label.
 
 ### Changing a resource's or folder's files
 

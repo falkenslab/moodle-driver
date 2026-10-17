@@ -795,8 +795,15 @@ export interface MoodleMethods {
   /**
    * Changes an existing activity through its form: only what's given changes. A file resource's or
    * folder's files stay as they are unless `files` says what to add, remove or replace.
+   *
+   * `package` (a local `.zip`, absolute path) replaces a SCORM's package in place: the activity keeps
+   * its id, settings and grade item, and the result has it as `scorm` reads it afterwards. Moodle
+   * matches the new package's SCOs to the old ones by their identifier in the manifest: one kept keeps
+   * its tracks (the attempts made in it) and a new one starts not attempted (confirmed empirically,
+   * 5.2), one gone is deleted with its tracks (`scorm_parse_scorm`). A package Moodle can't read is an `ActivitySettingsError`, with
+   * nothing changed.
    */
-  updateActivity(activityId: number, input: import("./areas/activities/build.js").ActivityFields & { files?: import("./areas/activities/build.js").FileChanges | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  updateActivity(activityId: number, input: import("./areas/activities/build.js").ActivityFields & { files?: import("./areas/activities/build.js").FileChanges | undefined; package?: string | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
    * Changes a course's full name, short name, summary (HTML) or any other setting by its form field
    * name, through the course's settings form; returns the course as `listCourses` gives it. `embed`

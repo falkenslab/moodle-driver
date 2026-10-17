@@ -1730,7 +1730,7 @@ moodle upcoming-events [--options]
 
 ## updateActivity
 
-Changes an existing activity through its form: only what's given changes. A file resource's or folder's files stay as they are unless `files` says what to add, remove or replace.
+Changes an existing activity through its form: only what's given changes. A file resource's or folder's files stay as they are unless `files` says what to add, remove or replace. `package` (a local `.zip`, absolute path) replaces a SCORM's package in place: the activity keeps its id, settings and grade item, and the result has it as `scorm` reads it afterwards. Moodle matches the new package's SCOs to the old ones by their identifier in the manifest: one kept keeps its tracks (the attempts made in it) and a new one starts not attempted (confirmed empirically, 5.2), one gone is deleted with its tracks (`scorm_parse_scorm`). A package Moodle can't read is an `ActivitySettingsError`, with nothing changed.
 
 ```bash
 moodle update-activity <activityId> <input>
@@ -1739,7 +1739,7 @@ moodle update-activity <activityId> <input>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
-| `input` | `ActivityFields & { files?: FileChanges; }` |  |
+| `input` | `ActivityFields & { files?: FileChanges; package?: string; }` |  |
 
 ## updateCourse
 

@@ -1,6 +1,6 @@
 # SCORM
 
-Actividades SCORM (módulo `scorm`): lo que la persona ve en la página de la actividad (intentos permitidos y realizados, el método de calificación, la calificación comunicada y la de cada intento) y sus SCO con el estado y la puntuación de la persona; el reproductor de Moodle abierto en la pestaña de trabajo para hacerla; y, para un profesor, un SCORM creado a partir de un paquete. Un paquete es HTML y JavaScript del propio profesor: el driver no lo hace, y nunca escribe sus datos de seguimiento ni una calificación. Su resultado sale solo de hacerlo en el reproductor.
+Actividades SCORM (módulo `scorm`): lo que la persona ve en la página de la actividad (intentos permitidos y realizados, el método de calificación, la calificación comunicada y la de cada intento) y sus SCO con el estado y la puntuación de la persona; el reproductor de Moodle abierto en la pestaña de trabajo para hacerla; y, para un profesor, un SCORM creado a partir de un paquete, y su paquete sustituido. Un paquete es HTML y JavaScript del propio profesor: el driver no lo hace, y nunca escribe sus datos de seguimiento ni una calificación. Su resultado sale solo de hacerlo en el reproductor.
 
 **Términos:** [SCORM](../reference/glossary.md#scorm), [intento](../reference/glossary.md#attempt), [pestaña de trabajo](../reference/glossary.md#working-tab).
 
@@ -72,6 +72,21 @@ await moodle.createActivity({ courseId: 3, sectionId: 7, type: "scorm", name: "C
 ```
 
 Los demás ajustes van en `settings` por los nombres de los campos de su formulario (`maxattempt`, `grademethod`, `whatgrade`, `skipview`…).
+
+## Sustituir el paquete de un SCORM {#replacing-a-scorms-package}
+
+`updateActivity` con `package`, un `.zip` local (ruta absoluta), sustituye el paquete de un SCORM sin cambiar de actividad, en el campo del paquete de su formulario: la actividad conserva su id, sus ajustes (intentos, calificación) y su elemento de calificación, así que sus enlaces y su sitio en el libro de calificaciones se mantienen. El `scorm` del resultado es la actividad tal como la lee `scorm` después, y `files` su nuevo paquete:
+
+```ts fragment
+const done = await moodle.updateActivity(44, { package: "/home/ada/scorm/check-v2.zip" });
+console.log(done.changed); // Updated activity 44 "Comprueba lo que sabes": package replaced by check-v2.zip.
+for (const sco of done.scorm?.scos ?? []) console.log(sco.title);
+```
+
+Lo que pasa con los intentos realizados no depende de los ajustes de la actividad: Moodle empareja los SCO del nuevo paquete con los antiguos por su `identifier` en `imsmanifest.xml`. Un SCO que el nuevo paquete conserva (aunque cambie de título) mantiene su id y los datos de seguimiento de todos en él; un SCO que ya no tiene se borra con sus datos de seguimiento; uno nuevo empieza sin intentar. Conserva los identificadores para conservar los intentos.
+
+- Un zip que Moodle no puede leer como paquete (sin `imsmanifest.xml`): `ActivitySettingsError` con el mensaje de Moodle, y la actividad conserva su paquete anterior.
+- `package` en una actividad que no es un SCORM, o junto con `files`: un `MoodleError` (`invalid-input`); en un SCORM tomado de una URL en vez de subido: `not-available`.
 
 ## Ejemplo {#example}
 
