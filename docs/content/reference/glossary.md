@@ -46,6 +46,10 @@ A thread of private messages in Moodle's messaging: between two people (`private
 The id of an activity in its course, the `id` in the activity's URL (`mod/quiz/view.php?id=27`), often written "cmid" in Moodle's code; the driver calls it the activity id. Every activity function takes it as a parameter named `activityId`, whatever the module, and results give it as `id` for the activity itself (`CourseActivity.id`) and `activityId` where they refer to one (`GradeRow.activityId`, `CompletionCell.activityId`); it is never the [instance id](#instance-id). See [the Moodle object and the functions](../concepts/calling-functions.md#ids).
 `moodle.quizInfo(27)`
 
+### Database
+
+An activity, module `data`, where participants add entries with the fields a teacher defines (short text, dropdown list, date, image…), listed, shown and searched through its templates; a preset gives it fields and templates at once. The driver reads and writes its fields with `databaseFields`, `addDatabaseField`, `editDatabaseField` and `deleteDatabaseField`, its templates with `databaseTemplates` and `setDatabaseTemplate`, and gives it one of the site's presets with `databasePresets` and `applyDatabasePreset`; `rate` rates its entries. See [Databases](../areas/databases.md).
+
 ### Extension
 
 More time for one participant to submit an assignment, past its due date and cut-off: "Grant extension" in the grading table. The driver grants it to one or several participants with `grantExtension(activityId, userIds, until)`, and `assignmentSubmissions` reports it per participant as `extensionGranted` and `extensionDueDate`. For a quiz, the equivalent is an [override](#override). See [Grading](../areas/grading.md).

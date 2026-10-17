@@ -126,6 +126,82 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "addDatabaseField",
+    "description": "Adds a field to a database activity through Moodle's form for its type, as \"Create a field\" does: templates left at Moodle's default show it, and Moodle appends it to a saved single, add entry or RSS template that has no `##otherfields##` (not to the list template). Returns its id and the fields afterwards. Throws `MoodleError` (`invalid-input`) for a type that isn't one of `DATABASE_FIELD_TYPES`, an option the type doesn't take, a choice list without choices or a required date (Moodle's form offers it no such setting), before anything changes; `DatabaseError` with Moodle's reason when it refuses the field (a name the database already has, an image size that isn't a number, a maximum size its form doesn't offer); `NotADatabaseError` when the id isn't a database.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "field",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "type",
+          "optional": false,
+          "type": "\"number\" | \"url\" | \"text\" | \"textarea\" | \"date\" | \"menu\" | \"radiobutton\" | \"checkbox\" | \"multimenu\" | \"file\" | \"picture\" | \"latlong\"",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "number",
+              "url",
+              "text",
+              "textarea",
+              "date",
+              "menu",
+              "radiobutton",
+              "checkbox",
+              "multimenu",
+              "file",
+              "picture",
+              "latlong"
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Unique in the database: templates name the field by it (`[[name]]`)."
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "required",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "options",
+          "optional": true,
+          "type": "DatabaseFieldOptions",
+          "value": {
+            "kind": "json"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addGradeCategory",
     "description": "Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it.",
     "params": [
@@ -540,6 +616,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "applyDatabasePreset",
+    "description": "Gives a database activity one of the site's presets (`databasePresets`), as \"Use this preset\" and \"Apply preset\" do: the preset's fields are added, a field with the same name and type is kept with what entries have in it, and every other field is deleted with its content; its templates replace the database's, and its other settings stay. Returns the fields afterwards. Throws `MoodleError` (`not-found`) for a preset the presets page doesn't list, `DatabaseError` when Moodle doesn't apply it or the person can't manage the database, `NotADatabaseError` when the id isn't a database.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "presetId",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ]
   },
   {
     "name": "assessWorkshopSubmission",
@@ -1378,6 +1476,48 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "databaseFields",
+    "description": "A database activity's fields, in the fields page's order: each one's id, name, type, description, whether it's required and its type's settings (`DatabaseFieldOptions`), read from its edit form. Throws `NotADatabaseError` when the id isn't a database, `DatabaseError` when the person can't manage it (it takes `mod/data:managetemplates`, which editing teachers have).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "databasePresets",
+    "description": "The presets a database activity can be given, from its presets page: Moodle's own and those saved on the site that the person can see. Throws `DatabaseError` when the person can't manage the database, `NotADatabaseError` when the id isn't one.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "databaseTemplates",
+    "description": "A database activity's templates (`DATABASE_TEMPLATES`), as its templates page shows them: what was saved, or Moodle's default for the fields it has where nothing was (an empty header, footer or RSS title, CSS or JavaScript stays empty). Throws `DatabaseError` when the database has no fields yet (Moodle has no templates before the first) or the person can't manage it, `NotADatabaseError` when the id isn't a database.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "deadlines",
     "description": "What the person has to do by a date (calendar action events: submit, attempt, grade…), from the last `pastDays` to `days` ahead, in one course or all. Teachers' grading counts come from the activities overview instead: Moodle gives them few action events.",
     "params": [],
@@ -1427,6 +1567,28 @@ export const COMMANDS: readonly CommandSpec[] = [
       },
       {
         "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteDatabaseField",
+    "description": "Deletes a database field, as its delete action confirmed does: what entries have in it goes too, and its tags leave the templates. Returns the fields afterwards. Throws `MoodleError` (`not-found`) when the database has no such field, `DatabaseError` when Moodle refuses, `NotADatabaseError` when the id isn't a database.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "fieldId",
         "optional": false,
         "type": "number",
         "value": {
@@ -1723,6 +1885,67 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "editDatabaseField",
+    "description": "Changes a database field through its edit form: what `changes` leaves out stays as it is (its options one by one). Renaming it renames its tag in the templates, as Moodle does. Its type can't change: delete it and add another. Returns the fields afterwards. Throws `MoodleError` (`not-found`) when the database has no such field, (`invalid-input`) for an option its type doesn't take; `DatabaseError` with Moodle's reason when it refuses the change; `NotADatabaseError` when the id isn't a database.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "fieldId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "required",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "options",
+          "optional": true,
+          "type": "DatabaseFieldOptions",
+          "value": {
+            "kind": "json"
           }
         }
       ]
@@ -3494,6 +3717,48 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "setDatabaseTemplate",
+    "description": "Saves one of a database's templates (`DATABASE_TEMPLATES`) as it is, without Moodle's HTML editor in between, as its templates page's Save does; `null` resets it to Moodle's default (for the list template alone: its header and footer stay). Fields go in as `[[name]]`, Moodle's other tags as `##tag##` (the templates page lists them). Returns every template afterwards. Throws `MoodleError` (`invalid-input`) for a template that isn't one of `DATABASE_TEMPLATES`; `DatabaseError` when the database has no fields yet, Moodle doesn't keep the template (an add entry template with a field's tag twice) or the person can't manage it; `NotADatabaseError` when the id isn't a database.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "template",
+        "optional": false,
+        "type": "\"list\" | \"listHeader\" | \"listFooter\" | \"single\" | \"add\" | \"search\" | \"rss\" | \"rssTitle\" | \"css\" | \"js\"",
+        "value": {
+          "kind": "enum",
+          "values": [
+            "list",
+            "listHeader",
+            "listFooter",
+            "single",
+            "add",
+            "search",
+            "rss",
+            "rssTitle",
+            "css",
+            "js"
+          ]
+        }
+      },
+      {
+        "name": "html",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ]
+  },
+  {
     "name": "setDiscussionState",
     "description": "Pins or unpins, locks or unlocks a discussion, as the discussion list's menu does; what's already so is left alone. Returns the discussion as the forum lists it afterwards.",
     "params": [
@@ -4618,15 +4883,6 @@ export const COMMANDS: readonly CommandSpec[] = [
           }
         },
         {
-          "name": "fields",
-          "optional": true,
-          "type": "Record<string, FieldValue>",
-          "value": {
-            "kind": "json"
-          },
-          "description": "Any other field of the type's form, by name."
-        },
-        {
           "name": "text",
           "optional": true,
           "type": "string",
@@ -4634,6 +4890,15 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "string"
           },
           "description": "The question's text (HTML)."
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Any other field of the type's form, by name."
         },
         {
           "name": "answers",

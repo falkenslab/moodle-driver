@@ -59,6 +59,23 @@ moodle activity-settings <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## addDatabaseField
+
+Adds a field to a database activity through Moodle's form for its type, as "Create a field" does: templates left at Moodle's default show it, and Moodle appends it to a saved single, add entry or RSS template that has no `##otherfields##` (not to the list template). Returns its id and the fields afterwards. Throws `MoodleError` (`invalid-input`) for a type that isn't one of `DATABASE_FIELD_TYPES`, an option the type doesn't take, a choice list without choices or a required date (Moodle's form offers it no such setting), before anything changes; `DatabaseError` with Moodle's reason when it refuses the field (a name the database already has, an image size that isn't a number, a maximum size its form doesn't offer); `NotADatabaseError` when the id isn't a database.
+
+```bash
+moodle add-database-field <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--type` (required) | `"number" \| "url" \| "text" \| "textarea" \| "date" \| "menu" \| "radiobutton" \| "checkbox" \| "multimenu" \| "file" \| "picture" \| "latlong"` |  |
+| `--name` (required) | `string` | Unique in the database: templates name the field by it (`[[name]]`). |
+| `--description` | `string` |  |
+| `--required` | `boolean` |  |
+| `--options` | `DatabaseFieldOptions` |  |
+
 ## addGradeCategory
 
 Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it.
@@ -204,6 +221,19 @@ moodle answer-quiz-questions <attemptId> <answers> [--options]
 | `attemptId` | `number` |  |
 | `answers` | `{ slot: number; responses: Record<string, string>; }[]` |  |
 | `--trail` | `"realistic" \| "fast"` |  |
+
+## applyDatabasePreset
+
+Gives a database activity one of the site's presets (`databasePresets`), as "Use this preset" and "Apply preset" do: the preset's fields are added, a field with the same name and type is kept with what entries have in it, and every other field is deleted with its content; its templates replace the database's, and its other settings stay. Returns the fields afterwards. Throws `MoodleError` (`not-found`) for a preset the presets page doesn't list, `DatabaseError` when Moodle doesn't apply it or the person can't manage the database, `NotADatabaseError` when the id isn't a database.
+
+```bash
+moodle apply-database-preset <activityId> <presetId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `presetId` | `string` |  |
 
 ## assessWorkshopSubmission
 
@@ -511,6 +541,42 @@ moodle create-question <activityId> --options
 | `--default-mark` | `number` |  |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
 
+## databaseFields
+
+A database activity's fields, in the fields page's order: each one's id, name, type, description, whether it's required and its type's settings (`DatabaseFieldOptions`), read from its edit form. Throws `NotADatabaseError` when the id isn't a database, `DatabaseError` when the person can't manage it (it takes `mod/data:managetemplates`, which editing teachers have).
+
+```bash
+moodle database-fields <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
+## databasePresets
+
+The presets a database activity can be given, from its presets page: Moodle's own and those saved on the site that the person can see. Throws `DatabaseError` when the person can't manage the database, `NotADatabaseError` when the id isn't one.
+
+```bash
+moodle database-presets <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
+## databaseTemplates
+
+A database activity's templates (`DATABASE_TEMPLATES`), as its templates page shows them: what was saved, or Moodle's default for the fields it has where nothing was (an empty header, footer or RSS title, CSS or JavaScript stays empty). Throws `DatabaseError` when the database has no fields yet (Moodle has no templates before the first) or the person can't manage it, `NotADatabaseError` when the id isn't a database.
+
+```bash
+moodle database-templates <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
 ## deadlines
 
 What the person has to do by a date (calendar action events: submit, attempt, grade…), from the last `pastDays` to `days` ahead, in one course or all. Teachers' grading counts come from the activities overview instead: Moodle gives them few action events.
@@ -537,6 +603,19 @@ moodle delete-activity <courseId> <activityId>
 | --- | --- | --- |
 | `courseId` | `number` |  |
 | `activityId` | `number` |  |
+
+## deleteDatabaseField
+
+Deletes a database field, as its delete action confirmed does: what entries have in it goes too, and its tags leave the templates. Returns the fields afterwards. Throws `MoodleError` (`not-found`) when the database has no such field, `DatabaseError` when Moodle refuses, `NotADatabaseError` when the id isn't a database.
+
+```bash
+moodle delete-database-field <activityId> <fieldId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `fieldId` | `number` |  |
 
 ## deleteEvent
 
@@ -694,6 +773,23 @@ moodle edit-activity <courseId> <activityId> --options
 | `--visibility` | `"shown" \| "hidden" \| "stealth"` |  |
 | `--section-id` | `number` |  |
 | `--before-activity-id` | `number` |  |
+
+## editDatabaseField
+
+Changes a database field through its edit form: what `changes` leaves out stays as it is (its options one by one). Renaming it renames its tag in the templates, as Moodle does. Its type can't change: delete it and add another. Returns the fields afterwards. Throws `MoodleError` (`not-found`) when the database has no such field, (`invalid-input`) for an option its type doesn't take; `DatabaseError` with Moodle's reason when it refuses the change; `NotADatabaseError` when the id isn't a database.
+
+```bash
+moodle edit-database-field <activityId> <fieldId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `fieldId` | `number` |  |
+| `--name` | `string` |  |
+| `--description` | `string` |  |
+| `--required` | `boolean` |  |
+| `--options` | `DatabaseFieldOptions` |  |
 
 ## editPost
 
@@ -1452,6 +1548,20 @@ moodle set-completion <activityId> <done>
 | `activityId` | `number` |  |
 | `done` | `boolean` |  |
 
+## setDatabaseTemplate
+
+Saves one of a database's templates (`DATABASE_TEMPLATES`) as it is, without Moodle's HTML editor in between, as its templates page's Save does; `null` resets it to Moodle's default (for the list template alone: its header and footer stay). Fields go in as `[[name]]`, Moodle's other tags as `##tag##` (the templates page lists them). Returns every template afterwards. Throws `MoodleError` (`invalid-input`) for a template that isn't one of `DATABASE_TEMPLATES`; `DatabaseError` when the database has no fields yet, Moodle doesn't keep the template (an add entry template with a field's tag twice) or the person can't manage it; `NotADatabaseError` when the id isn't a database.
+
+```bash
+moodle set-database-template <activityId> <template> <html>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `template` | `"list" \| "listHeader" \| "listFooter" \| "single" \| "add" \| "search" \| "rss" \| "rssTitle" \| "css" \| "js"` |  |
+| `html` | `string` |  |
+
 ## setDiscussionState
 
 Pins or unpins, locks or unlocks a discussion, as the discussion list's menu does; what's already so is left alone. Returns the discussion as the forum lists it afterwards.
@@ -1855,8 +1965,8 @@ moodle update-question <activityId> <questionId> --options
 | `activityId` | `number` |  |
 | `questionId` | `number` |  |
 | `--name` | `string` |  |
-| `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
 | `--text` | `string` | The question's text (HTML). |
+| `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
 | `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
 | `--correct` | `boolean` | True/false: the right answer. |
 | `--category-id` | `number` | The bank's category it goes in; a new question goes in the bank's default one when left out. |

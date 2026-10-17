@@ -124,7 +124,7 @@ Complete programs for real tasks, commented, are in the [examples](https://falke
 | Area | For example |
 | --- | --- |
 | 📚 Courses and content | Course structure and updates, pages, books, files and folders, H5P and SCORM content |
-| 🏗️ Building courses | Sections and activities of any type, settings, restrictions and completion, images embedded in rich text |
+| 🏗️ Building courses | Sections and activities of any type, settings, restrictions and completion, images embedded in rich text, databases' fields and templates |
 | 📝 Assignments and grading | Submissions, rubrics and marking guides, the marking workflow, extensions, feedback files |
 | ❓ Quizzes and questions | Attempts, results, manual grading, quiz layout and overrides, question banks with GIFT and Moodle XML import |
 | 📊 Gradebook and reports | The grader report, grade items and categories, exports, completion, activity and participation reports, logs |
