@@ -1,6 +1,6 @@
 # Bancos de preguntas
 
-Los bancos de preguntas de un curso tal como los organiza Moodle 5: los bancos compartidos son actividades en sí mismos (módulo `qbank`), y cada cuestionario tiene un banco privado. Un profesor (cualquiera que pueda gestionar las preguntas del curso) lista los bancos, lee las categorías y las preguntas de un banco, importa preguntas en GIFT o Moodle XML (un archivo o texto) y las exporta a un archivo, crea preguntas sueltas mediante el formulario de su tipo, las edita, las marca como listas o como borrador, y las borra; organiza las categorías del banco (añadiéndolas, renombrándolas, moviéndolas y borrándolas) y mueve preguntas entre ellas. Los estudiantes no tienen acceso a los bancos. Las preguntas de un banco son lo que [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) pone en un cuestionario.
+Los bancos de preguntas de un curso tal como los organiza Moodle 5: los bancos compartidos son actividades en sí mismos (módulo `qbank`), y cada cuestionario tiene un banco privado. Un profesor (cualquiera que pueda gestionar las preguntas del curso) lista los bancos, lee las categorías y las preguntas de un banco, importa preguntas en GIFT o Moodle XML (un archivo o texto) y las exporta a un archivo, crea preguntas sueltas de cualquier tipo mediante el formulario de su tipo, las edita, las marca como listas o como borrador, y las borra; organiza las categorías del banco (añadiéndolas, renombrándolas, moviéndolas y borrándolas) y mueve preguntas entre ellas. Los estudiantes no tienen acceso a los bancos. Las preguntas de un banco son lo que [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) pone en un cuestionario.
 
 **Términos:** [banco de preguntas](../reference/glossary.md#question-bank), [categoría de preguntas](../reference/glossary.md#question-category), [slot](../reference/glossary.md#slot).
 
@@ -104,32 +104,61 @@ El resultado es `{ path, name, size, contentType }`, como el que da [`downloadFi
 
 ## createQuestion
 
-Crea una pregunta en un banco mediante el formulario de edición de su tipo y devuelve su id. Para varias preguntas, lo propio es importarlas; esto es para casos sueltos.
+Crea una pregunta en un banco mediante el formulario de edición de su tipo y devuelve su id, de cualquier tipo que ofrezca el diálogo "Añadir una pregunta" del banco. Para varias preguntas, lo propio es importarlas; esto es para casos sueltos.
 
 ```ts
 function createQuestion(context: BrowserContext, siteUrl: string, activityId: number, input: QuestionInput): Promise<{ changed: string; questionId?: number }>;
 
 interface QuestionInput {
-  type: QuestionType; // "multichoice" | "truefalse" | "shortanswer" | "numerical" | "essay"
+  type: QuestionType; // uno de QUESTION_TYPES
   name: string;
   text: string;
   answers?: { text: string; fraction: number; feedback?: string; tolerance?: number }[];
   correct?: boolean;
+  pairs?: { question: string; answer: string }[];
+  choose?: number;
+  choices?: { text: string; group?: number; unlimited?: boolean }[];
+  image?: string;
+  drags?: { text?: string; image?: string; group?: number; unlimited?: boolean }[];
+  markers?: { text: string; count?: number }[];
+  drops?: DropZone[]; // { choice, left?, top?, label?, shape?, coords? }
+  items?: string[];
+  wildcards?: { name: string; min?: number; max?: number; decimals?: number; distribution?: "uniform" | "loguniform"; values?: number[] }[];
+  sets?: number;
+  coderunner?: { type: string; answer?: string; testCases: { code: string; expected: string; stdin?: string; extra?: string; useAsExample?: boolean; mark?: number }[] };
+  formulas?: { randomVariables?: string; globalVariables?: string; parts: { answer: string; text?: string; mark?: number; unit?: string; localVariables?: string; gradingVariables?: string; gradingCriterion?: string; feedback?: string }[] };
   categoryId?: number;
   defaultMark?: number;
   fields?: Record<string, FieldValue>;
 }
 ```
 
-- `type`: uno de `QUESTION_TYPES`; los demás tipos se importan como GIFT o Moodle XML.
-- `name`: el nombre de la pregunta en el banco; `text`: el enunciado de la pregunta, en HTML.
-- `answers`: obligatorio en `multichoice`, `shortanswer` y `numerical`. `fraction` es la parte de la puntuación (1 correcta, 0 incorrecta, negativos para penalizaciones); Moodle solo ofrece calificaciones fijas (100%, 90%, 83,33%, 80%...), así que cada fracción se redondea a la más cercana que ofrezca el formulario (0,82 pasa a 83,33%). `feedback` es la retroalimentación de la respuesta (HTML); `tolerance` es el error admitido en una respuesta numérica. Las respuestas en blanco del formulario se amplían con "Espacios en blanco para más opciones" cuando hacen falta más.
-- `correct`: obligatorio en `truefalse`: la respuesta correcta.
+- `type`: uno de `QUESTION_TYPES`: los propios de Moodle (`multichoice`, `truefalse`, `shortanswer`, `numerical`, `essay`, `calculated`, `calculatedsimple`, `calculatedmulti`, `match`, `randomsamatch`, `ddwtos`, `ddimageortext`, `ddmarker`, `gapselect`, `multianswer`, `ordering`, `description`) y los de plugins (`coderunner`, `formulas`, `gapfill`, `ddmatch`), que se crean cuando el sitio los tiene. Los demás tipos se importan como GIFT o Moodle XML.
+- `name`: el nombre de la pregunta en el banco; `text`: el enunciado de la pregunta, en HTML, con los huecos de su tipo: `[[1]]`, `[[2]]`… para las opciones de `ddwtos` y `gapselect`, las respuestas de una pregunta Cloze (`multianswer`: `{1:SHORTANSWER:=París}`), los `[huecos]` de un gap fill, los `{comodines}` de una pregunta calculada.
 - `categoryId`: la categoría; sin ella, la que sigue a la "Superior" del banco (su categoría por defecto).
-- `defaultMark`: la puntuación por defecto de la pregunta; si no, la de Moodle por defecto.
-- `fields`: cualquier otro campo del formulario del tipo, por su nombre (`{ shuffleanswers: false }`, `{ answernumbering: "none" }`), que se rellena después de los demás.
+- `defaultMark`: la puntuación por defecto de la pregunta; si no, la de Moodle por defecto (la de una pregunta Cloze es la suma de las de sus respuestas, y una descripción no tiene).
+- `fields`: cualquier otro campo del formulario del tipo, por su nombre (`{ shuffleanswers: false }`, `{ answernumbering: "none" }`), que se rellena después de los demás: lo que las entradas no modelan.
 
-Una pregunta de opción múltiple con más de una respuesta con fracción mayor que 0 se crea como de respuesta múltiple (casillas), y si no, como de respuesta única. `questionId` es el id que Moodle indica tras guardar; puede faltar si Moodle acaba en otra página. Errores: `QuestionBankError` para un tipo que no crea, si faltan las respuestas o la respuesta correcta, para un banco que no guarda preguntas o al que no se puede añadir, o para una categoría que no es del banco; `FormError` cuando el formulario no tiene ningún campo con un nombre de `fields` o Moodle rechaza los valores.
+Las entradas de cada tipo; las obligatorias se comprueban antes de abrir el formulario (una lista vacía cuenta como ausente):
+
+- `multichoice`, `shortanswer`, `numerical`: `answers`, obligatorio. `fraction` es la parte de la puntuación (1 correcta, 0 incorrecta, negativos para penalizaciones); Moodle solo ofrece calificaciones fijas (100%, 90%, 83,33%, 80%...), así que cada fracción se redondea a la más cercana que ofrezca el formulario (0,82 pasa a 83,33%). `feedback` es la retroalimentación de la respuesta (HTML); `tolerance` es el error admitido en una respuesta numérica. Una pregunta de opción múltiple con más de una respuesta con fracción mayor que 0 se crea como de respuesta múltiple (casillas), y si no, como de respuesta única.
+- `truefalse`: `correct`, obligatorio: la respuesta correcta.
+- `essay`, `description`, `multianswer` (Cloze), `gapfill`: solo el enunciado.
+- `calculated`, `calculatedsimple`, `calculatedmulti`: `answers`, obligatorio, cada una una fórmula de los comodines (`{a} * {b}`; en `calculatedmulti`, escrita como `{={a} * {b}}`); `wildcards`, el rango de cada uno (`min`, `max`, `decimals`, `distribution`; por defecto el de Moodle, de 1 a 10) o sus `values`, uno por conjunto de valores; `sets`, cuántos conjuntos genera Moodle (10 por defecto; de 1 a 100; los `values` indicados lo fijan). Los valores indicados se escriben sobre los que genera Moodle.
+- `match`, `ddmatch`: `pairs`, obligatorio: cada pregunta y su respuesta; una respuesta con la pregunta vacía es un distractor. Moodle pide al menos dos preguntas y tres respuestas.
+- `randomsamatch`: `choose`, cuántas preguntas de respuesta corta de su categoría toma (la categoría debe tenerlas).
+- `ddwtos`, `gapselect`: `choices`, obligatorio: `[[1]]` en el enunciado es la primera; `group` (1 por defecto) es un conjunto de opciones que van en los mismos huecos; `unlimited` (`ddwtos`) deja usar una opción más de una vez.
+- `ddimageortext`: `image`, el fondo (un archivo local), `drags`, los elementos arrastrables (una palabra como `text`, o un archivo de imagen local como `image`, con `text` como su texto alternativo; `group`, `unlimited`), y `drops`, dónde van: `choice`, el número del elemento desde 1 en el orden indicado, `left` y `top`, en píxeles de la imagen, y una `label` opcional. Los tres son obligatorios.
+- `ddmarker`: `image`, `markers` (cada uno con su `text`, y cuántas veces se puede colocar, `count`; sin límite por defecto) y `drops`: `choice`, el número del marcador desde 1, `shape` (`"circle"`, `"rectangle"` o `"polygon"`) y `coords` como las recibe el formulario de Moodle (un círculo `"x,y;r"`, un rectángulo `"x,y;ancho,alto"`, un polígono `"x1,y1;x2,y2;…"`), dentro de la imagen. Los tres son obligatorios.
+- `ordering`: `items`, obligatorio, al menos dos, en el orden correcto.
+- `coderunner`: `coderunner`, obligatorio: su `type` de pregunta (el lenguaje y cómo se ejecuta: `"python3"`, `"c_program"`…), una `answer` de ejemplo (CodeRunner la comprueba con las pruebas al guardar) y `testCases`, cada uno con su `code`, la salida `expected` y, opcionales, `stdin`, `extra`, `useAsExample`, `mark`.
+- `formulas`: `formulas`, obligatorio: sus `randomVariables` y `globalVariables`, y sus `parts`, cada una con su `answer` y, opcionales, `text`, `mark`, `unit`, `localVariables`, `gradingVariables`, `gradingCriterion`, `feedback`.
+
+Una entrada de otro tipo se rechaza (`A match question doesn't take answers: it takes pairs.`), igual que las zonas de destino que nombran un elemento que no existe y los comodines con distinto número de valores. Las filas en blanco del formulario se amplían con su botón "Espacios en blanco para más" cuando hacen falta más. Los archivos de un arrastrar y soltar sobre una imagen se suben a los selectores de archivos del formulario, y a los menús de sus zonas de destino, que el script de la página solo rellena cuando ha dibujado la imagen, se les dan los números de los elementos. Los tipos calculados ocupan más de una página: `calculatedsimple` encuentra sus comodines y genera sus conjuntos en su propia página; `calculated` y `calculatedmulti` se guardan primero y luego pasan por el asistente de Moodle (los conjuntos de datos de los comodines, privados de la pregunta, y después sus valores: los conjuntos se añaden con su botón "Añadir", de diez en diez y de uno en uno), así que una pregunta cuya página de valores falla ya está en el banco.
+
+Los formularios de los tipos de plugins se leen por los nombres de campo que publican sus plugins; el sandbox con el que se comprueba el driver no tiene ninguno, así que un programa que trabaje con uno debería comprobar su resultado. En un sitio sin el plugin, `createQuestion` lanza `QuestionBankError` nombrándolo ("This site has no CodeRunner question type (the qtype_coderunner plugin): its administrator would have to install it.").
+
+`questionId` es el id que Moodle indica tras guardar; puede faltar si Moodle acaba en otra página. Errores: `QuestionBankError` para un tipo que no crea, un plugin que el sitio no tiene, una entrada obligatoria que falta o una de otro tipo, un banco que no guarda preguntas o al que no se puede añadir, o una categoría que no es del banco; `FormError` cuando el formulario no tiene ningún campo con un nombre de `fields` o Moodle rechaza los valores (un emparejamiento con muy pocas parejas, una zona de destino fuera de la imagen…), o no se puede subir un archivo.
 
 ## updateQuestion
 
@@ -146,10 +175,11 @@ function updateQuestion(
 ```
 
 - `activityId`: el banco en el que está la pregunta: la página de edición de Moodle funciona dentro de un banco (su id del módulo del curso).
-- `input`: como en `createQuestion`, sin `type` (una pregunta conserva su tipo); lo que no se indica queda como está.
-- `answers`: en `multichoice`, `shortanswer` y `numerical`, las respuestas de la pregunta a partir de ahora: las demás respuestas del formulario se dejan en blanco, y Moodle descarta las vacías. Una pregunta de opción múltiple pasa a ser de respuesta múltiple o de respuesta única como en `createQuestion`. Los demás tipos cambian sus respuestas mediante `fields`.
+- `input`: como en `createQuestion`, sin `type` (una pregunta conserva su tipo); lo que no se indica queda como está, y una entrada que el tipo de la pregunta no recibe se rechaza.
+- Una lista indicada (`answers`, `pairs`, `choices`, `items`, `drags`, `markers`, `drops`, `testCases`, `parts`) es la de la pregunta a partir de ahora: las demás filas del formulario se dejan en blanco, y Moodle descarta las vacías. Una pregunta de opción múltiple pasa a ser de respuesta múltiple o de respuesta única como en `createQuestion`. `image` sustituye el fondo.
+- `wildcards` y `sets` (tipos calculados): con `values`, se añaden o se borran conjuntos hasta tener tantos y se les dan esos valores; solo con rangos o `sets`, todos los conjuntos se vuelven a generar con ellos. Sin ninguno, los valores de la pregunta se quedan (`calculated` y `calculatedmulti` pasan igualmente por las páginas del asistente, como hace el formulario de Moodle).
 
-Guardar crea una nueva versión de la pregunta, con un id propio: `questionId` es ese nuevo id, el que lista `questions` a partir de entonces (con su `version` uno más alta). Los cuestionarios que usan la última versión de la pregunta reciben la nueva; un cuestionario fijado a una versión la conserva. Errores: `QuestionBankError` cuando no se indica nada, el banco no guarda preguntas o la pregunta no es una que la persona pueda editar ahí; `FormError` como en `createQuestion`.
+Guardar crea una nueva versión de la pregunta, con un id propio: `questionId` es ese nuevo id, el que lista `questions` a partir de entonces (con su `version` uno más alta). Los cuestionarios que usan la última versión de la pregunta reciben la nueva; un cuestionario fijado a una versión la conserva. Errores: `QuestionBankError` cuando no se indica nada, una entrada que el tipo no recibe, un comodín que la pregunta no tiene, el banco no guarda preguntas o la pregunta no es una que la persona pueda editar ahí; `FormError` como en `createQuestion`.
 
 ## deleteQuestions
 

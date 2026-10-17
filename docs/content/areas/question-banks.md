@@ -1,6 +1,6 @@
 # Question banks
 
-A course's question banks as Moodle 5 organizes them: shared banks are activities of their own (module `qbank`), and every quiz keeps a private bank. A teacher (anyone who can manage the course's questions) lists the banks, reads a bank's categories and questions, imports questions from GIFT or Moodle XML (a file or text) and exports them to a file, creates single questions through their type's form, edits them, sets them ready or draft, and deletes them; organizes the bank's categories (adding, renaming, moving and deleting them) and moves questions between them. Students have no access to banks. Questions in a bank are what [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) puts in a quiz.
+A course's question banks as Moodle 5 organizes them: shared banks are activities of their own (module `qbank`), and every quiz keeps a private bank. A teacher (anyone who can manage the course's questions) lists the banks, reads a bank's categories and questions, imports questions from GIFT or Moodle XML (a file or text) and exports them to a file, creates single questions of any type through their type's form, edits them, sets them ready or draft, and deletes them; organizes the bank's categories (adding, renaming, moving and deleting them) and moves questions between them. Students have no access to banks. Questions in a bank are what [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) puts in a quiz.
 
 **Terms:** [question bank](../reference/glossary.md#question-bank), [question category](../reference/glossary.md#question-category), [slot](../reference/glossary.md#slot).
 
@@ -104,32 +104,61 @@ The result is `{ path, name, size, contentType }`, as [`downloadFile`](files.md)
 
 ## createQuestion
 
-Creates one question in a bank through its type's edit form and returns its id. Imports are the way for several questions; this is for one-offs.
+Creates one question in a bank through its type's edit form and returns its id, of any type the bank's "Add a question" dialog offers. Imports are the way for several questions; this is for one-offs.
 
 ```ts
 function createQuestion(context: BrowserContext, siteUrl: string, activityId: number, input: QuestionInput): Promise<{ changed: string; questionId?: number }>;
 
 interface QuestionInput {
-  type: QuestionType; // "multichoice" | "truefalse" | "shortanswer" | "numerical" | "essay"
+  type: QuestionType; // one of QUESTION_TYPES
   name: string;
   text: string;
   answers?: { text: string; fraction: number; feedback?: string; tolerance?: number }[];
   correct?: boolean;
+  pairs?: { question: string; answer: string }[];
+  choose?: number;
+  choices?: { text: string; group?: number; unlimited?: boolean }[];
+  image?: string;
+  drags?: { text?: string; image?: string; group?: number; unlimited?: boolean }[];
+  markers?: { text: string; count?: number }[];
+  drops?: DropZone[]; // { choice, left?, top?, label?, shape?, coords? }
+  items?: string[];
+  wildcards?: { name: string; min?: number; max?: number; decimals?: number; distribution?: "uniform" | "loguniform"; values?: number[] }[];
+  sets?: number;
+  coderunner?: { type: string; answer?: string; testCases: { code: string; expected: string; stdin?: string; extra?: string; useAsExample?: boolean; mark?: number }[] };
+  formulas?: { randomVariables?: string; globalVariables?: string; parts: { answer: string; text?: string; mark?: number; unit?: string; localVariables?: string; gradingVariables?: string; gradingCriterion?: string; feedback?: string }[] };
   categoryId?: number;
   defaultMark?: number;
   fields?: Record<string, FieldValue>;
 }
 ```
 
-- `type`: one of `QUESTION_TYPES`; other types are imported as GIFT or Moodle XML instead.
-- `name`: the question's name in the bank; `text`: the question's text, as HTML.
-- `answers`: required for `multichoice`, `shortanswer` and `numerical`. `fraction` is the share of the mark (1 right, 0 wrong, negatives for penalties); Moodle only offers fixed grades (100%, 90%, 83.33%, 80%...), so each fraction is rounded to the nearest one the form offers (0.82 becomes 83.33%). `feedback` is the answer's feedback (HTML); `tolerance` is a numerical answer's accepted error. The form's blank answers are extended with "Blanks for more choices" when more are needed.
-- `correct`: required for `truefalse`: the right answer.
+- `type`: one of `QUESTION_TYPES`: Moodle's own (`multichoice`, `truefalse`, `shortanswer`, `numerical`, `essay`, `calculated`, `calculatedsimple`, `calculatedmulti`, `match`, `randomsamatch`, `ddwtos`, `ddimageortext`, `ddmarker`, `gapselect`, `multianswer`, `ordering`, `description`) and the plugins' (`coderunner`, `formulas`, `gapfill`, `ddmatch`), made when the site has them. Other types are imported as GIFT or Moodle XML instead.
+- `name`: the question's name in the bank; `text`: the question's text, as HTML, with its type's places in it: `[[1]]`, `[[2]]`… for the choices of `ddwtos` and `gapselect`, the answers of a Cloze question (`multianswer`: `{1:SHORTANSWER:=Paris}`), the `[gaps]` of a gap fill, the `{wildcards}` of a calculated question.
 - `categoryId`: the category; without it, the one after the bank's "Top" (its default category).
-- `defaultMark`: the question's default mark; Moodle's default otherwise.
-- `fields`: any other field of the type's form by its name (`{ shuffleanswers: false }`, `{ answernumbering: "none" }`), set after the others.
+- `defaultMark`: the question's default mark; Moodle's default otherwise (a Cloze question's is the sum of its answers', and a description has none).
+- `fields`: any other field of the type's form by its name (`{ shuffleanswers: false }`, `{ answernumbering: "none" }`), set after the others: whatever the inputs don't model.
 
-A multichoice question with more than one answer whose fraction is above 0 is created as multiple-answer (checkboxes), otherwise as single-answer. `questionId` is the id Moodle names after saving; it can be missing if Moodle lands elsewhere. Errors: `QuestionBankError` for a type it doesn't create, missing answers or right answer, a bank that keeps no questions or can't be added to, or a category not in the bank; `FormError` when the form has no field by a name in `fields` or Moodle refuses the values.
+Each type's inputs, the required ones checked before the form opens (an empty list counts as missing):
+
+- `multichoice`, `shortanswer`, `numerical`: `answers`, required. `fraction` is the share of the mark (1 right, 0 wrong, negatives for penalties); Moodle only offers fixed grades (100%, 90%, 83.33%, 80%...), so each fraction is rounded to the nearest one the form offers (0.82 becomes 83.33%). `feedback` is the answer's feedback (HTML); `tolerance` is a numerical answer's accepted error. A multichoice question with more than one answer whose fraction is above 0 is created as multiple-answer (checkboxes), otherwise as single-answer.
+- `truefalse`: `correct`, required: the right answer.
+- `essay`, `description`, `multianswer` (Cloze), `gapfill`: the text only.
+- `calculated`, `calculatedsimple`, `calculatedmulti`: `answers`, required, each a formula of the wildcards (`{a} * {b}`; in `calculatedmulti`, written as `{={a} * {b}}`); `wildcards`, each one's range (`min`, `max`, `decimals`, `distribution`, Moodle's 1 to 10 by default) or its `values`, one per set of values; `sets`, how many sets Moodle draws (10 by default; 1 to 100; given `values` set it). The values given are written over the ones Moodle draws.
+- `match`, `ddmatch`: `pairs`, required: each question and its answer; an answer with an empty question is a distractor. Moodle wants two questions and three answers at least.
+- `randomsamatch`: `choose`, how many short-answer questions of its category it draws (the category must have them).
+- `ddwtos`, `gapselect`: `choices`, required: `[[1]]` in the text is the first; `group` (1 by default) is a set of choices that go in the same places; `unlimited` (`ddwtos`) lets a choice be used more than once.
+- `ddimageortext`: `image`, the background (a local file), `drags`, the draggable items (a word as `text`, or a local image file as `image`, with `text` as its alternative text; `group`, `unlimited`), and `drops`, where they go: `choice`, the item's number from 1 in the order given, `left` and `top`, in pixels of the image, and an optional `label`. All three required.
+- `ddmarker`: `image`, `markers` (each with its `text`, and how many times it can be placed, `count`; unlimited by default) and `drops`: `choice`, the marker's number from 1, `shape` (`"circle"`, `"rectangle"` or `"polygon"`) and `coords` as Moodle's form takes them (a circle `"x,y;r"`, a rectangle `"x,y;width,height"`, a polygon `"x1,y1;x2,y2;…"`), inside the image. All three required.
+- `ordering`: `items`, required, two at least, in the right order.
+- `coderunner`: `coderunner`, required: its question `type` (the language and how it's run: `"python3"`, `"c_program"`…), a sample `answer` (CodeRunner checks it against the tests when saving) and `testCases`, each with its `code`, `expected` output and optional `stdin`, `extra`, `useAsExample`, `mark`.
+- `formulas`: `formulas`, required: its `randomVariables` and `globalVariables`, and its `parts`, each with its `answer` and optional `text`, `mark`, `unit`, `localVariables`, `gradingVariables`, `gradingCriterion`, `feedback`.
+
+An input another type takes is refused (`A match question doesn't take answers: it takes pairs.`), as are drop zones naming an item that isn't there and wildcards with different numbers of values. The form's blank rows are extended with its "Blanks for more" button when more are needed. A drag and drop onto an image's files go up to the form's file pickers, and its drop zones' menus, which the page's script fills only once it has drawn the image, are given the items' numbers. The calculated types take more than one page: `calculatedsimple` finds its wildcards and generates its sets on its own page; `calculated` and `calculatedmulti` are saved first and then go through Moodle's wizard (the wildcards' datasets, private to the question, then their values: sets added with its "Add" button, by tens and ones), so a question whose values page fails is in the bank already.
+
+The plugin types' forms are read by the field names their plugins publish; the sandbox the driver is checked against has none of them, so a program working with one should check its result. On a site without the plugin, `createQuestion` throws `QuestionBankError` naming it ("This site has no CodeRunner question type (the qtype_coderunner plugin): its administrator would have to install it.").
+
+`questionId` is the id Moodle names after saving; it can be missing if Moodle lands elsewhere. Errors: `QuestionBankError` for a type it doesn't create, a plugin the site doesn't have, a required input missing or another type's given, a bank that keeps no questions or can't be added to, or a category not in the bank; `FormError` when the form has no field by a name in `fields` or Moodle refuses the values (a match with too few pairs, a drop zone outside the image…), or a file can't be uploaded.
 
 ## updateQuestion
 
@@ -146,10 +175,11 @@ function updateQuestion(
 ```
 
 - `activityId`: the bank the question is in: Moodle's edit page works within a bank (its course module id).
-- `input`: as in `createQuestion`, without `type` (a question keeps its type); what isn't given stays as it is.
-- `answers`: for `multichoice`, `shortanswer` and `numerical`, the question's answers from now on: the form's other answers are blanked, and Moodle drops blank ones. A multichoice question becomes multiple-answer or single-answer as in `createQuestion`. Other types change their answers through `fields`.
+- `input`: as in `createQuestion`, without `type` (a question keeps its type); what isn't given stays as it is, and an input the question's type doesn't take is refused.
+- A list given (`answers`, `pairs`, `choices`, `items`, `drags`, `markers`, `drops`, `testCases`, `parts`) is the question's from now on: the form's other rows are blanked, and Moodle drops blank ones. A multichoice question becomes multiple-answer or single-answer as in `createQuestion`. `image` replaces the background.
+- `wildcards` and `sets` (calculated types): with `values`, the sets are added or deleted to as many and given those values; with ranges or `sets` only, every set is drawn again from them. Without either, the question's values stay (`calculated` and `calculatedmulti` still go through the wizard's pages, as Moodle's form does).
 
-Saving makes a new version of the question, with an id of its own: `questionId` is that new id, the one `questions` lists from then on (with its `version` one higher). Quizzes using the question's latest version get the new one; a quiz pinned to a version keeps it. Errors: `QuestionBankError` when nothing is given, the bank keeps no questions, or the question isn't one the person can edit there; `FormError` as in `createQuestion`.
+Saving makes a new version of the question, with an id of its own: `questionId` is that new id, the one `questions` lists from then on (with its `version` one higher). Quizzes using the question's latest version get the new one; a quiz pinned to a version keeps it. Errors: `QuestionBankError` when nothing is given, an input the type doesn't take, a wildcard the question doesn't have, the bank keeps no questions, or the question isn't one the person can edit there; `FormError` as in `createQuestion`.
 
 ## deleteQuestions
 

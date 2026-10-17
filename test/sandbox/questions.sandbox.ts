@@ -5,8 +5,39 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
-import { QuestionBankError, type BankQuestion, type Moodle } from "../../src/index.js";
-import { COURSE, as, cleanup, scratchCourse, type ScratchCourse } from "./harness.js";
+import { deflateSync } from "node:zlib";
+import { QuestionBankError, type BankQuestion, type Moodle, type QuestionInput } from "../../src/index.js";
+import { formValue, openForm } from "../../src/internals.js";
+import { COURSE, SITE, as, cleanup, scratchCourse, type ScratchCourse } from "./harness.js";
+
+/** A plain grey PNG of that size: a drag and drop question's background. */
+function png(width: number, height: number): Buffer {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (data: Buffer) => {
+    let c = 0xffffffff;
+    for (const byte of data) c = crcTable[(c ^ byte) & 0xff]! ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const sum = Buffer.alloc(4);
+    sum.writeUInt32BE(crc(body));
+    return Buffer.concat([length, body, sum]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 0, 0, 0, 0], 8); // 8-bit greyscale
+  const rows = Buffer.alloc((width + 1) * height, 0xc0);
+  for (let y = 0; y < height; y++) rows[y * (width + 1)] = 0;
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", header), chunk("IDAT", deflateSync(rows)), chunk("IEND", Buffer.alloc(0))]);
+}
 
 const GIFT = `::Sandbox TF:: The sandbox runs Moodle. {T}
 
@@ -141,8 +172,101 @@ describe("question banks", () => {
   });
 
   it("createQuestion: a type it doesn't make, and a multichoice without answers", async () => {
-    await assert.rejects(teacher.createQuestion(bankId, { type: "match" as never, name: "x", text: "x" }), QuestionBankError);
+    await assert.rejects(teacher.createQuestion(bankId, { type: "random" as never, name: "x", text: "x" }), (error: unknown) => error instanceof QuestionBankError && /import it as GIFT or Moodle XML/.test(error.message));
     await assert.rejects(teacher.createQuestion(bankId, { type: "multichoice", name: "x", text: "x" }), QuestionBankError);
+  });
+
+  // The other core types, by name: each made, then previewed.
+  const made = new Map<string, number>();
+  const preview = async (questionId: number): Promise<string> => {
+    const page = await (await teacher.context()).newPage();
+    try {
+      await page.goto(`${SITE}question/bank/previewquestion/preview.php?id=${questionId}&cmid=${bankId}`, { waitUntil: "domcontentloaded" });
+      assert.equal(await page.locator('[data-rel="fatalerror"], .errorbox').count(), 0, `question ${questionId}'s preview shows an error`);
+      return (await page.locator("#responseform .que").first().getAttribute("class")) ?? "";
+    } finally {
+      await page.close();
+    }
+  };
+
+  it("createQuestion: every other core type, each previewing", SLOW, async () => {
+    const image = path.join(dir, "background.png");
+    await writeFile(image, png(400, 300));
+    const inputs: QuestionInput[] = [
+      { type: "calculated", name: "Driver check calculated", text: "<p>What is {a} times {b}?</p>", answers: [{ text: "{a} * {b}", fraction: 1, tolerance: 0.01 }], wildcards: [{ name: "a", min: 1, max: 5, decimals: 0 }, { name: "b", min: 2, max: 3, decimals: 1 }], sets: 3 },
+      { type: "calculatedsimple", name: "Driver check calculated simple", text: "<p>What is {x} plus {y}?</p>", answers: [{ text: "{x} + {y}", fraction: 1 }], wildcards: [{ name: "x", values: [1, 2, 3] }, { name: "y", values: [4, 5, 6] }] },
+      { type: "calculatedmulti", name: "Driver check calculated multichoice", text: "<p>What is {a} plus {b}?</p>", answers: [{ text: "{={a} + {b}}", fraction: 1 }, { text: "{={a} - {b}}", fraction: 0 }], sets: 2 },
+      { type: "match", name: "Driver check match", text: "<p>Match the sums.</p>", pairs: [{ question: "2 + 2", answer: "4" }, { question: "3 + 3", answer: "6" }, { question: "1 + 1", answer: "2" }] },
+      { type: "randomsamatch", name: "Driver check random matching", text: "<p>Match them.</p>", choose: 2 },
+      { type: "ddwtos", name: "Driver check ddwtos", text: "<p>The [[1]] sat on the [[2]].</p>", choices: [{ text: "cat" }, { text: "mat" }, { text: "dog" }] },
+      { type: "gapselect", name: "Driver check gapselect", text: "<p>Water is [[1]] and fire is [[3]].</p>", choices: [{ text: "wet" }, { text: "dry" }, { text: "hot", group: 2 }, { text: "cold", group: 2 }] },
+      { type: "ddimageortext", name: "Driver check ddimageortext", text: "<p>Put them in place.</p>", image, drags: [{ text: "North" }, { text: "South" }], drops: [{ choice: 1, left: 10, top: 10 }, { choice: 2, left: 10, top: 200 }] },
+      { type: "ddmarker", name: "Driver check ddmarker", text: "<p>Mark them.</p>", image, markers: [{ text: "A" }, { text: "B", count: 1 }], drops: [{ choice: 1, shape: "circle", coords: "100,100;30" }, { choice: 2, shape: "rectangle", coords: "200,150;50,40" }] },
+      { type: "multianswer", name: "Driver check cloze", text: "<p>2 + 2 = {1:NUMERICAL:=4} and Paris is in {1:MULTICHOICE:=France~Spain}.</p>" },
+      { type: "ordering", name: "Driver check ordering", text: "<p>Put them in order.</p>", items: ["one", "two", "three"] },
+      { type: "description", name: "Driver check description", text: "<p>Read this first.</p>" },
+    ];
+    for (const input of inputs) {
+      const { questionId, changed } = await teacher.createQuestion(bankId, input);
+      assert.ok(questionId, changed);
+      made.set(input.type, questionId);
+    }
+    const { questions } = await teacher.questions(bankId);
+    for (const input of inputs) {
+      const id = made.get(input.type)!;
+      assert.deepEqual([questions.find((q) => q.id === id)?.type, questions.find((q) => q.id === id)?.name], [input.type, input.name]);
+      // A question previews as its type (the description too, without being a question to answer).
+      assert.match(await preview(id), new RegExp(`\\b${input.type}\\b`), input.type);
+    }
+  });
+
+  it("createQuestion: a plugin type the site doesn't have names the plugin; an input the type doesn't take", SLOW, async () => {
+    await assert.rejects(
+      teacher.createQuestion(bankId, { type: "coderunner", name: "Driver check coderunner", text: "<p>Print 1.</p>", coderunner: { type: "python3", answer: "print(1)", testCases: [{ code: "", expected: "1" }] } }),
+      (error: unknown) => error instanceof QuestionBankError && /CodeRunner question type \(the qtype_coderunner plugin\)/.test(error.message),
+    );
+    await assert.rejects(teacher.createQuestion(bankId, { type: "formulas", name: "x", text: "x", formulas: { parts: [{ answer: "1" }] } }), (error: unknown) => error instanceof QuestionBankError && /Formulas/.test(error.message));
+    await assert.rejects(teacher.createQuestion(bankId, { type: "match", name: "x", text: "x", answers: [{ text: "1", fraction: 1 }] }), (error: unknown) => error instanceof QuestionBankError && /doesn't take answers: it takes pairs/.test(error.message));
+    await assert.rejects(teacher.createQuestion(bankId, { type: "ddmarker", name: "x", text: "x" }), (error: unknown) => error instanceof QuestionBankError && /needs image, markers, drops/.test(error.message));
+  });
+
+  /** The edit form's values of a question's latest version. */
+  const formValues = async (questionId: number, names: string[]): Promise<(string | undefined)[]> => {
+    const page = await openForm(await teacher.context(), SITE, `question/bank/editquestion/question.php?cmid=${bankId}&id=${questionId}`);
+    try {
+      return await Promise.all(names.map((name) => formValue(page, name)));
+    } finally {
+      await page.close();
+    }
+  };
+
+  it("updateQuestion: one of each family, a new version with what's given", SLOW, async () => {
+    const update = async (type: string, input: Parameters<Moodle["updateQuestion"]>[2]): Promise<number> => {
+      const { questionId, changed } = await teacher.updateQuestion(bankId, made.get(type)!, input);
+      assert.ok(questionId && questionId !== made.get(type), changed);
+      made.set(type, questionId);
+      assert.match(await preview(questionId), new RegExp(`\\b${type}\\b`), type);
+      return questionId;
+    };
+    const match = await update("match", { pairs: [{ question: "5 + 5", answer: "10" }, { question: "4 + 4", answer: "8" }, { question: "", answer: "7" }] });
+    assert.deepEqual(await formValues(match, ["subanswers[0]", "subanswers[1]", "subanswers[2]", "subquestions[2][text]"]), ["10", "8", "7", ""]);
+    const gaps = await update("ddwtos", { text: "<p>The [[1]] chased the [[2]].</p>", choices: [{ text: "dog" }, { text: "cat" }] });
+    assert.deepEqual(await formValues(gaps, ["choices[0][answer]", "choices[1][answer]", "choices[2][answer]"]), ["dog", "cat", undefined]);
+    const drops = await update("ddimageortext", { drops: [{ choice: 2, left: 50, top: 20 }, { choice: 1, left: 50, top: 220 }] });
+    assert.deepEqual(await formValues(drops, ["drops[0][choice]", "drops[0][xleft]", "drops[1][ytop]"]), ["2", "50", "220"]);
+    const calculated = await update("calculated", { wildcards: [{ name: "a", values: [2, 4] }, { name: "b", values: [1.5, 2.5] }] });
+    const page = await openForm(await teacher.context(), SITE, `question/bank/editquestion/question.php?cmid=${bankId}&id=${calculated}&wizardnow=datasetitems`);
+    try {
+      const fields = Object.fromEntries(await page.evaluate(() => Array.from((globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<{ name: string; value: string }> } }).document.querySelectorAll('form.mform input[name^="number["], form.mform input[name^="itemid["]')).map((f) => [f.name, f.value] as [string, string])));
+      // The two sets saved (with their item ids), not the "item to add" Moodle draws: set n is items 2n-1 and 2n.
+      const saved = [1, 2, 3, 4].map((k) => (Number(fields[`itemid[${k}]`]) > 0 ? Number(fields[`number[${k}]`]) : undefined));
+      assert.deepEqual([saved.slice(0, 2).sort(), saved.slice(2).sort()], [[1.5, 2], [2.5, 4]], JSON.stringify(fields));
+    } finally {
+      await page.close();
+    }
+    await update("multianswer", { text: "<p>3 + 3 = {1:NUMERICAL:=6} and Rome is in {1:MULTICHOICE:=Italy~France}.</p>" });
+    const ordering = await update("ordering", { items: ["first", "second", "third", "fourth"] });
+    assert.deepEqual(await formValues(ordering, ["answer[0][text]", "answer[3][text]"]), ["first", "fourth"]);
   });
 
   it("updateQuestion: a new version with the new name and answers", SLOW, async () => {

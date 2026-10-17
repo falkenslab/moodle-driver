@@ -125,6 +125,7 @@ export {
   type BankQuestions,
   type QuestionType,
   type QuestionInput,
+  type DropZone,
 } from "./areas/questions/banks.js";
 export { questionCategories, addQuestionCategory, editQuestionCategory, deleteQuestionCategory, moveQuestions, type QuestionCategory } from "./areas/questions/categories.js";
 

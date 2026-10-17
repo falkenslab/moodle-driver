@@ -13,14 +13,11 @@ import { NotLoggedInError, openSitePage } from "../../core/session.js";
 import { callService } from "../../core/ajax.js";
 import { MoodleError } from "../../core/errors.js";
 import { pageWindow, sliceWindow, toPage, type ListPage, type PageOptions, type WithLimit, type WithoutLimit } from "../../core/paging.js";
+import { QuestionBankError } from "./errors.js";
+import { PLUGIN_QUESTION_TYPES, QUESTION_TYPES, checkQuestionInput, fillQuestionForm, saveQuestionForm, type QuestionInput } from "./types.js";
 
-/** The bank isn't there, or Moodle refused the questions. */
-export class QuestionBankError extends MoodleError {
-  override name = "QuestionBankError";
-  constructor(message: string) {
-    super(message, "question-bank");
-  }
-}
+export { QuestionBankError };
+export { QUESTION_TYPES, type QuestionType, type QuestionInput, type DropZone } from "./types.js";
 
 /** A question bank of a course, as `questionBanks` lists it. */
 export interface QuestionBank {
@@ -312,59 +309,33 @@ export async function exportQuestions(
   return { path: file, name: path.basename(file), size: Buffer.byteLength(response.body, "utf8"), contentType: format === "xml" ? "application/xml" : "text/plain" };
 }
 
-/** The question types `createQuestion` makes through their form; others are imported (GIFT, Moodle XML). */
-export const QUESTION_TYPES = ["multichoice", "truefalse", "shortanswer", "numerical", "essay"] as const;
-/** One of `QUESTION_TYPES`. */
-export type QuestionType = (typeof QUESTION_TYPES)[number];
-
-/** A question for `createQuestion`, or the changes for `updateQuestion` (without its type). */
-export interface QuestionInput {
-  type: QuestionType;
-  name: string;
-  /** The question's text (HTML). */
-  text: string;
-  /**
-   * Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers.
-   * A numerical answer's `tolerance` is the error accepted around it.
-   */
-  answers?: { text: string; fraction: number; feedback?: string; tolerance?: number }[];
-  /** True/false: the right answer. */
-  correct?: boolean;
-  /** The bank's category it goes in; a new question goes in the bank's default one when left out. */
-  categoryId?: number;
-  defaultMark?: number;
-  /** Any other field of the type's form, by name. */
-  fields?: Record<string, FieldValue>;
-}
-
-/** The option of a fraction select nearest to `fraction` (Moodle offers 100%, 90%, 83.33%…). */
-async function nearestFraction(page: Page, field: string, fraction: number): Promise<string> {
-  const options = await page.evaluate(
-    (field) => Array.from((globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<{ value: string }> } }).document.querySelectorAll(`select[name="${field}"] option`)).map((o) => o.value),
-    field,
-  );
-  return options.reduce((best, value) => (Math.abs(Number(value) - fraction) < Math.abs(Number(best) - fraction) ? value : best), options[0] ?? "0.0");
-}
-
 /**
- * Creates one question in a bank through its type's edit form; returns its id. Imports are the way
- * for several; this is for one-offs.
+ * Creates one question in a bank through its type's edit form, of any type in `QUESTION_TYPES`;
+ * returns its id. Each type's required inputs are checked before the form opens. Calculated types
+ * go through their wildcards' pages too; a plugin type the site doesn't have is refused naming the
+ * plugin. Imports are the way for several; this is for one-offs.
  */
 export async function createQuestion(context: BrowserContext, siteUrl: string, activityId: number, input: QuestionInput): Promise<{ changed: string; questionId?: number }> {
   if (!QUESTION_TYPES.includes(input.type)) throw new QuestionBankError(`Question type ${input.type} isn't one this creates (${QUESTION_TYPES.join(", ")}); import it as GIFT or Moodle XML instead.`);
-  const answers = input.answers ?? [];
-  if (["multichoice", "shortanswer", "numerical"].includes(input.type) && answers.length === 0) throw new QuestionBankError(`A ${input.type} question needs answers.`);
-  if (input.type === "truefalse" && input.correct === undefined) throw new QuestionBankError("A true/false question needs its right answer (correct).");
+  await checkQuestionInput(input.type, input, { creating: true });
   const { categories } = await questions(context, siteUrl, activityId);
   // The bank lists its "Top" category first, which holds no questions: its default one comes next.
   const category = input.categoryId ?? (categories[1] ?? categories[0])?.id;
+  const plugin = PLUGIN_QUESTION_TYPES[input.type];
+  const missingPlugin = () => new QuestionBankError(`This site has no ${plugin} question type (the qtype_${input.type} plugin): its administrator would have to install it.`);
   const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${activityId}&category=${category}&qtype=${input.type}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
+    // The bank and its category were read just now: a plugin's form missing is the plugin missing.
+    if (plugin) throw missingPlugin();
     throw new QuestionBankError(`Activity ${activityId} has no question bank you can add to, or category ${category} isn't in it.`);
   });
   try {
-    await fillQuestionForm(page, input.type, input, { blankRest: false });
-    await submitForm(page, "submitbutton");
+    if ((await formValue(page, "qtype")) !== input.type) {
+      if (plugin) throw missingPlugin();
+      throw new QuestionBankError(`Moodle didn't open a ${input.type} question's form.`);
+    }
+    await fillQuestionForm(page, input.type, input, { blankRest: false, category: await categoryOption(page, input.categoryId) });
+    await saveQuestionForm(page, input.type, input, { blankRest: false });
     // Moodle lands on the bank, naming the question it changed last.
     const id = Number(new URL(page.url()).searchParams.get("lastchanged")) || undefined;
     return { changed: `Created ${input.type} question${id ? ` ${id}` : ""} "${input.name}" in bank ${activityId}.`, questionId: id };
@@ -374,45 +345,11 @@ export async function createQuestion(context: BrowserContext, siteUrl: string, a
 }
 
 /**
- * Fills a question's edit form with what's given: name, text, mark, category, the right answer of a
- * true/false, the answers, and any other field by name. Editing (`blankRest`), the given answers
- * replace them all: the form's other answer rows are blanked, and Moodle drops blank answers.
- */
-async function fillQuestionForm(page: Page, type: string, input: Partial<QuestionInput>, { blankRest }: { blankRest: boolean }): Promise<void> {
-  const answers = input.answers;
-  if (answers) {
-    // The form comes with a few blank answers; "Blanks for more" adds three at a time.
-    for (let i = 0; i < 10 && answers.length > Number((await formValue(page, "noanswers")) ?? answers.length); i++) {
-      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click('form.mform [name="addanswers"]')]);
-    }
-  }
-  const values: Record<string, FieldValue> = {};
-  if (input.name !== undefined) values.name = input.name;
-  if (input.text !== undefined) values["questiontext[text]"] = input.text;
-  if (input.defaultMark !== undefined) values.defaultmark = input.defaultMark;
-  const choice = await categoryOption(page, input.categoryId);
-  if (choice) values.category = choice;
-  if (type === "truefalse" && input.correct !== undefined) values.correctanswer = input.correct ? 1 : 0;
-  if (answers) {
-    if (type === "multichoice") values.single = answers.filter((a) => a.fraction > 0).length > 1 ? 0 : 1;
-    const rows = blankRest ? Math.max(answers.length, Number((await formValue(page, "noanswers")) ?? 0)) : answers.length;
-    for (let i = 0; i < rows; i++) {
-      const answer = answers[i];
-      values[type === "multichoice" ? `answer[${i}][text]` : `answer[${i}]`] = answer?.text ?? "";
-      values[`fraction[${i}]`] = await nearestFraction(page, `fraction[${i}]`, answer?.fraction ?? 0);
-      if (answer?.feedback !== undefined) values[`feedback[${i}][text]`] = answer.feedback;
-      else if (!answer && (await formValue(page, `feedback[${i}][text]`)) !== undefined) values[`feedback[${i}][text]`] = "";
-      if (answer?.tolerance !== undefined) values[`tolerance[${i}]`] = answer.tolerance;
-    }
-  }
-  await setFields(page, { ...values, ...input.fields });
-}
-
-/**
- * Changes a question of a bank through its type's edit form, with the same inputs as
- * `createQuestion` and only what's given (`answers` replaces them all). Saving makes a new version
- * of the question, with an id of its own: the one returned, which quizzes using the latest version
- * get from then on.
+ * Changes a question of a bank through its type's edit form (its wildcards' pages too, for the
+ * calculated types), with the same inputs as `createQuestion` and only what's given: a list given
+ * (`answers`, `pairs`, `choices`, `items`, `drags`, `markers`, `drops`, the wildcards' values)
+ * replaces the question's. Saving makes a new version of the question, with an id of its own: the
+ * one returned, which quizzes using the latest version get from then on.
  */
 export async function updateQuestion(
   context: BrowserContext,
@@ -421,7 +358,7 @@ export async function updateQuestion(
   questionId: number,
   input: Partial<Omit<QuestionInput, "type">>,
 ): Promise<{ changed: string; questionId?: number }> {
-  if (Object.keys(input).length === 0) throw new QuestionBankError("Give what to change in the question: its name, text, answers, mark, category or fields.");
+  if (Object.keys(input).length === 0) throw new QuestionBankError("Give what to change in the question: its name, text, mark, category, its type's inputs or fields.");
   await checkBank(context, siteUrl, activityId);
   const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${activityId}&id=${questionId}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
@@ -429,11 +366,9 @@ export async function updateQuestion(
   });
   try {
     const type = (await formValue(page, "qtype")) ?? "";
-    if (input.answers && !["multichoice", "shortanswer", "numerical"].includes(type)) {
-      throw new QuestionBankError(`A ${type || "question of this type"}'s answers aren't changed this way; give its form's fields instead.`);
-    }
-    await fillQuestionForm(page, type, input, { blankRest: true });
-    await submitForm(page, "submitbutton");
+    await checkQuestionInput(type, input, { creating: false });
+    await fillQuestionForm(page, type, input, { blankRest: true, category: await categoryOption(page, input.categoryId) });
+    await saveQuestionForm(page, type, input, { blankRest: true });
     const id = Number(new URL(page.url()).searchParams.get("lastchanged")) || undefined;
     return { changed: `Saved question ${questionId}${id && id !== questionId ? ` as a new version, question ${id},` : ""} in bank ${activityId}.`, questionId: id };
   } finally {

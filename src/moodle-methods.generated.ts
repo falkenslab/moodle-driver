@@ -432,10 +432,12 @@ export interface MoodleMethods {
   /** Creates a grouping in a course with its form (`group/grouping.php`); add its groups with `setGroupingGroups`. */
   createGrouping(courseId: number, settings: import("./areas/participants/groups.js").GroupingSettings & { name: string; }): Promise<{ changed: string; groupingId: number; }>;
   /**
-   * Creates one question in a bank through its type's edit form; returns its id. Imports are the way
-   * for several; this is for one-offs.
+   * Creates one question in a bank through its type's edit form, of any type in `QUESTION_TYPES`;
+   * returns its id. Each type's required inputs are checked before the form opens. Calculated types
+   * go through their wildcards' pages too; a plugin type the site doesn't have is refused naming the
+   * plugin. Imports are the way for several; this is for one-offs.
    */
-  createQuestion(activityId: number, input: import("./areas/questions/banks.js").QuestionInput): Promise<{ changed: string; questionId?: number | undefined; }>;
+  createQuestion(activityId: number, input: import("./areas/questions/types.js").QuestionInput): Promise<{ changed: string; questionId?: number | undefined; }>;
   /**
    * A database activity's entries, in its list's order (the person's sort, or the database's), each
    * with its author, when it was added and changed, whether it's approved, and its fields' values for
@@ -1421,12 +1423,13 @@ export interface MoodleMethods {
   /** Changes a group's name, description, ID number or enrolment key with its form; what isn't given stays. */
   updateGroup(groupId: number, settings: import("./areas/participants/groups.js").GroupSettings): Promise<{ changed: string; }>;
   /**
-   * Changes a question of a bank through its type's edit form, with the same inputs as
-   * `createQuestion` and only what's given (`answers` replaces them all). Saving makes a new version
-   * of the question, with an id of its own: the one returned, which quizzes using the latest version
-   * get from then on.
+   * Changes a question of a bank through its type's edit form (its wildcards' pages too, for the
+   * calculated types), with the same inputs as `createQuestion` and only what's given: a list given
+   * (`answers`, `pairs`, `choices`, `items`, `drags`, `markers`, `drops`, the wildcards' values)
+   * replaces the question's. Saving makes a new version of the question, with an id of its own: the
+   * one returned, which quizzes using the latest version get from then on.
    */
-  updateQuestion(activityId: number, questionId: number, input: Partial<Omit<import("./areas/questions/banks.js").QuestionInput, "type">>): Promise<{ changed: string; questionId?: number | undefined; }>;
+  updateQuestion(activityId: number, questionId: number, input: Partial<Omit<import("./areas/questions/types.js").QuestionInput, "type">>): Promise<{ changed: string; questionId?: number | undefined; }>;
   /**
    * A user by id, or `undefined` when there's nobody: no such user, one the person may not see, or a
    * deleted account. Moodle keeps a deleted account's record and its user service still gives it to an
