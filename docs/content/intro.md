@@ -32,7 +32,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Question banks | List banks and questions, import and export GIFT or Moodle XML, create, edit and delete single questions, organize categories and move questions between them |
 | Forums | Read discussions and posts, reply, start discussions, edit and delete posts, pin and lock, grade the forum as a whole, rate posts (and glossary entries, database records) |
 | Workshops | Read a workshop's phase, submissions and assessments, switch its phase, allocate reviewers (by hand, at random, scheduled), assess a submission, submit, prepare and assess example submissions, calculate and override the grades |
-| Surveys and choices | Answer questionnaires, feedback activities and choices; read everyone's answers as a teacher |
+| Surveys and choices | Answer questionnaires, feedback activities and choices; read everyone's answers, and build a feedback's questions and templates, as a teacher |
 | Databases | Give a database activity its fields, templates and presets; read, add, edit, approve and delete its entries, export and import them as CSV |
 | Glossaries | Read, add, change and delete entries, approve them, add categories, export and import entries in Moodle's XML |
 | Lessons, H5P and SCORM | Go through a lesson page by page; read an H5P activity's type and attempts; read a SCORM's attempts and SCOs, open its player, create one from a package |

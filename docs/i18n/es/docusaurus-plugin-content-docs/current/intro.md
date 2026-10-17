@@ -32,7 +32,7 @@ moodle-driver inicia sesión como lo hace la persona, en una ventana del navegad
 | Bancos de preguntas | Listar bancos y preguntas, importar y exportar GIFT o Moodle XML, crear, editar y eliminar preguntas sueltas, organizar las categorías y mover preguntas entre ellas |
 | Foros | Leer debates y mensajes, responder, abrir debates, editar y eliminar mensajes, fijar y bloquear, calificar el foro en su conjunto, valorar mensajes (y entradas de glosario, registros de bases de datos) |
 | Talleres | Leer la fase de un taller, sus entregas y evaluaciones, cambiar su fase, asignar revisores (a mano, al azar, programada), evaluar una entrega, entregar, preparar y evaluar envíos de ejemplo, calcular y anular las calificaciones |
-| Encuestas y consultas | Responder cuestionarios de encuesta, actividades de retroalimentación y consultas; leer las respuestas de todos como profesor |
+| Encuestas y consultas | Responder cuestionarios de encuesta, actividades de retroalimentación y consultas; leer las respuestas de todos, y construir las preguntas y plantillas de una retroalimentación, como profesor |
 | Bases de datos | Dar a una actividad de base de datos sus campos, plantillas y preajustes; leer, añadir, editar, aprobar y eliminar sus entradas, exportarlas e importarlas como CSV |
 | Glosarios | Leer, añadir, cambiar y eliminar entradas, aprobarlas, añadir categorías, exportar e importar entradas en el XML de Moodle |
 | Lecciones, H5P y SCORM | Recorrer una lección página a página; leer el tipo y los intentos de una actividad H5P; leer los intentos y los SCO de un SCORM, abrir su reproductor, crear uno a partir de un paquete |

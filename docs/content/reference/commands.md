@@ -107,6 +107,19 @@ moodle add-database-field <activityId> --options
 | `--required` | `boolean` |  |
 | `--options` | `DatabaseFieldOptions` |  |
 
+## addFeedbackItem
+
+Adds an item to a feedback through its questions page, after item `after` (0 puts it first; by default it goes last): a question of any type the feedback's "Add question" menu offers, with its options and settings, a label with its contents, or a page break or a CAPTCHA (which Moodle adds at the end without a form, then moved; it refuses a page break first or right after another one at the end, and a second CAPTCHA). Throws `SurveyError` for a type the menu doesn't offer, or what the type doesn't take, before anything is saved; `FormError` with Moodle's messages when it refuses the form. Returns the new item's id and the items in order.
+
+```bash
+moodle add-feedback-item <activityId> <input>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `input` | `FeedbackItemInput & { after?: number; }` |  |
+
 ## addGlossaryCategory
 
 Adds a category to a glossary, as its categories page does; with `autoLink`, Moodle links the category's name wherever it appears in the course, as it does entries. Gives the category's id and the glossary's categories afterwards. Throws `GlossaryError` when the person can't manage the glossary's categories (mod/glossary:managecategories, which teachers have) or one has that name already (Moodle compares names ignoring case).
@@ -957,6 +970,32 @@ moodle delete-event <eventId>
 | --- | --- | --- |
 | `eventId` | `number` |  |
 
+## deleteFeedbackItem
+
+Deletes an item of a feedback, as its questions page's delete action does once confirmed; the answers people gave to it go with it, as in Moodle. Returns the items left, in order.
+
+```bash
+moodle delete-feedback-item <activityId> <itemId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `itemId` | `number` |  |
+
+## deleteFeedbackTemplate
+
+Deletes a feedback template, as its templates page does once confirmed. A public one takes `mod/feedback:createpublictemplate` and `mod/feedback:deletetemplate` in the whole site.
+
+```bash
+moodle delete-feedback-template <activityId> <templateId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `templateId` | `number` |  |
+
 ## deleteGlossaryEntry
 
 Deletes an entry, with its files, as its delete link does after Moodle's confirmation. A student deletes their own entries while the site's editing time lasts; a teacher, anyone's. Throws `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry).
@@ -1203,6 +1242,32 @@ moodle edit-database-field <activityId> <fieldId> --options
 | `--required` | `boolean` |  |
 | `--options` | `DatabaseFieldOptions` |  |
 
+## editFeedbackItem
+
+Changes an item of a feedback through its form, with what's given: its question, label, whether it's required, a choice's options (given, they replace them all) and settings, a numeric item's range, an information item's kind, a label's contents, its dependency and other fields. An item keeps its type and place (`moveFeedbackItem` moves it); a page break has nothing to change.
+
+```bash
+moodle edit-feedback-item <activityId> <itemId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `itemId` | `number` |  |
+| `--label` | `string` |  |
+| `--question` | `string` | The question; every type but a label and a page break needs one. |
+| `--required` | `boolean` | Not for information items, labels and page breaks, which Moodle never makes required. |
+| `--options` | `(string \| FeedbackItemOption)[]` | Choice items: the options, in order (given, they replace them all); a rated choice's with their weights. |
+| `--display` | `FeedbackChoiceDisplay` |  |
+| `--horizontal` | `boolean` |  |
+| `--hide-not-selected` | `boolean` |  |
+| `--ignore-empty` | `boolean` |  |
+| `--range` | `{ from?: number; to?: number; }` | A numeric item's range; a bound left out is none. |
+| `--info` | `FeedbackInfoKind` |  |
+| `--contents` | `string` | A label's contents (HTML). |
+| `--depends-on` | `{ itemId: number; value: string; }` | Show it only when another item (by its id) was answered with this value; `null` removes the dependency. |
+| `--fields` | `Record<string, FieldValue>` | Any other field of the item's form, by name (`itemsize`, `itemmaxlength`, `itemwidth`, `itemheight`…). |
+
 ## editGlossaryEntry
 
 Changes an entry through its form: only what's given (`attachments` replaces its attachments, `[]` removes them). A student changes their own entries while the site's editing time lasts (or always, when the glossary lets them); a teacher changes anyone's. An entry saved by someone who can approve it comes out approved, as Moodle saves it (confirmed empirically, 5.2). Throws `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry in the glossary), `FormError` with Moodle's reasons when it refuses the changes.
@@ -1234,14 +1299,14 @@ moodle edit-lesson-page <activityId> <pageId> --options
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `pageId` | `number` |  |
+| `--contents` | `string` | The page's contents (HTML); local files it names (`<img src="shot.png">`) go in `embed`. |
+| `--fields` | `Record<string, FieldValue>` | Any other field of the page's form, by name (`layout`, `display`…). |
 | `--embed` | `string[]` | Local files (absolute paths) to embed in the contents, answers or responses. |
 | `--title` | `string` |  |
-| `--contents` | `string` | The page's contents (HTML); local files it names (`<img src="shot.png">`) go in `embed`. |
 | `--buttons` | `{ label: string; jumpTo?: LessonJump; }[]` | A content page's buttons, in order (given, they replace them all). |
 | `--answers` | `LessonAnswer[]` | A question page's answers, in order (given, they replace them all); an essay or structural page's single row. |
 | `--multiple-answers` | `boolean` |  |
 | `--case-sensitive` | `boolean` |  |
-| `--fields` | `Record<string, FieldValue>` | Any other field of the page's form, by name (`layout`, `display`…). |
 
 ## editPost
 
@@ -1432,6 +1497,30 @@ moodle export-questions <activityId> --options
 | `--format` (required) | `"xml" \| "gift"` |  |
 | `--category-id` | `number` |  |
 | `--file` (required) | `string` |  |
+
+## feedbackItems
+
+The items of a feedback as its teacher builds them, in order: each one's id, type, position, question, whether it's required, a choice's options (with a rated choice's weights) and how they're shown, a numeric item's range, an information item's kind, a label's contents and the item it depends on. Read from the feedback's export of its items (`export.php`), which takes `mod/feedback:edititems`, as building them does; throws `SurveyError` without it.
+
+```bash
+moodle feedback-items <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
+## feedbackTemplates
+
+The templates a feedback can use: the course's own and the site's public ones (`manage_templates.php`, which takes `mod/feedback:edititems`).
+
+```bash
+moodle feedback-templates <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
 
 ## finishQuizAttempt
 
@@ -1861,6 +1950,20 @@ moodle move-book-chapter <activityId> <chapterId> --options
 | `chapterId` | `number` |  |
 | `--direction` (required) | `"up" \| "down"` |  |
 
+## moveFeedbackItem
+
+Moves an item of a feedback to `position` (from 1), as the questions page's drag and drop does; returns the items in order.
+
+```bash
+moodle move-feedback-item <activityId> <itemId> <position>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `itemId` | `number` |  |
+| `position` | `number` |  |
+
 ## moveLessonPage
 
 Moves a page of a lesson after page `after` (0 puts it first), as the editor's move link does; returns the pages in order.
@@ -2239,6 +2342,20 @@ moodle rubric <activityId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
+
+## saveFeedbackTemplate
+
+Saves a feedback's items as a new template, as its "Save as new template" does: the course's own, or public (every course's) with `public`, which takes `mod/feedback:createpublictemplate` in the whole site (managers). Returns the new template's id.
+
+```bash
+moodle save-feedback-template <activityId> <name> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `name` | `string` |  |
+| `--public` | `boolean` |  |
 
 ## saveSubmission
 
@@ -2856,11 +2973,25 @@ moodle update-question <activityId> <questionId> --options
 | `questionId` | `number` |  |
 | `--name` | `string` |  |
 | `--text` | `string` | The question's text (HTML). |
-| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
+| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
 | `--correct` | `boolean` | True/false: the right answer. |
 | `--category-id` | `number` | The bank's category it goes in; a new question goes in the bank's default one when left out. |
 | `--default-mark` | `number` |  |
+
+## useFeedbackTemplate
+
+Adds a template's items to a feedback, as its "Use this template" does: after the items it has, or in their place with `replace` (Moodle's own default; here it's off, so nothing is lost unasked). Returns the items afterwards, in order.
+
+```bash
+moodle use-feedback-template <activityId> <templateId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `templateId` | `number` |  |
+| `--replace` | `boolean` |  |
 
 ## userById
 

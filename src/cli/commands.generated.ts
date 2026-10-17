@@ -296,6 +296,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addFeedbackItem",
+    "description": "Adds an item to a feedback through its questions page, after item `after` (0 puts it first; by default it goes last): a question of any type the feedback's \"Add question\" menu offers, with its options and settings, a label with its contents, or a page break or a CAPTCHA (which Moodle adds at the end without a form, then moved; it refuses a page break first or right after another one at the end, and a second CAPTCHA). Throws `SurveyError` for a type the menu doesn't offer, or what the type doesn't take, before anything is saved; `FormError` with Moodle's messages when it refuses the form. Returns the new item's id and the items in order.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "input",
+        "optional": false,
+        "type": "FeedbackItemInput & { after?: number; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
     "name": "addGlossaryCategory",
     "description": "Adds a category to a glossary, as its categories page does; with `autoLink`, Moodle links the category's name wherever it appears in the course, as it does entries. Gives the category's id and the glossary's categories afterwards. Throws `GlossaryError` when the person can't manage the glossary's categories (mod/glossary:managecategories, which teachers have) or one has that name already (Moodle compares names ignoring case).",
     "params": [
@@ -2482,6 +2504,50 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteFeedbackItem",
+    "description": "Deletes an item of a feedback, as its questions page's delete action does once confirmed; the answers people gave to it go with it, as in Moodle. Returns the items left, in order.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "itemId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteFeedbackTemplate",
+    "description": "Deletes a feedback template, as its templates page does once confirmed. A public one takes `mod/feedback:createpublictemplate` and `mod/feedback:deletetemplate` in the whole site.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "templateId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "deleteGlossaryEntry",
     "description": "Deletes an entry, with its files, as its delete link does after Moodle's confirmation. A student deletes their own entries while the site's editing time lasts; a teacher, anyone's. Throws `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry).",
     "params": [
@@ -3014,6 +3080,156 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "editFeedbackItem",
+    "description": "Changes an item of a feedback through its form, with what's given: its question, label, whether it's required, a choice's options (given, they replace them all) and settings, a numeric item's range, an information item's kind, a label's contents, its dependency and other fields. An item keeps its type and place (`moveFeedbackItem` moves it); a page break has nothing to change.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "itemId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "label",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "question",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The question; every type but a label and a page break needs one."
+        },
+        {
+          "name": "required",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Not for information items, labels and page breaks, which Moodle never makes required."
+        },
+        {
+          "name": "options",
+          "optional": true,
+          "type": "(string | FeedbackItemOption)[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Choice items: the options, in order (given, they replace them all); a rated choice's with their weights."
+        },
+        {
+          "name": "display",
+          "optional": true,
+          "type": "FeedbackChoiceDisplay",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "checkbox",
+              "radio",
+              "dropdown"
+            ]
+          }
+        },
+        {
+          "name": "horizontal",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "hideNotSelected",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "ignoreEmpty",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "range",
+          "optional": true,
+          "type": "{ from?: number; to?: number; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "A numeric item's range; a bound left out is none."
+        },
+        {
+          "name": "info",
+          "optional": true,
+          "type": "FeedbackInfoKind",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "course",
+              "response-time",
+              "category"
+            ]
+          }
+        },
+        {
+          "name": "contents",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "A label's contents (HTML)."
+        },
+        {
+          "name": "dependsOn",
+          "optional": true,
+          "type": "{ itemId: number; value: string; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Show it only when another item (by its id) was answered with this value; `null` removes the dependency."
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Any other field of the item's form, by name (`itemsize`, `itemmaxlength`, `itemwidth`, `itemheight`…)."
+        }
+      ]
+    }
+  },
+  {
     "name": "editGlossaryEntry",
     "description": "Changes an entry through its form: only what's given (`attachments` replaces its attachments, `[]` removes them). A student changes their own entries while the site's editing time lasts (or always, when the glossary lets them); a teacher changes anyone's. An entry saved by someone who can approve it comes out approved, as Moodle saves it (confirmed empirically, 5.2). Throws `GlossaryError` when Moodle refuses (someone else's entry, the editing time over, no such entry in the glossary), `FormError` with Moodle's reasons when it refuses the changes.",
     "params": [
@@ -3122,6 +3338,24 @@ export const COMMANDS: readonly CommandSpec[] = [
       "open": false,
       "fields": [
         {
+          "name": "contents",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The page's contents (HTML); local files it names (`<img src=\"shot.png\">`) go in `embed`."
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Any other field of the page's form, by name (`layout`, `display`…)."
+        },
+        {
           "name": "embed",
           "optional": true,
           "type": "string[]",
@@ -3137,15 +3371,6 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "string"
           }
-        },
-        {
-          "name": "contents",
-          "optional": true,
-          "type": "string",
-          "value": {
-            "kind": "string"
-          },
-          "description": "The page's contents (HTML); local files it names (`<img src=\"shot.png\">`) go in `embed`."
         },
         {
           "name": "buttons",
@@ -3180,15 +3405,6 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "boolean"
           }
-        },
-        {
-          "name": "fields",
-          "optional": true,
-          "type": "Record<string, FieldValue>",
-          "value": {
-            "kind": "json"
-          },
-          "description": "Any other field of the page's form, by name (`layout`, `display`…)."
         }
       ]
     }
@@ -3832,6 +4048,34 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "feedbackItems",
+    "description": "The items of a feedback as its teacher builds them, in order: each one's id, type, position, question, whether it's required, a choice's options (with a rated choice's weights) and how they're shown, a numeric item's range, an information item's kind, a label's contents and the item it depends on. Read from the feedback's export of its items (`export.php`), which takes `mod/feedback:edititems`, as building them does; throws `SurveyError` without it.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "feedbackTemplates",
+    "description": "The templates a feedback can use: the course's own and the site's public ones (`manage_templates.php`, which takes `mod/feedback:edititems`).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
   },
   {
     "name": "finishQuizAttempt",
@@ -4847,6 +5091,36 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "moveFeedbackItem",
+    "description": "Moves an item of a feedback to `position` (from 1), as the questions page's drag and drop does; returns the items in order.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "itemId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "position",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "moveLessonPage",
     "description": "Moves a page of a lesson after page `after` (0 puts it first), as the editor's move link does; returns the pages in order.",
     "params": [
@@ -5703,6 +5977,43 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "saveFeedbackTemplate",
+    "description": "Saves a feedback's items as a new template, as its \"Save as new template\" does: the course's own, or public (every course's) with `public`, which takes `mod/feedback:createpublictemplate` in the whole site (managers). Returns the new template's id.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "name",
+        "optional": false,
+        "type": "string",
+        "value": {
+          "kind": "string"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "public",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "saveSubmission",
@@ -7384,15 +7695,6 @@ export const COMMANDS: readonly CommandSpec[] = [
           "description": "The question's text (HTML)."
         },
         {
-          "name": "answers",
-          "optional": true,
-          "type": "{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]",
-          "value": {
-            "kind": "json"
-          },
-          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it."
-        },
-        {
           "name": "fields",
           "optional": true,
           "type": "Record<string, FieldValue>",
@@ -7400,6 +7702,15 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "json"
           },
           "description": "Any other field of the type's form, by name."
+        },
+        {
+          "name": "answers",
+          "optional": true,
+          "type": "{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it."
         },
         {
           "name": "correct",
@@ -7425,6 +7736,43 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "useFeedbackTemplate",
+    "description": "Adds a template's items to a feedback, as its \"Use this template\" does: after the items it has, or in their place with `replace` (Moodle's own default; here it's off, so nothing is lost unasked). Returns the items afterwards, in order.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "templateId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "replace",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
           }
         }
       ]

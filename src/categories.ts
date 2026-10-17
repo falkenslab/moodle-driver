@@ -205,6 +205,16 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   submitSurvey: OWN,
   // A teacher's reports: the questions, everyone's answers (named where not anonymous) and their counts.
   surveyResults: ["course-content", "others-aggregate", "others-personal"],
+  // A feedback's teacher building its items, and its templates.
+  feedbackItems: CONTENT,
+  addFeedbackItem: CONTENT,
+  editFeedbackItem: CONTENT,
+  moveFeedbackItem: CONTENT,
+  deleteFeedbackItem: CONTENT,
+  feedbackTemplates: CONTENT,
+  useFeedbackTemplate: CONTENT,
+  saveFeedbackTemplate: CONTENT,
+  deleteFeedbackTemplate: CONTENT,
 
   // Participants and groups.
   participants: PERSONAL,
