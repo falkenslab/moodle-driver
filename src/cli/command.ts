@@ -28,6 +28,8 @@ export interface CliDeps {
   home: string;
   /** Whether stdout is a terminal: progress and readable output then, JSON to a pipe. */
   interactive: boolean;
+  /** The terminal's width, when stdout is one: tables leave out columns to fit it. */
+  columns?: number;
   version: string;
   /** Where `moodle shell` reads its lines from: the terminal, or a script in tests. */
   input?: NodeJS.ReadableStream;
@@ -239,7 +241,7 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
       return global.help ? 0 : 2;
     }
     if (typed === "sites") {
-      const text = render(listSites(deps.home), json);
+      const text = render(listSites(deps.home), json, deps.columns);
       deps.stdout(text === "(none)" ? "No sites yet: `moodle login --site https://campus.example.org/`." : text);
       return 0;
     }
@@ -278,7 +280,7 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
     // A backup file is read or rewritten on this computer: no site, no profile, no browser.
     if (command.name === "backupContents" || command.name === "anonymizeBackup") {
       const [file, destFile] = methodArguments(command, positionals, flags, deps.cwd) as [string, string];
-      const text = render(command.name === "backupContents" ? await backupContents(file) : await anonymizeBackup(file, destFile), json);
+      const text = render(command.name === "backupContents" ? await backupContents(file) : await anonymizeBackup(file, destFile), json, deps.columns);
       if (text) deps.stdout(text);
       return 0;
     }
@@ -324,7 +326,7 @@ export async function runLine(argv: string[], deps: CliDeps, session: CliSession
       if (name) session.defaults.as = name;
       if (name && deps.interactive) deps.stderr(`Profile "${name}" is the default for ${site}.`);
     }
-    const text = render(result, json);
+    const text = render(result, json, deps.columns);
     if (text) deps.stdout(text);
     return 0;
   } catch (error) {

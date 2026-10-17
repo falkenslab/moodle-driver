@@ -63,13 +63,18 @@ At a terminal, results come as tables and key-value lines, and writes say first 
 
 ```text
 $ moodle list-courses
-id  shortname  fullname          category    url                                       visible
---  ---------  ----------------  ----------  ----------------------------------------  -------
-3   loops      Loops in Python   Computing   https://campus.example.org/course/view…   true
+id  shortname  fullname         category   visible
+--  ---------  ---------------  ---------  -------
+3   loops      Loops in Python  Computing  true
+
+Left out: url, startDate, endDate, progress, lastAccess (--json has every
+column).
 
 $ moodle set-completion 42 true
 ✔ Activity 42 marked done.
 ```
+
+A table fits the terminal's width, one line per row. When it's wider, dates lose their milliseconds (`2026-10-22 23:00`, in UTC, as the line under the table says), and then columns are left out until it fits: empty ones first, then long texts and URLs, then the rest from the last; the ids and names stay. The line under the table names the columns left out, and `--json` has them all. A field that holds things shows their names (a participant's roles and groups, a deadline's course).
 
 With `--json`, or when the output goes to a pipe or a file, it prints exactly what the method returns, as JSON:
 
