@@ -26,6 +26,9 @@ import { forumGrades, gradeForumUser } from "./areas/forums/grading.js";
 import { rate } from "./areas/ratings/ratings.js";
 import { assessWorkshopSubmission, setWorkshopPhase, workshopInfo } from "./areas/workshops/workshops.js";
 import { allocateRandomly, allocateReviewer, removeReviewer, scheduleAllocation, workshopAllocation } from "./areas/workshops/allocation.js";
+import { saveWorkshopSubmission, workshopSubmission } from "./areas/workshops/submissions.js";
+import { addWorkshopExample, assessWorkshopExample, deleteWorkshopExample, editWorkshopExample, workshopExamples } from "./areas/workshops/examples.js";
+import { calculateWorkshopGrades, overrideWorkshopGrade } from "./areas/workshops/evaluation.js";
 import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
 import { myGrades } from "./areas/grades/user-report.js";
 import { allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension, rubric, setWorkflowState } from "./areas/assignments/grading.js";
@@ -196,6 +199,15 @@ const SITE_FUNCTIONS = {
   removeReviewer,
   allocateRandomly,
   scheduleAllocation,
+  workshopSubmission,
+  saveWorkshopSubmission,
+  workshopExamples,
+  addWorkshopExample,
+  editWorkshopExample,
+  deleteWorkshopExample,
+  assessWorkshopExample,
+  calculateWorkshopGrades,
+  overrideWorkshopGrade,
   readAttempt,
   readReview,
   removeQuizSlot,

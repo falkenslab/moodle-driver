@@ -593,6 +593,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addWorkshopExample",
+    "description": "Adds an example submission to a workshop, as \"Add example submission\" does, with the submission's own form: a title, its text (HTML, with `embed`'s files) and attached files. Moodle asks for its reference assessment next (`assessWorkshopExample`). Examples matter only where the workshop uses them (\"Use examples\" in its settings). Returns a sentence of what changed, the example's id, and the example as its page shows it. Throws `WorkshopError` when the person can't manage examples (Moodle's `mod/workshop:manageexamples`, a teacher's); `FormError` when Moodle refuses the form.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "input",
+        "optional": false,
+        "type": "WorkshopSubmissionInput & { title: string; }",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ]
+  },
+  {
     "name": "allocateMarker",
     "description": "Allocates a marker (the user id of someone who can grade; several where the assignment uses several markers per submission) to participants' submissions, as the grading table's \"Allocate marker\" does. Moodle leaves alone submissions past marking (marking completed, in review, ready for release, released).",
     "params": [
@@ -894,6 +916,59 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "assessWorkshopExample",
+    "description": "Assesses an example submission through the workshop's assessment form (its grading strategy's, filled as `assessWorkshopSubmission` fills a submission's), as \"Assess\" on the example does: for a teacher who manages examples, its reference assessment, which participants' assessments of it are compared with; for a participant, their own practice assessment, where the workshop lets them assess examples now (its examples mode and phase). Returns a sentence of what changed, the assessment's id, and the grade it gives out of the workshop's grade. Throws `WorkshopError` when Moodle offers no assessment of it or a criterion's grade isn't one it takes; `FormError` when Moodle refuses the form.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "exampleId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "input",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "criteria",
+          "optional": true,
+          "type": "WorkshopCriterion[]",
+          "value": {
+            "kind": "json"
+          }
+        },
+        {
+          "name": "feedback",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "assessWorkshopSubmission",
     "description": "Assesses a submission as the person, through the workshop's assessment form (its grading strategy's: accumulative, comments, number of errors or rubric), as \"Assess\" on the submission's page and the form do: a teacher who hasn't assessed it yet gets an assessment of their own, and one already made is changed. `criteria` go in the form's order; `feedback` is the overall feedback for the author (HTML), where the workshop has it on; `fields` sets any other field of the form by name (`weight`…). Returns a sentence of what changed, the assessment's id, and the grade it gives the submission out of the workshop's grade. Throws `WorkshopError` outside the assessment phase, when a criterion's grade isn't one it takes, or when the workshop has no overall feedback; `FormError` when Moodle refuses the form (a criterion left without a grade).",
     "params": [
@@ -1158,6 +1233,42 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "boolean",
           "value": {
             "kind": "boolean"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "calculateWorkshopGrades",
+    "description": "Calculates a workshop's grades, as \"Re-calculate grades\" in the evaluation phase does: Moodle calculates each submission's grade from its assessments (weighted), and each assessment's grade for assessing by the workshop's grading evaluation method (\"Comparison with the best assessment\" by default), with `comparison` as its strictness when given (the form keeps the last one used: \"fair\" at first). Overridden grades stay. Returns a sentence of what changed, the comparison used, and the workshop's submissions and assessments with their grades afterwards (as `workshopInfo`). Throws `WorkshopError` outside the evaluation phase, or when the person can't override grades (Moodle's `mod/workshop:overridegrades`, a teacher's).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "comparison",
+          "optional": true,
+          "type": "WorkshopComparison",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "very strict",
+              "strict",
+              "fair",
+              "lax",
+              "very lax"
+            ]
           }
         }
       ]
@@ -2260,6 +2371,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteWorkshopExample",
+    "description": "Deletes an example submission, as \"Delete example\" and its confirmation do: Moodle deletes its assessments with it (the reference one and the participants'). Returns a sentence of what changed. Throws `WorkshopError` when the person can't manage examples or the example isn't the workshop's.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "exampleId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "discussion",
     "description": "A discussion's posts, oldest first, with their messages as text, and whether the person is subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced). With `limit`, `posts` is a page of them (see \"Long lists\" in the docs' concepts): Moodle's service has no paging, so every post is read and cut, but only the page's messages are turned into text.",
     "params": [
@@ -2838,6 +2971,71 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "strings"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "editWorkshopExample",
+    "description": "Changes an example submission through its form, as \"Edit example\" does: only what's given changes (`attachments` replace those there). Returns a sentence of what changed and the example afterwards. Throws `WorkshopError` when the person can't manage examples or the example isn't the workshop's.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "exampleId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "input",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "title",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its title; Moodle requires one, so a new submission takes it. Editing, left out keeps the one there."
+        },
+        {
+          "name": "content",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its text (HTML), where the workshop takes online text."
+        },
+        {
+          "name": "attachments",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to attach: they replace the files attached before, up to the workshop's number of attachments. Left out keeps them."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to embed in the content, which names each by its file name (`<img src=\"shot.png\">`)."
         }
       ]
     }
@@ -3930,6 +4128,63 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "overrideWorkshopGrade",
+    "description": "Overrides a grade Moodle calculated in a workshop, as its forms do: a submission's grade (the \"Feedback for the author\" form of the submission's page, in the evaluation phase), or an assessment's grade for assessing (the \"Assessment settings\" form of the assessment's page, for an assessment the person can't change themselves), with feedback when given. `grade: null` removes the override, so the calculated grade counts again. Returns a sentence of what changed and the submission or assessment afterwards, as `workshopInfo` reads it. Throws `WorkshopError` when Moodle shows no override (the phase, or the person lacks `mod/workshop:overridegrades`, a teacher's), the grade isn't one the form takes, or the submission or assessment isn't the workshop's.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "submissionId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "The submission whose grade to override (Moodle's \"Override grade for submission\")."
+        },
+        {
+          "name": "assessmentId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "The assessment whose grade for assessing to override (\"Override grade for assessment\")."
+        },
+        {
+          "name": "grade",
+          "optional": false,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "The grade, a whole number from 0 to the workshop's grade for submission (or for assessment); `null` removes the override."
+        },
+        {
+          "name": "feedback",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Feedback for the author (a submission's) or the reviewer (an assessment's), HTML; left out keeps what's there."
+        }
+      ]
+    }
+  },
+  {
     "name": "participantFilters",
     "description": "The roles and groups the participants page filters by in a course (its filters' options), as the person may use them: every group, or only their own in a course with separate groups. \"No roles\" and \"no group\" left out.",
     "params": [
@@ -4600,6 +4855,63 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "strings"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "saveWorkshopSubmission",
+    "description": "Adds the person's submission to a workshop, or changes the one they have, through Moodle's submission form, as \"Add submission\" and \"Edit submission\" do: only what's given changes (a new one needs a title). Moodle takes submissions in the submission phase, within its dates (and in the assessment phase too where the workshop takes late submissions, for a first submission only). Returns a sentence of what changed, the submission's id, and the submission afterwards. Throws `WorkshopError` when Moodle doesn't let the person submit (it takes `mod/workshop:submit`, a student's) or not now (the phase, the dates, examples to assess first), or the workshop doesn't take what's given; `FormError` when Moodle refuses the form (too many attachments, a required part missing).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "input",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "title",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its title; Moodle requires one, so a new submission takes it. Editing, left out keeps the one there."
+        },
+        {
+          "name": "content",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its text (HTML), where the workshop takes online text."
+        },
+        {
+          "name": "attachments",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to attach: they replace the files attached before, up to the workshop's number of attachments. Left out keeps them."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to embed in the content, which names each by its file name (`<img src=\"shot.png\">`)."
         }
       ]
     }
@@ -6190,6 +6502,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "workshopExamples",
+    "description": "A workshop's example submissions, as its page lists them to a teacher: each one's title, and whether its reference assessment is made, with its grade. Moodle lists them in the setup phase only, where the workshop uses examples (\"Use examples\" in its settings), to those who can manage them (`mod/workshop:manageexamples`, a teacher's). Throws `WorkshopError` in another phase, when the page has no examples (examples off, or the capability missing), or the id isn't a workshop's.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "workshopInfo",
     "description": "A workshop's phase, and its report as the workshop's page shows it to a teacher: every submission (its author, title, and grade once calculated) and every assessment (reviewer, the submission's author, the grade it gives, its weight, the grade for assessing once calculated), all of its pages. The report is Moodle's own: it shows from the submission phase on to those who can see every submission, in the course's current group; for anyone else the lists are empty. Grades are out of the workshop's grade for submission, as Moodle shows them. Throws `WorkshopError` for an activity that isn't a workshop the person can view.",
     "params": [
@@ -6202,6 +6528,44 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "workshopSubmission",
+    "description": "A workshop submission as its page shows it: its title, its text (HTML) and attached files, its author (where Moodle shows authors' names), and whether the person can edit it now. Without options, the person's own submission (`undefined` when they haven't submitted); with `submissionId`, that one, which Moodle shows its author, its reviewers and those who can see every submission (teachers); with `authorId`, that participant's, found in the workshop's report (`undefined` when they have none). Throws `WorkshopError` when Moodle doesn't let the person see it or the id isn't a workshop's.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "submissionId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "authorId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "The author's user id: their submission, found in the workshop's report (a teacher's)."
+        }
+      ]
+    }
   }
 ];
 
