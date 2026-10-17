@@ -5,6 +5,7 @@ import { createBrowserManager, type BrowserManager } from "./browser/manager.js"
 import { parseSiteUrl, type BrowserOptions, type Trail } from "./options.js";
 import { activitySettings, addSection, createActivity, deleteActivity, deleteSection, duplicateActivity, editActivity, editSection, updateActivity } from "./areas/activities/build.js";
 import { callService } from "./core/ajax.js";
+import { awardBadge, courseBadges, createBadge, setBadgeCriteria, setBadgeEnabled } from "./areas/badges/badges.js";
 import { calendarEvent, createEvent, deleteEvent, updateEvent, upcomingEvents } from "./areas/calendar/calendar.js";
 import { answerChoice, getChoice } from "./areas/surveys/choice.js";
 import { activityReport, courseLogs, participationReport } from "./areas/reports/reports.js";
@@ -62,6 +63,11 @@ import type { MoodleMethods } from "./moodle-methods.generated.js";
  * use the object's defaults (`trail`, `downloadDir`…) and `callService`, generic, are bound by hand.
  */
 const SITE_FUNCTIONS = {
+  courseBadges,
+  createBadge,
+  setBadgeCriteria,
+  setBadgeEnabled,
+  awardBadge,
   activitiesOverview,
   addDatabaseField,
   applyDatabasePreset,

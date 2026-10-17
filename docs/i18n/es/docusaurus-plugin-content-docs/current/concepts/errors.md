@@ -100,6 +100,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `NotADatabaseError`, `DatabaseError` | [Bases de datos](../areas/databases.md): no es una base de datos; la persona no puede gestionarla, o Moodle rechazó un campo, una plantilla o un preajuste |
 | `NoGradeReportError`, `GradebookError` | [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Finalización](../areas/completion.md) |
+| `BadgeError`, `BadgesDisabledError` | [Insignias](../areas/badges.md): falta una capacidad de insignias (que se nombra), un criterio que Moodle no ofrece; un sitio con las insignias desactivadas |
 | `NoParticipantsError`, `EnrolmentError` | [Participantes](../areas/participants.md): no puede ver los participantes; Moodle se negó a matricular, desmatricular o asignar un rol |
 | `ReportError` | [Registros e informes](../areas/logs-and-reports.md): la persona no puede ver el informe, o la actividad no es del curso |
 | `CalendarError` | [Calendario](../areas/calendar.md) |

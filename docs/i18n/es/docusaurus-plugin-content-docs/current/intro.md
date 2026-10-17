@@ -36,7 +36,7 @@ moodle-driver inicia sesión como lo hace la persona, en una ventana del navegad
 | Bases de datos | Dar a una actividad de base de datos sus campos, plantillas y preajustes |
 | Lecciones, H5P y SCORM | Recorrer una lección página a página; leer el tipo y los intentos de una actividad H5P; leer los intentos y los SCO de un SCORM, abrir su reproductor, crear uno a partir de un paquete |
 | Calificaciones | Las calificaciones de la persona, el informe del calificador y las exportaciones de calificaciones de Moodle, calificar y anular calificaciones en el libro de calificaciones, la configuración del libro de calificaciones (elementos manuales, categorías, ponderaciones) |
-| Finalización | Marcar actividades como hechas, anular la finalización, leer el informe de progreso |
+| Finalización e insignias | Marcar actividades como hechas, anular la finalización, leer el informe de progreso; insignias del curso: crearlas, fijar sus criterios, habilitarlas, otorgarlas a mano |
 | Personas | Participantes con sus roles y grupos, inactividad; matricular y desmatricular, asignar roles, grupos y agrupamientos, métodos de matriculación; enviar un mensaje a varios a la vez |
 | Registros e informes | Los registros de un curso por usuario, actividad, acción y fecha; las visitas por actividad; quién participó en una actividad |
 | Vista general | La vista general de actividades, fechas límite, novedades del curso |

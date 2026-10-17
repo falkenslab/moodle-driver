@@ -51,7 +51,9 @@ export type MoodleErrorCode =
   | "choice"
   | "survey"
   | "not-a-database"
-  | "database";
+  | "database"
+  | "badge"
+  | "badges-disabled";
 
 /** Every error the driver throws on purpose: one class to catch, a stable `code` to tell them apart. */
 export class MoodleError extends Error {

@@ -196,5 +196,6 @@ export { participants, participantFilters, groups, NoParticipantsError, type Par
 export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, createGrouping, deleteGrouping, setGroupingGroups, type GroupSettings, type GroupingSettings, type Grouping } from "./areas/participants/groups.js";
 export { enrolmentMethods, setEnrolmentMethod, type EnrolmentMethod, type EnrolmentMethodSettings } from "./areas/participants/methods.js";
 export { potentialUsers, enrolUsers, unenrolUser, setUserRoles, EnrolmentError, type PotentialUser } from "./areas/participants/enrolments.js";
+export { courseBadges, createBadge, setBadgeCriteria, setBadgeEnabled, awardBadge, BadgeError, BadgesDisabledError, type CourseBadge, type BadgeCriteria, type BadgeCriteriaChanges, type NewBadge } from "./areas/badges/badges.js";
 export { upcomingEvents, calendarEvent, createEvent, updateEvent, deleteEvent, CalendarError, type CalendarEvent, type EventChanges } from "./areas/calendar/calendar.js";
 export { notifications, markNotificationsRead, conversations, conversation, sendMessage, messageParticipants, MessageError, type Notification, type NotificationOptions, type ConversationSummary, type Conversation, type ConversationMessage, type ParticipantSelection } from "./areas/messages/messages.js";

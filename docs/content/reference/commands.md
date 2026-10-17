@@ -299,6 +299,20 @@ moodle assignment-submissions <activityId> [--options]
 | `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
 | `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
+## awardBadge
+
+Awards a badge by hand to a participant, through its manual award page, as the person's role in its manual criterion (`roleId` when the criterion names several the person holds; the first otherwise). The badge must be enabled and have a manual criterion naming a role the person holds. Moodle issues the badge when its criteria are met: at once when the manual award is enough (its only criterion, or any one earning it), else once the rest are met too (confirmed empirically, 5.2). A participant awarded already is left as is. Returns the badge afterwards. Throws `BadgeError` when the person can't award it (it takes moodle/badges:awardbadge and one of the criterion's roles), when it isn't enabled or has no manual criterion, and when Moodle doesn't award it (the user isn't a participant).
+
+```bash
+moodle award-badge <badgeId> <userId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `badgeId` | `number` |  |
+| `userId` | `number` |  |
+| `--role-id` | `number` |  |
+
 ## backupContents
 
 What a backup file (`.mbz`) holds and what its activities refer to outside it, read on this computer without the browser or a session (`backupContents`).
@@ -454,6 +468,18 @@ moodle course-activity-types <courseId>
 | --- | --- | --- |
 | `courseId` | `number` |  |
 
+## courseBadges
+
+A course's badges, as its badges page lists them: each one's name, description, image, criteria (Moodle's summary, in the site's language), whether it's enabled, whether the person has it and, for whom may see it (a teacher), how many people have it. A student sees only enabled badges. Throws `BadgesDisabledError` on a site with badges off, `BadgeError` when the person can't see the course's badges.
+
+```bash
+moodle course-badges <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+
 ## courseLogs
 
 A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format. Without `limit`, the first 100 entries (from `offset`) as a list; with it, a page of them (see "Long lists" in the docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the first page, since only the driver filters by it).
@@ -523,6 +549,22 @@ moodle create-activity <input>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `input` | `ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string \| DraftUpload)[]; }` |  |
+
+## createBadge
+
+Creates a course badge, disabled and without criteria, through Moodle's new badge form: its name, description and image (a local file, uploaded as the form's file picker does). The issuer is the site's default. Returns the badge. Throws `BadgeError` when the person can't create badges in the course (it takes moodle/badges:createbadge), `BadgesDisabledError` on a site with badges off, `FormError` with Moodle's reason when it refuses the form (an image it can't use).
+
+```bash
+moodle create-badge <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--name` (required) | `string` |  |
+| `--description` (required) | `string` | Plain text: Moodle strips tags from it. |
+| `--image` (required) | `string` | A local image file (absolute path): PNG, JPEG or GIF, at most 256 KB; Moodle resizes it. |
+| `--image-caption` | `string` | The image's caption (its alternative text). |
 
 ## createEvent
 
@@ -1683,6 +1725,35 @@ moodle send-message <userId> <text>
 | --- | --- | --- |
 | `userId` | `number` |  |
 | `text` | `string` |  |
+
+## setBadgeCriteria
+
+Sets a badge's criteria through its criterion forms: activity completion (course module ids), course completion (with a minimum grade and a date), and manual award by role; `all` sets whether all criteria must be met or any. A criterion given replaces that kind's settings, `null` removes it, one not given stays. Moodle lets criteria change only while the badge is disabled and nobody has it. Returns the criteria afterwards. Throws `BadgeError` when the person can't set criteria (it takes moodle/badges:configurecriteria), when the badge is enabled or already awarded, and for activities or roles the criterion doesn't offer (naming them); `BadgesDisabledError` on a site with badges off.
+
+```bash
+moodle set-badge-criteria <badgeId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `badgeId` | `number` |  |
+| `--activities` | `{ activityIds: number[]; all?: boolean; }` | Completing these activities (course module ids, with completion tracking); `all` defaults to true (Moodle's form to "any"). |
+| `--course-completion` | `{ minGrade?: number; by?: Date; }` | Completing the course (it must track completion), optionally with a minimum course grade and by a date (in the person's time zone, the day counts). |
+| `--manual` | `{ roleIds: number[]; all?: boolean; }` | Awarded by hand by people with these roles (only roles that may award badges); `all` defaults to false: any one of them awards it. |
+| `--all` | `boolean` | With more than one criterion: whether all must be met or any one; ignored with one. |
+
+## setBadgeEnabled
+
+Enables or disables a badge through the service its badges page's buttons call. Enabling awards it at once to whoever already meets its criteria; Moodle needs criteria first. A badge already in that state is left as it is. Returns the badge afterwards. Throws `BadgeError` when the person can't (it takes moodle/badges:configurecriteria) or the badge has no criteria, `BadgesDisabledError` on a site with badges or course badges off.
+
+```bash
+moodle set-badge-enabled <badgeId> <enabled>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `badgeId` | `number` |  |
+| `enabled` | `boolean` |  |
 
 ## setBookChapterVisible
 

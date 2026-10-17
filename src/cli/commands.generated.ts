@@ -861,6 +861,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "awardBadge",
+    "description": "Awards a badge by hand to a participant, through its manual award page, as the person's role in its manual criterion (`roleId` when the criterion names several the person holds; the first otherwise). The badge must be enabled and have a manual criterion naming a role the person holds. Moodle issues the badge when its criteria are met: at once when the manual award is enough (its only criterion, or any one earning it), else once the rest are met too (confirmed empirically, 5.2). A participant awarded already is left as is. Returns the badge afterwards. Throws `BadgeError` when the person can't award it (it takes moodle/badges:awardbadge and one of the criterion's roles), when it isn't enabled or has no manual criterion, and when Moodle doesn't award it (the user isn't a participant).",
+    "params": [
+      {
+        "name": "badgeId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "roleId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "backupContents",
     "description": "What a backup file (`.mbz`) holds and what its activities refer to outside it, read on this computer without the browser or a session (`backupContents`).",
     "params": [
@@ -1245,6 +1282,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "courseBadges",
+    "description": "A course's badges, as its badges page lists them: each one's name, description, image, criteria (Moodle's summary, in the site's language), whether it's enabled, whether the person has it and, for whom may see it (a teacher), how many people have it. A student sees only enabled badges. Throws `BadgesDisabledError` on a site with badges off, `BadgeError` when the person can't see the course's badges.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "courseLogs",
     "description": "A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity and action; the span is read page by page, stopping at the first entry older than `from`. Every entry's time comes as an ISO date, read back with the site language's own format. Without `limit`, the first 100 entries (from `offset`) as a list; with it, a page of them (see \"Long lists\" in the docs' concepts), from the report's page that holds `offset` on (without `until`; with it, from the first page, since only the driver filters by it).",
     "params": [
@@ -1421,6 +1472,62 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "createBadge",
+    "description": "Creates a course badge, disabled and without criteria, through Moodle's new badge form: its name, description and image (a local file, uploaded as the form's file picker does). The issuer is the site's default. Returns the badge. Throws `BadgeError` when the person can't create badges in the course (it takes moodle/badges:createbadge), `BadgesDisabledError` on a site with badges off, `FormError` with Moodle's reason when it refuses the form (an image it can't use).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "badge",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "description",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Plain text: Moodle strips tags from it."
+        },
+        {
+          "name": "image",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "A local image file (absolute path): PNG, JPEG or GIF, at most 256 KB; Moodle resizes it."
+        },
+        {
+          "name": "imageCaption",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The image's caption (its alternative text)."
+        }
+      ]
+    }
   },
   {
     "name": "createEvent",
@@ -4118,6 +4225,85 @@ export const COMMANDS: readonly CommandSpec[] = [
         "type": "string",
         "value": {
           "kind": "string"
+        }
+      }
+    ]
+  },
+  {
+    "name": "setBadgeCriteria",
+    "description": "Sets a badge's criteria through its criterion forms: activity completion (course module ids), course completion (with a minimum grade and a date), and manual award by role; `all` sets whether all criteria must be met or any. A criterion given replaces that kind's settings, `null` removes it, one not given stays. Moodle lets criteria change only while the badge is disabled and nobody has it. Returns the criteria afterwards. Throws `BadgeError` when the person can't set criteria (it takes moodle/badges:configurecriteria), when the badge is enabled or already awarded, and for activities or roles the criterion doesn't offer (naming them); `BadgesDisabledError` on a site with badges off.",
+    "params": [
+      {
+        "name": "badgeId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "activities",
+          "optional": true,
+          "type": "{ activityIds: number[]; all?: boolean; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Completing these activities (course module ids, with completion tracking); `all` defaults to true (Moodle's form to \"any\")."
+        },
+        {
+          "name": "courseCompletion",
+          "optional": true,
+          "type": "{ minGrade?: number; by?: Date; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Completing the course (it must track completion), optionally with a minimum course grade and by a date (in the person's time zone, the day counts)."
+        },
+        {
+          "name": "manual",
+          "optional": true,
+          "type": "{ roleIds: number[]; all?: boolean; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Awarded by hand by people with these roles (only roles that may award badges); `all` defaults to false: any one of them awards it."
+        },
+        {
+          "name": "all",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "With more than one criterion: whether all must be met or any one; ignored with one."
+        }
+      ]
+    }
+  },
+  {
+    "name": "setBadgeEnabled",
+    "description": "Enables or disables a badge through the service its badges page's buttons call. Enabling awards it at once to whoever already meets its criteria; Moodle needs criteria first. A badge already in that state is left as it is. Returns the badge afterwards. Throws `BadgeError` when the person can't (it takes moodle/badges:configurecriteria) or the badge has no criteria, `BadgesDisabledError` on a site with badges or course badges off.",
+    "params": [
+      {
+        "name": "badgeId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "enabled",
+        "optional": false,
+        "type": "boolean",
+        "value": {
+          "kind": "boolean"
         }
       }
     ]

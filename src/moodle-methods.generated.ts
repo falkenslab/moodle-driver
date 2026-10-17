@@ -146,6 +146,17 @@ export interface MoodleMethods {
    */
   assignmentSubmissions(activityId: number, options?: import("./areas/assignments/grading.js").SubmissionOptions): Promise<import("./areas/assignments/grading.js").Submission[] | import("./core/paging.js").ListPage<import("./areas/assignments/grading.js").Submission>>;
   /**
+   * Awards a badge by hand to a participant, through its manual award page, as the person's role in its
+   * manual criterion (`roleId` when the criterion names several the person holds; the first otherwise).
+   * The badge must be enabled and have a manual criterion naming a role the person holds. Moodle issues
+   * the badge when its criteria are met: at once when the manual award is enough (its only criterion, or
+   * any one earning it), else once the rest are met too (confirmed empirically, 5.2). A participant
+   * awarded already is left as is. Returns the badge afterwards. Throws `BadgeError` when the person
+   * can't award it (it takes moodle/badges:awardbadge and one of the criterion's roles), when it isn't
+   * enabled or has no manual criterion, and when Moodle doesn't award it (the user isn't a participant).
+   */
+  awardBadge(badgeId: number, userId: number, options?: { roleId?: number | undefined; }): Promise<{ changed: string; badge: import("./areas/badges/badges.js").CourseBadge; }>;
+  /**
    * Backs a course up to a `.mbz` file, through Moodle's backup wizard (initial settings, schema,
    * confirmation), and downloads it into `destDir`. Without users' data unless `withUsers`, which
    * needs `moodle/backup:userinfo` (`anonymize` makes their names anonymous). An asynchronous backup
@@ -238,6 +249,14 @@ export interface MoodleMethods {
   /** The activity and resource types the person can add to a course: none when they can't edit it. */
   courseActivityTypes(courseId: number): Promise<{ purpose?: string | undefined; type: string; title: string; }[]>;
   /**
+   * A course's badges, as its badges page lists them: each one's name, description, image, criteria
+   * (Moodle's summary, in the site's language), whether it's enabled, whether the person has it and,
+   * for whom may see it (a teacher), how many people have it. A student sees only enabled badges.
+   * Throws `BadgesDisabledError` on a site with badges off, `BadgeError` when the person can't see the
+   * course's badges.
+   */
+  courseBadges(courseId: number): Promise<import("./areas/badges/badges.js").CourseBadge[]>;
+  /**
    * A course's logs, newest first, as its logs report lists them: by a user, an activity, a kind of
    * action, and a time span, up to `limit` entries (100 unless given). Moodle filters by user, activity
    * and action; the span is read page by page, stopping at the first entry older than `from`. Every
@@ -283,6 +302,14 @@ export interface MoodleMethods {
    * an H5P activity (`type: "h5pactivity"`) takes the first as its package.
    */
   createActivity(input: import("./areas/activities/build.js").ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | import("./core/forms.js").DraftUpload)[] | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Creates a course badge, disabled and without criteria, through Moodle's new badge form: its name,
+   * description and image (a local file, uploaded as the form's file picker does). The issuer is the
+   * site's default. Returns the badge. Throws `BadgeError` when the person can't create badges in the
+   * course (it takes moodle/badges:createbadge), `BadgesDisabledError` on a site with badges off,
+   * `FormError` with Moodle's reason when it refuses the form (an image it can't use).
+   */
+  createBadge(courseId: number, badge: import("./areas/badges/badges.js").NewBadge): Promise<{ changed: string; badge: import("./areas/badges/badges.js").CourseBadge; }>;
   /**
    * Creates a course event, through the calendar's own form: its start, and its duration and
    * description when given. Returns it as the calendar has it.
@@ -790,6 +817,24 @@ export interface MoodleMethods {
   scorm(activityId: number): Promise<import("./areas/scorm/scorm.js").ScormActivity>;
   /** Sends a private message to a user, as the messaging drawer does; returns the message and its conversation. */
   sendMessage(userId: number, text: string): Promise<{ changed: string; messageId: number; conversationId?: number | undefined; }>;
+  /**
+   * Sets a badge's criteria through its criterion forms: activity completion (course module ids),
+   * course completion (with a minimum grade and a date), and manual award by role; `all` sets whether
+   * all criteria must be met or any. A criterion given replaces that kind's settings, `null` removes it,
+   * one not given stays. Moodle lets criteria change only while the badge is disabled and nobody has it.
+   * Returns the criteria afterwards. Throws `BadgeError` when the person can't set criteria (it takes
+   * moodle/badges:configurecriteria), when the badge is enabled or already awarded, and for activities
+   * or roles the criterion doesn't offer (naming them); `BadgesDisabledError` on a site with badges off.
+   */
+  setBadgeCriteria(badgeId: number, changes: import("./areas/badges/badges.js").BadgeCriteriaChanges): Promise<{ changed: string; criteria: import("./areas/badges/badges.js").BadgeCriteria; }>;
+  /**
+   * Enables or disables a badge through the service its badges page's buttons call. Enabling awards it
+   * at once to whoever already meets its criteria; Moodle needs criteria first. A badge already in that
+   * state is left as it is. Returns the badge afterwards. Throws `BadgeError` when the person can't
+   * (it takes moodle/badges:configurecriteria) or the badge has no criteria, `BadgesDisabledError` on a
+   * site with badges or course badges off.
+   */
+  setBadgeEnabled(badgeId: number, enabled: boolean): Promise<{ changed: string; badge: import("./areas/badges/badges.js").CourseBadge; }>;
   /**
    * Shows a chapter to students or hides it from them, as the table of contents' eye does: a chapter's
    * subchapters are shown or hidden with it, and a subchapter of a hidden chapter stays hidden. Throws
