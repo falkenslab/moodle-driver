@@ -55,6 +55,8 @@ interface ActivityFields {
 
 `activityId` es el id de la nueva actividad, que se encuentra comparando el curso antes y después (en un banco de preguntas compartido, `qbank`, que nunca aparece en la página del curso, comparando los bancos de preguntas del curso); cuando no aparece ninguna actividad nueva, `changed` lo dice y `activityId` es undefined.
 
+Un libro (`type: "book"`) se crea sin capítulos: `addBookChapter` y las demás funciones de capítulos los escriben (consulta [Los capítulos de un libro](content.md#a-books-chapters)).
+
 Errores:
 
 - Un `MoodleError` cuando una ruta de archivo no es absoluta o no existe (`invalid-input`, `not-found`), cuando un archivo que insertar y el HTML no coinciden (`invalid-input`), cuando el curso no tiene ninguna sección con ese id (`not-found`), cuando se indica `content` para un tipo que no es una página ni un área de texto y medios (`invalid-input`), o cuando el formulario del tipo no admite archivos (`not-available`).

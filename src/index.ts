@@ -71,6 +71,18 @@ export {
 } from "./areas/activities/build.js";
 export type { Restriction, Restrictions, Completion } from "./areas/activities/conditions.js";
 export { activityContent, CONTENT_TYPES, NotViewableError, type ContentType, type ContentOptions, type ActivityContent } from "./areas/activities/content.js";
+export {
+  bookChapters,
+  addBookChapter,
+  editBookChapter,
+  moveBookChapter,
+  setBookChapterVisible,
+  deleteBookChapter,
+  BookError,
+  type BookChapter,
+  type BookChapterChange,
+  type BookChapterInput,
+} from "./areas/activities/books.js";
 
 // Assignments.
 export { NotAnAssignmentError, GradingError, WORKFLOW_STATES, type PluginContent, type WorkflowState } from "./areas/assignments/grader.js";

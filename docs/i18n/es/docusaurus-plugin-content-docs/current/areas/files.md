@@ -73,6 +73,7 @@ Las imágenes y los archivos pueden ir dentro del HTML que escribe una función,
 | --- | --- |
 | `createActivity`, `updateActivity` | `description`, `content` o un editor en `settings` (`"activityeditor[text]"`) ([actividades](activities.md)). |
 | `addSection`, `editSection` | El `summary` de la sección ([actividades](activities.md#addsection-editsection-and-deletesection)). |
+| `addBookChapter`, `editBookChapter` | El `content` del capítulo ([contenido](content.md#a-books-chapters)). |
 | `startDiscussion`, `replyToPost`, `editPost` | El `message` del mensaje ([foros](forums.md)). |
 | `updateCourse` | El `summary` del curso ([cursos](courses.md#updatecourse)). |
 

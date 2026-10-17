@@ -63,6 +63,24 @@ moodle activity-settings <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## addBookChapter
+
+Adds a chapter to a book through Moodle's chapter form, at the end or after another chapter, as a subchapter when asked, hidden when asked, with `embed`'s local files in its content. Gives the new chapter's id and the chapters afterwards. Throws `BookError` when the person can't edit the book or `afterChapterId` isn't in it.
+
+```bash
+moodle add-book-chapter <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--title` (required) | `string` |  |
+| `--content` (required) | `string` | Its content (HTML); Moodle requires some. |
+| `--subchapter` | `boolean` | A subchapter of the chapter before it (not for the first). |
+| `--hidden` | `boolean` | Hidden from students; shown by default, as Moodle adds it. |
+| `--after-chapter-id` | `number` | The chapter it goes after; at the end of the book without it. |
+| `--embed` | `string[]` | Local files (absolute paths) to embed in the content, which names each by its file name (`<img src="shot.png">`). |
+
 ## addGradeCategory
 
 Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it.
@@ -285,6 +303,19 @@ moodle backup-course <courseId> <destDir> [--options]
 | `--sections` | `number[]` | Ids of the sections to back up, each with everything in it. |
 | `--activities` | `number[]` | Course module ids of activities and resources to back up, each alone. |
 | `--timeout-ms` | `number` |  |
+
+## bookChapters
+
+A book's chapters in order: each one's id, title, whether it is a subchapter or hidden, and its place; with `content`, its HTML and images too, each chapter's page read (Moodle logs a view of it). A teacher sees hidden chapters; a student's list leaves them out. Throws `BookError` when the activity isn't a book the person can read.
+
+```bash
+moodle book-chapters <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--content` | `boolean` |  |
 
 ## calendarEvent
 
@@ -556,6 +587,19 @@ moodle delete-activity <courseId> <activityId>
 | `courseId` | `number` |  |
 | `activityId` | `number` |  |
 
+## deleteBookChapter
+
+Deletes a chapter, with its files, as the table of contents' delete does; deleting a chapter (not a subchapter) deletes its subchapters too. Throws `BookError` when the chapter isn't in the book.
+
+```bash
+moodle delete-book-chapter <activityId> <chapterId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `chapterId` | `number` |  |
+
 ## deleteEvent
 
 Deletes a calendar event the person can manage.
@@ -725,6 +769,23 @@ moodle edit-activity <courseId> <activityId> --options
 | `--visibility` | `"shown" \| "hidden" \| "stealth"` |  |
 | `--section-id` | `number` |  |
 | `--before-activity-id` | `number` |  |
+
+## editBookChapter
+
+Changes a chapter's title, content (with `embed`'s local files in it) or whether it is a subchapter, through its form: only what's given changes. Throws `BookError` when the chapter isn't in the book, or the person can't edit it.
+
+```bash
+moodle edit-book-chapter <activityId> <chapterId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `chapterId` | `number` |  |
+| `--title` | `string` |  |
+| `--content` | `string` |  |
+| `--subchapter` | `boolean` |  |
+| `--embed` | `string[]` |  |
 
 ## editLessonPage
 
@@ -1157,6 +1218,20 @@ moodle message-participants <courseId> <text> [--options]
 | `text` | `string` |  |
 | `--user-ids` (required) | `number[]` |  |
 
+## moveBookChapter
+
+Moves a chapter one place up or down, as the table of contents' arrows do: a chapter moves with its subchapters, past the whole chapter before or after it; a subchapter moves alone, past one chapter or subchapter. Moodle may make a subchapter that ends up first a chapter. Throws `BookError` when the chapter isn't in the book.
+
+```bash
+moodle move-book-chapter <activityId> <chapterId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `chapterId` | `number` |  |
+| `--direction` (required) | `"up" \| "down"` |  |
+
 ## moveLessonPage
 
 Moves a page of a lesson after page `after` (0 puts it first), as the editor's move link does; returns the pages in order.
@@ -1516,6 +1591,20 @@ moodle send-message <userId> <text>
 | --- | --- | --- |
 | `userId` | `number` |  |
 | `text` | `string` |  |
+
+## setBookChapterVisible
+
+Shows a chapter to students or hides it from them, as the table of contents' eye does: a chapter's subchapters are shown or hidden with it, and a subchapter of a hidden chapter stays hidden. Throws `BookError` when the chapter isn't in the book.
+
+```bash
+moodle set-book-chapter-visible <activityId> <chapterId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `chapterId` | `number` |  |
+| `--visible` (required) | `boolean` |  |
 
 ## setCompletion
 

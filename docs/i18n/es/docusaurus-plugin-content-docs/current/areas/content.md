@@ -1,6 +1,6 @@
 # Contenido
 
-Leer las actividades que los profesores llenan de contenido: el texto de una página o de un área de texto y medios, los capítulos de un libro, el destino de un recurso URL y los archivos de un recurso de archivo o de una carpeta. Es el lado del estudiante (un profesor también puede leerlas): `activityContent` ve la actividad como lo haría una persona, así que Moodle registra la visualización, y con el rastro realista lee al ritmo de una persona para que las visualizaciones y la finalización queden como quedarían con una persona (consulta [el ritmo de un estudiante](../concepts/student-pace.md)). El driver no ve, reproduce ni transcribe contenido multimedia: da la URL de un vídeo, y guarda los archivos con [downloadFile](files.md).
+Leer las actividades que los profesores llenan de contenido: el texto de una página o de un área de texto y medios, los capítulos de un libro, el destino de un recurso URL y los archivos de un recurso de archivo o de una carpeta. Es el lado del estudiante (un profesor también puede leerlas): `activityContent` ve la actividad como lo haría una persona, así que Moodle registra la visualización, y con el rastro realista lee al ritmo de una persona para que las visualizaciones y la finalización queden como quedarían con una persona (consulta [el ritmo de un estudiante](../concepts/student-pace.md)). El driver no ve, reproduce ni transcribe contenido multimedia: da la URL de un vídeo, y guarda los archivos con [downloadFile](files.md). Los capítulos de un libro también se listan y se escriben aquí, el lado del profesor (consulta [Los capítulos de un libro](#a-books-chapters)).
 
 **Términos:** [actividad](../reference/glossary.md#activity), [módulo](../reference/glossary.md#module), [id del módulo del curso](../reference/glossary.md#course-module-id), [rastro](../reference/glossary.md#trail).
 
@@ -61,6 +61,64 @@ Cada `MediaItem` es `{ kind, url, title? }`, con `kind` igual a `"video"`, `"aud
 - `NotViewableError` cuando la página no muestra lo que debería según el tipo: la actividad es de otro tipo, o la persona no puede verla. El mensaje remite a la estructura del curso para obtener el id y el módulo correctos.
 - `NotLoggedInError` sin sesión.
 
+## Los capítulos de un libro {#a-books-chapters}
+
+`createActivity` crea un libro vacío y `activityContent` lee su texto; estas funciones listan los capítulos de un libro con sus ids y los escriben, como lo hace un profesor en el propio libro: su formulario de capítulo (`mod/book/edit.php`) y los enlaces de mover, mostrar/ocultar y borrar de su tabla de contenidos. Ningún servicio lista ni escribe capítulos. Cada escritura devuelve `{ changed, chapterId, chapters }`: una frase de lo que hizo, el id del capítulo (el del nuevo, en `addBookChapter`) y los capítulos del libro después.
+
+```ts
+function bookChapters(context: BrowserContext, siteUrl: string, activityId: number, options?: { content?: boolean }): Promise<BookChapter[]>;
+function addBookChapter(context: BrowserContext, siteUrl: string, activityId: number, input: BookChapterInput): Promise<BookChapterChange>;
+function editBookChapter(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  chapterId: number,
+  input: { title?: string; content?: string; subchapter?: boolean; embed?: string[] },
+): Promise<BookChapterChange>;
+function moveBookChapter(context: BrowserContext, siteUrl: string, activityId: number, chapterId: number, options: { direction: "up" | "down" }): Promise<BookChapterChange>;
+function setBookChapterVisible(context: BrowserContext, siteUrl: string, activityId: number, chapterId: number, options: { visible: boolean }): Promise<BookChapterChange>;
+function deleteBookChapter(context: BrowserContext, siteUrl: string, activityId: number, chapterId: number): Promise<BookChapterChange>;
+
+interface BookChapter {
+  id: number;
+  title: string;
+  subchapter: boolean; // un subcapítulo del capítulo anterior
+  hidden: boolean;
+  position: number; // su lugar en el libro, desde 1, contando los subcapítulos
+  content?: string; // con content: el HTML del capítulo
+  images?: ImageItem[]; // con content: sus imágenes, cuando tiene
+}
+
+interface BookChapterInput {
+  title: string;
+  content: string; // HTML; Moodle exige alguno
+  subchapter?: boolean;
+  hidden?: boolean; // visible por defecto
+  afterChapterId?: number; // al final del libro sin él
+  embed?: string[]; // archivos locales que nombra el contenido: <img src="shot.png">
+}
+```
+
+- `bookChapters` lee la tabla de contenidos. La de un profesor sale de la página del formulario de capítulo, que no muestra ningún capítulo, así que enlaza todos, también los ocultos; la de cualquier otro, de la página del libro, sin los capítulos que no puede ver. Los títulos llegan sin el número que Moodle les pone delante en un libro numerado ("1.1. "). Con `content`, se abre la página de cada capítulo (Moodle registra una visualización) y se lee su HTML tal como lo muestra el libro, con las URL de `pluginfile.php` de sus imágenes en `images`, para descargarlas con `downloadFile`.
+- `addBookChapter` añade después de `afterChapterId`, o al final: justo después de un capítulo significa antes de sus subcapítulos, que pasan a ser del capítulo nuevo, como hace el enlace de añadir de la tabla de contenidos. `subchapter` lo hace subcapítulo del capítulo anterior; `hidden` lo oculta una vez guardado. `embed` pone imágenes y archivos locales en el contenido (consulta [Incrustar archivos en texto enriquecido](files.md#embedding-files-in-rich-text)).
+- `editBookChapter` cambia solo lo que se da; `embed` como en `addBookChapter`. El primer capítulo del libro no puede ser un subcapítulo: Moodle bloquea el campo ahí.
+- `moveBookChapter` mueve un lugar, como las flechas de la tabla de contenidos: un capítulo se mueve con sus subcapítulos más allá del capítulo entero anterior o siguiente, un subcapítulo solo, más allá de uno. Al principio o al final no se mueve nada, y `changed` lo dice.
+- `setBookChapterVisible` lo muestra o lo oculta, solo cuando no lo está ya; los subcapítulos de un capítulo se muestran u ocultan con él, y un subcapítulo de un capítulo oculto sigue oculto.
+- `deleteBookChapter` lo borra con sus archivos; borrar un capítulo borra también sus subcapítulos.
+
+Errores:
+
+- `BookError` cuando la actividad no es un libro que la persona pueda leer (el mensaje lleva el de Moodle), cuando una escritura viene de alguien que no puede editar sus capítulos (un estudiante), cuando un capítulo no está en el libro (el mensaje lista los que tiene) y cuando el primer capítulo sería un subcapítulo.
+- Un `MoodleError` (`invalid-input`) cuando un archivo para incrustar y el contenido no casan, antes de enviar nada.
+- `FormError` cuando Moodle rechaza el formulario de capítulo (falta el título o el contenido); `NotLoggedInError` sin sesión.
+
+```ts fragment
+const { chapterId } = await moodle.addBookChapter(812, { title: "Bucles", content: '<p>Cómo se ejecuta un bucle:</p><p><img src="loop.png" alt="Un bucle"></p>', embed: ["/home/ada/loop.png"] });
+await moodle.addBookChapter(812, { title: "Bucles while", content: "<p>Hasta que falla una condición.</p>", subchapter: true, afterChapterId: chapterId });
+await moodle.setBookChapterVisible(812, chapterId, { visible: false });
+for (const chapter of await moodle.bookChapters(812)) console.log(`${chapter.position}. ${chapter.subchapter ? "  " : ""}${chapter.title}${chapter.hidden ? " (oculto)" : ""}`);
+```
+
 ## Ejemplo {#example}
 
 ```ts
@@ -90,4 +148,4 @@ for (const file of folder.files ?? []) {
 
 ## Categorías de datos {#data-categories}
 
-`activityContent` es `course-content`. `readTexts`, `readMedia`, `readImages`, `readingSeconds` y `pause` son `none`: solo analizan una página o esperan. Para leer el módulo de cualquier actividad, `moduleCategories(module)` devuelve `course-content` para páginas, libros, áreas de texto y medios, URL, archivos y carpetas. Consulta [categorías de datos](../concepts/data-categories.md).
+`activityContent` es `course-content`, y también lo son `bookChapters`, `addBookChapter`, `editBookChapter`, `moveBookChapter`, `setBookChapterVisible` y `deleteBookChapter`. `readTexts`, `readMedia`, `readImages`, `readingSeconds` y `pause` son `none`: solo analizan una página o esperan. Para leer el módulo de cualquier actividad, `moduleCategories(module)` devuelve `course-content` para páginas, libros, áreas de texto y medios, URL, archivos y carpetas. Consulta [categorías de datos](../concepts/data-categories.md).

@@ -13,6 +13,7 @@ import { backupContents, type BackupContents } from "./areas/backup/contents.js"
 import { anonymizeBackup } from "./areas/backup/anonymous.js";
 import { completionReport, overrideCompletion, setCompletion } from "./areas/completion/completion.js";
 import { activityContent, type ActivityContent, type ContentType } from "./areas/activities/content.js";
+import { addBookChapter, bookChapters, deleteBookChapter, editBookChapter, moveBookChapter, setBookChapterVisible } from "./areas/activities/books.js";
 import { listCourses, updateCourse } from "./areas/courses/list.js";
 import { resetCourse } from "./areas/courses/reset.js";
 import { downloadFile, type DownloadedFile } from "./core/files.js";
@@ -69,7 +70,9 @@ const SITE_FUNCTIONS = {
   addQuizSection,
   addSection,
   answerChoice,
+  addBookChapter,
   backupCourse,
+  bookChapters,
   assignmentSubmissions,
   calendarEvent,
   completionReport,
@@ -87,6 +90,7 @@ const SITE_FUNCTIONS = {
   createQuestion,
   deadlines,
   deleteActivity,
+  deleteBookChapter,
   deleteEvent,
   deleteQuestions,
   deleteGradeCategory,
@@ -96,6 +100,7 @@ const SITE_FUNCTIONS = {
   discussion,
   duplicateActivity,
   editActivity,
+  editBookChapter,
   editQuizSlot,
   editPost,
   editSection,
@@ -125,6 +130,7 @@ const SITE_FUNCTIONS = {
   listCourses,
   logOut,
   markNotificationsRead,
+  moveBookChapter,
   myGrades,
   notifications,
   openForm,
@@ -168,6 +174,7 @@ const SITE_FUNCTIONS = {
   saveSubmission,
   sendMessage,
   messageParticipants,
+  setBookChapterVisible,
   setCompletion,
   setDiscussionState,
   setDiscussionSubscription,

@@ -83,6 +83,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | Error | Area |
 | --- | --- |
 | `NotViewableError` | [Content](../areas/content.md): the activity isn't of the type asked, or can't be viewed |
+| `BookError` | [Content](../areas/content.md#a-books-chapters): not a book the person can read or edit, or the chapter isn't in it |
 | `ActivitySettingsError` | [Activities](../areas/activities.md): no settings form to read |
 | `CourseError` | [Courses](../areas/courses.md): the course's settings can't be changed, or it can't be reset |
 | `BackupError` | [Copy, backup and restore](../areas/copy-backup-restore.md): Moodle refused, or didn't finish in time |

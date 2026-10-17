@@ -5,7 +5,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
-import { ActivitySettingsError, CompletionError, MoodleError, type CourseActivity, type CourseSection } from "../../src/index.js";
+import { ActivitySettingsError, BookError, CompletionError, MoodleError, type CourseActivity, type CourseSection } from "../../src/index.js";
 import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { pngFile, scormPackage, textFile } from "./packages.js";
 
@@ -303,5 +303,74 @@ describe("building a course", () => {
     assert.deepEqual(mine.completion.find((c) => c.activityId === urlId), { activityId: urlId, state: "complete", tracking: "auto", overridden: true });
     assert.deepEqual(mine.completion.find((c) => c.activityId === pageId), { activityId: pageId, state: "incomplete", tracking: "manual", overridden: false });
     await assert.rejects((await as("student")).completionReport(course.id), CompletionError);
+  });
+
+  describe("a book's chapters", () => {
+    let bookId: number;
+    let one: number;
+    let two: number;
+    let sub: number;
+
+    before(async () => {
+      bookId = (await (await as("teacher")).createActivity({ courseId: course.id, sectionId: course.sectionId, type: "book", name: "Driver check book", visibility: "shown" })).activityId!;
+    }, SETUP);
+
+    it("addBookChapter: two chapters and a subchapter with an embedded image, read back in order", SLOW, async () => {
+      const teacher = await as("teacher");
+      const first = await teacher.addBookChapter(bookId, { title: "Driver one", content: "<p>First body</p>" });
+      one = first.chapterId;
+      assert.deepEqual(first.chapters, [{ id: one, title: "Driver one", subchapter: false, hidden: false, position: 1 }]);
+      await assert.rejects(teacher.addBookChapter(bookId, { title: "x", content: "<p>x</p>", afterChapterId: 999_999 }), BookError);
+      two = (await teacher.addBookChapter(bookId, { title: "Driver two", content: "<p>Second body</p>" })).chapterId;
+      const added = await teacher.addBookChapter(bookId, { title: "Driver one.a", content: '<p>A dot: <img src="dot.png" alt="Dot"></p>', subchapter: true, afterChapterId: one, embed: [pngFile("dot.png")] });
+      sub = added.chapterId;
+      assert.deepEqual(added.chapters.map((c) => [c.id, c.title, c.subchapter, c.position]), [
+        [one, "Driver one", false, 1],
+        [sub, "Driver one.a", true, 2],
+        [two, "Driver two", false, 3],
+      ]);
+      const read = await teacher.bookChapters(bookId, { content: true });
+      assert.match(read[1]!.images?.[0]?.url ?? "", /pluginfile\.php\/\d+\/mod_book\/chapter\/\d+\/dot\.png/);
+      assert.match(read[1]!.content ?? "", /A dot:/);
+      assert.equal(read[0]!.content, "<p>First body</p>");
+      // Not a book: the course's page.
+      await assert.rejects(teacher.bookChapters(pageId), BookError);
+      await assert.rejects((await as("student")).addBookChapter(bookId, { title: "x", content: "<p>x</p>" }), BookError);
+    });
+
+    it("editBookChapter: renamed and its content changed, the rest kept", SLOW, async () => {
+      const teacher = await as("teacher");
+      const edited = await teacher.editBookChapter(bookId, two, { title: "Driver two, edited", content: "<p>Edited body</p>" });
+      assert.match(edited.changed, /renamed/);
+      assert.deepEqual(edited.chapters[2], { id: two, title: "Driver two, edited", subchapter: false, hidden: false, position: 3 });
+      assert.equal((await teacher.bookChapters(bookId, { content: true }))[2]!.content, "<p>Edited body</p>");
+      await assert.rejects(teacher.editBookChapter(bookId, one, { subchapter: true }), BookError);
+      await assert.rejects(teacher.editBookChapter(bookId, 999_999, { title: "x" }), BookError);
+    });
+
+    it("setBookChapterVisible: a chapter hidden, which the student no longer sees", SLOW, async () => {
+      const teacher = await as("teacher");
+      const hidden = await teacher.setBookChapterVisible(bookId, two, { visible: false });
+      assert.equal(hidden.chapters.find((c) => c.id === two)?.hidden, true);
+      assert.deepEqual((await (await as("student")).bookChapters(bookId)).map((c) => c.id), [one, sub]);
+      assert.match((await teacher.setBookChapterVisible(bookId, two, { visible: false })).changed, /already hidden/);
+    });
+
+    it("moveBookChapter: the last chapter moved up, past the first with its subchapter", SLOW, async () => {
+      const moved = await (await as("teacher")).moveBookChapter(bookId, two, { direction: "up" });
+      assert.deepEqual(moved.chapters.map((c) => c.id), [two, one, sub]);
+      assert.deepEqual(moved.chapters.map((c) => c.subchapter), [false, false, true]);
+    });
+
+    it("deleteBookChapter: the subchapter removed, the rest kept", SLOW, async () => {
+      const teacher = await as("teacher");
+      const deleted = await teacher.deleteBookChapter(bookId, sub);
+      assert.deepEqual(deleted.chapters.map((c) => c.id), [two, one]);
+      assert.deepEqual((await teacher.bookChapters(bookId)).map((c) => [c.id, c.hidden]), [
+        [two, true],
+        [one, false],
+      ]);
+      assert.deepEqual((await (await as("student")).bookChapters(bookId)).map((c) => c.id), [one]);
+    });
   });
 });
