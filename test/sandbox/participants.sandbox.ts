@@ -6,7 +6,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
-import { EnrolmentError, MoodleError, NoParticipantsError, NoteError } from "../../src/index.js";
+import { EnrolmentError, FormError, MoodleError, NoParticipantsError, NoteError } from "../../src/index.js";
 import { COURSE, as, cleanup, quietly, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 const STUDENT_ROLE = 5;
