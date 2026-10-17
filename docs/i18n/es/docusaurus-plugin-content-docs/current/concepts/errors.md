@@ -104,6 +104,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `CompletionError` | [Finalización](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Insignias](../areas/badges.md): falta una capacidad de insignias (que se nombra), un criterio que Moodle no ofrece; un sitio con las insignias desactivadas |
 | `NoParticipantsError`, `EnrolmentError` | [Participantes](../areas/participants.md): no puede ver los participantes; Moodle se negó a matricular, desmatricular o asignar un rol |
+| `NoteError`, `NotesDisabledError` | [Participantes](../areas/participants.md#notes-about-participants): falta una capacidad de anotaciones (que se nombra), no existe la anotación; un sitio con las anotaciones desactivadas |
 | `ReportError` | [Registros e informes](../areas/logs-and-reports.md): la persona no puede ver el informe, o la actividad no es del curso |
 | `CalendarError` | [Calendario](../areas/calendar.md) |
 | `MessageError` | [Mensajes](../areas/messages.md) |

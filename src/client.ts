@@ -54,6 +54,7 @@ import { createQuestion, deleteQuestions, exportQuestions, importQuestions, ques
 import { addQuestionCategory, deleteQuestionCategory, editQuestionCategory, moveQuestions, questionCategories } from "./areas/questions/categories.js";
 import { createGroup, createGrouping, deleteGroup, deleteGrouping, groupings, setGroupMembers, setGroupingGroups, updateGroup } from "./areas/participants/groups.js";
 import { enrolmentMethods, setEnrolmentMethod } from "./areas/participants/methods.js";
+import { addNote, deleteNote, editNote, notes } from "./areas/participants/notes.js";
 import { enrolUsers, potentialUsers, setUserRoles, unenrolUser } from "./areas/participants/enrolments.js";
 import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
@@ -215,6 +216,10 @@ const SITE_FUNCTIONS = {
   setGroupingGroups,
   enrolmentMethods,
   setEnrolmentMethod,
+  notes,
+  addNote,
+  editNote,
+  deleteNote,
   participationReport,
   pendingActivities,
   questionBanks,

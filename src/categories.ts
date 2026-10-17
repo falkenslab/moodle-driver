@@ -242,6 +242,11 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   setGroupingGroups: CONTENT,
   enrolmentMethods: CONTENT,
   setEnrolmentMethod: CONTENT,
+  // Notes about participants: what teachers write about them, a judgement as feedback is.
+  notes: PERSONAL,
+  addNote: ["others-personal", "others-write"],
+  editNote: ["others-personal", "others-write"],
+  deleteNote: ["others-personal", "others-write"],
 
   // Completion: the person's own, deciding someone else's, everyone's report.
   setCompletion: OWN,

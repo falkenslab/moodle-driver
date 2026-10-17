@@ -3,7 +3,7 @@
 // seeded student, not in the scratch course; everything made is removed by the test that made it.
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
-import { EnrolmentError, NoParticipantsError } from "../../src/index.js";
+import { EnrolmentError, MoodleError, NoParticipantsError, NoteError } from "../../src/index.js";
 import { COURSE, as, cleanup, quietly, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 const STUDENT_ROLE = 5;
@@ -268,5 +268,75 @@ describe("participants and groups", () => {
     assert.ok(result.removed.length > 0);
     assert.ok(!(await teacher.participants(scratch.id)).some((p) => p.userId === otherId));
     await assert.rejects(teacher.unenrolUser(scratch.id, otherId), EnrolmentError);
+  });
+
+  // Notes about the scratch course's student: a course note and a personal note, written, read,
+  // edited and deleted by the teacher; the student can't see or write them.
+  const noteIds: { course?: number; personal?: number } = {};
+
+  it("addNote: the teacher writes a course note and a personal note about the student", SLOW, async () => {
+    const teacher = await as("teacher");
+    const course = await teacher.addNote(scratch.id, studentId, { content: `<p>Driver check course note ${stamp}</p>` });
+    cleanup(() => quietly(() => teacher.deleteNote(course.noteId)));
+    noteIds.course = course.noteId;
+    assert.equal(course.note?.context, "course");
+    assert.equal(course.note?.userId, studentId);
+    assert.equal(course.note?.authorId, teacherId);
+    const personal = await teacher.addNote(scratch.id, studentId, { content: `<p>Driver check personal note ${stamp}</p>`, context: "personal" });
+    cleanup(() => quietly(() => teacher.deleteNote(personal.noteId)));
+    noteIds.personal = personal.noteId;
+    assert.equal(personal.note?.context, "personal");
+    await assert.rejects((await as("student")).addNote(scratch.id, studentId, { content: "<p>Driver check refused</p>" }), (e: Error) => e instanceof NoteError && /moodle\/notes:manage/.test(e.message));
+    await assert.rejects(teacher.addNote(scratch.id, studentId, { content: " " }), (e: Error) => e instanceof MoodleError && e.code === "invalid-input");
+  });
+
+  it("notes: the scratch course's notes about the student, as the teacher reads them", SLOW, async () => {
+    assert.ok(noteIds.course && noteIds.personal, "addNote wrote the notes");
+    const teacher = await as("teacher");
+    const all = await teacher.notes(scratch.id);
+    const course = all.find((n) => n.id === noteIds.course);
+    assert.ok(course, `the course note is listed: ${JSON.stringify(all)}`);
+    assert.equal(course.courseId, scratch.id);
+    assert.equal(course.userId, studentId);
+    assert.ok(course.userName);
+    assert.match(course.content, new RegExp(`Driver check course note ${stamp}`));
+    assert.equal(course.authorId, teacherId);
+    assert.ok(course.authorName);
+    assert.ok(course.editable);
+    // The dates Moodle shows, read back: written just now.
+    assert.ok(course.created && Math.abs(Date.parse(course.created) - Date.now()) < 3_600_000, `created: ${course.created}`);
+    assert.ok(course.modified && Date.parse(course.modified) >= Date.parse(course.created));
+    assert.equal(all.find((n) => n.id === noteIds.personal)?.context, "personal");
+    const about = await teacher.notes(scratch.id, { userId: studentId });
+    assert.ok(about.every((n) => n.userId === studentId) && about.length >= 2);
+    assert.deepEqual(await teacher.notes(scratch.id, { userId: teacherId }), []);
+    const first = await teacher.notes(scratch.id, { limit: 1 });
+    assert.equal(first.items.length, 1);
+    assert.equal(first.more, true);
+    await assert.rejects((await as("student")).notes(scratch.id), (e: Error) => e instanceof NoteError && /moodle\/notes:view/.test(e.message));
+  });
+
+  it("editNote: the teacher changes the course note's content, and makes the personal note a course note", SLOW, async () => {
+    assert.ok(noteIds.course && noteIds.personal, "addNote wrote the notes");
+    const teacher = await as("teacher");
+    const edited = await teacher.editNote(noteIds.course, { content: `<p>Driver check edited ${stamp}</p>` });
+    assert.match(edited.note?.content ?? "", new RegExp(`Driver check edited ${stamp}`));
+    assert.equal(edited.note?.context, "course");
+    const moved = await teacher.editNote(noteIds.personal, { context: "course" });
+    assert.equal(moved.note?.context, "course");
+    assert.match(moved.note?.content ?? "", new RegExp(`Driver check personal note ${stamp}`));
+    const back = await teacher.editNote(noteIds.personal, { context: "personal" });
+    assert.equal(back.note?.context, "personal");
+    await assert.rejects((await as("student")).editNote(noteIds.course, { content: "<p>Driver check refused</p>" }), NoteError);
+  });
+
+  it("deleteNote: the teacher deletes both notes", SLOW, async () => {
+    assert.ok(noteIds.course && noteIds.personal, "addNote wrote the notes");
+    const teacher = await as("teacher");
+    await assert.rejects((await as("student")).deleteNote(noteIds.course), (e: Error) => e instanceof NoteError && /moodle\/notes:manage/.test(e.message));
+    for (const id of [noteIds.course, noteIds.personal]) assert.equal((await teacher.deleteNote(id)).noteId, id);
+    const left = await teacher.notes(scratch.id, { userId: studentId });
+    assert.ok(!left.some((n) => n.id === noteIds.course || n.id === noteIds.personal));
+    await assert.rejects(teacher.deleteNote(noteIds.course), NoteError);
   });
 });
