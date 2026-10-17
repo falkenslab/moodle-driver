@@ -45,6 +45,7 @@ export {
   type PendingActivity,
 } from "./areas/courses/structure.js";
 export { activitiesOverview, deadlines, courseUpdates, type OverviewField } from "./areas/courses/overview.js";
+export { courseBlocks, addBlock, configureBlock, moveBlock, deleteBlock, BlockError, type CourseBlock, type NewBlock, type BlockChanges } from "./areas/courses/blocks.js";
 export { resetCourse, type ResetDeletions, type ResetStatus } from "./areas/courses/reset.js";
 export { copyCourse, backupCourse, restoreCourse, importActivities, BackupError, type CourseRef, type RestoreWarning } from "./areas/backup/backup.js";
 export { backupContents, type BackupContents, type BackupContentsSection, type BackupContentsActivity, type BackupDependency } from "./areas/backup/contents.js";

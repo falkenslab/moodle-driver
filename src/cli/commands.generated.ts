@@ -126,6 +126,72 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "addBlock",
+    "description": "Adds a block to a course's page, as its \"Add a block\" does in editing mode (turned on for the work and back off after, when it was off): a text block (`html`) with its title and content (local images in `embed`), or another block by its type. Returns the block. Throws `BlockError` when the person can't edit the course's blocks (moodle/site:manageblocks), when the page doesn't offer the type (not installed or disabled, already there and allowed once, or the person lacks block/<type>:addinstance), or for a region the page doesn't have; `FormError` when the type's form has no title or content field.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "block",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "type",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The block type, its plugin's name without `block_`: `html` for a text block, `calendar_upcoming`, `recent_activity`…"
+        },
+        {
+          "name": "region",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The page region (`side-pre`); by default the page's default one."
+        },
+        {
+          "name": "title",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "A text block's title (its configure form's title field)."
+        },
+        {
+          "name": "content",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "A text block's content, HTML."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files the content names (`<img src=\"shot.png\">`), put in it as Moodle's editor does."
+        }
+      ]
+    }
+  },
+  {
     "name": "addBookChapter",
     "description": "Adds a chapter to a book through Moodle's chapter form, at the end or after another chapter, as a subchapter when asked, hidden when asked, with `embed`'s local files in its content. Gives the new chapter's id and the chapters afterwards. Throws `BookError` when the person can't edit the book or `afterChapterId` isn't in it.",
     "params": [
@@ -1560,6 +1626,71 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "configureBlock",
+    "description": "Changes a block's configuration through its configure form, in editing mode (turned on for the work and back off after, when it was off): a text block's title and content, or any field of the form by its name. Returns the block afterwards. Throws `BlockError` when the page has no such block or the person can't edit its blocks, `FormError` naming a field the form doesn't have or Moodle refused.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "blockId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "title",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "A text block's title (its configure form's `config_title`)."
+        },
+        {
+          "name": "content",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "A text block's content, HTML (its form's `config_text`)."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files the content names (`<img src=\"shot.png\">`), put in it as Moodle's editor does."
+        },
+        {
+          "name": "settings",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Any other field of the block's configure form, by its name, as `setFields` takes them (`bui_visible`, `config_…`)."
+        }
+      ]
+    }
+  },
+  {
     "name": "conversation",
     "description": "A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation). With `limit`, `messages` is a page of them (see \"Long lists\" in the docs' concepts) counted from the newest: the first page is the latest messages, `more` says there are older ones, and each page's messages still come oldest first. Moodle's service returns only the page.",
     "params": [
@@ -1752,6 +1883,20 @@ export const COMMANDS: readonly CommandSpec[] = [
   {
     "name": "courseBadges",
     "description": "A course's badges, as its badges page lists them: each one's name, description, image, criteria (Moodle's summary, in the site's language), whether it's enabled, whether the person has it and, for whom may see it (a teacher), how many people have it. A student sees only enabled badges. Throws `BadgesDisabledError` on a site with badges off, `BadgeError` when the person can't see the course's badges.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "courseBlocks",
+    "description": "The blocks on a course's page: each one's id, type (`html` for a text block, `calendar_upcoming`…), title, region and, for a text block, its content (HTML). Whom can edit the course's blocks get them all, hidden and empty ones too, with their weight: the page is read in editing mode (turned on for the read and back off after, when it was off) and each block's configure form gives its weight. Others get the blocks the page shows them, without weights. Throws `BlockError` when the course page can't be opened.",
     "params": [
       {
         "name": "courseId",
@@ -2415,6 +2560,28 @@ export const COMMANDS: readonly CommandSpec[] = [
       },
       {
         "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteBlock",
+    "description": "Deletes a block from the course's page, as its delete action does once confirmed. Throws `BlockError` when the page has no such block, or the person can't delete it (moodle/site:manageblocks, and block/<type>:addinstance for most types).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "blockId",
         "optional": false,
         "type": "number",
         "value": {
@@ -5044,6 +5211,51 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number[]",
           "value": {
             "kind": "numbers"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "moveBlock",
+    "description": "Moves a block to a region of the course's page and a weight in it (lower comes first; without one, after the region's blocks), as the block's move action does; Moodle shifts the blocks around it to make room. Returns the block afterwards. Throws `BlockError` when the page has no such block or region, or the person can't edit its blocks.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "blockId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "region",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "weight",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
           }
         }
       ]

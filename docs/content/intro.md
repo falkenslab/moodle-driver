@@ -23,7 +23,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 
 | Area | What a program can do |
 | --- | --- |
-| Courses | List the person's courses, read a course's sections and activities, what's pending, change a course's settings, reset it for a new year |
+| Courses | List the person's courses, read a course's sections and activities, what's pending, change a course's settings, reset it for a new year; add, configure, move and delete the blocks on its page |
 | Copy, backup and restore | Copy a course into a new one, back it up (or part of it) to a file, read what a backup holds, make it anonymous to share it, restore a backup where you choose, import activities from another course |
 | Content | Read pages, books, labels, URLs, files and folders, with their media |
 | Building a course | Create, update, move, duplicate and delete activities and sections; their files, descriptions, access restrictions and completion conditions; read an activity's settings |

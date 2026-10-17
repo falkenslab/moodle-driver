@@ -26,6 +26,15 @@ export interface MoodleMethods {
    */
   activitySettings(activityId: number): Promise<{ id: number; module: string; courseId: number; name: string; description: string; fields: import("./areas/activities/build.js").FormField[]; files: import("./core/forms.js").DraftFile[] | undefined; restrictions: import("./areas/activities/conditions.js").Restrictions | undefined; completion: import("./areas/activities/conditions.js").Completion | undefined; }>;
   /**
+   * Adds a block to a course's page, as its "Add a block" does in editing mode (turned on for the work and
+   * back off after, when it was off): a text block (`html`) with its title and content (local images in
+   * `embed`), or another block by its type. Returns the block. Throws `BlockError` when the person can't
+   * edit the course's blocks (moodle/site:manageblocks), when the page doesn't offer the type (not
+   * installed or disabled, already there and allowed once, or the person lacks block/<type>:addinstance),
+   * or for a region the page doesn't have; `FormError` when the type's form has no title or content field.
+   */
+  addBlock(courseId: number, block: import("./areas/courses/blocks.js").NewBlock): Promise<{ changed: string; block: import("./areas/courses/blocks.js").CourseBlock; }>;
+  /**
    * Adds a chapter to a book through Moodle's chapter form, at the end or after another chapter, as a
    * subchapter when asked, hidden when asked, with `embed`'s local files in its content. Gives the new
    * chapter's id and the chapters afterwards. Throws `BookError` when the person can't edit the book
@@ -306,6 +315,13 @@ export interface MoodleMethods {
    */
   completionReport(courseId: number, options?: { group?: number | undefined; userIds?: number[] | undefined; }): Promise<import("./areas/completion/completion.js").CompletionReport>;
   /**
+   * Changes a block's configuration through its configure form, in editing mode (turned on for the work
+   * and back off after, when it was off): a text block's title and content, or any field of the form by
+   * its name. Returns the block afterwards. Throws `BlockError` when the page has no such block or the
+   * person can't edit its blocks, `FormError` naming a field the form doesn't have or Moodle refused.
+   */
+  configureBlock(courseId: number, blockId: number, changes: import("./areas/courses/blocks.js").BlockChanges): Promise<{ changed: string; block: import("./areas/courses/blocks.js").CourseBlock; }>;
+  /**
    * A conversation's messages, oldest first, as text, and its members as `conversations()` gives them:
    * everyone but the person, whether they wrote in it or not (the person alone in their own conversation).
    * With `limit`, `messages` is a page of them (see "Long lists" in the docs' concepts) counted from
@@ -369,6 +385,15 @@ export interface MoodleMethods {
    * course's badges.
    */
   courseBadges(courseId: number): Promise<import("./areas/badges/badges.js").CourseBadge[]>;
+  /**
+   * The blocks on a course's page: each one's id, type (`html` for a text block, `calendar_upcoming`…),
+   * title, region and, for a text block, its content (HTML). Whom can edit the course's blocks get them
+   * all, hidden and empty ones too, with their weight: the page is read in editing mode (turned on for
+   * the read and back off after, when it was off) and each block's configure form gives its weight.
+   * Others get the blocks the page shows them, without weights. Throws `BlockError` when the course
+   * page can't be opened.
+   */
+  courseBlocks(courseId: number): Promise<import("./areas/courses/blocks.js").CourseBlock[]>;
   /**
    * A course's completion criteria, from its "Course completion" settings form: the overall
    * aggregation, each kind of criterion set (activities, other courses, a date, days enrolled,
@@ -553,6 +578,12 @@ export interface MoodleMethods {
   deadlines(options?: { courseId?: number | undefined; days?: number | undefined; pastDays?: number | undefined; }): Promise<{ action?: { url?: string | undefined; count?: number | undefined; name: string; actionable: boolean; } | undefined; course?: { shortname?: string | undefined; id: number; } | undefined; event: string; kind: string; date: string; overdue: boolean; type?: string | undefined; activity: string; activityId?: number | undefined; }[]>;
   /** Deletes an activity, with its participants' data (submissions, posts, attempts); gives the course afterwards. */
   deleteActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Deletes a block from the course's page, as its delete action does once confirmed. Throws
+   * `BlockError` when the page has no such block, or the person can't delete it (moodle/site:manageblocks,
+   * and block/<type>:addinstance for most types).
+   */
+  deleteBlock(courseId: number, blockId: number): Promise<{ changed: string; }>;
   /**
    * Deletes a chapter, with its files, as the table of contents' delete does; deleting a chapter (not
    * a subchapter) deletes its subchapters too. Throws `BookError` when the chapter isn't in the book.
@@ -1003,6 +1034,13 @@ export interface MoodleMethods {
    * course's participants.
    */
   messageParticipants(courseId: number, text: string, selection?: import("./areas/messages/messages.js").ParticipantSelection): Promise<{ changed: string; sentTo: number[]; refused: { userId: number; reason: string; }[]; }>;
+  /**
+   * Moves a block to a region of the course's page and a weight in it (lower comes first; without one,
+   * after the region's blocks), as the block's move action does; Moodle shifts the blocks around it to
+   * make room. Returns the block afterwards. Throws `BlockError` when the page has no such block or
+   * region, or the person can't edit its blocks.
+   */
+  moveBlock(courseId: number, blockId: number, options: { region?: string | undefined; weight?: number | undefined; }): Promise<{ changed: string; block: import("./areas/courses/blocks.js").CourseBlock; }>;
   /**
    * Moves a chapter one place up or down, as the table of contents' arrows do: a chapter moves with its
    * subchapters, past the whole chapter before or after it; a subchapter moves alone, past one chapter

@@ -29,6 +29,10 @@ A course, or part of one (its content, and its people's data when asked), saved 
 
 A course's (or the site's) award a person earns, shown with its image on their profile: Moodle issues it when its criteria are met (completing activities or the course, a teacher awarding it by hand…), once it's enabled. While enabled its criteria can't change, and once someone has it Moodle locks it. The driver works course badges: `courseBadges` reads them (`CourseBadge`), `createBadge` makes one, `setBadgeCriteria` sets what earns it, `setBadgeEnabled` enables or disables it and `awardBadge` awards it by hand. See [Badges](../areas/badges.md).
 
+### Block
+
+A box in a region of a page beside its content (on a course page, Boost's block drawer, region `side-pre`): a text block (type `html`) with a teacher's welcome or links, upcoming events, recent activity… Each is an instance with an id, a region and a weight that orders it there; teachers add, configure, move, hide and delete them in editing mode. The driver reads a course's with `courseBlocks` (`CourseBlock`) and changes them with `addBlock`, `configureBlock`, `moveBlock` and `deleteBlock`. See [Blocks](../areas/blocks.md).
+
 ### Calendar event
 
 An entry in Moodle's calendar: a course, group, user or site event, or one an activity creates for its dates (an assignment's due date, a quiz's close). The driver reads them as `CalendarEvent` (`id`, `type`, `start`, `courseId`, and for an activity's event `activity: { type, instance }`, with the [instance id](#instance-id)) with `upcomingEvents` (one with `calendarEvent`), creates course events with `createEvent`, changes one with `updateEvent` and removes one with `deleteEvent`; `deadlines` reads what the person has to do by a date from the same calendar. See [Calendar](../areas/calendar.md) and [Overview and deadlines](../areas/overview-and-deadlines.md).

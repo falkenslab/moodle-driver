@@ -29,6 +29,10 @@ Un curso, o parte de uno (su contenido, y los datos de sus personas cuando se pi
 
 Un reconocimiento de un curso (o del sitio) que gana una persona, que se muestra con su imagen en su perfil: Moodle la emite cuando se cumplen sus criterios (finalizar actividades o el curso, que un profesor la otorgue a mano…), una vez habilitada. Mientras está habilitada sus criterios no pueden cambiar, y en cuanto alguien la tiene Moodle la bloquea. El driver trabaja con las insignias de curso: `courseBadges` las lee (`CourseBadge`), `createBadge` crea una, `setBadgeCriteria` fija qué la gana, `setBadgeEnabled` la habilita o deshabilita y `awardBadge` la otorga a mano. Consulta [Insignias](../areas/badges.md).
 
+### Bloque (block) {#block}
+
+Una caja en una región de una página junto a su contenido (en la página de un curso, el cajón de bloques de Boost, región `side-pre`): un bloque de texto (tipo `html`) con la bienvenida o los enlaces de un profesor, eventos próximos, actividad reciente… Cada uno es una instancia con un id, una región y un peso que lo ordena en ella; los profesores los añaden, configuran, mueven, ocultan y eliminan en modo edición. El driver lee los de un curso con `courseBlocks` (`CourseBlock`) y los cambia con `addBlock`, `configureBlock`, `moveBlock` y `deleteBlock`. Consulta [Bloques](../areas/blocks.md).
+
 ### Evento del calendario (calendar event) {#calendar-event}
 
 Una entrada del calendario de Moodle: un evento de curso, de grupo, de usuario o del sitio, o uno que crea una actividad para sus fechas (la fecha de entrega de una tarea, el cierre de un cuestionario). El driver los lee como `CalendarEvent` (`id`, `type`, `start`, `courseId` y, para el evento de una actividad, `activity: { type, instance }`, con el [id de instancia](#instance-id)) con `upcomingEvents` (uno solo con `calendarEvent`), crea eventos de curso con `createEvent`, cambia uno con `updateEvent` y elimina uno con `deleteEvent`; `deadlines` lee del mismo calendario lo que la persona tiene que hacer antes de una fecha. Consulta [Calendario](../areas/calendar.md) y [Vista general y fechas límite](../areas/overview-and-deadlines.md).

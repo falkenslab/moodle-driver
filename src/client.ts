@@ -62,6 +62,7 @@ import { addQuestionsToQuiz, addQuizSection, editQuizSlot, quizStructure, remove
 import { logOut, openSitePage } from "./core/session.js";
 import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
 import { courseStructure, listAssignments, pendingActivities } from "./areas/courses/structure.js";
+import { addBlock, configureBlock, courseBlocks, deleteBlock, moveBlock } from "./areas/courses/blocks.js";
 import { saveSubmission, studentAssignment, submitForGrading } from "./areas/assignments/student.js";
 import { getSurvey, submitSurvey } from "./areas/surveys/surveys.js";
 import { surveyResults } from "./areas/surveys/results.js";
@@ -77,6 +78,11 @@ import type { MoodleMethods } from "./moodle-methods.generated.js";
  * use the object's defaults (`trail`, `downloadDir`…) and `callService`, generic, are bound by hand.
  */
 const SITE_FUNCTIONS = {
+  courseBlocks,
+  addBlock,
+  configureBlock,
+  moveBlock,
+  deleteBlock,
   courseBadges,
   createBadge,
   setBadgeCriteria,

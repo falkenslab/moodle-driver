@@ -34,6 +34,7 @@ export type MoodleErrorCode =
   | "calendar"
   | "completion"
   | "course"
+  | "block"
   | "not-a-forum"
   | "forum"
   | "gradebook"

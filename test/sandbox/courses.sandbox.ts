@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
 import {
+  BlockError,
   CourseError,
   FormError,
   MoodleError,
@@ -28,10 +29,11 @@ import {
   type CourseSection,
 } from "../../src/index.js";
 import type { BrowserContext } from "playwright-core";
-import { openForm, setFields } from "../../src/internals.js";
+import { openForm, openSitePage, setFields } from "../../src/internals.js";
 import { closeBackgroundBrowser } from "../../src/browser/background.js";
 import { hostBackground } from "../../src/cli/background.js";
 import { COURSE, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { pngFile } from "./packages.js";
 
 const SLOW = { timeout: 300_000 };
 
@@ -333,6 +335,90 @@ describe("the scratch course, written", () => {
     const taken = (await teacher.listCourses()).find((c) => c.id === COURSE)!.shortname;
     await assert.rejects(teacher.updateCourse(scratch.id, { shortName: taken }), (error: unknown) => error instanceof FormError && error.fields.some((f) => f.field === "shortname"));
     await assert.rejects((await as("student")).updateCourse(scratch.id, { fullName: "Not allowed" }), CourseError);
+  });
+});
+
+describe("the scratch course's blocks", () => {
+  let course: ScratchCourse;
+  let textId: number;
+  let eventsId: number;
+
+  before(
+    async () => {
+      course = await scratchCourse("blocks");
+    },
+    { timeout: 600_000 },
+  );
+
+  /** Whether the teacher's course page is in editing mode: the functions put it back as it was. */
+  async function editing(): Promise<boolean> {
+    const page = await openSitePage(await (await as("teacher")).context(), SITE, `course/view.php?id=${course.id}`);
+    try {
+      return await page.evaluate(() => (globalThis as unknown as { document: { body: { classList: { contains(c: string): boolean } } } }).document.body.classList.contains("editing"));
+    } finally {
+      await page.close();
+    }
+  }
+
+  it("addBlock: a text block with a title, content and an embedded image, and an upcoming events block", SLOW, async () => {
+    const teacher = await as("teacher");
+    const added = await teacher.addBlock(course.id, { type: "html", title: "Driver check welcome", content: '<p>Welcome, <strong>all</strong>. <img src="dot.png" alt="Dot"></p>', embed: [pngFile("dot.png")] });
+    textId = added.block.id;
+    assert.equal(added.block.type, "html");
+    assert.equal(added.block.title, "Driver check welcome");
+    assert.equal(added.block.region, "side-pre");
+    assert.equal(typeof added.block.weight, "number");
+    assert.match(added.block.content ?? "", /Welcome, <strong>all<\/strong>/);
+    assert.match(added.block.content ?? "", /pluginfile\.php\/\d+\/block_html\/content\/dot\.png/);
+    assert.equal(await editing(), false, "editing mode is off again");
+    eventsId = (await teacher.addBlock(course.id, { type: "calendar_upcoming" })).block.id;
+  });
+
+  it("courseBlocks: the teacher gets both blocks with weights; the student the text block, without", SLOW, async () => {
+    const teacher = await as("teacher");
+    const blocks = await teacher.courseBlocks(course.id);
+    assert.deepEqual(blocks.map((b) => b.type).sort(), ["calendar_upcoming", "html"]);
+    assert.ok(blocks.every((b) => typeof b.weight === "number" && b.visible));
+    const seen = (await (await as("student")).courseBlocks(course.id)).find((b) => b.id === textId);
+    assert.equal(seen?.title, "Driver check welcome");
+    assert.equal(seen?.weight, undefined);
+  });
+
+  it("addBlock: a type the page doesn't offer, a block allowed once, and the student are BlockError", SLOW, async () => {
+    const teacher = await as("teacher");
+    await assert.rejects(teacher.addBlock(course.id, { type: "no_such_block" }), (error: unknown) => error instanceof BlockError && /doesn't offer the block "no_such_block"/.test(error.message));
+    await assert.rejects(teacher.addBlock(course.id, { type: "calendar_upcoming" }), BlockError);
+    await assert.rejects((await as("student")).addBlock(course.id, { type: "html", title: "No" }), (error: unknown) => error instanceof BlockError && /manageblocks/.test(error.message));
+  });
+
+  it("configureBlock: a text block's title and content changed", SLOW, async () => {
+    const teacher = await as("teacher");
+    const { block } = await teacher.configureBlock(course.id, textId, { title: "Driver check links", content: '<p><a href="https://moodle.org/">Moodle</a></p>' });
+    assert.equal(block.title, "Driver check links");
+    assert.match(block.content ?? "", /href="https:\/\/moodle\.org\/"/);
+    await assert.rejects(teacher.configureBlock(course.id, 999_999, { title: "None" }), BlockError);
+  });
+
+  it("moveBlock: the text block before and after the other one; a region the page lacks is BlockError", SLOW, async () => {
+    const teacher = await as("teacher");
+    // Boost's course page has one region, side-pre: blocks move within it.
+    const first = await teacher.moveBlock(course.id, textId, { region: "side-pre", weight: -5 });
+    assert.equal(first.block.weight, -5);
+    assert.deepEqual((await teacher.courseBlocks(course.id)).map((b) => b.id), [textId, eventsId]);
+    const last = await teacher.moveBlock(course.id, textId, {});
+    const events = (await teacher.courseBlocks(course.id)).find((b) => b.id === eventsId);
+    assert.ok((last.block.weight ?? 0) > (events?.weight ?? 0));
+    assert.deepEqual((await teacher.courseBlocks(course.id)).map((b) => b.id), [eventsId, textId]);
+    await assert.rejects(teacher.moveBlock(course.id, textId, { region: "side-post" }), BlockError);
+  });
+
+  it("deleteBlock: both blocks removed; editing mode left as it was", SLOW, async () => {
+    const teacher = await as("teacher");
+    await assert.rejects((await as("student")).deleteBlock(course.id, textId), BlockError);
+    await teacher.deleteBlock(course.id, textId);
+    await teacher.deleteBlock(course.id, eventsId);
+    assert.deepEqual(await teacher.courseBlocks(course.id), []);
+    assert.equal(await editing(), false);
   });
 });
 

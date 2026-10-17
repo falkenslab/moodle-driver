@@ -23,7 +23,7 @@ moodle-driver inicia sesión como lo hace la persona, en una ventana del navegad
 
 | Área | Qué puede hacer un programa |
 | --- | --- |
-| Cursos | Listar los cursos de la persona, leer las secciones y actividades de un curso, lo que tiene pendiente, cambiar la configuración de un curso, reiniciarlo para un nuevo curso académico |
+| Cursos | Listar los cursos de la persona, leer las secciones y actividades de un curso, lo que tiene pendiente, cambiar la configuración de un curso, reiniciarlo para un nuevo curso académico; añadir, configurar, mover y eliminar los bloques de su página |
 | Copia, copia de seguridad y restauración | Copiar un curso en uno nuevo, hacer una copia de seguridad (completa o parcial) en un archivo, leer lo que contiene una copia de seguridad, anonimizarla para compartirla, restaurar una copia de seguridad donde elijas, importar actividades de otro curso |
 | Contenido | Leer páginas, libros, áreas de texto y medios, URL, archivos y carpetas, con sus medios |
 | Construir un curso | Crear, actualizar, mover, duplicar y eliminar actividades y secciones; sus archivos, descripciones, restricciones de acceso y condiciones de finalización; leer la configuración de una actividad |
