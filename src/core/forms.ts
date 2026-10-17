@@ -76,22 +76,39 @@ export async function setFields(page: Page, values: Record<string, FieldValue>, 
   const missing: string[] = [];
   const disabled: string[] = [];
   // TinyMCE editors still starting can't take content: setContent throws inside a plugin (codesample's
-  // "reading 'select'" in a forum reply, seen on the sandbox, 5.2, once its pages loaded fast). One
-  // created later reads its textarea when it starts, so only the existing ones are waited for.
+  // "reading 'select'" in a forum reply, seen on the sandbox, 5.2, once its pages loaded fast). Moodle
+  // starts a form's editors one after another: on a form with many (a lesson question page has one
+  // for the contents and two per answer) some aren't registered yet when the first are ready, and
+  // become editors, still starting, while the fields are set. So every editor textarea of the form is
+  // waited for, not only the editors TinyMCE already has; one that still throws is tried again below.
   await page
     .waitForFunction(
-      () => {
-        const tinymce = (globalThis as unknown as { tinymce?: { get(): { initialized: boolean }[] } }).tinymce;
-        return !tinymce || tinymce.get().every((editor) => editor.initialized);
+      (formSelector) => {
+        const g = globalThis as unknown as {
+          tinymce?: { get(): { initialized: boolean }[]; get(id: string): { initialized: boolean } | null };
+          document: { querySelectorAll(s: string): ArrayLike<{ id: string }> };
+        };
+        const tinymce = g.tinymce;
+        if (!tinymce) return true;
+        const areas = Array.from(g.document.querySelectorAll(`${formSelector} textarea[name$="[text]"]`));
+        return tinymce.get().every((editor) => editor.initialized) && areas.every((area) => !area.id || tinymce.get(area.id)?.initialized === true);
       },
-      null,
+      formSelector,
       { timeout: 30_000 },
     )
     .catch(() => undefined);
   // One field at a time: Moodle enables dependent fields in handlers that run after the change event
   // (choosing whether to rescale enables a maximum grade, confirmed empirically, 5.2).
   for (const [name, value] of Object.entries(values)) {
-    const outcome = await setField(page, name, value, formSelector);
+    let outcome = await setField(page, name, value, formSelector);
+    // An editor that throws on taking content is tried again for a while: even ready by its flags,
+    // one of a lesson page's editors threw inside TinyMCE ("reading 'parse'") right after the form
+    // loaded (confirmed empirically, 5.2).
+    for (let tries = 0; outcome === "starting" && tries < 30; tries++) {
+      await page.waitForTimeout(500);
+      outcome = await setField(page, name, value, formSelector);
+    }
+    if (outcome === "starting") throw new FormError("An editor of the form didn't take its content:", [{ field: name, message: "its editor kept failing; try again" }]);
     if (outcome === "missing") missing.push(name);
     if (outcome === "disabled") disabled.push(name);
   }
@@ -103,7 +120,7 @@ export async function setFields(page: Page, values: Record<string, FieldValue>, 
   }
 }
 
-function setField(page: Page, name: string, value: FieldValue, formSelector: string): Promise<"set" | "missing" | "disabled"> {
+function setField(page: Page, name: string, value: FieldValue, formSelector: string): Promise<"set" | "missing" | "disabled" | "starting"> {
   return page.evaluate(({ name, value, formSelector }) => {
     interface Field {
       type: string;
@@ -137,8 +154,12 @@ function setField(page: Page, name: string, value: FieldValue, formSelector: str
         field.value = String(value);
         const editor = field.id ? g.tinymce?.get(field.id) : null;
         if (editor) {
-          editor.setContent(String(value));
-          editor.save();
+          try {
+            editor.setContent(String(value));
+            editor.save();
+          } catch {
+            return "starting";
+          }
         }
       }
       field.dispatchEvent(new g.Event("change", { bubbles: true }));

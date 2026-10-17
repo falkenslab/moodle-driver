@@ -30,6 +30,7 @@ import { setGradingDefinition } from "./areas/assignments/definitions.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
 import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
+import { addLessonPage, deleteLessonPage, editLessonPage, lessonPages, moveLessonPage } from "./areas/lessons/pages.js";
 import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
@@ -115,6 +116,11 @@ const SITE_FUNCTIONS = {
   scorm,
   importQuestions,
   lessonPage,
+  lessonPages,
+  addLessonPage,
+  editLessonPage,
+  moveLessonPage,
+  deleteLessonPage,
   listAssignments,
   listCourses,
   logOut,

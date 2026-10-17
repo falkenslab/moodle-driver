@@ -243,6 +243,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addLessonPage",
+    "description": "Adds a page to a lesson through Moodle's lesson editor, after page `after` (0 puts it first; by default it goes last): a content page with its buttons, a question page with its answers (their responses, scores and jumps), an essay, or a cluster, end of cluster or end of branch (which Moodle makes at once, then edited when more is given). A jump to a page the lesson doesn't have is an error before anything is saved. Returns the new page's id and the lesson's pages in order.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "input",
+        "optional": false,
+        "type": "LessonPageInput",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "after",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addQuestionsToQuiz",
     "description": "Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.",
     "params": [
@@ -1522,6 +1559,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteLessonPage",
+    "description": "Deletes a page of a lesson, as the editor's delete link does once confirmed. Answers of other pages that jumped to it are left as Moodle leaves them. Returns the pages left, in order.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "pageId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "deletePost",
     "description": "Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a discussion's first post takes the whole discussion. Only a moderator deletes a post with replies, or someone else's. `replies` says how many replies went with it. Throws `ForumError` with Moodle's reason when it refuses.",
     "params": [
@@ -1724,6 +1783,104 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "number"
           }
+        }
+      ]
+    }
+  },
+  {
+    "name": "editLessonPage",
+    "description": "Changes a page of a lesson through its form in the lesson editor, with what's given: its title, contents, buttons or answers (given, they replace them all: the form's other rows are blanked, and Moodle drops blank ones), options and other fields. A page keeps its type. A jump to a page the lesson doesn't have is an error before anything is saved.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "pageId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "title",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "contents",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The page's contents (HTML); local files it names (`<img src=\"shot.png\">`) go in `embed`."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to embed in the contents, answers or responses."
+        },
+        {
+          "name": "buttons",
+          "optional": true,
+          "type": "{ label: string; jumpTo?: LessonJump; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "A content page's buttons, in order (given, they replace them all)."
+        },
+        {
+          "name": "answers",
+          "optional": true,
+          "type": "LessonAnswer[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "A question page's answers, in order (given, they replace them all); an essay or structural page's single row."
+        },
+        {
+          "name": "multipleAnswers",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "caseSensitive",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Any other field of the page's form, by name (`layout`, `display`…)."
         }
       ]
     }
@@ -2628,6 +2785,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "lessonPages",
+    "description": "The pages of a lesson as its teacher has them in Moodle's lesson editor, in order: type, title, contents, and a content page's buttons or a question's answers with their responses, scores and jumps. Reads the editor's expanded view and each page's form; the person's choice of view (collapsed or expanded, which Moodle remembers) is put back afterwards. Takes a teacher's role.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "listAssignments",
     "description": "The course's assignments, in the course's order, with the section each is in.",
     "params": [
@@ -2727,6 +2898,36 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "moveLessonPage",
+    "description": "Moves a page of a lesson after page `after` (0 puts it first), as the editor's move link does; returns the pages in order.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "pageId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "after",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
   },
   {
     "name": "myGrades",
@@ -4618,6 +4819,15 @@ export const COMMANDS: readonly CommandSpec[] = [
           }
         },
         {
+          "name": "answers",
+          "optional": true,
+          "type": "{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it."
+        },
+        {
           "name": "fields",
           "optional": true,
           "type": "Record<string, FieldValue>",
@@ -4634,15 +4844,6 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "string"
           },
           "description": "The question's text (HTML)."
-        },
-        {
-          "name": "answers",
-          "optional": true,
-          "type": "{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]",
-          "value": {
-            "kind": "json"
-          },
-          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it."
         },
         {
           "name": "correct",

@@ -283,6 +283,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Lessons: the person going through one.
   lessonPage: ["course-content", "own"],
   answerLessonPage: OWN,
+  // Lessons: their teacher building the pages.
+  lessonPages: CONTENT,
+  addLessonPage: CONTENT,
+  editLessonPage: CONTENT,
+  moveLessonPage: CONTENT,
+  deleteLessonPage: CONTENT,
 
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],
