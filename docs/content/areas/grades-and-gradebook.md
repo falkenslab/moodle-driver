@@ -1,6 +1,6 @@
 # Grades and gradebook
 
-This area covers grades from both sides. A student (or anyone graded in a course) reads their own grade report with `myGrades`. A teacher reads everyone's grades with `graderReport` (or saves Moodle's export file with `exportGrades`), grades in the gradebook with `setGrade` (a manual item's grade, or an override of an activity's), reads how the gradebook is built with `gradebookSetup`, and changes it with `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` and `deleteGradeCategory`. Grading a single submission is in [Grading](grading.md); a quiz's attempts and marks are in [Quizzes](quizzes.md).
+This area covers grades from both sides. A student (or anyone graded in a course) reads their own grade report with `myGrades`. A teacher reads everyone's grades with `graderReport` (or saves Moodle's export file with `exportGrades`), grades in the gradebook with `setGrade` (a manual item's grade, or an override of an activity's), reads how the gradebook is built with `gradebookSetup`, and changes it with `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` and `deleteGradeCategory`. They import a CSV file of grades with `importGrades`, and manage the scales and letters grades are shown with: `courseScales`, `addScale` and `editScale`, `gradeLetters` and `setGradeLetters`. Grading a single submission is in [Grading](grading.md); a quiz's attempts and marks are in [Quizzes](quizzes.md).
 
 **Terms:** [gradebook](../reference/glossary.md#gradebook), [grade item](../reference/glossary.md#grade-item), [grade category](../reference/glossary.md#grade-category), [scale](../reference/glossary.md#scale).
 
@@ -267,6 +267,110 @@ It fills the export page's form (`grade/export/<plugin>/index.php`) and saves th
 
 An administrator can disable export formats: asking for one the site doesn't offer throws `GradebookError` naming those it does ("The site doesn't export grades as xlsx; it exports as: csv, ods, xml."), read from the gradebook's navigation menu. Moodle's XML export takes only items with an ID number: when the course has none, or `itemIds` names one without, it throws `GradebookError` before sending anything. A course the person can't export (no permission) throws `GradebookError` with Moodle's reason.
 
+## importGrades
+
+Imports grades from a CSV file into a course's gradebook, as Moodle's CSV import does ("Import" in the gradebook, `grade/import/csv/index.php`): the file uploaded to its form, then the mapping form Moodle shows under its preview filled and sent.
+
+```ts
+function importGrades(context: BrowserContext, siteUrl: string, courseId: number, file: string, options: ImportGradesOptions): Promise<ImportGradesResult>;
+
+interface ImportGradesOptions {
+  mapFrom: string;
+  mapTo: "id" | "username" | "idnumber" | "email";
+  columns: Record<string, number | { feedback: number }>;
+  preview?: boolean;
+  separator?: "comma" | "semicolon" | "tab" | "colon";
+  encoding?: string;
+}
+
+interface ImportGradesResult {
+  changed: string;
+  imported: boolean;
+  preview: { columns: string[]; rows: string[][] };
+  notices: string[];
+}
+```
+
+- `file`: the CSV file, an absolute path; its first line holds the columns' headers.
+- `mapFrom`: the header of the column that identifies each person; `mapTo`: what it holds (Moodle's user id, the username, the ID number or the email address).
+- `columns`: the columns to import, by header: into a grade item (its id from `gradebookSetup`), or as an item's feedback (`{ feedback: <item id> }`). The file's other columns are ignored.
+- `preview`: only upload the file and return Moodle's preview of it, importing nothing.
+- `separator` and `encoding`: how the file is written; a comma and UTF-8 when left out.
+
+`preview` is Moodle's own preview: the file's headers and rows as Moodle reads them (with the separator and encoding given), all of them. Moodle shows it before the mapping, so it says what Moodle will read, not which grades will change. The headers in `mapFrom` and `columns` are checked against it and each item against those the mapping form offers, in both cases, before anything is imported: a header the file doesn't have throws `GradebookError` naming the file's columns, and an item the form doesn't offer (an activity's item, a locked one, or one not in the course) throws `GradebookError` naming those it does.
+
+Moodle imports all or nothing: when it can't find someone ("User mapping error: Could not find user with username of …") or refuses a grade (out of range), nothing is imported and `GradebookError` carries Moodle's messages. Grades for people not enrolled in the course are imported with a notice of Moodle's, returned in `notices`. Someone who can't import grades gets `GradebookError` naming the capabilities it takes, `moodle/grade:import` and `gradeimport/csv:view`. Read the grades afterwards with `graderReport`.
+
+## courseScales
+
+A course's scales, as its "Scales" page lists them (`grade/edit/scale/index.php`): the course's own and the site's standard scales.
+
+```ts
+function courseScales(context: BrowserContext, siteUrl: string, courseId: number): Promise<GradeScale[]>;
+
+interface GradeScale {
+  id: number;
+  name: string;
+  items: string[];
+  used: boolean;
+  site: boolean;
+}
+```
+
+- `items`: the scale's values, from the lowest to the highest, as Moodle stores them.
+- `used`: something grades with it (a grade item, an activity, an outcome). Moodle doesn't change a used scale's values.
+- `site`: one of the site's standard scales, not the course's own; the course's come first.
+
+A teacher's page has no links for the site's scales: their ids come from the gradebook's item form, which lists the same scales in the same order. Give an id to `addGradeItem`'s `scaleId` to grade an item with it. Someone who can't manage the course's scales gets `GradebookError` naming `moodle/course:managescales`.
+
+## addScale
+
+Adds a scale to a course (its own, not one of the site's) and returns it as `courseScales` reads it.
+
+```ts
+function addScale(context: BrowserContext, siteUrl: string, courseId: number, fields: { name: string; items: string[]; description?: string }): Promise<{ changed: string; scale?: GradeScale }>;
+```
+
+- `items`: the values, from the lowest to the highest. Moodle separates them with commas, so a value with a comma is refused before anything is sent.
+- `description`: HTML.
+
+It fills the scale's form (`grade/edit/scale/edit.php`). A course can't have two scales with the same values: Moodle refuses the second, and `GradebookError` carries its message. Someone who can't manage the course's scales gets `GradebookError` naming `moodle/course:managescales`.
+
+## editScale
+
+Changes a scale: its name, its values or its description. Returns the scale afterwards.
+
+```ts
+function editScale(context: BrowserContext, siteUrl: string, courseId: number, scaleId: number, fields: { name?: string; items?: string[]; description?: string }): Promise<{ changed: string; scale?: GradeScale }>;
+```
+
+A used scale keeps its values: Moodle freezes them in the form, so asking for new values throws `GradebookError` before anything is sent (add a new scale instead); its name and description still change. A site scale changes only for someone who can manage the site's scales; anyone else gets `GradebookError` saying so. An id the course's scales don't have throws `GradebookError`.
+
+## gradeLetters
+
+A course's grade letters (`grade/edit/letter/index.php`, by the course's context), from the highest boundary to the lowest: the course's own when `overridden`, the site's defaults otherwise.
+
+```ts
+function gradeLetters(context: BrowserContext, siteUrl: string, courseId: number): Promise<GradeLetters>;
+
+interface GradeLetters {
+  overridden: boolean;
+  letters: { letter: string; minGrade: number }[];
+}
+```
+
+`minGrade` is the letter's lower boundary in percent: a grade gets the letter of the highest boundary it reaches. They are read from the letters' editing form, so someone who can't manage them gets `GradebookError` naming `moodle/grade:manageletters`.
+
+## setGradeLetters
+
+Sets a course's own grade letters, overriding the site's, or, with `null`, goes back to the site's defaults. Returns the letters afterwards, as `gradeLetters` reads them.
+
+```ts
+function setGradeLetters(context: BrowserContext, siteUrl: string, courseId: number, letters: { letter: string; minGrade: number }[] | null): Promise<{ changed: string; overridden: boolean; letters: { letter: string; minGrade: number }[] }>;
+```
+
+The letters replace the course's whole list: every row of Moodle's form is written, and the rows left over are emptied, which Moodle drops. A `minGrade` outside 0 to 100, an empty letter or two letters with the same `minGrade` are refused before anything is sent (Moodle would skip them without a word).
+
 ## Recalculation
 
 Moodle recalculates a course's grades after some changes (a deleted activity, changed weights or aggregations). While it does, the grader report shows a progress bar instead of the table, and `graderReport` throws `GradebookError` saying so. Waiting a moment and calling again is enough; there is nothing to fix.
@@ -322,3 +426,5 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 - `gradebookSetup`, `updateGradeItem`, `addGradeItem`, `addGradeCategory`, `updateGradeCategory`, `deleteGradeCategory`: `course-content` (the gradebook's structure, nobody's grades).
 - `deleteGradeItem`: `course-content` and `others-write` (a manual item's grades go with it).
 - `setGrade`: `others-personal` and `others-write` (reads and decides a person's grade).
+- `importGrades`: `others-personal` and `others-write` (decides grades; its preview shows the file's people and grades).
+- `courseScales`, `addScale`, `editScale`, `gradeLetters`, `setGradeLetters`: `course-content` (how the course shows grades).

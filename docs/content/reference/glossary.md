@@ -74,6 +74,10 @@ A group of grade items in the gradebook that combines its children's grades into
 
 One column of the gradebook: an activity's grade, a manual item, or a category's or the course's total. The driver reads them with `gradebookSetup` (`GradebookItem`, with `id`, `categoryId`, `maxGrade`, `weight`, `weightOverridden`), changes one with `updateGradeItem(courseId, itemId, changes)`, adds and deletes manual ones with `addGradeItem` and `deleteGradeItem`, grades a person in one with `setGrade` (an activity's grade is overridden), and `graderReport` gives one `GradeColumn` per item and each grade as `{ itemId, grade }`. See [Grades and gradebook](../areas/grades-and-gradebook.md).
 
+### Grade letter
+
+A letter (or word) a grade is shown as, from a percentage up: "A" from 93 %, "B" from 83 %… The site sets the defaults and a course may override them. The driver reads a course's with `gradeLetters` (`{ overridden, letters }`, each letter with its `minGrade` in percent) and sets them, or goes back to the site's, with `setGradeLetters`. See [Grades and gradebook](../areas/grades-and-gradebook.md#gradeletters).
+
 ### Gradebook
 
 A course's grades and how they're built: its [grade items](#grade-item) and [grade categories](#grade-category), shown as reports ("Grades" in the interface: the user report a participant sees, the grader report a teacher sees, and "Gradebook setup"). The driver reads the user report with `myGrades` (`GradeRow`), everyone's with `graderReport`, the setup with `gradebookSetup`, grades in it with `setGrade`, and changes it with `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` and `deleteGradeCategory`; the errors are `NoGradeReportError` and `GradebookError`. See [Grades and gradebook](../areas/grades-and-gradebook.md).
@@ -149,7 +153,7 @@ What a person may do in a context, a course for most: student, teacher (Moodle's
 
 ### Scale
 
-A list of words used as grades instead of numbers ("Not yet, Competent, Excellent"), set as an activity's grade type. In the driver, an assignment graded with a scale has `method: "simple"` in `rubric`, and `gradeSubmission`'s `grade` takes the scale item's value. See [Grading](../areas/grading.md).
+A list of words used as grades instead of numbers ("Not yet, Competent, Excellent"), set as an activity's grade type. In the driver, an assignment graded with a scale has `method: "simple"` in `rubric`, and `gradeSubmission`'s `grade` takes the scale item's value. See [Grading](../areas/grading.md). A course uses its own scales and the site's standard ones: `courseScales` lists them (`GradeScale`, with `items`, `used`, `site`), `addScale` and `editScale` write the course's; a used scale keeps its values ([Grades and gradebook](../areas/grades-and-gradebook.md#coursescales)).
 
 ### SCORM
 

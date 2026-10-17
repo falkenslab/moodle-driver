@@ -30,6 +30,8 @@ import { saveWorkshopSubmission, workshopSubmission } from "./areas/workshops/su
 import { addWorkshopExample, assessWorkshopExample, deleteWorkshopExample, editWorkshopExample, workshopExamples } from "./areas/workshops/examples.js";
 import { calculateWorkshopGrades, overrideWorkshopGrade } from "./areas/workshops/evaluation.js";
 import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
+import { importGrades } from "./areas/grades/import.js";
+import { addScale, courseScales, editScale, gradeLetters, setGradeLetters } from "./areas/grades/scales.js";
 import { myGrades } from "./areas/grades/user-report.js";
 import { allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension, rubric, setWorkflowState } from "./areas/assignments/grading.js";
 import { setGradingDefinition } from "./areas/assignments/definitions.js";
@@ -260,6 +262,12 @@ const SITE_FUNCTIONS = {
   updateGradeCategory,
   updateEvent,
   updateGradeItem,
+  importGrades,
+  courseScales,
+  addScale,
+  editScale,
+  gradeLetters,
+  setGradeLetters,
   updateQuestion,
   userById,
   whoAmI,

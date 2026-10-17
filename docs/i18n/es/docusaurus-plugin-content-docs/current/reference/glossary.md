@@ -74,6 +74,10 @@ Un grupo de elementos de calificación del libro de calificaciones que combina l
 
 Una columna del libro de calificaciones: la calificación de una actividad, un elemento manual, o el total de una categoría o del curso. El driver los lee con `gradebookSetup` (`GradebookItem`, con `id`, `categoryId`, `maxGrade`, `weight`, `weightOverridden`), cambia uno con `updateGradeItem(courseId, itemId, changes)`, añade y elimina los manuales con `addGradeItem` y `deleteGradeItem`, califica a una persona en uno con `setGrade` (la calificación de una actividad queda anulada), y `graderReport` da una `GradeColumn` por elemento y cada calificación como `{ itemId, grade }`. Consulta [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md).
 
+### Letra de calificación (grade letter) {#grade-letter}
+
+Una letra (o palabra) con la que se muestra una calificación, a partir de un porcentaje: "A" desde el 93 %, "B" desde el 83 %… El sitio fija las predeterminadas y un curso puede anularlas. El driver lee las de un curso con `gradeLetters` (`{ overridden, letters }`, cada letra con su `minGrade` en porcentaje) y las fija, o vuelve a las del sitio, con `setGradeLetters`. Consulta [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md#gradeletters).
+
 ### Libro de calificaciones (gradebook) {#gradebook}
 
 Las calificaciones de un curso y cómo se construyen: sus [elementos de calificación](#grade-item) y sus [categorías de calificación](#grade-category), mostrados como informes ("Calificaciones" en la interfaz: el informe del usuario que ve un participante, el informe del calificador que ve un profesor, y la "Configuración del libro de calificaciones"). El driver lee el informe del usuario con `myGrades` (`GradeRow`), el de todos con `graderReport`, la configuración con `gradebookSetup`, califica en él con `setGrade`, y lo cambia con `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` y `deleteGradeCategory`; los errores son `NoGradeReportError` y `GradebookError`. Consulta [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md).
@@ -149,7 +153,7 @@ Lo que una persona puede hacer en un contexto, un curso en la mayoría de los ca
 
 ### Escala (scale) {#scale}
 
-Una lista de palabras usadas como calificaciones en lugar de números ("Todavía no, Competente, Excelente"), elegida como tipo de calificación de una actividad. En el driver, una tarea calificada con una escala tiene `method: "simple"` en `rubric`, y el `grade` de `gradeSubmission` recibe el valor del elemento de la escala. Consulta [Calificación](../areas/grading.md).
+Una lista de palabras usadas como calificaciones en lugar de números ("Todavía no, Competente, Excelente"), elegida como tipo de calificación de una actividad. En el driver, una tarea calificada con una escala tiene `method: "simple"` en `rubric`, y el `grade` de `gradeSubmission` recibe el valor del elemento de la escala. Consulta [Calificación](../areas/grading.md). Un curso usa sus propias escalas y las estándar del sitio: `courseScales` las enumera (`GradeScale`, con `items`, `used`, `site`), `addScale` y `editScale` escriben las del curso; una escala en uso conserva sus valores ([Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md#coursescales)).
 
 ### SCORM
 

@@ -1,6 +1,6 @@
 # Calificaciones y libro de calificaciones
 
-Esta área cubre las calificaciones desde los dos lados. Un estudiante (o cualquiera a quien se califique en un curso) lee su propio informe de calificaciones con `myGrades`. Un profesor lee las calificaciones de todos con `graderReport` (o guarda el archivo de exportación de Moodle con `exportGrades`), califica en el libro de calificaciones con `setGrade` (la calificación de un elemento manual, o una anulación de la de una actividad), lee cómo está construido el libro de calificaciones con `gradebookSetup` y lo cambia con `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` y `deleteGradeCategory`. Calificar una sola entrega está en [Calificar](grading.md); los intentos y las puntuaciones de un cuestionario, en [Cuestionarios](quizzes.md).
+Esta área cubre las calificaciones desde los dos lados. Un estudiante (o cualquiera a quien se califique en un curso) lee su propio informe de calificaciones con `myGrades`. Un profesor lee las calificaciones de todos con `graderReport` (o guarda el archivo de exportación de Moodle con `exportGrades`), califica en el libro de calificaciones con `setGrade` (la calificación de un elemento manual, o una anulación de la de una actividad), lee cómo está construido el libro de calificaciones con `gradebookSetup` y lo cambia con `addGradeItem`, `updateGradeItem`, `deleteGradeItem`, `addGradeCategory`, `updateGradeCategory` y `deleteGradeCategory`. Importa un archivo CSV de calificaciones con `importGrades` y gestiona las escalas y las letras con las que se muestran las calificaciones: `courseScales`, `addScale` y `editScale`, `gradeLetters` y `setGradeLetters`. Calificar una sola entrega está en [Calificar](grading.md); los intentos y las puntuaciones de un cuestionario, en [Cuestionarios](quizzes.md).
 
 **Términos:** [libro de calificaciones](../reference/glossary.md#gradebook), [elemento de calificación](../reference/glossary.md#grade-item), [categoría de calificación](../reference/glossary.md#grade-category), [escala](../reference/glossary.md#scale).
 
@@ -267,6 +267,110 @@ Rellena el formulario de la página de exportación (`grade/export/<plugin>/inde
 
 Un administrador puede desactivar formatos de exportación: pedir uno que el sitio no ofrece lanza `GradebookError` nombrando los que sí ofrece ("The site doesn't export grades as xlsx; it exports as: csv, ods, xml."), leídos del menú de navegación del libro de calificaciones. La exportación XML de Moodle solo admite elementos con número de ID: cuando el curso no tiene ninguno, o `itemIds` nombra uno sin él, lanza `GradebookError` antes de enviar nada. Un curso que la persona no puede exportar (sin permiso) lanza `GradebookError` con el motivo de Moodle.
 
+## importGrades
+
+Importa calificaciones de un archivo CSV al libro de calificaciones de un curso, como hace la importación CSV de Moodle ("Importar" en el libro de calificaciones, `grade/import/csv/index.php`): el archivo se sube a su formulario y luego se rellena y envía el formulario de asignación que Moodle muestra bajo su vista previa.
+
+```ts
+function importGrades(context: BrowserContext, siteUrl: string, courseId: number, file: string, options: ImportGradesOptions): Promise<ImportGradesResult>;
+
+interface ImportGradesOptions {
+  mapFrom: string;
+  mapTo: "id" | "username" | "idnumber" | "email";
+  columns: Record<string, number | { feedback: number }>;
+  preview?: boolean;
+  separator?: "comma" | "semicolon" | "tab" | "colon";
+  encoding?: string;
+}
+
+interface ImportGradesResult {
+  changed: string;
+  imported: boolean;
+  preview: { columns: string[]; rows: string[][] };
+  notices: string[];
+}
+```
+
+- `file`: el archivo CSV, una ruta absoluta; su primera línea lleva las cabeceras de las columnas.
+- `mapFrom`: la cabecera de la columna que identifica a cada persona; `mapTo`: qué contiene (el id de usuario de Moodle, el nombre de usuario, el número de ID o la dirección de correo).
+- `columns`: las columnas que importar, por cabecera: a un elemento de calificación (su id de `gradebookSetup`), o como retroalimentación de un elemento (`{ feedback: <id del elemento> }`). Las demás columnas del archivo se ignoran.
+- `preview`: solo sube el archivo y devuelve la vista previa de Moodle, sin importar nada.
+- `separator` y `encoding`: cómo está escrito el archivo; una coma y UTF-8 si se omiten.
+
+`preview` es la propia vista previa de Moodle: las cabeceras y las filas del archivo tal como Moodle las lee (con el separador y la codificación dados), todas. Moodle la muestra antes de la asignación, así que dice qué leerá Moodle, no qué calificaciones cambiarán. Las cabeceras de `mapFrom` y `columns` se comprueban con ella, y cada elemento con los que ofrece el formulario de asignación, en los dos casos, antes de importar nada: una cabecera que el archivo no tiene lanza `GradebookError` nombrando las columnas del archivo, y un elemento que el formulario no ofrece (el elemento de una actividad, uno bloqueado o uno que no está en el curso) lanza `GradebookError` nombrando los que sí ofrece.
+
+Moodle importa todo o nada: cuando no encuentra a alguien ("User mapping error: Could not find user with username of …") o rechaza una calificación (fuera de rango), no se importa nada y `GradebookError` lleva los mensajes de Moodle. Las calificaciones de personas no matriculadas en el curso se importan con un aviso de Moodle, que se devuelve en `notices`. Quien no puede importar calificaciones recibe `GradebookError` nombrando las capacidades que hacen falta, `moodle/grade:import` y `gradeimport/csv:view`. Lee después las calificaciones con `graderReport`.
+
+## courseScales
+
+Las escalas de un curso, tal como las enumera su página "Escalas" (`grade/edit/scale/index.php`): las propias del curso y las escalas estándar del sitio.
+
+```ts
+function courseScales(context: BrowserContext, siteUrl: string, courseId: number): Promise<GradeScale[]>;
+
+interface GradeScale {
+  id: number;
+  name: string;
+  items: string[];
+  used: boolean;
+  site: boolean;
+}
+```
+
+- `items`: los valores de la escala, del más bajo al más alto, tal como los guarda Moodle.
+- `used`: algo califica con ella (un elemento de calificación, una actividad, un resultado). Moodle no cambia los valores de una escala en uso.
+- `site`: una de las escalas estándar del sitio, no una propia del curso; las del curso van primero.
+
+La página de un profesor no tiene enlaces para las escalas del sitio: sus ids salen del formulario de elementos del libro de calificaciones, que enumera las mismas escalas en el mismo orden. Da un id al `scaleId` de `addGradeItem` para calificar un elemento con ella. Quien no puede gestionar las escalas del curso recibe `GradebookError` nombrando `moodle/course:managescales`.
+
+## addScale
+
+Añade una escala a un curso (propia, no una del sitio) y la devuelve tal como la lee `courseScales`.
+
+```ts
+function addScale(context: BrowserContext, siteUrl: string, courseId: number, fields: { name: string; items: string[]; description?: string }): Promise<{ changed: string; scale?: GradeScale }>;
+```
+
+- `items`: los valores, del más bajo al más alto. Moodle los separa con comas, así que un valor con una coma se rechaza antes de enviar nada.
+- `description`: HTML.
+
+Rellena el formulario de la escala (`grade/edit/scale/edit.php`). Un curso no puede tener dos escalas con los mismos valores: Moodle rechaza la segunda y `GradebookError` lleva su mensaje. Quien no puede gestionar las escalas del curso recibe `GradebookError` nombrando `moodle/course:managescales`.
+
+## editScale
+
+Cambia una escala: su nombre, sus valores o su descripción. Devuelve la escala después.
+
+```ts
+function editScale(context: BrowserContext, siteUrl: string, courseId: number, scaleId: number, fields: { name?: string; items?: string[]; description?: string }): Promise<{ changed: string; scale?: GradeScale }>;
+```
+
+Una escala en uso conserva sus valores: Moodle los congela en el formulario, así que pedir valores nuevos lanza `GradebookError` antes de enviar nada (añade una escala nueva en su lugar); su nombre y su descripción sí cambian. Una escala del sitio solo la cambia quien puede gestionar las escalas del sitio; cualquier otra persona recibe `GradebookError` diciéndolo. Un id que no está entre las escalas del curso lanza `GradebookError`.
+
+## gradeLetters
+
+Las letras de calificación de un curso (`grade/edit/letter/index.php`, por el contexto del curso), del límite más alto al más bajo: las propias del curso cuando `overridden`, las predeterminadas del sitio si no.
+
+```ts
+function gradeLetters(context: BrowserContext, siteUrl: string, courseId: number): Promise<GradeLetters>;
+
+interface GradeLetters {
+  overridden: boolean;
+  letters: { letter: string; minGrade: number }[];
+}
+```
+
+`minGrade` es el límite inferior de la letra en porcentaje: una calificación recibe la letra del límite más alto que alcanza. Se leen del formulario de edición de las letras, así que quien no puede gestionarlas recibe `GradebookError` nombrando `moodle/grade:manageletters`.
+
+## setGradeLetters
+
+Fija las letras de calificación propias de un curso, anulando las del sitio, o, con `null`, vuelve a las predeterminadas del sitio. Devuelve las letras después, tal como las lee `gradeLetters`.
+
+```ts
+function setGradeLetters(context: BrowserContext, siteUrl: string, courseId: number, letters: { letter: string; minGrade: number }[] | null): Promise<{ changed: string; overridden: boolean; letters: { letter: string; minGrade: number }[] }>;
+```
+
+Las letras sustituyen la lista entera del curso: se escribe cada fila del formulario de Moodle y las filas que sobran se vacían, y Moodle las descarta. Un `minGrade` fuera de 0 a 100, una letra vacía o dos letras con el mismo `minGrade` se rechazan antes de enviar nada (Moodle se las saltaría sin decir nada).
+
 ## Recálculo {#recalculation}
 
 Moodle recalcula las calificaciones de un curso tras algunos cambios (una actividad eliminada, pesos o agregaciones cambiados). Mientras lo hace, el informe del calificador muestra una barra de progreso en lugar de la tabla, y `graderReport` lanza `GradebookError` diciéndolo. Basta con esperar un momento y volver a llamar; no hay nada que arreglar.
@@ -322,3 +426,5 @@ De `DATA_CATEGORIES` (consulta [Categorías de datos](../concepts/data-categorie
 - `gradebookSetup`, `updateGradeItem`, `addGradeItem`, `addGradeCategory`, `updateGradeCategory`, `deleteGradeCategory`: `course-content` (la estructura del libro de calificaciones, las calificaciones de nadie).
 - `deleteGradeItem`: `course-content` y `others-write` (las calificaciones de un elemento manual se van con él).
 - `setGrade`: `others-personal` y `others-write` (lee y decide la calificación de una persona).
+- `importGrades`: `others-personal` y `others-write` (decide calificaciones; su vista previa muestra las personas y las calificaciones del archivo).
+- `courseScales`, `addScale`, `editScale`, `gradeLetters`, `setGradeLetters`: `course-content` (cómo muestra el curso las calificaciones).
