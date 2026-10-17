@@ -222,6 +222,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   createGrouping: CONTENT,
   deleteGrouping: CONTENT,
   setGroupingGroups: CONTENT,
+  autoCreateGroups: ["others-personal", "others-write"],
+  importGroups: CONTENT,
   enrolmentMethods: CONTENT,
   setEnrolmentMethod: CONTENT,
 

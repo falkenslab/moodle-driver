@@ -220,6 +220,7 @@ export {
 export { setCompletion, overrideCompletion, completionReport, CompletionError, type CompletionCell, type CompletionReport } from "./areas/completion/completion.js";
 export { participants, participantFilters, groups, NoParticipantsError, type Participant, type ParticipantOptions, type CourseGroup } from "./areas/participants/participants.js";
 export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, createGrouping, deleteGrouping, setGroupingGroups, type GroupSettings, type GroupingSettings, type Grouping } from "./areas/participants/groups.js";
+export { autoCreateGroups, importGroups, type AutoCreateGroupsOptions, type AutoGroupsPreview, type AutoGroupsCreated, type PreviewedGroup, type GroupsImport } from "./areas/participants/autogroups.js";
 export { enrolmentMethods, setEnrolmentMethod, type EnrolmentMethod, type EnrolmentMethodSettings } from "./areas/participants/methods.js";
 export { potentialUsers, enrolUsers, unenrolUser, setUserRoles, EnrolmentError, type PotentialUser } from "./areas/participants/enrolments.js";
 export { courseBadges, createBadge, setBadgeCriteria, setBadgeEnabled, awardBadge, BadgeError, BadgesDisabledError, type CourseBadge, type BadgeCriteria, type BadgeCriteriaChanges, type NewBadge } from "./areas/badges/badges.js";

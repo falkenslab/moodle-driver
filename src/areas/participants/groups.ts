@@ -44,7 +44,7 @@ interface AssignPage {
 }
 
 /** Reads a members or grouping page: the current and potential lists by option value, the course and the sesskey. */
-async function readAssignPage(context: BrowserContext, siteUrl: string, path: string, what: string): Promise<AssignPage> {
+export async function readAssignPage(context: BrowserContext, siteUrl: string, path: string, what: string): Promise<AssignPage> {
   const page = await openSitePage(context, siteUrl, path);
   try {
     // A helper inside: through inPage (see the conventions on page.evaluate).

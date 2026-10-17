@@ -1,6 +1,6 @@
 # Participants
 
-This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`), giving or taking roles (`setUserRoles`), making groups and groupings and choosing their members (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…), and setting how people get in: the course's enrolment methods (`enrolmentMethods`, `setEnrolmentMethod`). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
+This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`), giving or taking roles (`setUserRoles`), making groups and groupings and choosing their members (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…), or many at once (`autoCreateGroups`, `importGroups`), and setting how people get in: the course's enrolment methods (`enrolmentMethods`, `setEnrolmentMethod`). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
 
 **Terms:** [participant](../reference/glossary.md#participant), [role](../reference/glossary.md#role), [group](../reference/glossary.md#group).
 
@@ -165,6 +165,70 @@ interface Grouping {
 
 A group or grouping that doesn't exist, or that the person can't manage, throws a `MoodleError` (code `not-found`) with Moodle's message. `groups` reads groups with their members.
 
+## Creating groups at once
+
+A teacher splits a course's participants into groups in one go with Moodle's "Auto-create groups" form (`group/autogroup.php`), previewing them first as its Preview button does, or creates groups from a CSV file with "Import groups" (`group/import.php`). Neither has a service open to AJAX: the driver fills and posts the forms.
+
+```ts
+function autoCreateGroups(context: BrowserContext, siteUrl: string, courseId: number, options: AutoCreateGroupsOptions & { preview: true }): Promise<AutoGroupsPreview>;
+function autoCreateGroups(context: BrowserContext, siteUrl: string, courseId: number, options: AutoCreateGroupsOptions & { preview?: false }): Promise<AutoGroupsCreated>;
+function importGroups(context: BrowserContext, siteUrl: string, courseId: number, file: string, options?: { delimiter?: "comma" | "semicolon" | "colon" | "tab" }): Promise<GroupsImport>;
+
+interface AutoCreateGroupsOptions {
+  by: "groups" | "members"; // `count` groups, or groups of `count` members
+  count: number;
+  naming: string; // "Team #" (1, 2…) or "Team @" (A, B…)
+  allocation?: "random" | "firstname" | "lastname" | "idnumber" | "none"; // default "random"; "none" leaves them empty
+  roleId?: number; // who is split: this role's participants (0: every role); Moodle's default, the student role
+  cohortId?: number; // only this cohort's members
+  fromGroupingId?: number; // only members of this grouping's groups
+  fromGroupId?: number; // only this group's members
+  notInGroup?: boolean; // only those in no group yet
+  noSmallGroups?: boolean; // with by: "members", no last group too small
+  groupingId?: number; // put the new groups in this grouping
+  newGrouping?: string; // or in a new grouping of this name
+  preview?: boolean; // only show what Moodle would make
+  seed?: number; // the random allocation's seed: a preview's, to create the same groups
+}
+
+interface AutoGroupsPreview {
+  changed: string;
+  groups: { name: string; members: string[]; nameTaken: boolean }[]; // members by full name
+  seed: number;
+}
+
+interface AutoGroupsCreated {
+  changed: string;
+  groups: { id: number; name: string; members: number[] }[]; // members by user id
+  groupingId?: number;
+  seed: number;
+}
+
+interface GroupsImport {
+  changed: string;
+  groups: { id: number; name: string }[];
+  problems: string[]; // Moodle's message for each row with a problem
+}
+```
+
+- `autoCreateGroups` with `preview` writes nothing and returns the groups as Moodle's preview lists them: names, members by full name (the preview shows no ids; the identity fields Moodle adds, such as an email, are dropped), and `nameTaken` for a name already in the course (Moodle would then create none). A random allocation depends on the form's seed: give the preview's `seed` back to create exactly the groups previewed.
+- Without `preview` it creates them, as the form's Submit does, and returns them with their ids and members' user ids (read back from each group's members page), and the grouping's id when `groupingId` or `newGrouping` was given. Moodle creates all or none: when one of the names is taken, it removes what it had made and the driver throws `FormError`.
+- `roleId`, `cohortId`, `fromGroupingId`, `fromGroupId` and `groupingId` must be ones the form offers (a cohort with members enrolled in the course, a grouping or group of the course); others throw `MoodleError` (code `invalid-input`) instead of being sent as nothing. Moodle's own refusals come as `FormError` by field: `roleid` when there's no one to allocate, `number` for more groups than people, `namingscheme` for a scheme without exactly one `#` or `@` (unless a single group is made) or a name already used, `groupingname` for a grouping name already used.
+- `importGroups` uploads the file to the import form: a CSV with a `groupname` column, and optionally `description`, `enrolmentkey`, `groupidnumber`, `groupingname` (the grouping is made when missing), `enablemessaging`, and `coursename` or `idnumber` for another course (by short name or ID number). Moodle creates groups only, never members. It returns the groups new in this course and, in `problems`, Moodle's message for each row it skipped (a name already in the course, an unknown course) or created without its ID number (one another group has). A file Moodle can't read (an unknown column, no `groupname`, no rows) throws `MoodleError` (code `invalid-input`) with Moodle's reason.
+- Both need `moodle/course:managegroups` (editing teachers have it): a person without it gets a `MoodleError` (code `not-available`) naming it, with Moodle's refusal.
+
+Split a course's students into two random groups in a new grouping, after checking the preview:
+
+```ts
+const options = { by: "groups", count: 2, naming: "Team @", newGrouping: "Teams" } as const;
+const preview = await moodle.autoCreateGroups(3, { ...options, preview: true });
+for (const group of preview.groups) console.log(group.name, group.members.join(", "));
+if (!preview.groups.some((g) => g.nameTaken)) {
+  const created = await moodle.autoCreateGroups(3, { ...options, seed: preview.seed });
+  console.log(created.changed);
+}
+```
+
 ## Enrolment methods
 
 How people get into a course: manual enrolment, self enrolment (with or without a key), guest access… read and set on the course's "Enrolment methods" page (`enrol/instances.php`) and each method's form (`enrol/editinstance.php`); no service for them is open to AJAX.
@@ -253,6 +317,7 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 - `participantFilters`: `course-content` (the course's roles and groups, nobody's data).
 - `potentialUsers`: `others-personal`.
 - `createGroup`, `updateGroup`, `deleteGroup`, `groupings`, `createGrouping`, `deleteGrouping`, `setGroupingGroups`: `course-content`.
-- `setGroupMembers`: `others-personal` and `others-write`.
+- `setGroupMembers`, `autoCreateGroups`: `others-personal` and `others-write`.
+- `importGroups`: `course-content`.
 - `enrolmentMethods`, `setEnrolmentMethod`: `course-content`.
 - `enrolUsers`, `unenrolUser`, `setUserRoles`: `others-personal` and `others-write` (deciding who is in the course and with which role).

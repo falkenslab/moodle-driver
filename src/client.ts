@@ -52,6 +52,7 @@ import { groups, participantFilters, participants } from "./areas/participants/p
 import { createQuestion, deleteQuestions, exportQuestions, importQuestions, questionBanks, questions, setQuestionStatus, updateQuestion } from "./areas/questions/banks.js";
 import { addQuestionCategory, deleteQuestionCategory, editQuestionCategory, moveQuestions, questionCategories } from "./areas/questions/categories.js";
 import { createGroup, createGrouping, deleteGroup, deleteGrouping, groupings, setGroupMembers, setGroupingGroups, updateGroup } from "./areas/participants/groups.js";
+import { autoCreateGroups, importGroups } from "./areas/participants/autogroups.js";
 import { enrolmentMethods, setEnrolmentMethod } from "./areas/participants/methods.js";
 import { enrolUsers, potentialUsers, setUserRoles, unenrolUser } from "./areas/participants/enrolments.js";
 import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
@@ -201,6 +202,8 @@ const SITE_FUNCTIONS = {
   createGrouping,
   deleteGrouping,
   setGroupingGroups,
+  autoCreateGroups,
+  importGroups,
   enrolmentMethods,
   setEnrolmentMethod,
   participationReport,

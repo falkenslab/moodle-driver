@@ -2,8 +2,11 @@
 // the content course, writes on the scratch course. The user enrolled and unenrolled is another
 // seeded student, not in the scratch course; everything made is removed by the test that made it.
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { before, describe, it } from "node:test";
-import { EnrolmentError, NoParticipantsError } from "../../src/index.js";
+import { EnrolmentError, FormError, MoodleError, NoParticipantsError } from "../../src/index.js";
 import { COURSE, as, cleanup, quietly, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 const STUDENT_ROLE = 5;
@@ -196,6 +199,65 @@ describe("participants and groups", () => {
     await teacher.deleteGrouping(groupingId);
     assert.ok(!(await teacher.groupings(scratch.id)).some((g) => g.id === groupingId));
     assert.ok((await teacher.groups(scratch.id)).some((g) => g.id === groupId));
+  });
+
+  it("autoCreateGroups: the scratch course's students in two groups of a new grouping, previewed first, then created", SLOW, async () => {
+    const teacher = await as("teacher");
+    const admin = await as("admin");
+    // Two more of the sandbox's users, enrolled as students (Marcos is the one the other tests enrol and unenrol).
+    const offered = await admin.potentialUsers(scratch.id);
+    const extra = offered.filter((u) => !/marcos/i.test(u.fullName)).slice(0, 2).map((u) => u.userId);
+    assert.equal(extra.length, 2, `two users besides Marcos can be enrolled: ${JSON.stringify(offered.map((u) => u.fullName))}`);
+    cleanup(() => quietly(async () => {
+      for (const id of extra) await admin.unenrolUser(scratch.id, id);
+    }));
+    await admin.enrolUsers(scratch.id, extra, { roleId: STUDENT_ROLE });
+    const students = await teacher.participants(scratch.id, { role: STUDENT_ROLE });
+    // The student and these two, and Marcos when the enrolUsers check ran before.
+    assert.ok(students.length >= 3);
+    const options = { by: "groups" as const, count: 2, naming: `Driver check auto ${stamp} @`, allocation: "random" as const, roleId: STUDENT_ROLE, newGrouping: `Driver check auto ${stamp}` };
+
+    const preview = await teacher.autoCreateGroups(scratch.id, { ...options, preview: true });
+    assert.deepEqual(preview.groups.map((g) => [g.name, g.nameTaken]), [[`Driver check auto ${stamp} A`, false], [`Driver check auto ${stamp} B`, false]]);
+    assert.deepEqual(preview.groups.flatMap((g) => g.members).sort(), students.map((s) => s.fullName).sort());
+    assert.ok(!(await teacher.groups(scratch.id)).some((g) => g.name.startsWith(`Driver check auto ${stamp}`)), "a preview creates nothing");
+
+    const created = await teacher.autoCreateGroups(scratch.id, { ...options, seed: preview.seed });
+    for (const group of created.groups) cleanup(() => quietly(() => teacher.deleteGroup(group.id)));
+    if (created.groupingId) cleanup(() => quietly(() => teacher.deleteGrouping(created.groupingId!)));
+    assert.deepEqual(created.groups.map((g) => g.name), preview.groups.map((g) => g.name));
+    // The same seed, the same groups: each created group has the members its preview showed.
+    const nameOf = new Map(students.map((s) => [s.userId, s.fullName]));
+    assert.deepEqual(created.groups.map((g) => g.members.map((id) => nameOf.get(id)).sort()), preview.groups.map((g) => [...g.members].sort()));
+    const listed = await teacher.groups(scratch.id);
+    for (const group of created.groups) assert.deepEqual([...(listed.find((g) => g.id === group.id)?.members ?? [])].sort(), [...group.members].sort());
+    assert.ok(created.groupingId);
+    assert.deepEqual([...((await teacher.groupings(scratch.id)).find((g) => g.id === created.groupingId)?.groupIds ?? [])].sort(), created.groups.map((g) => g.id).sort());
+
+    // What the form refuses: the same names again, a scheme without # or @, a role it doesn't offer; and a student.
+    await assert.rejects(teacher.autoCreateGroups(scratch.id, { ...options, newGrouping: undefined, preview: true }), (e: Error) => e instanceof FormError && /namingscheme/.test(e.message));
+    await assert.rejects(teacher.autoCreateGroups(scratch.id, { ...options, naming: "Driver check plain", newGrouping: undefined }), (e: Error) => e instanceof FormError && /namingscheme/.test(e.message));
+    await assert.rejects(teacher.autoCreateGroups(scratch.id, { ...options, roleId: 999 }), (e: Error) => e instanceof MoodleError && e.code === "invalid-input");
+    await assert.rejects((await as("student")).autoCreateGroups(scratch.id, options), (e: Error) => e instanceof MoodleError && e.code === "not-available" && /moodle\/course:managegroups/.test(e.message));
+  });
+
+  it("importGroups: two groups from a CSV, a third already in the course skipped", SLOW, async () => {
+    const teacher = await as("teacher");
+    const { groupId } = await teacher.createGroup(scratch.id, { name: `Driver check taken ${stamp}` });
+    cleanup(() => quietly(() => teacher.deleteGroup(groupId)));
+    const dir = await mkdtemp(path.join(tmpdir(), "groups-"));
+    const file = path.join(dir, "groups.csv");
+    await writeFile(file, `groupname,description\nDriver check csv ${stamp} 1,First\nDriver check csv ${stamp} 2,Second\nDriver check taken ${stamp},Again\n`);
+    const result = await teacher.importGroups(scratch.id, file);
+    for (const group of result.groups) cleanup(() => quietly(() => teacher.deleteGroup(group.id)));
+    assert.deepEqual(result.groups.map((g) => g.name).sort(), [`Driver check csv ${stamp} 1`, `Driver check csv ${stamp} 2`]);
+    assert.equal(result.problems.length, 1);
+    assert.ok(result.problems[0]!.includes(`Driver check taken ${stamp}`) && !/Dismiss/.test(result.problems[0]!), result.problems[0]);
+    const listed = await teacher.groups(scratch.id);
+    for (const group of result.groups) assert.ok(listed.some((g) => g.id === group.id));
+    await writeFile(file, "name\nDriver check wrong column\n");
+    await assert.rejects(teacher.importGroups(scratch.id, file), (e: Error) => e instanceof MoodleError && e.code === "invalid-input");
+    await assert.rejects((await as("student")).importGroups(scratch.id, file), (e: Error) => e instanceof MoodleError && e.code === "not-available");
   });
 
   it("enrolmentMethods: the scratch course's manual enrolment, with its users", SLOW, async () => {
