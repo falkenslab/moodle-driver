@@ -264,6 +264,7 @@ export {
 } from "./areas/completion/course.js";
 export { participants, participantFilters, groups, NoParticipantsError, type Participant, type ParticipantOptions, type CourseGroup } from "./areas/participants/participants.js";
 export { createGroup, updateGroup, deleteGroup, setGroupMembers, groupings, createGrouping, deleteGrouping, setGroupingGroups, type GroupSettings, type GroupingSettings, type Grouping } from "./areas/participants/groups.js";
+export { autoCreateGroups, importGroups, type AutoCreateGroupsOptions, type AutoGroupsPreview, type AutoGroupsCreated, type PreviewedGroup, type GroupsImport } from "./areas/participants/autogroups.js";
 export { enrolmentMethods, setEnrolmentMethod, type EnrolmentMethod, type EnrolmentMethodSettings } from "./areas/participants/methods.js";
 export { potentialUsers, enrolUsers, unenrolUser, setUserRoles, EnrolmentError, type PotentialUser } from "./areas/participants/enrolments.js";
 export { notes, addNote, editNote, deleteNote, NoteError, NotesDisabledError, type ParticipantNote, type NoteContext, type NoteOptions, type NoteFields, type NoteChange } from "./areas/participants/notes.js";

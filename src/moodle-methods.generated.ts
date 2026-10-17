@@ -257,6 +257,48 @@ export interface MoodleMethods {
    */
   assignmentSubmissions(activityId: number, options?: import("./areas/assignments/grading.js").SubmissionOptions): Promise<import("./areas/assignments/grading.js").Submission[] | import("./core/paging.js").ListPage<import("./areas/assignments/grading.js").Submission>>;
   /**
+   * Splits a course's participants into groups at once, as Moodle's "Auto-create groups" does: `count`
+   * groups, or groups of `count` members, named by `naming`, filled at random or in name or ID number
+   * order (or left empty), from a role, a cohort, a grouping or a group, optionally into an existing or
+   * new grouping. With `preview` it returns the groups and members Moodle would make and writes
+   * nothing (members by full name, as the preview lists them); a random allocation is the same when
+   * the preview's `seed` is given back (confirmed empirically, Moodle 5.2). Otherwise it returns the groups created with their ids and
+   * members' user ids, and the grouping's id. Throws `MoodleError` (`not-available`) when the person
+   * can't manage the course's groups (moodle/course:managegroups), `invalid-input` for a role, cohort,
+   * grouping or group the form doesn't offer, and `FormError` with Moodle's reason when it refuses:
+   * no one to allocate, more groups than people, a naming scheme without one `#` or `@`, a group or
+   * grouping name already in the course.
+   */
+  autoCreateGroups(courseId: number, options: import("./areas/participants/autogroups.js").AutoCreateGroupsOptions & { preview: true; }): Promise<import("./areas/participants/autogroups.js").AutoGroupsPreview>;
+  /**
+   * Splits a course's participants into groups at once, as Moodle's "Auto-create groups" does: `count`
+   * groups, or groups of `count` members, named by `naming`, filled at random or in name or ID number
+   * order (or left empty), from a role, a cohort, a grouping or a group, optionally into an existing or
+   * new grouping. With `preview` it returns the groups and members Moodle would make and writes
+   * nothing (members by full name, as the preview lists them); a random allocation is the same when
+   * the preview's `seed` is given back (confirmed empirically, Moodle 5.2). Otherwise it returns the groups created with their ids and
+   * members' user ids, and the grouping's id. Throws `MoodleError` (`not-available`) when the person
+   * can't manage the course's groups (moodle/course:managegroups), `invalid-input` for a role, cohort,
+   * grouping or group the form doesn't offer, and `FormError` with Moodle's reason when it refuses:
+   * no one to allocate, more groups than people, a naming scheme without one `#` or `@`, a group or
+   * grouping name already in the course.
+   */
+  autoCreateGroups(courseId: number, options: import("./areas/participants/autogroups.js").AutoCreateGroupsOptions & { preview?: false | undefined; }): Promise<import("./areas/participants/autogroups.js").AutoGroupsCreated>;
+  /**
+   * Splits a course's participants into groups at once, as Moodle's "Auto-create groups" does: `count`
+   * groups, or groups of `count` members, named by `naming`, filled at random or in name or ID number
+   * order (or left empty), from a role, a cohort, a grouping or a group, optionally into an existing or
+   * new grouping. With `preview` it returns the groups and members Moodle would make and writes
+   * nothing (members by full name, as the preview lists them); a random allocation is the same when
+   * the preview's `seed` is given back (confirmed empirically, Moodle 5.2). Otherwise it returns the groups created with their ids and
+   * members' user ids, and the grouping's id. Throws `MoodleError` (`not-available`) when the person
+   * can't manage the course's groups (moodle/course:managegroups), `invalid-input` for a role, cohort,
+   * grouping or group the form doesn't offer, and `FormError` with Moodle's reason when it refuses:
+   * no one to allocate, more groups than people, a naming scheme without one `#` or `@`, a group or
+   * grouping name already in the course.
+   */
+  autoCreateGroups(courseId: number, options: import("./areas/participants/autogroups.js").AutoCreateGroupsOptions): Promise<import("./areas/participants/autogroups.js").AutoGroupsPreview | import("./areas/participants/autogroups.js").AutoGroupsCreated>;
+  /**
    * Awards a badge by hand to a participant, through its manual award page, as the person's role in its
    * manual criterion (`roleId` when the criterion names several the person holds; the first otherwise).
    * The badge must be enabled and have a manual criterion naming a role the person holds. Moodle issues
@@ -1009,6 +1051,16 @@ export interface MoodleMethods {
    * capabilities when the person can't import grades.
    */
   importGrades(courseId: number, file: string, options: import("./areas/grades/import.js").ImportGradesOptions): Promise<import("./areas/grades/import.js").ImportGradesResult>;
+  /**
+   * Creates groups from a CSV file, as Moodle's "Import groups" does: a `groupname` column, and
+   * optionally `description`, `enrolmentkey`, `groupidnumber`, `groupingname` (made when missing),
+   * `enablemessaging`, `coursename` or `idnumber` (another course's short name or ID number). Moodle
+   * creates groups only, without members. Returns the groups new in this course, and Moodle's
+   * messages for the rows with a problem (skipped, or created without their ID number). Throws `MoodleError` (`not-available`) when the person can't
+   * manage the course's groups (moodle/course:managegroups), and `invalid-input` with Moodle's reason
+   * when it can't read the file (an unknown column, no `groupname`, no rows).
+   */
+  importGroups(courseId: number, file: string, options?: { delimiter?: "comma" | "semicolon" | "tab" | "colon" | undefined; }): Promise<import("./areas/participants/autogroups.js").GroupsImport>;
   /**
    * Imports questions into a bank from a GIFT or Moodle XML file (a local path) or text, through the
    * bank's import form; returns the questions created. A file Moodle can't parse comes back as a

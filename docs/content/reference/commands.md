@@ -479,6 +479,32 @@ moodle assignment-submissions <activityId> [--options]
 | `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
 | `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
+## autoCreateGroups
+
+Splits a course's participants into groups at once, as Moodle's "Auto-create groups" does: `count` groups, or groups of `count` members, named by `naming`, filled at random or in name or ID number order (or left empty), from a role, a cohort, a grouping or a group, optionally into an existing or new grouping. With `preview` it returns the groups and members Moodle would make and writes nothing (members by full name, as the preview lists them); a random allocation is the same when the preview's `seed` is given back (confirmed empirically, Moodle 5.2). Otherwise it returns the groups created with their ids and members' user ids, and the grouping's id. Throws `MoodleError` (`not-available`) when the person can't manage the course's groups (moodle/course:managegroups), `invalid-input` for a role, cohort, grouping or group the form doesn't offer, and `FormError` with Moodle's reason when it refuses: no one to allocate, more groups than people, a naming scheme without one `#` or `@`, a group or grouping name already in the course.
+
+```bash
+moodle auto-create-groups <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--by` (required) | `"groups" \| "members"` | `"groups"`: `count` groups; `"members"`: groups of `count` members each. |
+| `--count` (required) | `number` |  |
+| `--naming` (required) | `string` | The groups' names: `#` is replaced by their number (1, 2…), `@` by a letter (A, B…); exactly one of them, unless a single group is made. |
+| `--allocation` | `"none" \| "random" \| "firstname" \| "lastname" \| "idnumber"` | How members go into groups (Moodle's default: `"random"`); `"none"` makes the groups empty. |
+| `--role-id` | `number` | Only participants with this role (its id); 0 for every role. Moodle's default: the student role. |
+| `--cohort-id` | `number` | Only members of this cohort (one with members enrolled in the course). |
+| `--from-grouping-id` | `number` | Only members of this grouping's groups. |
+| `--from-group-id` | `number` | Only members of this group. |
+| `--not-in-group` | `boolean` | Only participants in no group yet (not with `fromGroupingId` or `fromGroupId`). |
+| `--no-small-groups` | `boolean` | With `by: "members"`, spreads the members of a last group that would be too small over the others instead. |
+| `--grouping-id` | `number` | Puts the new groups in this existing grouping. |
+| `--new-grouping` | `string` | Puts the new groups in a new grouping of this name. |
+| `--preview` | `boolean` | Only shows the groups Moodle would make, creating nothing. |
+| `--seed` | `number` | The random allocation's seed: a preview's `seed` given back makes the same groups. |
+
 ## awardBadge
 
 Awards a badge by hand to a participant, through its manual award page, as the person's role in its manual criterion (`roleId` when the criterion names several the person holds; the first otherwise). The badge must be enabled and have a manual criterion naming a role the person holds. Moodle issues the badge when its criteria are met: at once when the manual award is enough (its only criterion, or any one earning it), else once the rest are met too (confirmed empirically, 5.2). A participant awarded already is left as is. Returns the badge afterwards. Throws `BadgeError` when the person can't award it (it takes moodle/badges:awardbadge and one of the criterion's roles), when it isn't enabled or has no manual criterion, and when Moodle doesn't award it (the user isn't a participant).
@@ -1928,6 +1954,20 @@ moodle import-grades <courseId> <file> --options
 | `--preview` | `boolean` | Only upload the file and give Moodle's preview of it, without importing anything. |
 | `--separator` | `"comma" \| "semicolon" \| "tab" \| "colon"` | The file's separator; a comma when left out. |
 | `--encoding` | `string` | The file's encoding, one Moodle offers; UTF-8 when left out. |
+
+## importGroups
+
+Creates groups from a CSV file, as Moodle's "Import groups" does: a `groupname` column, and optionally `description`, `enrolmentkey`, `groupidnumber`, `groupingname` (made when missing), `enablemessaging`, `coursename` or `idnumber` (another course's short name or ID number). Moodle creates groups only, without members. Returns the groups new in this course, and Moodle's messages for the rows with a problem (skipped, or created without their ID number). Throws `MoodleError` (`not-available`) when the person can't manage the course's groups (moodle/course:managegroups), and `invalid-input` with Moodle's reason when it can't read the file (an unknown column, no `groupname`, no rows).
+
+```bash
+moodle import-groups <courseId> <file> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `file` | `string` |  |
+| `--delimiter` | `"comma" \| "semicolon" \| "tab" \| "colon"` |  |
 
 ## importQuestions
 

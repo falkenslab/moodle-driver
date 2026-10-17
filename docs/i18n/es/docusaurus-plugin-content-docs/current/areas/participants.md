@@ -1,6 +1,7 @@
 # Participantes
 
 Esta área enumera quién está en un curso: sus participantes con sus roles y grupos (`participants`), sus grupos con sus miembros (`groups`) y los roles y grupos por los que filtra la página de participantes (`participantFilters`). Un profesor también cambia quién está en él: matriculando usuarios (`potentialUsers`, `enrolUsers`), dándolos de baja (`unenrolUser`), dando o quitando roles (`setUserRoles`), creando grupos y agrupamientos y eligiendo sus miembros (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…), fijando cómo entra la gente: los métodos de matriculación del curso (`enrolmentMethods`, `setEnrolmentMethod`), y guardando anotaciones sobre los participantes (`notes`, `addNote`, `editNote`, `deleteNote`). Leer es sobre todo para profesores, pero funciona para cualquiera que pueda abrir la página de participantes del curso: un estudiante ve lo que Moodle le muestra ahí (en un curso con grupos separados, solo su propio grupo).
+Esta área enumera quién está en un curso: sus participantes con sus roles y grupos (`participants`), sus grupos con sus miembros (`groups`) y los roles y grupos por los que filtra la página de participantes (`participantFilters`). Un profesor también cambia quién está en él: matriculando usuarios (`potentialUsers`, `enrolUsers`), dándolos de baja (`unenrolUser`), dando o quitando roles (`setUserRoles`), creando grupos y agrupamientos y eligiendo sus miembros (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…), o muchos a la vez (`autoCreateGroups`, `importGroups`), y fijando cómo entra la gente: los métodos de matriculación del curso (`enrolmentMethods`, `setEnrolmentMethod`). Leer es sobre todo para profesores, pero funciona para cualquiera que pueda abrir la página de participantes del curso: un estudiante ve lo que Moodle le muestra ahí (en un curso con grupos separados, solo su propio grupo).
 
 **Términos:** [participante](../reference/glossary.md#participant), [rol](../reference/glossary.md#role), [grupo](../reference/glossary.md#group).
 
@@ -165,6 +166,70 @@ interface Grouping {
 
 Un grupo o agrupamiento que no existe, o que la persona no puede gestionar, lanza un `MoodleError` (código `not-found`) con el mensaje de Moodle. `groups` lee los grupos con sus miembros.
 
+## Crear grupos de una vez {#creating-groups-at-once}
+
+Un profesor reparte los participantes de un curso en grupos de una sola vez con el formulario "Crear grupos automáticamente" de Moodle (`group/autogroup.php`), viéndolos antes como hace su botón "Vista previa", o crea grupos a partir de un archivo CSV con "Importar grupos" (`group/import.php`). Ninguno tiene un servicio abierto a AJAX: el driver rellena y envía los formularios.
+
+```ts
+function autoCreateGroups(context: BrowserContext, siteUrl: string, courseId: number, options: AutoCreateGroupsOptions & { preview: true }): Promise<AutoGroupsPreview>;
+function autoCreateGroups(context: BrowserContext, siteUrl: string, courseId: number, options: AutoCreateGroupsOptions & { preview?: false }): Promise<AutoGroupsCreated>;
+function importGroups(context: BrowserContext, siteUrl: string, courseId: number, file: string, options?: { delimiter?: "comma" | "semicolon" | "colon" | "tab" }): Promise<GroupsImport>;
+
+interface AutoCreateGroupsOptions {
+  by: "groups" | "members"; // `count` grupos, o grupos de `count` miembros
+  count: number;
+  naming: string; // "Equipo #" (1, 2…) o "Equipo @" (A, B…)
+  allocation?: "random" | "firstname" | "lastname" | "idnumber" | "none"; // por defecto "random"; "none" los deja vacíos
+  roleId?: number; // a quién se reparte: los participantes con este rol (0: todos los roles); por defecto en Moodle, el rol de estudiante
+  cohortId?: number; // solo los miembros de esta cohorte
+  fromGroupingId?: number; // solo los miembros de los grupos de este agrupamiento
+  fromGroupId?: number; // solo los miembros de este grupo
+  notInGroup?: boolean; // solo quienes aún no están en ningún grupo
+  noSmallGroups?: boolean; // con by: "members", sin un último grupo demasiado pequeño
+  groupingId?: number; // pone los grupos nuevos en este agrupamiento
+  newGrouping?: string; // o en un agrupamiento nuevo con este nombre
+  preview?: boolean; // solo muestra lo que Moodle haría
+  seed?: number; // la semilla del reparto aleatorio: la de una vista previa, para crear los mismos grupos
+}
+
+interface AutoGroupsPreview {
+  changed: string;
+  groups: { name: string; members: string[]; nameTaken: boolean }[]; // miembros por nombre completo
+  seed: number;
+}
+
+interface AutoGroupsCreated {
+  changed: string;
+  groups: { id: number; name: string; members: number[] }[]; // miembros por id de usuario
+  groupingId?: number;
+  seed: number;
+}
+
+interface GroupsImport {
+  changed: string;
+  groups: { id: number; name: string }[];
+  problems: string[]; // el mensaje de Moodle de cada fila con un problema
+}
+```
+
+- `autoCreateGroups` con `preview` no escribe nada y devuelve los grupos como los enumera la vista previa de Moodle: los nombres, los miembros por nombre completo (la vista previa no muestra ids; los campos de identidad que añade Moodle, como un correo, se quitan) y `nameTaken` para un nombre que ya está en el curso (Moodle entonces no crearía ninguno). Un reparto aleatorio depende de la semilla del formulario: devuelve el `seed` de la vista previa para crear exactamente los grupos vistos.
+- Sin `preview` los crea, como hace el botón "Enviar" del formulario, y los devuelve con sus ids y los ids de usuario de sus miembros (leídos de nuevo en la página de miembros de cada grupo), y el id del agrupamiento cuando se dio `groupingId` o `newGrouping`. Moodle crea todos o ninguno: cuando uno de los nombres ya está usado, quita lo que había hecho y el driver lanza `FormError`.
+- `roleId`, `cohortId`, `fromGroupingId`, `fromGroupId` y `groupingId` deben ser de los que ofrece el formulario (una cohorte con miembros matriculados en el curso, un agrupamiento o grupo del curso); los demás lanzan `MoodleError` (código `invalid-input`) en vez de enviarse como nada. Los rechazos del propio Moodle llegan como `FormError` por campo: `roleid` cuando no hay nadie a quien repartir, `number` para más grupos que personas, `namingscheme` para un esquema sin exactamente un `#` o una `@` (salvo que se cree un solo grupo) o un nombre ya usado, `groupingname` para un nombre de agrupamiento ya usado.
+- `importGroups` sube el archivo al formulario de importación: un CSV con una columna `groupname` y, si se quiere, `description`, `enrolmentkey`, `groupidnumber`, `groupingname` (el agrupamiento se crea si falta), `enablemessaging`, y `coursename` o `idnumber` para otro curso (por nombre corto o número ID). Moodle crea solo grupos, nunca miembros. Devuelve los grupos nuevos en este curso y, en `problems`, el mensaje de Moodle de cada fila que saltó (un nombre que ya está en el curso, un curso desconocido) o que creó sin su número ID (uno que tiene otro grupo). Un archivo que Moodle no puede leer (una columna desconocida, sin `groupname`, sin filas) lanza `MoodleError` (código `invalid-input`) con el motivo de Moodle.
+- Los dos necesitan `moodle/course:managegroups` (los profesores con permiso de edición la tienen): una persona sin ella recibe un `MoodleError` (código `not-available`) que la nombra, con el rechazo de Moodle.
+
+Reparte los estudiantes de un curso en dos grupos aleatorios de un agrupamiento nuevo, tras revisar la vista previa:
+
+```ts
+const options = { by: "groups", count: 2, naming: "Equipo @", newGrouping: "Equipos" } as const;
+const preview = await moodle.autoCreateGroups(3, { ...options, preview: true });
+for (const group of preview.groups) console.log(group.name, group.members.join(", "));
+if (!preview.groups.some((g) => g.nameTaken)) {
+  const created = await moodle.autoCreateGroups(3, { ...options, seed: preview.seed });
+  console.log(created.changed);
+}
+```
+
 ## Métodos de matriculación {#enrolment-methods}
 
 Cómo entra la gente en un curso: matriculación manual, automatriculación (con clave o sin ella), acceso de invitados… leídos y fijados en la página "Métodos de matriculación" del curso (`enrol/instances.php`) y en el formulario de cada método (`enrol/editinstance.php`); ningún servicio para ellos está abierto a AJAX.
@@ -295,7 +360,8 @@ De `DATA_CATEGORIES` (consulta [Categorías de datos](../concepts/data-categorie
 - `participantFilters`: `course-content` (los roles y grupos del curso, los datos de nadie).
 - `potentialUsers`: `others-personal`.
 - `createGroup`, `updateGroup`, `deleteGroup`, `groupings`, `createGrouping`, `deleteGrouping`, `setGroupingGroups`: `course-content`.
-- `setGroupMembers`: `others-personal` y `others-write`.
+- `setGroupMembers`, `autoCreateGroups`: `others-personal` y `others-write`.
+- `importGroups`: `course-content`.
 - `enrolmentMethods`, `setEnrolmentMethod`: `course-content`.
 - `enrolUsers`, `unenrolUser`, `setUserRoles`: `others-personal` y `others-write` (decidir quién está en el curso y con qué rol).
 - `notes`: `others-personal`.
