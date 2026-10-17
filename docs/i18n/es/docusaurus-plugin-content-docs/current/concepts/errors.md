@@ -86,6 +86,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `BookError` | [Contenido](../areas/content.md#a-books-chapters): no es un libro que la persona pueda leer o editar, o el capítulo no está en él |
 | `ActivitySettingsError` | [Actividades](../areas/activities.md): no hay formulario de configuración que leer |
 | `CourseError` | [Cursos](../areas/courses.md): la configuración del curso no se puede cambiar, o no se puede reiniciar |
+| `BlockError` | [Bloques](../areas/blocks.md): falta una capacidad de bloques (nombrada), un tipo de bloque que la página del curso no ofrece, no existe ese bloque o esa región |
 | `BackupError` | [Copia, copia de seguridad y restauración](../areas/copy-backup-restore.md): Moodle se negó, o no terminó a tiempo |
 | `SubmissionError` | [Tareas](../areas/assignments.md): nada que entregar, no se puede editar la entrega… |
 | `NotAnAssignmentError`, `GradingError` | [Calificación](../areas/grading.md): no es una tarea que la persona pueda calificar; Moodle no guardó la calificación |

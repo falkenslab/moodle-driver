@@ -83,6 +83,7 @@ const sidebars: SidebarsConfig = {
       label: "Moodle areas",
       items: [
         "areas/courses",
+        "areas/blocks",
         "areas/copy-backup-restore",
         "areas/content",
         "areas/activities",

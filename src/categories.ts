@@ -131,6 +131,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   courseState: ["course-content", "own"],
   courseStructure: ["course-content", "own"],
   activityDetails: CONTENT,
+  // A course page's blocks: what teachers put beside the course.
+  courseBlocks: CONTENT,
+  addBlock: CONTENT,
+  configureBlock: CONTENT,
+  moveBlock: CONTENT,
+  deleteBlock: CONTENT,
   courseActivityTypes: CONTENT,
   listAssignments: CONTENT,
   activityContent: CONTENT,

@@ -63,6 +63,23 @@ moodle activity-settings <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## addBlock
+
+Adds a block to a course's page, as its "Add a block" does in editing mode (turned on for the work and back off after, when it was off): a text block (`html`) with its title and content (local images in `embed`), or another block by its type. Returns the block. Throws `BlockError` when the person can't edit the course's blocks (moodle/site:manageblocks), when the page doesn't offer the type (not installed or disabled, already there and allowed once, or the person lacks block/<type>:addinstance), or for a region the page doesn't have; `FormError` when the type's form has no title or content field.
+
+```bash
+moodle add-block <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--type` (required) | `string` | The block type, its plugin's name without `block_`: `html` for a text block, `calendar_upcoming`, `recent_activity`… |
+| `--region` | `string` | The page region (`side-pre`); by default the page's default one. |
+| `--title` | `string` | A text block's title (its configure form's title field). |
+| `--content` | `string` | A text block's content, HTML. |
+| `--embed` | `string[]` | Local files the content names (`<img src="shot.png">`), put in it as Moodle's editor does. |
+
 ## addBookChapter
 
 Adds a chapter to a book through Moodle's chapter form, at the end or after another chapter, as a subchapter when asked, hidden when asked, with `embed`'s local files in its content. Gives the new chapter's id and the chapters afterwards. Throws `BookError` when the person can't edit the book or `afterChapterId` isn't in it.
@@ -573,6 +590,23 @@ moodle completion-report <courseId> [--options]
 | `--group` | `number` |  |
 | `--user-ids` | `number[]` |  |
 
+## configureBlock
+
+Changes a block's configuration through its configure form, in editing mode (turned on for the work and back off after, when it was off): a text block's title and content, or any field of the form by its name. Returns the block afterwards. Throws `BlockError` when the page has no such block or the person can't edit its blocks, `FormError` naming a field the form doesn't have or Moodle refused.
+
+```bash
+moodle configure-block <courseId> <blockId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `blockId` | `number` |  |
+| `--title` | `string` | A text block's title (its configure form's `config_title`). |
+| `--content` | `string` | A text block's content, HTML (its form's `config_text`). |
+| `--embed` | `string[]` | Local files the content names (`<img src="shot.png">`), put in it as Moodle's editor does. |
+| `--settings` | `Record<string, FieldValue>` | Any other field of the block's configure form, by its name, as `setFields` takes them (`bui_visible`, `config_…`). |
+
 ## conversation
 
 A conversation's messages, oldest first, as text, and its members as `conversations()` gives them: everyone but the person, whether they wrote in it or not (the person alone in their own conversation). With `limit`, `messages` is a page of them (see "Long lists" in the docs' concepts) counted from the newest: the first page is the latest messages, `more` says there are older ones, and each page's messages still come oldest first. Moodle's service returns only the page.
@@ -651,6 +685,18 @@ A course's badges, as its badges page lists them: each one's name, description, 
 
 ```bash
 moodle course-badges <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+
+## courseBlocks
+
+The blocks on a course's page: each one's id, type (`html` for a text block, `calendar_upcoming`…), title, region and, for a text block, its content (HTML). Whom can edit the course's blocks get them all, hidden and empty ones too, with their weight: the page is read in editing mode (turned on for the read and back off after, when it was off) and each block's configure form gives its weight. Others get the blocks the page shows them, without weights. Throws `BlockError` when the course page can't be opened.
+
+```bash
+moodle course-blocks <courseId>
 ```
 
 | Argument | Type | Description |
@@ -922,6 +968,19 @@ moodle delete-activity <courseId> <activityId>
 | --- | --- | --- |
 | `courseId` | `number` |  |
 | `activityId` | `number` |  |
+
+## deleteBlock
+
+Deletes a block from the course's page, as its delete action does once confirmed. Throws `BlockError` when the page has no such block, or the person can't delete it (moodle/site:manageblocks, and block/<type>:addinstance for most types).
+
+```bash
+moodle delete-block <courseId> <blockId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `blockId` | `number` |  |
 
 ## deleteBookChapter
 
@@ -1939,6 +1998,21 @@ moodle message-participants <courseId> <text> [--options]
 | `courseId` | `number` |  |
 | `text` | `string` |  |
 | `--user-ids` (required) | `number[]` |  |
+
+## moveBlock
+
+Moves a block to a region of the course's page and a weight in it (lower comes first; without one, after the region's blocks), as the block's move action does; Moodle shifts the blocks around it to make room. Returns the block afterwards. Throws `BlockError` when the page has no such block or region, or the person can't edit its blocks.
+
+```bash
+moodle move-block <courseId> <blockId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `blockId` | `number` |  |
+| `--region` | `string` |  |
+| `--weight` | `number` |  |
 
 ## moveBookChapter
 

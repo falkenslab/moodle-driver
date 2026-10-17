@@ -86,6 +86,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `BookError` | [Content](../areas/content.md#a-books-chapters): not a book the person can read or edit, or the chapter isn't in it |
 | `ActivitySettingsError` | [Activities](../areas/activities.md): no settings form to read |
 | `CourseError` | [Courses](../areas/courses.md): the course's settings can't be changed, or it can't be reset |
+| `BlockError` | [Blocks](../areas/blocks.md): a missing block capability (named), a block type the course page doesn't offer, no such block or region |
 | `BackupError` | [Copy, backup and restore](../areas/copy-backup-restore.md): Moodle refused, or didn't finish in time |
 | `SubmissionError` | [Assignments](../areas/assignments.md): nothing to submit, can't edit the submission… |
 | `NotAnAssignmentError`, `GradingError` | [Grading](../areas/grading.md): not an assignment the person can grade; Moodle didn't save the grade |
