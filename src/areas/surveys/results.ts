@@ -5,7 +5,8 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { siteFetch } from "../../core/http.js";
 import { inPage } from "../../core/inPage.js";
-import { NotLoggedInError, moodleErrorMessage, openSitePage } from "../../core/session.js";
+import { moodleErrorMessage, openSitePage } from "../../core/session.js";
+import { MoodleError } from "../../core/errors.js";
 import { SurveyError, surveyType, type SurveyType } from "./surveys.js";
 
 /** One response to a survey: who gave it, where the survey names people. */
@@ -417,7 +418,7 @@ async function openQuestionnairePage(context: BrowserContext, siteUrl: string, a
   try {
     page = await openSitePage(context, siteUrl, path);
   } catch (error) {
-    if (error instanceof NotLoggedInError && (await siteFetch(context, new URL(path, siteUrl).href)).status === 404) {
+    if (error instanceof MoodleError && error.code === "not-found") {
       throw new SurveyError("The questionnaire plugin (mod_questionnaire) isn't installed on this site.");
     }
     throw error;

@@ -1,8 +1,7 @@
 import type { BrowserContext, Page } from "playwright-core";
 import { setFields } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
-import { siteFetch } from "../../core/http.js";
-import { NotLoggedInError, openSitePage } from "../../core/session.js";
+import { openSitePage } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
 
 /** The two survey modules: the questionnaire plugin (mod_questionnaire) and Moodle's feedback. */
@@ -175,7 +174,7 @@ export async function surveyType(context: BrowserContext, siteUrl: string, activ
       page = await openSitePage(context, siteUrl, path, { follow: false });
     } catch (error) {
       // A site without the questionnaire plugin answers with the web server's 404, not a Moodle page.
-      if (error instanceof NotLoggedInError && (await siteFetch(context, new URL(path, siteUrl).href)).status === 404) continue;
+      if (error instanceof MoodleError && error.code === "not-found") continue;
       throw error;
     }
     try {
