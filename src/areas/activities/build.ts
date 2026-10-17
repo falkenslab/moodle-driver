@@ -155,13 +155,17 @@ async function changeFiles(page: Page, draft: string, changes: FileChanges): Pro
  * Creates an activity or resource of any type at the end of a section, through Moodle's own form,
  * hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file
  * resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or
- * an H5P activity (`type: "h5pactivity"`) takes the first as its package.
+ * an H5P activity (`type: "h5pactivity"`) takes the first as its package. An external tool activity
+ * (`type: "lti"`) is made from one of the course's tools, `toolId` (`externalTools` lists them):
+ * Moodle 5 no longer configures a tool in the activity itself.
  */
 export async function createActivity(
   context: BrowserContext,
   siteUrl: string,
-  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[] },
+  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[]; toolId?: number },
 ): Promise<CourseChange> {
+  if (input.type === "lti" && input.toolId === undefined) throw new MoodleError("An external tool activity is made from a tool: give its toolId (externalTools lists the course's tools).", "invalid-input");
+  if (input.toolId !== undefined && input.type !== "lti") throw new MoodleError(`toolId is for an external tool activity (type "lti"), not a ${input.type}.`, "invalid-input");
   if (input.files) await checkLocalFiles(localPaths(input.files));
   if (input.embed) await checkEmbeds(richTextsOf(input), input.embed);
   const before = await courseState(context, siteUrl, input.courseId);
@@ -170,7 +174,9 @@ export async function createActivity(
 
   // A shared question bank (qbank) never shows on the course page: the banks page tells the new one.
   const bankIds = input.type === "qbank" ? new Set((await questionBanks(context, siteUrl, input.courseId)).map((bank) => bank.id)) : undefined;
-  const page = await openForm(context, siteUrl, `course/modedit.php?add=${input.type}&course=${input.courseId}&section=${target.number}&return=0`);
+  // The tool comes in the form's URL, as the activity chooser's link for it gives it.
+  const tool = input.toolId !== undefined ? `&typeid=${input.toolId}` : "";
+  const page = await openForm(context, siteUrl, `course/modedit.php?add=${input.type}&course=${input.courseId}&section=${target.number}&return=0${tool}`);
   try {
     if (input.files && input.files.length > 0) {
       // A SCORM or an H5P activity takes one package, in a field of its own.

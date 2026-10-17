@@ -56,7 +56,8 @@ export type MoodleErrorCode =
   | "not-a-glossary"
   | "glossary"
   | "badge"
-  | "badges-disabled";
+  | "badges-disabled"
+  | "external-tool";
 
 /** Every error the driver throws on purpose: one class to catch, a stable `code` to tell them apart. */
 export class MoodleError extends Error {

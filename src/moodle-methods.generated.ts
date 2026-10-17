@@ -63,6 +63,14 @@ export interface MoodleMethods {
    */
   addDatabaseField(activityId: number, field: import("./areas/databases/fields.js").DatabaseFieldInput): Promise<{ changed: string; fieldId: number; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
   /**
+   * Adds an external tool to a course through Moodle's course tool form, by its URL, as an LTI 1.0/1.1
+   * tool unless `settings` says otherwise (an LTI 1.3 tool needs its keys, which `settings` takes by
+   * field name). Moodle shows it in the activity chooser. Moodle fetches the URL when it saves, to see
+   * whether it's a cartridge (an XML description of the tool); one its network settings block is saved
+   * as given (confirmed empirically, 5.2). Teachers only (`mod/lti:addcoursetool`).
+   */
+  addExternalTool(courseId: number, tool: import("./areas/lti/tools.js").NewExternalTool): Promise<{ changed: string; tool: import("./areas/lti/tools.js").ExternalTool; }>;
+  /**
    * Adds an item to a feedback through its questions page, after item `after` (0 puts it first; by
    * default it goes last): a question of any type the feedback's "Add question" menu offers, with
    * its options and settings, a label with its contents, or a page break or a CAPTCHA (which Moodle
@@ -488,9 +496,11 @@ export interface MoodleMethods {
    * Creates an activity or resource of any type at the end of a section, through Moodle's own form,
    * hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file
    * resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or
-   * an H5P activity (`type: "h5pactivity"`) takes the first as its package.
+   * an H5P activity (`type: "h5pactivity"`) takes the first as its package. An external tool activity
+   * (`type: "lti"`) is made from one of the course's tools, `toolId` (`externalTools` lists them):
+   * Moodle 5 no longer configures a tool in the activity itself.
    */
-  createActivity(input: import("./areas/activities/build.js").ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | import("./core/forms.js").DraftUpload)[] | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  createActivity(input: import("./areas/activities/build.js").ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | import("./core/forms.js").DraftUpload)[] | undefined; toolId?: number | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
    * Creates a course badge, disabled and without criteria, through Moodle's new badge form: its name,
    * description and image (a local file, uploaded as the form's file picker does). The issuer is the
@@ -605,6 +615,12 @@ export interface MoodleMethods {
   deleteDatabaseField(activityId: number, fieldId: number): Promise<{ changed: string; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
   /** Deletes a calendar event the person can manage. */
   deleteEvent(eventId: number): Promise<{ changed: string; }>;
+  /**
+   * Deletes one of the course's own external tools, as its tools page's delete action does. The
+   * activities made from it stay, but can't be launched any more (Moodle warns with how many use it).
+   * A site tool is the administrator's: it can't be deleted here. Teachers only (`mod/lti:addcoursetool`).
+   */
+  deleteExternalTool(courseId: number, toolId: number): Promise<{ changed: string; }>;
   /**
    * Deletes an item of a feedback, as its questions page's delete action does once confirmed; the
    * answers people gave to it go with it, as in Moodle. Returns the items left, in order.
@@ -815,6 +831,20 @@ export interface MoodleMethods {
    * version only.
    */
   exportQuestions(activityId: number, options: { format: "xml" | "gift"; categoryId?: number | undefined; file: string; }): Promise<import("./core/files.js").DownloadedFile>;
+  /**
+   * The URL that launches an external tool activity for the person (`mod/lti/launch.php`), for the
+   * person to open in their browser: opening it logs the view and sends the person to the tool.
+   * Moodle's launch page is read once over HTTP to check the person may launch it (`mod/lti:view`) and
+   * that it is an external tool; its form, which would send the person's launch to the tool, is never
+   * submitted, so nothing reaches the tool.
+   */
+  externalToolLaunchUrl(activityId: number): Promise<string>;
+  /**
+   * The external tools a course may use, as its "LTI External tools" page lists them: the site's
+   * preconfigured tools and the course's own, by name. Teachers only (it takes
+   * `mod/lti:addpreconfiguredinstance`); a course tool's URL comes from its form, one page each.
+   */
+  externalTools(courseId: number): Promise<import("./areas/lti/tools.js").ExternalTool[]>;
   /**
    * The items of a feedback as its teacher builds them, in order: each one's id, type, position,
    * question, whether it's required, a choice's options (with a rated choice's weights) and how
@@ -1413,6 +1443,12 @@ export interface MoodleMethods {
    * refuses the form (a key required by the site, an end before the start).
    */
   setEnrolmentMethod(courseId: number, method: number | { type: string; }, settings: import("./areas/participants/methods.js").EnrolmentMethodSettings): Promise<{ changed: string; method: import("./areas/participants/methods.js").EnrolmentMethod; }>;
+  /**
+   * Shows an external tool in the course's activity chooser, or hides it from there, as the course's
+   * tools page's toggle does; a site tool's setting changes for this course only. Teachers only
+   * (`mod/lti:addcoursetool`).
+   */
+  setExternalToolInChooser(courseId: number, toolId: number, shown: boolean): Promise<{ changed: string; tool: import("./areas/lti/tools.js").ExternalTool; }>;
   /**
    * Approves an entry waiting for approval, or takes an approval back (the entry then waits again,
    * hidden from everyone but its author and who can approve), as the approve and "Undo approval" links

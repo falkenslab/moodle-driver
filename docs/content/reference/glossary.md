@@ -66,6 +66,10 @@ An activity, module `data`, where participants add entries with the fields a tea
 
 More time for one participant to submit an assignment, past its due date and cut-off: "Grant extension" in the grading table. The driver grants it to one or several participants with `grantExtension(activityId, userIds, until)`, and `assignmentSubmissions` reports it per participant as `extensionGranted` and `extensionDueDate`. For a quiz, the equivalent is an [override](#override). See [Grading](../areas/grading.md).
 
+### External tool
+
+An app outside Moodle that a course opens through LTI (Learning Tools Interoperability): Moodle sends the person to it with a signed launch, and the tool may send grades back. A tool is set up once, by an administrator for the whole site or by a teacher for one course, with its URL and the key and secret its provider gives; an activity, module `lti`, is then made from it. The driver lists a course's tools with `externalTools` (`ExternalTool`, its id is Moodle's tool type id), adds one with `addExternalTool`, shows or hides it in the activity chooser with `setExternalToolInChooser`, deletes a course's own with `deleteExternalTool`, makes an activity from one with `createActivity` (`toolId`), and gives the person an activity's launch URL with `externalToolLaunchUrl`. See [External tools](../areas/external-tools.md).
+
 ### Feedback
 
 See [survey](#survey): Moodle's `feedback` module is a survey activity, not the feedback comments a teacher writes when grading (those are `gradeSubmission`'s `feedback` input, see [grading method](#grading-method)). Files a teacher attaches to that feedback (a corrected PDF, an audio comment) are an assignment's feedback files: `gradeSubmission`'s `feedbackFiles`, read by the student in `studentAssignment` and by the teacher in `assignmentSubmissions` ([Grading](../areas/grading.md)).

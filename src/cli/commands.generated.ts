@@ -362,6 +362,79 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addExternalTool",
+    "description": "Adds an external tool to a course through Moodle's course tool form, by its URL, as an LTI 1.0/1.1 tool unless `settings` says otherwise (an LTI 1.3 tool needs its keys, which `settings` takes by field name). Moodle shows it in the activity chooser. Moodle fetches the URL when it saves, to see whether it's a cartridge (an XML description of the tool); one its network settings block is saved as given (confirmed empirically, 5.2). Teachers only (`mod/lti:addcoursetool`).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "tool",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "url",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The tool's launch URL (or a cartridge's, which Moodle reads the tool from)."
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "key",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The consumer key the tool's provider gave."
+        },
+        {
+          "name": "secret",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The shared secret the tool's provider gave: Moodle stores it; nothing returns it."
+        },
+        {
+          "name": "settings",
+          "optional": true,
+          "type": "Record<string, FieldValue>",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Any other field of Moodle's course tool form, by its name (`lti_ltiversion`, `lti_launchcontainer`, `lti_sendname`…); these win."
+        }
+      ]
+    }
+  },
+  {
     "name": "addFeedbackItem",
     "description": "Adds an item to a feedback through its questions page, after item `after` (0 puts it first; by default it goes last): a question of any type the feedback's \"Add question\" menu offers, with its options and settings, a label with its contents, or a page break or a CAPTCHA (which Moodle adds at the end without a form, then moved; it refuses a page break first or right after another one at the end, and a second CAPTCHA). Throws `SurveyError` for a type the menu doesn't offer, or what the type doesn't take, before anything is saved; `FormError` with Moodle's messages when it refuses the form. Returns the new item's id and the items in order.",
     "params": [
@@ -2159,12 +2232,12 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "createActivity",
-    "description": "Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: \"scorm\"`) or an H5P activity (`type: \"h5pactivity\"`) takes the first as its package.",
+    "description": "Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: \"scorm\"`) or an H5P activity (`type: \"h5pactivity\"`) takes the first as its package. An external tool activity (`type: \"lti\"`) is made from one of the course's tools, `toolId` (`externalTools` lists them): Moodle 5 no longer configures a tool in the activity itself.",
     "params": [
       {
         "name": "input",
         "optional": false,
-        "type": "ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[]; }",
+        "type": "ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[]; toolId?: number; }",
         "value": {
           "kind": "json"
         }
@@ -2662,6 +2735,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "eventId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteExternalTool",
+    "description": "Deletes one of the course's own external tools, as its tools page's delete action does. The activities made from it stay, but can't be launched any more (Moodle warns with how many use it). A site tool is the administrator's: it can't be deleted here. Teachers only (`mod/lti:addcoursetool`).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "toolId",
         "optional": false,
         "type": "number",
         "value": {
@@ -4215,6 +4310,34 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "externalToolLaunchUrl",
+    "description": "The URL that launches an external tool activity for the person (`mod/lti/launch.php`), for the person to open in their browser: opening it logs the view and sends the person to the tool. Moodle's launch page is read once over HTTP to check the person may launch it (`mod/lti:view`) and that it is an external tool; its form, which would send the person's launch to the tool, is never submitted, so nothing reaches the tool.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "externalTools",
+    "description": "The external tools a course may use, as its \"LTI External tools\" page lists them: the site's preconfigured tools and the course's own, by name. Teachers only (it takes `mod/lti:addpreconfiguredinstance`); a course tool's URL comes from its form, one page each.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
   },
   {
     "name": "feedbackItems",
@@ -6906,6 +7029,36 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "setExternalToolInChooser",
+    "description": "Shows an external tool in the course's activity chooser, or hides it from there, as the course's tools page's toggle does; a site tool's setting changes for this course only. Teachers only (`mod/lti:addcoursetool`).",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "toolId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "shown",
+        "optional": false,
+        "type": "boolean",
+        "value": {
+          "kind": "boolean"
+        }
+      }
+    ]
   },
   {
     "name": "setGlossaryEntryApproved",

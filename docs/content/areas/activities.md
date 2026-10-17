@@ -26,7 +26,7 @@ Creates an activity or resource of any type at the end of a section, through `co
 function createActivity(
   context: BrowserContext,
   siteUrl: string,
-  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[] },
+  input: ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | DraftUpload)[]; toolId?: number },
 ): Promise<CourseChange>;
 
 interface ActivityFields {
@@ -54,6 +54,8 @@ interface ActivityFields {
 - `embed`: absolute local paths of images and files to put inside the HTML of `description`, `content` or an editor in `settings` (`"activityeditor[text]"`), which names each by its file name: `content: '<img src="shot.png">', embed: ["/home/ada/shot.png"]`. They're uploaded to that editor's own draft area, as Moodle's editor inserts an image, and kept with the text (see [Embedding files in rich text](files.md#embedding-files-in-rich-text)).
 
 `activityId` is the new activity's id, found by comparing the course before and after (a shared question bank, `qbank`, which never shows on the course page, by comparing the course's question banks); when no new activity appears `changed` says so and `activityId` is undefined.
+
+An external tool activity (`type: "lti"`) is made from one of the course's tools: `toolId` is its id, as `externalTools` lists it (see [External tools](external-tools.md)). Moodle 5 no longer configures a tool inside the activity, so `type: "lti"` without `toolId` is a `MoodleError` (`invalid-input`), and so is `toolId` with another type.
 
 A book (`type: "book"`) is created without chapters: `addBookChapter` and the other chapter functions write them (see [A book's chapters](content.md#a-books-chapters)).
 

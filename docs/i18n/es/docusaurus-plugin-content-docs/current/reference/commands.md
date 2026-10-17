@@ -128,6 +128,24 @@ moodle add-database-field <activityId> --options
 | `--required` | `boolean` |  |
 | `--options` | `DatabaseFieldOptions` |  |
 
+## addExternalTool
+
+Adds an external tool to a course through Moodle's course tool form, by its URL, as an LTI 1.0/1.1 tool unless `settings` says otherwise (an LTI 1.3 tool needs its keys, which `settings` takes by field name). Moodle shows it in the activity chooser. Moodle fetches the URL when it saves, to see whether it's a cartridge (an XML description of the tool); one its network settings block is saved as given (confirmed empirically, 5.2). Teachers only (`mod/lti:addcoursetool`).
+
+```bash
+moodle add-external-tool <courseId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--name` (required) | `string` |  |
+| `--url` (required) | `string` | The tool's launch URL (or a cartridge's, which Moodle reads the tool from). |
+| `--description` | `string` |  |
+| `--key` | `string` | The consumer key the tool's provider gave. |
+| `--secret` | `string` | The shared secret the tool's provider gave: Moodle stores it; nothing returns it. |
+| `--settings` | `Record<string, FieldValue>` | Any other field of Moodle's course tool form, by its name (`lti_ltiversion`, `lti_launchcontainer`, `lti_sendname`…); these win. |
+
 ## addFeedbackItem
 
 Adds an item to a feedback through its questions page, after item `after` (0 puts it first; by default it goes last): a question of any type the feedback's "Add question" menu offers, with its options and settings, a label with its contents, or a page break or a CAPTCHA (which Moodle adds at the end without a form, then moved; it refuses a page break first or right after another one at the end, and a second CAPTCHA). Throws `SurveyError` for a type the menu doesn't offer, or what the type doesn't take, before anything is saved; `FormError` with Moodle's messages when it refuses the form. Returns the new item's id and the items in order.
@@ -803,7 +821,7 @@ moodle course-updates <courseId> <since>
 
 ## createActivity
 
-Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or an H5P activity (`type: "h5pactivity"`) takes the first as its package.
+Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or an H5P activity (`type: "h5pactivity"`) takes the first as its package. An external tool activity (`type: "lti"`) is made from one of the course's tools, `toolId` (`externalTools` lists them): Moodle 5 no longer configures a tool in the activity itself.
 
 ```bash
 moodle create-activity <input>
@@ -811,7 +829,7 @@ moodle create-activity <input>
 
 | Argument | Type | Description |
 | --- | --- | --- |
-| `input` | `ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string \| DraftUpload)[]; }` |  |
+| `input` | `ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string \| DraftUpload)[]; toolId?: number; }` |  |
 
 ## createBadge
 
@@ -1032,6 +1050,19 @@ moodle delete-event <eventId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `eventId` | `number` |  |
+
+## deleteExternalTool
+
+Deletes one of the course's own external tools, as its tools page's delete action does. The activities made from it stay, but can't be launched any more (Moodle warns with how many use it). A site tool is the administrator's: it can't be deleted here. Teachers only (`mod/lti:addcoursetool`).
+
+```bash
+moodle delete-external-tool <courseId> <toolId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `toolId` | `number` |  |
 
 ## deleteFeedbackItem
 
@@ -1560,6 +1591,30 @@ moodle export-questions <activityId> --options
 | `--format` (required) | `"xml" \| "gift"` |  |
 | `--category-id` | `number` |  |
 | `--file` (required) | `string` |  |
+
+## externalToolLaunchUrl
+
+The URL that launches an external tool activity for the person (`mod/lti/launch.php`), for the person to open in their browser: opening it logs the view and sends the person to the tool. Moodle's launch page is read once over HTTP to check the person may launch it (`mod/lti:view`) and that it is an external tool; its form, which would send the person's launch to the tool, is never submitted, so nothing reaches the tool.
+
+```bash
+moodle external-tool-launch-url <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
+## externalTools
+
+The external tools a course may use, as its "LTI External tools" page lists them: the site's preconfigured tools and the course's own, by name. Teachers only (it takes `mod/lti:addpreconfiguredinstance`); a course tool's URL comes from its form, one page each.
+
+```bash
+moodle external-tools <courseId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
 
 ## feedbackItems
 
@@ -2670,6 +2725,20 @@ moodle set-enrolment-method <courseId> <method> --options
 | `--role-id` | `number` | The role it gives (manual and self enrolment). |
 | `--max-users` | `number` | Self enrolment: the most users it enrols; 0 for no limit. |
 | `--welcome` | `string \| false` | Manual and self enrolment: the welcome message to send (from the course contact unless another sender is set); `false` sends none. |
+
+## setExternalToolInChooser
+
+Shows an external tool in the course's activity chooser, or hides it from there, as the course's tools page's toggle does; a site tool's setting changes for this course only. Teachers only (`mod/lti:addcoursetool`).
+
+```bash
+moodle set-external-tool-in-chooser <courseId> <toolId> <shown>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `toolId` | `number` |  |
+| `shown` | `boolean` |  |
 
 ## setGlossaryEntryApproved
 
