@@ -38,6 +38,7 @@ import { allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension,
 import { setGradingDefinition } from "./areas/assignments/definitions.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
 import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
+import { bigBlueButton, bigBlueButtonJoinUrl, deleteRecording, setRecordingPublished } from "./areas/bigbluebutton/bigbluebutton.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
 import { addLessonPage, deleteLessonPage, editLessonPage, lessonPages, moveLessonPage } from "./areas/lessons/pages.js";
 import { addDatabaseField, databaseFields, deleteDatabaseField, editDatabaseField } from "./areas/databases/fields.js";
@@ -177,6 +178,10 @@ const SITE_FUNCTIONS = {
   importActivities,
   importDatabaseEntries,
   scorm,
+  bigBlueButton,
+  bigBlueButtonJoinUrl,
+  setRecordingPublished,
+  deleteRecording,
   importQuestions,
   exportQuestions,
   questionCategories,

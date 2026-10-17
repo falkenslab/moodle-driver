@@ -357,6 +357,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   scorm: ["course-content", "own"],
   openScorm: OWN,
 
+  // BigBlueButton: the meeting and its recordings (which show who took part), managing them, and the person's own join URL.
+  bigBlueButton: ["course-content", "others-personal"],
+  bigBlueButtonJoinUrl: OWN,
+  setRecordingPublished: CONTENT,
+  deleteRecording: CONTENT,
+
   // Lessons: the person going through one.
   lessonPage: ["course-content", "own"],
   answerLessonPage: OWN,

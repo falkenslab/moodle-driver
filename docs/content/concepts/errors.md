@@ -98,6 +98,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `LessonError` | [Lessons](../areas/lessons.md) |
 | `NotAnH5PActivityError` | [H5P](../areas/h5p.md) |
 | `ScormError` | [SCORM](../areas/scorm.md) |
+| `BigBlueButtonError`, `BigBlueButtonServerError` | [BigBlueButton](../areas/bigbluebutton.md): not a BigBlueButton; a missing capability (named) or why the person can't join now; a site whose BigBlueButton server isn't configured or doesn't answer |
 | `NotADatabaseError`, `DatabaseError` | [Databases](../areas/databases.md): not a database; the person can't manage it, or Moodle refused a field, template or preset, or an entry, its approval, its deletion, an export or an import |
 | `NotAGlossaryError`, `GlossaryError` | [Glossaries](../areas/glossaries.md): not a glossary; a missing glossary capability (named), someone else's entry, the editing time over, no such entry |
 | `NoGradeReportError`, `GradebookError` | [Grades and gradebook](../areas/grades-and-gradebook.md) |

@@ -330,6 +330,21 @@ export interface MoodleMethods {
    */
   backupCourse(courseId: number, destDir: string, options?: { withUsers?: boolean | undefined; anonymize?: boolean | undefined; anonymous?: boolean | undefined; sections?: number[] | undefined; activities?: number[] | undefined; timeoutMs?: number | undefined; }): Promise<{ changed: string; file: import("./core/files.js").DownloadedFile; }>;
   /**
+   * A BigBlueButton activity as the person sees it: the meeting's state and schedule, whether the
+   * person can join now and as what, and its recordings (all of them for those with
+   * mod/bigbluebuttonbn:managerecordings, the published ones for the rest). Reads the activity's page
+   * (Moodle logs a view) and the meeting from the BigBlueButton server, through Moodle. Throws
+   * `BigBlueButtonServerError` when the site's server isn't configured or doesn't answer, never an empty state.
+   */
+  bigBlueButton(activityId: number): Promise<import("./areas/bigbluebutton/bigbluebutton.js").BigBlueButtonActivity>;
+  /**
+   * The person's URL to join a BigBlueButton meeting: Moodle's join page, which creates the meeting
+   * if needed and sends the person into it. For the person to open in their browser; the driver never
+   * joins. Throws `BigBlueButtonError` saying why when the person can't join now (not open yet,
+   * closed, waiting for a moderator, full, or no mod/bigbluebuttonbn:join).
+   */
+  bigBlueButtonJoinUrl(activityId: number): Promise<string>;
+  /**
    * A book's chapters in order: each one's id, title, whether it is a subchapter or hidden, and its
    * place; with `content`, its HTML and images too, each chapter's page read (Moodle logs a view of it).
    * A teacher sees hidden chapters; a student's list leaves them out. Throws `BookError` when the
@@ -717,6 +732,11 @@ export interface MoodleMethods {
    * then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.
    */
   deleteQuestions(activityId: number, questionIds: number[]): Promise<{ changed: string; deleted: number[]; hidden: number[]; }>;
+  /**
+   * Deletes a recording of a BigBlueButton activity, on the BigBlueButton server too unless it was
+   * imported (then only its link here goes). Takes mod/bigbluebuttonbn:managerecordings and :deleterecordings.
+   */
+  deleteRecording(activityId: number, recordingId: number): Promise<{ changed: string; recordingId: number; }>;
   /** Deletes a section and every activity in it, with their participants' data. */
   deleteSection(courseId: number, sectionId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
@@ -1575,6 +1595,13 @@ export interface MoodleMethods {
    * break icons do one by one.
    */
   setQuizPages(activityId: number, pages: { perPage: number; } | { breaksAfter: number[]; }): Promise<import("./areas/quizzes/structure.js").QuizChange>;
+  /**
+   * Publishes or unpublishes a recording of a BigBlueButton activity: an unpublished recording is
+   * hidden from students (listed only to those who manage recordings) and its playbacks are off. Takes
+   * mod/bigbluebuttonbn:managerecordings and :publishrecordings or :unpublishrecordings. Returns the
+   * recording afterwards; nothing changes when it's already so.
+   */
+  setRecordingPublished(activityId: number, recordingId: number, published: boolean): Promise<{ changed: string; recording: import("./areas/bigbluebutton/bigbluebutton.js").BigBlueButtonRecording; }>;
   /**
    * Sets a user's roles in a course, as the participants page's roles column does: gives the roles in
    * `roleIds` the person may assign, and takes away the others the person may assign. Roles the person

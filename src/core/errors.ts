@@ -41,6 +41,8 @@ export type MoodleErrorCode =
   | "no-grade-report"
   | "not-an-h5p-activity"
   | "scorm"
+  | "bigbluebutton"
+  | "bigbluebutton-server"
   | "workshop"
   | "lesson"
   | "message"

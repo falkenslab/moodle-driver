@@ -1684,6 +1684,34 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "bigBlueButton",
+    "description": "A BigBlueButton activity as the person sees it: the meeting's state and schedule, whether the person can join now and as what, and its recordings (all of them for those with mod/bigbluebuttonbn:managerecordings, the published ones for the rest). Reads the activity's page (Moodle logs a view) and the meeting from the BigBlueButton server, through Moodle. Throws `BigBlueButtonServerError` when the site's server isn't configured or doesn't answer, never an empty state.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "bigBlueButtonJoinUrl",
+    "description": "The person's URL to join a BigBlueButton meeting: Moodle's join page, which creates the meeting if needed and sends the person into it. For the person to open in their browser; the driver never joins. Throws `BigBlueButtonError` saying why when the person can't join now (not open yet, closed, waiting for a moderator, full, or no mod/bigbluebuttonbn:join).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "bookChapters",
     "description": "A book's chapters in order: each one's id, title, whether it is a subchapter or hidden, and its place; with `content`, its HTML and images too, each chapter's page read (Moodle logs a view of it). A teacher sees hidden chapters; a student's list leaves them out. Throws `BookError` when the activity isn't a book the person can read.",
     "params": [
@@ -3245,6 +3273,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         "type": "number[]",
         "value": {
           "kind": "numbers"
+        }
+      }
+    ]
+  },
+  {
+    "name": "deleteRecording",
+    "description": "Deletes a recording of a BigBlueButton activity, on the BigBlueButton server too unless it was imported (then only its link here goes). Takes mod/bigbluebuttonbn:managerecordings and :deleterecordings.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "recordingId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
         }
       }
     ]
@@ -7741,6 +7791,36 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "setRecordingPublished",
+    "description": "Publishes or unpublishes a recording of a BigBlueButton activity: an unpublished recording is hidden from students (listed only to those who manage recordings) and its playbacks are off. Takes mod/bigbluebuttonbn:managerecordings and :publishrecordings or :unpublishrecordings. Returns the recording afterwards; nothing changes when it's already so.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "recordingId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "published",
+        "optional": false,
+        "type": "boolean",
+        "value": {
+          "kind": "boolean"
+        }
+      }
+    ]
   },
   {
     "name": "setUserRoles",
