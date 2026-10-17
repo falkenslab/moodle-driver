@@ -1,7 +1,7 @@
 // Question banks against the sandbox: a shared bank (qbank) made in the scratch course, filled by
 // imports (GIFT and Moodle XML files written here) and the types' forms, then changed and emptied.
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
@@ -186,5 +186,97 @@ describe("question banks", () => {
     assert.equal(await byName("Form ES"), undefined);
     // The quiz keeps it.
     assert.equal((await teacher.quizStructure(quiz.activityId!)).slots[0]?.name, "Form ES");
+  });
+
+  // Categories: "moved" gets questions and is exported; "imports" takes the files back.
+  let moved: number;
+  let imports: number;
+
+  it("questionCategories: the default category under the Top, with its questions counted", SLOW, async () => {
+    const { categories: flat, questions } = await teacher.questions(bankId);
+    const tree = await teacher.questionCategories(bankId);
+    const own = tree.find((c) => c.id === defaultCategory);
+    assert.ok(own, JSON.stringify(tree));
+    assert.equal(own.parentId, flat[0]!.id, "a top-level category's parent is the bank's Top");
+    assert.equal(own.questionCount, questions.filter((q) => q.categoryId === defaultCategory).length);
+    assert.ok(own.description.length > 0, "Moodle describes the default category");
+  });
+
+  it("questionCategories: a student can't manage them", SLOW, async () => {
+    await assert.rejects((await as("student")).questionCategories(bankId), QuestionBankError);
+  });
+
+  it("addQuestionCategory: one inside the default category, one at the top level with a description", SLOW, async () => {
+    const inside = await teacher.addQuestionCategory(bankId, { name: "Driver check moved", parentId: defaultCategory });
+    assert.deepEqual([inside.category.name, inside.category.parentId, inside.category.questionCount], ["Driver check moved", defaultCategory, 0]);
+    moved = inside.category.id;
+    const top = await teacher.addQuestionCategory(bankId, { name: "Driver check imports", description: "<p>Read back</p>" });
+    assert.equal(top.category.parentId, (await teacher.questions(bankId)).categories[0]!.id);
+    assert.match(top.category.description, /Read back/);
+    imports = top.category.id;
+  });
+
+  it("editQuestionCategory: renamed, described and moved, then back to the top level", SLOW, async () => {
+    const topId = (await teacher.questionCategories(bankId)).find((c) => c.id === defaultCategory)!.parentId;
+    const edited = await teacher.editQuestionCategory(bankId, imports, { name: "Driver check imported", description: "<p>Files read back</p>", parentId: moved });
+    assert.deepEqual([edited.category.name, edited.category.parentId], ["Driver check imported", moved]);
+    assert.match(edited.category.description, /Files read back/);
+    const back = await teacher.editQuestionCategory(bankId, imports, { parentId: topId });
+    assert.deepEqual([back.category.name, back.category.parentId], ["Driver check imported", topId]);
+    // A category can't go inside its own subcategory.
+    await assert.rejects(teacher.editQuestionCategory(bankId, defaultCategory, { parentId: moved }), QuestionBankError);
+  });
+
+  it("moveQuestions: two questions into the new category, and a category not in the bank", SLOW, async () => {
+    const ids = [(await byName("Sandbox TF"))!.id, (await byName("Sandbox MC"))!.id];
+    const result = await teacher.moveQuestions(bankId, ids, moved);
+    assert.deepEqual([result.questionIds, result.categoryId], [ids, moved]);
+    const { questions } = await teacher.questions(bankId);
+    assert.deepEqual(questions.filter((q) => q.categoryId === moved).map((q) => q.id).sort(), [...ids].sort());
+    assert.equal((await teacher.questionCategories(bankId)).find((c) => c.id === moved)?.questionCount, 2);
+    await assert.rejects(teacher.moveQuestions(bankId, ids, 999_999), (error: unknown) => error instanceof QuestionBankError && /has no category 999999/.test(error.message));
+  });
+
+  it("exportQuestions: the category in GIFT and Moodle XML, each file imported into another category", SLOW, async () => {
+    for (const format of ["gift", "xml"] as const) {
+      const file = path.join(dir, `export.${format}`);
+      const saved = await teacher.exportQuestions(bankId, { format, categoryId: moved, file });
+      assert.equal(saved.path, file);
+      const text = await readFile(file, "utf8");
+      assert.ok(text.includes("Sandbox TF") && text.includes("Sandbox MC") && !text.includes("Form MC"), text);
+      const { questions } = await teacher.importQuestions(bankId, { format, file, categoryId: imports });
+      assert.deepEqual(questions.map((q) => q.name).sort(), ["Sandbox MC", "Sandbox TF"]);
+      assert.ok(questions.every((q) => q.categoryId === imports));
+    }
+  });
+
+  it("exportQuestions: the whole bank, and an empty category", SLOW, async () => {
+    const file = path.join(dir, "bank.xml");
+    await teacher.exportQuestions(bankId, { format: "xml", file });
+    const text = await readFile(file, "utf8");
+    assert.ok(["Sandbox TF", "Form MC", "Form SA v2"].every((name) => text.includes(name)), text);
+    const empty = await teacher.addQuestionCategory(bankId, { name: "Driver check empty" });
+    await assert.rejects(teacher.exportQuestions(bankId, { format: "gift", categoryId: empty.category.id, file: path.join(dir, "empty.txt") }), QuestionBankError);
+    await teacher.deleteQuestionCategory(bankId, empty.category.id);
+  });
+
+  it("deleteQuestionCategory: with questions it takes moveTo, and its subcategories move up", SLOW, async () => {
+    const sub = await teacher.addQuestionCategory(bankId, { name: "Driver check sub", parentId: imports });
+    await assert.rejects(teacher.deleteQuestionCategory(bankId, imports), (error: unknown) => error instanceof QuestionBankError && /give moveTo/.test(error.message));
+    await teacher.deleteQuestionCategory(bankId, imports, { moveTo: moved });
+    let tree = await teacher.questionCategories(bankId);
+    assert.equal(tree.find((c) => c.id === imports), undefined);
+    assert.equal(tree.find((c) => c.id === moved)?.questionCount, 6);
+    assert.equal(tree.find((c) => c.id === sub.category.id)?.parentId, tree.find((c) => c.id === defaultCategory)!.parentId, "the subcategory goes up to the deleted one's parent");
+    await teacher.deleteQuestionCategory(bankId, sub.category.id);
+    tree = await teacher.questionCategories(bankId);
+    // Moodle keeps a bank's last top-level category, so "moved" goes up there first; then the default one goes.
+    await assert.rejects(teacher.deleteQuestionCategory(bankId, defaultCategory, { moveTo: moved }), (error: unknown) => error instanceof QuestionBankError && /only top-level/.test(error.message));
+    await teacher.editQuestionCategory(bankId, moved, { parentId: tree.find((c) => c.id === defaultCategory)!.parentId });
+    await teacher.deleteQuestionCategory(bankId, defaultCategory, { moveTo: moved });
+    tree = await teacher.questionCategories(bankId);
+    assert.deepEqual(tree.map((c) => c.id), [moved]);
+    // The bank's last top-level category stays.
+    await assert.rejects(teacher.deleteQuestionCategory(bankId, moved), (error: unknown) => error instanceof QuestionBankError && /only top-level/.test(error.message));
   });
 });

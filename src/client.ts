@@ -41,7 +41,8 @@ import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
 import { groups, participantFilters, participants } from "./areas/participants/participants.js";
-import { createQuestion, deleteQuestions, importQuestions, questionBanks, questions, setQuestionStatus, updateQuestion } from "./areas/questions/banks.js";
+import { createQuestion, deleteQuestions, exportQuestions, importQuestions, questionBanks, questions, setQuestionStatus, updateQuestion } from "./areas/questions/banks.js";
+import { addQuestionCategory, deleteQuestionCategory, editQuestionCategory, moveQuestions, questionCategories } from "./areas/questions/categories.js";
 import { createGroup, createGrouping, deleteGroup, deleteGrouping, groupings, setGroupMembers, setGroupingGroups, updateGroup } from "./areas/participants/groups.js";
 import { enrolmentMethods, setEnrolmentMethod } from "./areas/participants/methods.js";
 import { enrolUsers, potentialUsers, setUserRoles, unenrolUser } from "./areas/participants/enrolments.js";
@@ -147,6 +148,12 @@ const SITE_FUNCTIONS = {
   importDatabaseEntries,
   scorm,
   importQuestions,
+  exportQuestions,
+  questionCategories,
+  addQuestionCategory,
+  editQuestionCategory,
+  deleteQuestionCategory,
+  moveQuestions,
   lessonPage,
   lessonPages,
   addLessonPage,

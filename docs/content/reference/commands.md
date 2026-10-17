@@ -153,6 +153,21 @@ moodle add-lesson-page <activityId> <input> [--options]
 | `input` | `LessonPageInput` |  |
 | `--after` | `number` |  |
 
+## addQuestionCategory
+
+Adds a category to a bank, as the categories page's "Add category" does: at the top level, or inside `parentId`, with an optional description (HTML). Returns the category made.
+
+```bash
+moodle add-question-category <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--name` (required) | `string` |  |
+| `--parent-id` | `number` |  |
+| `--description` | `string` |  |
+
 ## addQuestionsToQuiz
 
 Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.
@@ -890,6 +905,20 @@ moodle delete-post <postId>
 | --- | --- | --- |
 | `postId` | `number` |  |
 
+## deleteQuestionCategory
+
+Deletes a bank's category as its delete action does. Its subcategories move up to its parent, as Moodle does. A category with questions takes `moveTo`, the bank's category its questions go to, which Moodle asks for before deleting; without it nothing is deleted. Moodle keeps a bank's last top-level category.
+
+```bash
+moodle delete-question-category <activityId> <categoryId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `categoryId` | `number` |  |
+| `--move-to` | `number` |  |
+
 ## deleteQuestions
 
 Deletes questions from a bank, every version of each, as the bank's delete action does: asked, then confirmed. Moodle doesn't delete a question a quiz uses: it hides it, and `hidden` lists those.
@@ -1058,6 +1087,22 @@ moodle edit-post <postId> --options
 | `--files` | `{ add?: string[]; remove?: string[]; }` | Attachments to add (absolute local paths) and to remove (by name, as the post lists them). |
 | `--embed` | `string[]` | Absolute local paths to embed in the new message, which names each by its file name (`<img src="shot.png">`). |
 
+## editQuestionCategory
+
+Changes a bank's category as its "Edit settings" does, only what's given: its name, its description (HTML), or its parent (`parentId`, which moves it with its subcategories and questions; the bank's Top, the top-level categories' `parentId`, moves it to the top level). Returns the category afterwards.
+
+```bash
+moodle edit-question-category <activityId> <categoryId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `categoryId` | `number` |  |
+| `--name` | `string` |  |
+| `--description` | `string` |  |
+| `--parent-id` | `number` |  |
+
 ## editQuizSlot
 
 Changes one slot of a quiz (by its place, from 1): its maximum mark, through the slots' service, and where it is, as dragging it on the edit page does: after another slot (`moveAfter`, 0 for first) and on a page. Moodle lets the mark change after attempts (it regrades them), not the rest.
@@ -1154,6 +1199,21 @@ moodle export-grades <courseId> --options
 | `--display` | `GradeExportDisplay[]` | How grades are written; the site's default when left out. XML takes only one. |
 | `--feedback` | `boolean` | Include each grade's feedback. |
 | `--dest-dir` | `string` | The folder to save the file in (an absolute path); the `Moodle` object's `downloadDir` when left out there. |
+
+## exportQuestions
+
+Exports a bank's questions, or a category's (its subcategories' included), to a local GIFT or Moodle XML file, through the bank's export form; `file` (an absolute path) is written, replacing one there. The file names each question's category, as Moodle writes it by default, so importing it without a category recreates them. Hidden questions aren't exported, and a question's latest version only.
+
+```bash
+moodle export-questions <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--format` (required) | `"xml" \| "gift"` |  |
+| `--category-id` | `number` |  |
+| `--file` (required) | `string` |  |
 
 ## finishQuizAttempt
 
@@ -1510,6 +1570,20 @@ moodle move-lesson-page <activityId> <pageId> <after>
 | `pageId` | `number` |  |
 | `after` | `number` |  |
 
+## moveQuestions
+
+Moves questions into a category of a bank, several at once, as the bank's bulk "Move to" does (Moodle's core_question_move_questions service). A question keeps its id and versions.
+
+```bash
+moodle move-questions <activityId> <questionIds> <categoryId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `questionIds` | `number[]` |  |
+| `categoryId` | `number` |  |
+
 ## myGrades
 
 The person's own grade report for a course.
@@ -1639,6 +1713,18 @@ moodle question-banks <courseId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` | `number` |  |
+
+## questionCategories
+
+A bank's categories as its categories page shows them, parents before their subcategories: each one's id, name, parent, description and the questions directly in it. The bank's hidden "Top" category isn't one of them: it's the `parentId` of the top-level ones. Reading the page takes the capability to manage the bank's categories, which `questions` doesn't, so it's a function of its own.
+
+```bash
+moodle question-categories <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
 
 ## questions
 
