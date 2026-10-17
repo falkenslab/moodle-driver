@@ -18,7 +18,7 @@ before(async () => {
 after(() => rm(home, { recursive: true, force: true }));
 
 /** Runs a command line against `context`, collecting what it prints. */
-async function moodle(context: BrowserContext | undefined, argv: string[], { interactive = true } = {}) {
+async function moodle(context: BrowserContext | undefined, argv: string[], { interactive = true, columns }: { interactive?: boolean; columns?: number } = {}) {
   const out: string[] = [];
   const err: string[] = [];
   const deps: CliDeps = {
@@ -29,6 +29,7 @@ async function moodle(context: BrowserContext | undefined, argv: string[], { int
     cwd: "/home/ada",
     home,
     interactive,
+    columns,
     version: "9.9.9",
   };
   const status = await run(argv, deps);
@@ -101,6 +102,10 @@ describe("the moodle command", () => {
     assert.equal(table.status, 0, table.err);
     assert.match(table.out, /^id +shortname +fullname/);
     assert.match(table.out, /\n3 +loops +Loops/);
+    // A narrow terminal: the URL goes, and the table says so.
+    const narrow = await moodle(context, ["list-courses"], { columns: 40 });
+    assert.ok(narrow.out.split("\n").every((line) => line.length <= 40), narrow.out);
+    assert.match(narrow.out.replace(/\n/g, " "), /Left out: .*url.* \(--json has every column\)/);
     const json = await moodle(context, ["list-courses", "--json"]);
     assert.deepEqual((JSON.parse(json.out) as { id: number }[]).map((c) => c.id), [3]);
     // Not a terminal: JSON without asking.

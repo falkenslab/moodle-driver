@@ -29,6 +29,10 @@ if (process.argv[2] === "__background") {
     cwd: process.cwd(),
     home: cliHome(process.env),
     interactive: process.stdout.isTTY === true,
+    // Read on every line: `moodle shell`'s terminal may be resized.
+    get columns() {
+      return process.stdout.isTTY === true ? process.stdout.columns : undefined;
+    },
     version,
     input: process.stdin,
     output: process.stdout,
