@@ -166,7 +166,7 @@ An activity that asks participants questions without grading them. The driver an
 
 ### Workshop
 
-A peer assessment activity, module `workshop`, that goes through five phases a teacher switches: setup, submission (participants submit their work), assessment (reviewers assess the submissions allocated to them through the workshop's assessment form, whose grading strategy is accumulative grading, comments, number of errors or a rubric), grading evaluation (Moodle calculates a grade for each submission and one for each reviewer's assessing) and closed. The driver reads the phase and the report of submissions and assessments with `workshopInfo`, switches phases with `setWorkshopPhase`, and assesses a submission with `assessWorkshopSubmission`; its errors are `WorkshopError`. See [Grading](../areas/grading.md#workshopinfo).
+A peer assessment activity, module `workshop`, that goes through five phases a teacher switches: setup, submission (participants submit their work), assessment (reviewers assess the submissions allocated to them through the workshop's assessment form, whose grading strategy is accumulative grading, comments, number of errors or a rubric), grading evaluation (Moodle calculates a grade for each submission and one for each reviewer's assessing) and closed. The driver reads the phase and the report of submissions and assessments with `workshopInfo`, switches phases with `setWorkshopPhase`, reads and sets who assesses whom (the allocation) with `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly` and `scheduleAllocation`, and assesses a submission with `assessWorkshopSubmission`; its errors are `WorkshopError`. See [Grading](../areas/grading.md#workshopinfo).
 
 ## Driver terms
 

@@ -1,6 +1,7 @@
 // Forums, ratings and workshops against the sandbox: course 3's forum only read; a forum (rated, and
 // graded as a whole), a glossary, a database and a workshop made on the scratch course, where the
-// student posts, submits and adds entries and the teacher replies, moderates, rates, grades and assesses.
+// student posts, submits and adds entries and the teacher replies, moderates, rates, grades,
+// allocates reviewers (two more seeded students, enrolled there) and assesses.
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -374,6 +375,7 @@ describe("forums, ratings and workshops on the scratch course", () => {
   describe("a workshop", () => {
     let workshopId: number;
     let submissionId: number;
+    const reviewerIds: number[] = [];
 
     before(async () => {
       workshopId = await newActivity(course, "workshop", "Driver check suite workshop");
@@ -403,6 +405,74 @@ describe("forums, ratings and workshops on the scratch course", () => {
       await assert.rejects((await as("teacher")).workshopInfo(forumId), WorkshopError);
     });
 
+    it("workshopAllocation: the submission without reviewers, and who may review it; the student can't allocate", { timeout: 300_000 }, async () => {
+      // Two more of the sandbox's seeded students, as reviewers without a submission of their own.
+      const admin = await as("admin");
+      for (const name of ["Marcos", "Sara"]) {
+        const found = (await admin.potentialUsers(course.id, name))[0];
+        assert.ok(found, `the sandbox has no seeded student "${name}"`);
+        reviewerIds.push(found.userId);
+      }
+      await admin.enrolUsers(course.id, reviewerIds, { roleId: 5 });
+      const allocation = await (await as("teacher")).workshopAllocation(workshopId);
+      assert.equal(allocation.activityId, workshopId);
+      assert.deepEqual(allocation.submissions, [{ id: submissionId, title: "Driver check suite work", authorId: studentId, author: allocation.submissions[0]!.author, reviewers: [] }]);
+      assert.deepEqual(allocation.potentialReviewers.map((r) => r.userId).sort(), [...reviewerIds].sort());
+      await assert.rejects((await as("student")).workshopAllocation(workshopId), (error: Error) => error instanceof WorkshopError && /mod\/workshop:allocate/.test(error.message));
+      await assert.rejects((await as("teacher")).workshopAllocation(forumId), WorkshopError);
+    });
+
+    it("allocateReviewer: a seeded student allocated to the submission; the author and a user out of the course refused", { timeout: 300_000 }, async () => {
+      const teacher = await as("teacher");
+      const result = await teacher.allocateReviewer(workshopId, { submissionId, reviewerId: reviewerIds[0]! });
+      assert.equal(result.added, true);
+      assert.ok(result.assessmentId > 0);
+      assert.deepEqual(
+        result.submission.reviewers.map((r) => r.reviewerId),
+        [reviewerIds[0]],
+      );
+      const again = await teacher.allocateReviewer(workshopId, { authorId: studentId, reviewerId: reviewerIds[0]! });
+      assert.equal(again.added, false);
+      assert.equal(again.assessmentId, result.assessmentId);
+      await assert.rejects(teacher.allocateReviewer(workshopId, { submissionId, reviewerId: studentId }), /self-assessment/);
+      await assert.rejects(teacher.allocateReviewer(workshopId, { submissionId, reviewerId: await userId("admin") }), (error: Error) => error instanceof WorkshopError && /can't review submission/.test(error.message));
+    });
+
+    it("removeReviewer: the allocation removed", { timeout: 300_000 }, async () => {
+      const teacher = await as("teacher");
+      const result = await teacher.removeReviewer(workshopId, { submissionId, reviewerId: reviewerIds[0]! });
+      assert.deepEqual(result.submission.reviewers, []);
+      assert.deepEqual((await teacher.workshopAllocation(workshopId)).submissions[0]!.reviewers, []);
+      await assert.rejects(teacher.removeReviewer(workshopId, { submissionId, reviewerId: reviewerIds[0]! }), WorkshopError);
+    });
+
+    it("allocateRandomly: two reviews for the submission, by reviewers without one of their own", { timeout: 300_000 }, async () => {
+      const teacher = await as("teacher");
+      await assert.rejects(teacher.allocateRandomly(workshopId, { perSubmission: 2, selfAssessment: true }), /self-assessment/);
+      const result = await teacher.allocateRandomly(workshopId, { perSubmission: 2, withoutSubmission: true });
+      assert.equal(result.added, 2);
+      assert.equal(result.removed, 0);
+      assert.deepEqual(result.problems, []);
+      assert.ok(result.report.length > 0);
+      const read = (await teacher.workshopAllocation(workshopId)).submissions[0]!;
+      assert.deepEqual(read.reviewers.map((r) => r.reviewerId).sort(), [...reviewerIds].sort());
+      assert.deepEqual(read, result.allocation.submissions[0]);
+    });
+
+    it("scheduleAllocation: turned on with its settings, then off", { timeout: 300_000 }, async () => {
+      const teacher = await as("teacher");
+      const on = await teacher.scheduleAllocation(workshopId, { enabled: true, perReviewer: 1, withoutSubmission: true });
+      assert.equal(on.enabled, true);
+      assert.equal(on.perReviewer, 1);
+      assert.equal(on.withoutSubmission, true);
+      assert.equal(on.keepCurrent, true);
+      // The workshop has no submissions deadline: Moodle says it can't run.
+      assert.ok(on.status);
+      const off = await teacher.scheduleAllocation(workshopId, { enabled: false });
+      assert.equal(off.enabled, false);
+      assert.equal(off.perReviewer, 1);
+    });
+
     it("assessWorkshopSubmission: the teacher assesses it in the assessment phase", { timeout: 300_000 }, async () => {
       const teacher = await as("teacher");
       await assert.rejects(teacher.assessWorkshopSubmission(workshopId, submissionId, { criteria: [{ grade: 8 }] }), WorkshopError);
@@ -424,6 +494,17 @@ describe("forums, ratings and workshops on the scratch course", () => {
       assert.equal(assessment.reviewerId, await userId("teacher"));
       assert.equal(assessment.grade, 40);
       assert.equal((await teacher.setWorkshopPhase(workshopId, "closed")).phase, "closed");
+    });
+
+    it("removeReviewer: the teacher's graded assessment, only with evenIfAssessed", { timeout: 300_000 }, async () => {
+      const teacher = await as("teacher");
+      const teacherId = await userId("teacher");
+      // The teacher's own assessment is an allocation too.
+      const reviewers = (await teacher.workshopAllocation(workshopId)).submissions[0]!.reviewers;
+      assert.ok(reviewers.some((r) => r.reviewerId === teacherId));
+      await assert.rejects(teacher.removeReviewer(workshopId, { submissionId, reviewerId: teacherId }), /already assessed/);
+      const removed = await teacher.removeReviewer(workshopId, { submissionId, reviewerId: teacherId, evenIfAssessed: true });
+      assert.ok(!removed.submission.reviewers.some((r) => r.reviewerId === teacherId));
     });
   });
 });

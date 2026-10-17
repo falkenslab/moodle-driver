@@ -248,6 +248,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   workshopInfo: PERSONAL,
   setWorkshopPhase: ["others-write"],
   assessWorkshopSubmission: ["others-personal", "others-write"],
+  // Allocating decides who assesses whose work, and reads who submitted and who reviews.
+  workshopAllocation: PERSONAL,
+  allocateReviewer: ["others-personal", "others-write"],
+  removeReviewer: ["others-personal", "others-write"],
+  allocateRandomly: ["others-personal", "others-write"],
+  scheduleAllocation: ["others-write"],
   // Everyone's grades, as Moodle exports them.
   exportGrades: PERSONAL,
 

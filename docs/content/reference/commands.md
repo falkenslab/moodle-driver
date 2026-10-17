@@ -165,6 +165,39 @@ moodle allocate-marker <activityId> <userIds> <markerId>
 | `userIds` | `number[]` |  |
 | `markerId` | `number \| number[]` |  |
 
+## allocateRandomly
+
+Allocates submissions to reviewers at random, as Moodle's random allocation form does: `perSubmission` reviews for each submission, or `perReviewer` for each reviewer, keeping the current allocations unless `keepCurrent` is false (Moodle never removes an assessment already graded), among reviewers with a submission of their own unless `withoutSubmission`, with self-assessments when `selfAssessment` (and the workshop allows them), and without peers of the same group when `excludeSameGroup` (visible groups mode only). Returns a sentence of what changed, how many allocations were added and removed, Moodle's report of what it did (its lines, in the site's language) and the problems among them (not enough reviewers, graded assessments kept), and the allocation afterwards. Throws `WorkshopError` for a setting the workshop doesn't have or when the person can't allocate (`mod/workshop:allocate`); `FormError` when Moodle refuses the form.
+
+```bash
+moodle allocate-randomly <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--per-submission` | `number` | Reviews each submission gets (Moodle's "Number of reviews … per submission"); give this or `perReviewer`. |
+| `--per-reviewer` | `number` | Reviews each reviewer does ("… per reviewer"). |
+| `--keep-current` | `boolean` | Keep the allocations there are (default) or remove them first ("Remove current allocations"; Moodle never removes graded ones). |
+| `--without-submission` | `boolean` | Reviewers without a submission of their own too ("Participants can assess without having submitted anything"); off by default. |
+| `--self-assessment` | `boolean` | Add each author's self-assessment ("Add self-assessments"), where the workshop allows it; off by default. |
+| `--exclude-same-group` | `boolean` | Prevent reviews by peers of the same group ("Prevent reviews by peers from the same group"), only in visible groups mode; off by default. |
+
+## allocateReviewer
+
+Allocates a reviewer to a submission, as the "Add reviewer" menu of Moodle's manual allocation page does, in any phase. The submission is given by its id or by its author's (`authorId`); the reviewer must be one Moodle offers for it: a participant who can assess peers in the course (enrolled as a student), and not the author unless the workshop allows self-assessment. Returns a sentence of what changed, the assessment Moodle made (or the one the reviewer already had: `added` is false then), and the submission's reviewers afterwards. Throws `WorkshopError` when the reviewer isn't one Moodle offers, the submission isn't there, or the person can't allocate (`mod/workshop:allocate`).
+
+```bash
+moodle allocate-reviewer <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--submission-id` | `number` | The submission's id (give this or `authorId`). |
+| `--author-id` | `number` | The submission's author's user id. |
+| `--reviewer-id` (required) | `number` | The reviewer's user id. |
+
 ## anonymizeBackup
 
 A copy of a backup file that names no one and no site, written on this computer without the browser or a session (`anonymizeBackup`).
@@ -1412,6 +1445,22 @@ moodle remove-quiz-slot <activityId> <slot>
 | `activityId` | `number` |  |
 | `slot` | `number` |  |
 
+## removeReviewer
+
+Removes a reviewer's allocation to a submission, as the delete icon of Moodle's manual allocation page does: Moodle deletes the reviewer's assessment of it. An assessment the reviewer already graded is only deleted with `evenIfAssessed` (Moodle warns about it and the grade is lost). The submission is given by its id or its author's. Returns a sentence of what changed, the assessment removed, and the submission's reviewers afterwards. Throws `WorkshopError` when the reviewer isn't allocated to it, when the assessment is graded and `evenIfAssessed` isn't set, or when the person can't allocate (`mod/workshop:allocate`).
+
+```bash
+moodle remove-reviewer <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--even-if-assessed` | `boolean` | Remove it even when the reviewer already assessed the submission (the assessment and its grade are deleted). |
+| `--submission-id` | `number` | The submission's id (give this or `authorId`). |
+| `--author-id` | `number` | The submission's author's user id. |
+| `--reviewer-id` (required) | `number` | The reviewer's user id. |
+
 ## replyToPost
 
 Replies to a post; returns the new post's id and its discussion's, and, when `subscribe` is given, the person's subscription to the discussion afterwards, read back (`subscribed`).
@@ -1487,6 +1536,25 @@ moodle save-submission <activityId> --options
 | `activityId` | `number` |  |
 | `--online-text` | `string` |  |
 | `--files` | `string[]` |  |
+
+## scheduleAllocation
+
+Turns the scheduled allocation on or off, as Moodle's scheduled allocation form does: when on, Moodle runs the random allocation by itself at the end of the submission phase (once the workshop's submissions deadline passes, by its cron), with the settings given here (those of `allocateRandomly`; the ones left out keep what the form has). Returns a sentence of what changed and the scheduled allocation afterwards, with Moodle's status of it (a workshop without a submissions deadline is never allocated). Throws `WorkshopError` for a setting the workshop doesn't have or when the person can't allocate (`mod/workshop:allocate`); `FormError` when Moodle refuses the form.
+
+```bash
+moodle schedule-allocation <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--enabled` (required) | `boolean` | On: Moodle allocates at random by itself at the end of the submission phase; off: it doesn't. |
+| `--per-submission` | `number` | Reviews each submission gets (Moodle's "Number of reviews … per submission"); give this or `perReviewer`. |
+| `--per-reviewer` | `number` | Reviews each reviewer does ("… per reviewer"). |
+| `--keep-current` | `boolean` | Keep the allocations there are (default) or remove them first ("Remove current allocations"; Moodle never removes graded ones). |
+| `--without-submission` | `boolean` | Reviewers without a submission of their own too ("Participants can assess without having submitted anything"); off by default. |
+| `--self-assessment` | `boolean` | Add each author's self-assessment ("Add self-assessments"), where the workshop allows it; off by default. |
+| `--exclude-same-group` | `boolean` | Prevent reviews by peers of the same group ("Prevent reviews by peers from the same group"), only in visible groups mode; off by default. |
 
 ## scorm
 
@@ -1959,6 +2027,18 @@ moodle who-am-i [courseId]
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` (optional) | `number` |  |
+
+## workshopAllocation
+
+A workshop's allocation, as Moodle's manual allocation page shows it to a teacher (every page of it, in the course's current group): each submission with its author and the reviewers allocated to it (with the id of the assessment Moodle made for each, assessed or not), and the participants who may be allocated as reviewers. A teacher's own assessments count as allocations too. Throws `WorkshopError` when the person can't allocate (Moodle's `mod/workshop:allocate`, a teacher's) or the id isn't a workshop's.
+
+```bash
+moodle workshop-allocation <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
 
 ## workshopInfo
 

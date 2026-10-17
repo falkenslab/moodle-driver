@@ -31,7 +31,7 @@ moodle-driver inicia sesión como lo hace la persona, en una ventana del navegad
 | Cuestionarios | Hacer un intento de un cuestionario página a página; leer resultados, calificar ensayos a mano; leer, añadir, quitar, mover y paginar las preguntas del cuestionario; fijar excepciones |
 | Bancos de preguntas | Listar bancos y preguntas, importar GIFT o Moodle XML, crear, editar y eliminar preguntas sueltas |
 | Foros | Leer debates y mensajes, responder, abrir debates, editar y eliminar mensajes, fijar y bloquear, calificar el foro en su conjunto, valorar mensajes (y entradas de glosario, registros de bases de datos) |
-| Talleres | Leer la fase de un taller, sus entregas y evaluaciones, cambiar su fase, evaluar una entrega |
+| Talleres | Leer la fase de un taller, sus entregas y evaluaciones, cambiar su fase, asignar revisores (a mano, al azar, programada), evaluar una entrega |
 | Encuestas y consultas | Responder cuestionarios de encuesta, actividades de retroalimentación y consultas |
 | Lecciones, H5P y SCORM | Recorrer una lección página a página; leer el tipo y los intentos de una actividad H5P; leer los intentos y los SCO de un SCORM, abrir su reproductor, crear uno a partir de un paquete |
 | Calificaciones | Las calificaciones de la persona, el informe del calificador y las exportaciones de calificaciones de Moodle, calificar y anular calificaciones en el libro de calificaciones, la configuración del libro de calificaciones (elementos manuales, categorías, ponderaciones) |
