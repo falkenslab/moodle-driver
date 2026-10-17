@@ -74,14 +74,22 @@ export function followPages(context: BrowserContext, show: (url: string) => Prom
 }
 
 /**
+ * A page the web server doesn't have (its own 404, not a Moodle page): a Moodle version or a plugin
+ * without it, rather than a lost session.
+ */
+function noSuchPage(path: string): MoodleError {
+  return new MoodleError(`The site has no page ${path.split("?")[0]} (HTTP 404): its Moodle version or its plugins don't include it.`, "not-found");
+}
+
+/**
  * Opens a page of the site (`path` relative to it) in a new tab and checks the session; throws
  * `NotLoggedInError`, closing the tab, when Moodle answers with its login page.
  */
 export async function openSitePage(context: BrowserContext, siteUrl: string, path: string, { follow = true } = {}): Promise<Page> {
   const page = await context.newPage();
   try {
-    await page.goto(new URL(path, siteUrl).href, { waitUntil: "domcontentloaded" });
-    if (!(await pageIsLoggedIn(page, siteUrl))) throw new NotLoggedInError();
+    const response = await page.goto(new URL(path, siteUrl).href, { waitUntil: "domcontentloaded" });
+    if (!(await pageIsLoggedIn(page, siteUrl))) throw response?.status() === 404 ? noSuchPage(path) : new NotLoggedInError();
     // The page as it was opened (a form's URL, not where posting it led), once it's closed.
     const opened = page.url();
     if (follow) page.once("close", () => void followers.get(context)?.(opened));
@@ -137,7 +145,7 @@ export function htmlSessionFacts(html: string): SessionFacts {
  */
 export async function fetchSitePage(context: BrowserContext, siteUrl: string, path: string, { follow = true } = {}): Promise<{ url: string; html: string }> {
   const response = await siteFetch(context, new URL(path, siteUrl).href);
-  if (!isLoggedIn(response.url, siteUrl, htmlSessionFacts(response.body))) throw new NotLoggedInError();
+  if (!isLoggedIn(response.url, siteUrl, htmlSessionFacts(response.body))) throw response.status === 404 ? noSuchPage(path) : new NotLoggedInError();
   if (follow) void followers.get(context)?.(response.url);
   return { url: response.url, html: response.body };
 }

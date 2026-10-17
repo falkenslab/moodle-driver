@@ -112,4 +112,15 @@ describe("fetchSitePage", { skip: !browser && "no system browser" }, () => {
     await assert.rejects(fetchSitePage(context, SITE, "my/courses.php"), NotLoggedInError);
     await context.close();
   });
+
+  it("tells a page the web server doesn't have (its own 404) from a lost session", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Ada Lovelace" } });
+    // As a Moodle 4.5 site answers for Moodle 5's question/banks.php: the web server's page, not Moodle's.
+    await context.route(`${SITE}question/banks.php*`, (route) => route.fulfill({ status: 404, contentType: "text/html", body: "<html><body><h1>Not Found</h1></body></html>" }));
+    for (const read of [() => fetchSitePage(context, SITE, "question/banks.php?courseid=5"), () => openSitePage(context, SITE, "question/banks.php?courseid=5")]) {
+      await assert.rejects(read(), (error: Error & { code?: string }) => error.code === "not-found" && /question\/banks\.php \(HTTP 404\)/.test(error.message));
+    }
+    await context.close();
+  });
 });

@@ -334,7 +334,8 @@ export async function bigBlueButtonJoinUrl(context: BrowserContext, siteUrl: str
     throw new BigBlueButtonError(`You can't join BigBlueButton ${activityId} now: ${why}.`);
   }
   if (!info.joinurl) throw new BigBlueButtonError(`Moodle gave no join URL for BigBlueButton ${activityId}.`);
-  return new URL(info.joinurl, siteUrl).href;
+  // Moodle gives it HTML-escaped (`&amp;` between the parameters), as its template prints it.
+  return new URL(decodeEntities(info.joinurl), siteUrl).href;
 }
 
 /** Runs one of update_recording's actions on a recording of the activity, checking first that the activity lists it. */

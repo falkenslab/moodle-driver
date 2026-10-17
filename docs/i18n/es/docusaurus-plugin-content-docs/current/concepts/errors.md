@@ -33,7 +33,7 @@ Los errores sin clase propia son `MoodleError` con un código genérico:
 | Código | Cuándo |
 | --- | --- |
 | `invalid-input` | Un argumento no puede funcionar: una ruta relativa, un mensaje vacío, `content` para un módulo que no tiene, `downloadFile` sin carpeta |
-| `not-found` | Lo indicado no está: una sección del curso, un archivo local, un archivo del sitio (Moodle respondió 404) |
+| `not-found` | Lo indicado no está: una sección del curso, un archivo local, un archivo del sitio (Moodle respondió 404), una página que el sitio no tiene (el 404 de su servidor web, como responde una versión de Moodle o un plugin que no la incluye) |
 | `not-available` | La actividad no lo tiene: una tarea sin comentarios de retroalimentación, un foro sin archivos adjuntos, un módulo sin archivos |
 | `outside-site` | Un archivo que descargar no está en el sitio |
 | `unexpected-page` | Una página no tiene lo que el driver lee de ella |

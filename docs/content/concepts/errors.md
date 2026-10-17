@@ -33,7 +33,7 @@ Errors with no class of their own are `MoodleError` with a generic code:
 | Code | When |
 | --- | --- |
 | `invalid-input` | An argument can't work: a relative path, an empty message, `content` for a module that has none, `downloadFile` with no folder |
-| `not-found` | What was named isn't there: a section of the course, a local file, a site file (Moodle answered 404) |
+| `not-found` | What was named isn't there: a section of the course, a local file, a site file (Moodle answered 404), a page the site doesn't have (its web server's 404, as a Moodle version or plugin without it answers) |
 | `not-available` | The activity doesn't have it: an assignment without feedback comments, a forum without attachments, a module without files |
 | `outside-site` | A file to download isn't on the site |
 | `unexpected-page` | A page doesn't have what the driver reads from it |

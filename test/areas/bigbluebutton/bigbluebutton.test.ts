@@ -71,7 +71,7 @@ const MEETING = {
   ismoderator: true,
   usermustwaittojoin: false,
   presentations: [],
-  joinurl: `${SITE}mod/bigbluebuttonbn/bbb_view.php?action=join&id=51&bn=4`,
+  joinurl: `${SITE}mod/bigbluebuttonbn/bbb_view.php?action=join&amp;id=51&amp;bn=4`, // HTML-escaped, as Moodle 4.5 sends it
   features: [{ name: "showroom", isenabled: true }],
 };
 

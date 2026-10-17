@@ -82,6 +82,20 @@ describe("whoAmI", { skip: !browser && "no system browser" }, () => {
     }
   });
 
+  it("asks the whole course's content items when the section's service doesn't take the section (Moodle 4.5)", async () => {
+    for (const teacher of [true, false]) {
+      const context = await browser!.newContext();
+      const state = moodle(teacher);
+      state.services!.core_courseformat_get_section_content_items = () => {
+        throw new ServiceFailure("invalidrecord");
+      };
+      state.services!.core_course_get_course_content_items = () => ({ content_items: teacher ? [{ name: "page" }] : [] });
+      await serveFakeMoodle(context, state);
+      assert.equal((await whoAmI(context, SITE, 5)).course?.canEdit, teacher);
+      await context.close();
+    }
+  });
+
   it("passes Moodle's error for a course it can't see, and NotLoggedInError without a session", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, moodle(false));

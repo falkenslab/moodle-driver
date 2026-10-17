@@ -83,7 +83,12 @@ export async function courseRoles(context: BrowserContext, siteUrl: string, user
  * report's users (`nopermissions` without `gradereport/grader:view`). Nothing is changed.
  */
 export async function courseAbilities(context: BrowserContext, siteUrl: string, courseId: number, sectionId: number): Promise<{ canEdit: boolean; canGrade: boolean }> {
-  const items = await callService<{ content_items: unknown[] }>(context, siteUrl, "core_courseformat_get_section_content_items", { courseid: courseId, sectionid: sectionId });
+  // A section the service doesn't take (Moodle 4.5 answers `invalidrecord` for the id its course
+  // state gives): the whole course's items say the same, from the service the activity chooser used before.
+  const items = await callService<{ content_items: unknown[] }>(context, siteUrl, "core_courseformat_get_section_content_items", { courseid: courseId, sectionid: sectionId }).catch((error: unknown) => {
+    if (!(error instanceof MoodleServiceError && error.errorcode === "invalidrecord")) throw error;
+    return callService<{ content_items: unknown[] }>(context, siteUrl, "core_course_get_course_content_items", { courseid: courseId });
+  });
   let canGrade = true;
   try {
     await callService(context, siteUrl, "gradereport_grader_get_users_in_report", { courseid: courseId });
