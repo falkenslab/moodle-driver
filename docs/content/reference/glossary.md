@@ -52,7 +52,7 @@ The id of an activity in its course, the `id` in the activity's URL (`mod/quiz/v
 
 ### Database
 
-An activity, module `data`, where participants add entries with the fields a teacher defines (short text, dropdown list, date, image…), listed, shown and searched through its templates; a preset gives it fields and templates at once. The driver reads and writes its fields with `databaseFields`, `addDatabaseField`, `editDatabaseField` and `deleteDatabaseField`, its templates with `databaseTemplates` and `setDatabaseTemplate`, and gives it one of the site's presets with `databasePresets` and `applyDatabasePreset`; `rate` rates its entries. See [Databases](../areas/databases.md).
+An activity, module `data`, where participants add entries with the fields a teacher defines (short text, dropdown list, date, image…), listed, shown and searched through its templates; a preset gives it fields and templates at once. The driver reads and writes its fields with `databaseFields`, `addDatabaseField`, `editDatabaseField` and `deleteDatabaseField`, its templates with `databaseTemplates` and `setDatabaseTemplate`, and gives it one of the site's presets with `databasePresets` and `applyDatabasePreset`; its entries are read with `databaseEntries`, written with `addDatabaseEntry`, `editDatabaseEntry` and `deleteDatabaseEntry`, approved with `setDatabaseEntryApproved`, moved as CSV with `exportDatabaseEntries` and `importDatabaseEntries`, and rated with `rate`. See [Databases](../areas/databases.md).
 
 ### Extension
 
