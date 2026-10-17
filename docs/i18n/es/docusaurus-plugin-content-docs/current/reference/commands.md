@@ -873,7 +873,7 @@ moodle create-grouping <courseId> <settings>
 
 ## createQuestion
 
-Creates one question in a bank through its type's edit form; returns its id. Imports are the way for several; this is for one-offs.
+Creates one question in a bank through its type's edit form, of any type in `QUESTION_TYPES`; returns its id. Each type's required inputs are checked before the form opens. Calculated types go through their wildcards' pages too; a plugin type the site doesn't have is refused naming the plugin. Imports are the way for several; this is for one-offs.
 
 ```bash
 moodle create-question <activityId> --options
@@ -882,11 +882,23 @@ moodle create-question <activityId> --options
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
-| `--type` (required) | `"multichoice" \| "truefalse" \| "shortanswer" \| "numerical" \| "essay"` |  |
+| `--type` (required) | `"multichoice" \| "truefalse" \| "shortanswer" \| "numerical" \| "essay" \| "calculated" \| "calculatedsimple" \| "calculatedmulti" \| "match" \| "randomsamatch" \| "ddwtos" \| "ddimageortext" \| "ddmarker" \| "gapselect" \| "multianswer" \| "ordering" \| "description" \| "coderunner" \| "formulas" \| "gapfill" \| "ddmatch"` |  |
 | `--name` (required) | `string` |  |
-| `--text` (required) | `string` | The question's text (HTML). |
-| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
+| `--text` (required) | `string` | The question's text (HTML). Its type's places go in it: `[[1]]`, `[[2]]`… for the choices of ddwtos and gapselect, a Cloze question's answers (`{1:SHORTANSWER:=Paris}`), a gap fill's `[gaps]`, a calculated question's `{wildcards}`. |
+| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. Multichoice, short answer and numerical; and the calculated types, whose answer is a formula of the wildcards (`{a} + {b}`; in calculatedmulti, `{={a} + {b}}` inside the text). A numerical or calculated answer's `tolerance` is the error accepted around it. |
 | `--correct` | `boolean` | True/false: the right answer. |
+| `--pairs` | `{ question: string; answer: string; }[]` | Matching (match, ddmatch): each question and its answer; an answer without a question is a distractor. |
+| `--choose` | `number` | Random short-answer matching: how many short-answer questions of the category it draws. |
+| `--choices` | `{ text: string; group?: number; unlimited?: boolean; }[]` | Drag and drop into text, select missing words: the choices `[[1]]`, `[[2]]`… name, by position; a group (1 by default) is a set of choices that go in the same places; `unlimited` (ddwtos) lets a choice be used more than once. |
+| `--image` | `string` | Drag and drop onto an image, markers: the background image, a local file. |
+| `--drags` | `{ text?: string; image?: string; group?: number; unlimited?: boolean; }[]` | Drag and drop onto an image: the draggable items, a word (`text`) or a local image file (`image`, with `text` as its alternative text). |
+| `--markers` | `{ text: string; count?: number; }[]` | Drag and drop markers: the markers, and how many times each can be placed (unlimited by default). |
+| `--drops` | `DropZone[]` | Drag and drop onto an image, markers: where the items or markers go. |
+| `--items` | `string[]` | Ordering: the items, in the right order. |
+| `--wildcards` | `{ name: string; min?: number; max?: number; decimals?: number; distribution?: "uniform" \| "loguniform"; values?: number[]; }[]` | Calculated types: each wildcard's values, as a range Moodle draws them from (`min`, `max`, `decimals`, `distribution`) or given (`values`, one per set). Without them Moodle's ranges (1 to 10) are used. |
+| `--sets` | `number` | Calculated types: how many sets of values to draw (10 by default; the `values` given set it). |
+| `--coderunner` | `{ type: string; answer?: string; testCases: { code: string; expected: string; stdin?: string; extra?: string; useAsExample?: boolean; mark?: number; }[]; }` | CodeRunner: its question type (the language and how it's run, "python3"…), a sample answer it's checked with when saved, and the test cases. |
+| `--formulas` | `{ randomVariables?: string; globalVariables?: string; parts: { answer: string; text?: string; mark?: number; unit?: string; localVariables?: string; gradingVariables?: string; gradingCriterion?: string; feedback?: string; }[]; }` | Formulas: its random and global variables, and its parts, each with its answer (and its own text, mark, unit, variables, grading criterion). |
 | `--category-id` | `number` | The bank's category it goes in; a new question goes in the bank's default one when left out. |
 | `--default-mark` | `number` |  |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
@@ -3054,7 +3066,7 @@ moodle update-group <groupId> --options
 
 ## updateQuestion
 
-Changes a question of a bank through its type's edit form, with the same inputs as `createQuestion` and only what's given (`answers` replaces them all). Saving makes a new version of the question, with an id of its own: the one returned, which quizzes using the latest version get from then on.
+Changes a question of a bank through its type's edit form (its wildcards' pages too, for the calculated types), with the same inputs as `createQuestion` and only what's given: a list given (`answers`, `pairs`, `choices`, `items`, `drags`, `markers`, `drops`, the wildcards' values) replaces the question's. Saving makes a new version of the question, with an id of its own: the one returned, which quizzes using the latest version get from then on.
 
 ```bash
 moodle update-question <activityId> <questionId> --options
@@ -3065,10 +3077,22 @@ moodle update-question <activityId> <questionId> --options
 | `activityId` | `number` |  |
 | `questionId` | `number` |  |
 | `--name` | `string` |  |
-| `--text` | `string` | The question's text (HTML). |
+| `--text` | `string` | The question's text (HTML). Its type's places go in it: `[[1]]`, `[[2]]`… for the choices of ddwtos and gapselect, a Cloze question's answers (`{1:SHORTANSWER:=Paris}`), a gap fill's `[gaps]`, a calculated question's `{wildcards}`. |
+| `--items` | `string[]` | Ordering: the items, in the right order. |
+| `--coderunner` | `{ type: string; answer?: string; testCases: { code: string; expected: string; stdin?: string; extra?: string; useAsExample?: boolean; mark?: number; }[]; }` | CodeRunner: its question type (the language and how it's run, "python3"…), a sample answer it's checked with when saved, and the test cases. |
+| `--formulas` | `{ randomVariables?: string; globalVariables?: string; parts: { answer: string; text?: string; mark?: number; unit?: string; localVariables?: string; gradingVariables?: string; gradingCriterion?: string; feedback?: string; }[]; }` | Formulas: its random and global variables, and its parts, each with its answer (and its own text, mark, unit, variables, grading criterion). |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
-| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it. |
+| `--answers` | `{ text: string; fraction: number; feedback?: string; tolerance?: number; }[]` | Answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. Multichoice, short answer and numerical; and the calculated types, whose answer is a formula of the wildcards (`{a} + {b}`; in calculatedmulti, `{={a} + {b}}` inside the text). A numerical or calculated answer's `tolerance` is the error accepted around it. |
 | `--correct` | `boolean` | True/false: the right answer. |
+| `--pairs` | `{ question: string; answer: string; }[]` | Matching (match, ddmatch): each question and its answer; an answer without a question is a distractor. |
+| `--choose` | `number` | Random short-answer matching: how many short-answer questions of the category it draws. |
+| `--choices` | `{ text: string; group?: number; unlimited?: boolean; }[]` | Drag and drop into text, select missing words: the choices `[[1]]`, `[[2]]`… name, by position; a group (1 by default) is a set of choices that go in the same places; `unlimited` (ddwtos) lets a choice be used more than once. |
+| `--image` | `string` | Drag and drop onto an image, markers: the background image, a local file. |
+| `--drags` | `{ text?: string; image?: string; group?: number; unlimited?: boolean; }[]` | Drag and drop onto an image: the draggable items, a word (`text`) or a local image file (`image`, with `text` as its alternative text). |
+| `--markers` | `{ text: string; count?: number; }[]` | Drag and drop markers: the markers, and how many times each can be placed (unlimited by default). |
+| `--drops` | `DropZone[]` | Drag and drop onto an image, markers: where the items or markers go. |
+| `--wildcards` | `{ name: string; min?: number; max?: number; decimals?: number; distribution?: "uniform" \| "loguniform"; values?: number[]; }[]` | Calculated types: each wildcard's values, as a range Moodle draws them from (`min`, `max`, `decimals`, `distribution`) or given (`values`, one per set). Without them Moodle's ranges (1 to 10) are used. |
+| `--sets` | `number` | Calculated types: how many sets of values to draw (10 by default; the `values` given set it). |
 | `--category-id` | `number` | The bank's category it goes in; a new question goes in the bank's default one when left out. |
 | `--default-mark` | `number` |  |
 

@@ -2325,7 +2325,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "createQuestion",
-    "description": "Creates one question in a bank through its type's edit form; returns its id. Imports are the way for several; this is for one-offs.",
+    "description": "Creates one question in a bank through its type's edit form, of any type in `QUESTION_TYPES`; returns its id. Each type's required inputs are checked before the form opens. Calculated types go through their wildcards' pages too; a plugin type the site doesn't have is refused naming the plugin. Imports are the way for several; this is for one-offs.",
     "params": [
       {
         "name": "activityId",
@@ -2344,7 +2344,7 @@ export const COMMANDS: readonly CommandSpec[] = [
         {
           "name": "type",
           "optional": false,
-          "type": "\"multichoice\" | \"truefalse\" | \"shortanswer\" | \"numerical\" | \"essay\"",
+          "type": "\"multichoice\" | \"truefalse\" | \"shortanswer\" | \"numerical\" | \"essay\" | \"calculated\" | \"calculatedsimple\" | \"calculatedmulti\" | \"match\" | \"randomsamatch\" | \"ddwtos\" | \"ddimageortext\" | \"ddmarker\" | \"gapselect\" | \"multianswer\" | \"ordering\" | \"description\" | \"coderunner\" | \"formulas\" | \"gapfill\" | \"ddmatch\"",
           "value": {
             "kind": "enum",
             "values": [
@@ -2352,7 +2352,23 @@ export const COMMANDS: readonly CommandSpec[] = [
               "truefalse",
               "shortanswer",
               "numerical",
-              "essay"
+              "essay",
+              "calculated",
+              "calculatedsimple",
+              "calculatedmulti",
+              "match",
+              "randomsamatch",
+              "ddwtos",
+              "ddimageortext",
+              "ddmarker",
+              "gapselect",
+              "multianswer",
+              "ordering",
+              "description",
+              "coderunner",
+              "formulas",
+              "gapfill",
+              "ddmatch"
             ]
           }
         },
@@ -2371,7 +2387,7 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "string"
           },
-          "description": "The question's text (HTML)."
+          "description": "The question's text (HTML). Its type's places go in it: `[[1]]`, `[[2]]`… for the choices of ddwtos and gapselect, a Cloze question's answers (`{1:SHORTANSWER:=Paris}`), a gap fill's `[gaps]`, a calculated question's `{wildcards}`."
         },
         {
           "name": "answers",
@@ -2380,7 +2396,7 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "json"
           },
-          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it."
+          "description": "Answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. Multichoice, short answer and numerical; and the calculated types, whose answer is a formula of the wildcards (`{a} + {b}`; in calculatedmulti, `{={a} + {b}}` inside the text). A numerical or calculated answer's `tolerance` is the error accepted around it."
         },
         {
           "name": "correct",
@@ -2390,6 +2406,114 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "boolean"
           },
           "description": "True/false: the right answer."
+        },
+        {
+          "name": "pairs",
+          "optional": true,
+          "type": "{ question: string; answer: string; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Matching (match, ddmatch): each question and its answer; an answer without a question is a distractor."
+        },
+        {
+          "name": "choose",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Random short-answer matching: how many short-answer questions of the category it draws."
+        },
+        {
+          "name": "choices",
+          "optional": true,
+          "type": "{ text: string; group?: number; unlimited?: boolean; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Drag and drop into text, select missing words: the choices `[[1]]`, `[[2]]`… name, by position; a group (1 by default) is a set of choices that go in the same places; `unlimited` (ddwtos) lets a choice be used more than once."
+        },
+        {
+          "name": "image",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Drag and drop onto an image, markers: the background image, a local file."
+        },
+        {
+          "name": "drags",
+          "optional": true,
+          "type": "{ text?: string; image?: string; group?: number; unlimited?: boolean; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Drag and drop onto an image: the draggable items, a word (`text`) or a local image file (`image`, with `text` as its alternative text)."
+        },
+        {
+          "name": "markers",
+          "optional": true,
+          "type": "{ text: string; count?: number; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Drag and drop markers: the markers, and how many times each can be placed (unlimited by default)."
+        },
+        {
+          "name": "drops",
+          "optional": true,
+          "type": "DropZone[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Drag and drop onto an image, markers: where the items or markers go."
+        },
+        {
+          "name": "items",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Ordering: the items, in the right order."
+        },
+        {
+          "name": "wildcards",
+          "optional": true,
+          "type": "{ name: string; min?: number; max?: number; decimals?: number; distribution?: \"uniform\" | \"loguniform\"; values?: number[]; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Calculated types: each wildcard's values, as a range Moodle draws them from (`min`, `max`, `decimals`, `distribution`) or given (`values`, one per set). Without them Moodle's ranges (1 to 10) are used."
+        },
+        {
+          "name": "sets",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Calculated types: how many sets of values to draw (10 by default; the `values` given set it)."
+        },
+        {
+          "name": "coderunner",
+          "optional": true,
+          "type": "{ type: string; answer?: string; testCases: { code: string; expected: string; stdin?: string; extra?: string; useAsExample?: boolean; mark?: number; }[]; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "CodeRunner: its question type (the language and how it's run, \"python3\"…), a sample answer it's checked with when saved, and the test cases."
+        },
+        {
+          "name": "formulas",
+          "optional": true,
+          "type": "{ randomVariables?: string; globalVariables?: string; parts: { answer: string; text?: string; mark?: number; unit?: string; localVariables?: string; gradingVariables?: string; gradingCriterion?: string; feedback?: string; }[]; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Formulas: its random and global variables, and its parts, each with its answer (and its own text, mark, unit, variables, grading criterion)."
         },
         {
           "name": "categoryId",
@@ -7919,7 +8043,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "updateQuestion",
-    "description": "Changes a question of a bank through its type's edit form, with the same inputs as `createQuestion` and only what's given (`answers` replaces them all). Saving makes a new version of the question, with an id of its own: the one returned, which quizzes using the latest version get from then on.",
+    "description": "Changes a question of a bank through its type's edit form (its wildcards' pages too, for the calculated types), with the same inputs as `createQuestion` and only what's given: a list given (`answers`, `pairs`, `choices`, `items`, `drags`, `markers`, `drops`, the wildcards' values) replaces the question's. Saving makes a new version of the question, with an id of its own: the one returned, which quizzes using the latest version get from then on.",
     "params": [
       {
         "name": "activityId",
@@ -7958,7 +8082,34 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "string"
           },
-          "description": "The question's text (HTML)."
+          "description": "The question's text (HTML). Its type's places go in it: `[[1]]`, `[[2]]`… for the choices of ddwtos and gapselect, a Cloze question's answers (`{1:SHORTANSWER:=Paris}`), a gap fill's `[gaps]`, a calculated question's `{wildcards}`."
+        },
+        {
+          "name": "items",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Ordering: the items, in the right order."
+        },
+        {
+          "name": "coderunner",
+          "optional": true,
+          "type": "{ type: string; answer?: string; testCases: { code: string; expected: string; stdin?: string; extra?: string; useAsExample?: boolean; mark?: number; }[]; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "CodeRunner: its question type (the language and how it's run, \"python3\"…), a sample answer it's checked with when saved, and the test cases."
+        },
+        {
+          "name": "formulas",
+          "optional": true,
+          "type": "{ randomVariables?: string; globalVariables?: string; parts: { answer: string; text?: string; mark?: number; unit?: string; localVariables?: string; gradingVariables?: string; gradingCriterion?: string; feedback?: string; }[]; }",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Formulas: its random and global variables, and its parts, each with its answer (and its own text, mark, unit, variables, grading criterion)."
         },
         {
           "name": "fields",
@@ -7976,7 +8127,7 @@ export const COMMANDS: readonly CommandSpec[] = [
           "value": {
             "kind": "json"
           },
-          "description": "Multichoice, short answer and numerical answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. A numerical answer's `tolerance` is the error accepted around it."
+          "description": "Answers: a fraction of the mark (1 right, 0 wrong, negatives for penalties), the nearest one Moodle offers. Multichoice, short answer and numerical; and the calculated types, whose answer is a formula of the wildcards (`{a} + {b}`; in calculatedmulti, `{={a} + {b}}` inside the text). A numerical or calculated answer's `tolerance` is the error accepted around it."
         },
         {
           "name": "correct",
@@ -7986,6 +8137,87 @@ export const COMMANDS: readonly CommandSpec[] = [
             "kind": "boolean"
           },
           "description": "True/false: the right answer."
+        },
+        {
+          "name": "pairs",
+          "optional": true,
+          "type": "{ question: string; answer: string; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Matching (match, ddmatch): each question and its answer; an answer without a question is a distractor."
+        },
+        {
+          "name": "choose",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Random short-answer matching: how many short-answer questions of the category it draws."
+        },
+        {
+          "name": "choices",
+          "optional": true,
+          "type": "{ text: string; group?: number; unlimited?: boolean; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Drag and drop into text, select missing words: the choices `[[1]]`, `[[2]]`… name, by position; a group (1 by default) is a set of choices that go in the same places; `unlimited` (ddwtos) lets a choice be used more than once."
+        },
+        {
+          "name": "image",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Drag and drop onto an image, markers: the background image, a local file."
+        },
+        {
+          "name": "drags",
+          "optional": true,
+          "type": "{ text?: string; image?: string; group?: number; unlimited?: boolean; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Drag and drop onto an image: the draggable items, a word (`text`) or a local image file (`image`, with `text` as its alternative text)."
+        },
+        {
+          "name": "markers",
+          "optional": true,
+          "type": "{ text: string; count?: number; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Drag and drop markers: the markers, and how many times each can be placed (unlimited by default)."
+        },
+        {
+          "name": "drops",
+          "optional": true,
+          "type": "DropZone[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Drag and drop onto an image, markers: where the items or markers go."
+        },
+        {
+          "name": "wildcards",
+          "optional": true,
+          "type": "{ name: string; min?: number; max?: number; decimals?: number; distribution?: \"uniform\" | \"loguniform\"; values?: number[]; }[]",
+          "value": {
+            "kind": "json"
+          },
+          "description": "Calculated types: each wildcard's values, as a range Moodle draws them from (`min`, `max`, `decimals`, `distribution`) or given (`values`, one per set). Without them Moodle's ranges (1 to 10) are used."
+        },
+        {
+          "name": "sets",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Calculated types: how many sets of values to draw (10 by default; the `values` given set it)."
         },
         {
           "name": "categoryId",
