@@ -1,6 +1,6 @@
 # Encuestas y consultas
 
-Responder encuestas y consultas como lo hace un estudiante: leer las preguntas de una encuesta con sus campos y rellenarla página a página, y leer las opciones de una consulta y elegir una o varias. Se admiten dos módulos de encuesta: el módulo Retroalimentación de Moodle (`feedback`) y el plugin Cuestionario (`questionnaire`, mod_questionnaire). El módulo "survey" más antiguo de Moodle (instrumentos fijos como COLLES y ATTLS) no. Estas funciones actúan como la persona, sobre sus propias respuestas; las vistas de las respuestas para los profesores no se cubren.
+Responder encuestas y consultas como lo hace un estudiante: leer las preguntas de una encuesta con sus campos y rellenarla página a página, y leer las opciones de una consulta y elegir una o varias. Se admiten dos módulos de encuesta: el módulo Retroalimentación de Moodle (`feedback`) y el plugin Cuestionario (`questionnaire`, mod_questionnaire). El módulo "survey" más antiguo de Moodle (instrumentos fijos como COLLES y ATTLS) no. Un profesor también puede leer lo que respondieron todos: `surveyResults` para una encuesta y `choiceResults` para una consulta, de los informes que Moodle muestra a los profesores.
 
 **Términos:** [encuesta](../reference/glossary.md#survey), [consulta](../reference/glossary.md#choice), [retroalimentación](../reference/glossary.md#feedback).
 
@@ -68,6 +68,55 @@ function submitSurvey(context: BrowserContext, siteUrl: string, activityId: numb
 
 Sin `type`, el módulo se averigua como lo averigua `getSurvey`. Cada nombre se comprueba contra el formulario entero antes de enviar nada, así que un nombre erróneo no envía nada: `SurveyError` nombra los campos desconocidos. `SurveyError` también llega cuando la persona no puede responder ahora (con los mensajes de la página), cuando Moodle devuelve una página porque falta algo o algo está mal (una pregunta obligatoria sin responder: los mensajes de Moodle están en el error, por campo cuando da uno) y cuando el sitio responde con un error de servidor (5xx), en cuyo caso Moodle puede haber registrado o no las respuestas: vuelve a leer la encuesta antes de intentarlo de nuevo. `submitSurvey` no admite la opción `trail`: el formulario se rellena y se envía de una vez, página tras página.
 
+## surveyResults
+
+Lo que respondieron las personas en una retroalimentación o un cuestionario, tal como sus informes se lo muestran a un profesor: cada respuesta, quién la dio salvo que sea anónima, y cada pregunta con la respuesta de cada envío, cuántos eligieron cada opción y la media de las respuestas numéricas.
+
+```ts
+function surveyResults(context: BrowserContext, siteUrl: string, activityId: number, options?: { type?: SurveyType }): Promise<SurveyResults>;
+
+interface SurveyResults {
+  id: number;
+  type: SurveyType;
+  responses: SurveyResponse[];
+  questions: SurveyResultQuestion[];
+}
+
+interface SurveyResponse {
+  id: number;
+  anonymous: boolean;
+  userId?: number;
+  fullName?: string;
+  number?: number;
+}
+
+interface SurveyResultQuestion {
+  id: number;
+  number?: string;
+  text: string;
+  type: string;
+  answers: { responseId: number; values: string[] }[];
+  counts?: SurveyOptionCount[];
+  average?: number;
+  rows?: { row: string; counts: SurveyOptionCount[]; average?: number }[];
+}
+
+interface SurveyOptionCount {
+  option: string;
+  count: number;
+}
+```
+
+- `type`: el módulo de la actividad; sin él, se averigua como lo averigua `getSurvey`.
+- `responses`: el id de cada respuesta en Moodle (la respuesta completada de una retroalimentación, la respuesta de un cuestionario), si se dio de forma anónima y, si no, quién la dio. Una retroalimentación nombra a las personas con su `userId` y su `fullName`, y numera sus respuestas anónimas (`number`, su "Número de respuesta"); el informe de un cuestionario nombra a las personas sin enlazarlas, así que sus respuestas solo llevan el `fullName`.
+- `questions`: las preguntas que admiten respuesta, en el orden de la encuesta. `id` es el id del elemento de una retroalimentación o el id de la pregunta de un cuestionario; `type` es el propio del módulo (retroalimentación: `multichoice`, `multichoicerated`, `numeric`, `textfield`, `textarea`…; cuestionario: `radio`, `check`, `drop`, `yesno`, `rate`, `text`, `essay`, `numeric`, `date`…).
+- `answers`: la respuesta de cada envío por su `responseId`: la opción u opciones elegidas, el texto o el número dados; el texto "otro" de un cuestionario va tras la opción y dos puntos, y las filas de una pregunta de valoración como `"fila: opción"`. Los envíos que dejaron la pregunta en blanco no aparecen.
+- `counts`: en las preguntas de opciones, todas las opciones que ofrece la pregunta, en orden, con cuántas respuestas la eligieron (las que nadie eligió cuentan 0), contadas a partir de las respuestas como las cuenta el análisis de Moodle.
+- `average`: en las preguntas numéricas, y en las opciones valoradas de una retroalimentación según los pesos de sus opciones, la media con dos decimales.
+- `rows`: la pregunta de valoración de un cuestionario, cada fila con sus recuentos por columna y su posición media (los números de las propias columnas, o sus posiciones cuando tienen nombre).
+
+Una retroalimentación se lee de su página de impresión (las preguntas y sus opciones), de sus tablas de "Mostrar respuestas" (quién respondió) y de las descargas CSV de esas tablas (todas las respuestas: las tablas muestran diez preguntas como mucho); necesita `mod/feedback:viewreports`, que tienen los profesores. Un cuestionario se lee de las respuestas individuales de su informe, una página por respuesta, en el orden de su lista de respuestas (también las que están en curso, como las muestra la lista); necesita `mod/questionnaire:readallresponses`, que tienen los profesores y también los estudiantes donde el cuestionario les deja ver todas las respuestas (su ajuste "Los estudiantes pueden ver TODAS las respuestas"). Lanza `SurveyError` cuando Moodle rechaza el informe o la página de un cuestionario no enlaza a él (como cuando nadie lo ha respondido aún) (el mensaje de Moodle y la capacidad están en el error), cuando el id no es una encuesta de ese módulo y cuando el plugin Cuestionario no está instalado en el sitio.
+
 ## getChoice
 
 Una actividad de consulta, leída en su página: sus opciones con los ids que reciben las respuestas, si se puede responder o cambiar, y la respuesta de la persona. Los servicios de las consultas de Moodle no están abiertos a llamadas AJAX, así que la fuente es la página.
@@ -108,6 +157,31 @@ function answerChoice(context: BrowserContext, siteUrl: string, activityId: numb
 
 En una consulta múltiple, las opciones que no se dan se desmarcan, así que `optionIds` es la respuesta entera. Lanza `ChoiceError`, antes de guardar nada, cuando no se da ninguna opción, cuando la consulta no se puede responder ahora (cerrada, aún no abierta, o respondida y sin permitir cambios; el error repite la respuesta de la persona y el mensaje de Moodle), cuando se dan varias a una consulta simple, cuando un id de opción no es de la consulta (el error enumera sus opciones) y cuando una opción está completa.
 
+## choiceResults
+
+Las respuestas de una consulta, tal como su informe de respuestas se las muestra a un profesor: cada opción con cuántos la eligieron y quiénes.
+
+```ts
+function choiceResults(context: BrowserContext, siteUrl: string, activityId: number): Promise<ChoiceResults>;
+
+interface ChoiceResults {
+  id: number;
+  options: { id?: number; text: string; count: number; users: ChoiceRespondent[] }[];
+  notAnswered?: ChoiceRespondent[];
+}
+
+interface ChoiceRespondent {
+  userId: number;
+  fullName: string;
+}
+```
+
+- `options`: en el orden de la consulta, cada una con su id (lo que recibe `answerChoice`), su texto, su recuento y las personas que la eligieron. El id sale de las casillas "seleccionar todo" del informe, que solo tienen quienes pueden borrar respuestas (`mod/choice:deleteresponses`, como los profesores); sin ellas falta.
+- `notAnswered`: quiénes no han respondido, cuando la consulta los muestra (su ajuste "Mostrar columna de no respondidas"), reconocidos por las mismas casillas.
+- El informe nombra a las personas publique lo que publique la consulta: su ajuste "Publicar resultados" trata de lo que ven los estudiantes.
+
+Cuando nadie ha respondido, Moodle no muestra tabla: las opciones salen de la página de la consulta, cada una con un recuento de 0. Necesita `mod/choice:readresponses`, que tienen los profesores; lanza `ChoiceError` con el mensaje de Moodle cuando se rechaza o el id no es una consulta.
+
 ## Ejemplo {#example}
 
 ```ts
@@ -145,9 +219,28 @@ if (choice.canAnswer && option) {
 }
 ```
 
+Como profesor, los resultados de las mismas actividades:
+
+```ts
+// `moodle` es el objeto de createMoodle(), como en las páginas de primeros pasos.
+
+// Quién respondió la retroalimentación (módulo del curso 34) y cuántos eligieron cada opción de cada pregunta.
+const results = await moodle.surveyResults(34);
+for (const response of results.responses) console.log(response.anonymous ? `Respuesta anónima ${response.number}` : response.fullName);
+for (const question of results.questions) {
+  const counts = question.counts?.map((c) => `${c.option}: ${c.count}`).join(", ");
+  console.log(`${question.text}: ${counts ?? question.answers.map((a) => a.values.join(" / ")).join(" | ")}${question.average !== undefined ? ` (media ${question.average})` : ""}`);
+}
+
+// Quién eligió qué en la consulta (módulo del curso 40).
+const { options } = await moodle.choiceResults(40);
+for (const option of options) console.log(`${option.text} (${option.count}): ${option.users.map((u) => u.fullName).join(", ")}`);
+```
+
 ## Categorías de datos {#data-categories}
 
 - `getSurvey`, `getChoice`: `course-content` y `own` (la actividad y la respuesta de la persona).
 - `submitSurvey`, `answerChoice`: `own`.
+- `surveyResults`, `choiceResults`: `course-content`, `others-aggregate` y `others-personal` (la actividad, sus recuentos y las respuestas de todos con sus nombres).
 
 Consulta [Categorías de datos](../concepts/data-categories.md).

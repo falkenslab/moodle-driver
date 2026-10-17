@@ -7,7 +7,7 @@ import { activitySettings, addSection, createActivity, deleteActivity, deleteSec
 import { callService } from "./core/ajax.js";
 import { awardBadge, courseBadges, createBadge, setBadgeCriteria, setBadgeEnabled } from "./areas/badges/badges.js";
 import { calendarEvent, createEvent, deleteEvent, updateEvent, upcomingEvents } from "./areas/calendar/calendar.js";
-import { answerChoice, getChoice } from "./areas/surveys/choice.js";
+import { answerChoice, choiceResults, getChoice } from "./areas/surveys/choice.js";
 import { activityReport, courseLogs, participationReport } from "./areas/reports/reports.js";
 import { backupCourse, copyCourse, importActivities, restoreCourse } from "./areas/backup/backup.js";
 import { backupContents, type BackupContents } from "./areas/backup/contents.js";
@@ -53,6 +53,7 @@ import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
 import { courseStructure, listAssignments, pendingActivities } from "./areas/courses/structure.js";
 import { saveSubmission, studentAssignment, submitForGrading } from "./areas/assignments/student.js";
 import { getSurvey, submitSurvey } from "./areas/surveys/surveys.js";
+import { surveyResults } from "./areas/surveys/results.js";
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
 import { MoodleError } from "./core/errors.js";
 import type { MoodleMethods } from "./moodle-methods.generated.js";
@@ -92,6 +93,7 @@ const SITE_FUNCTIONS = {
   bookChapters,
   assignmentSubmissions,
   calendarEvent,
+  choiceResults,
   completionReport,
   copyCourse,
   conversation,
@@ -212,6 +214,7 @@ const SITE_FUNCTIONS = {
   studentAssignment,
   submitForGrading,
   submitSurvey,
+  surveyResults,
   upcomingEvents,
   updateActivity,
   updateCourse,

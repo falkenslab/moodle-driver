@@ -106,6 +106,113 @@ export async function getChoice(context: BrowserContext, siteUrl: string, activi
   }
 }
 
+/** Someone who chose an option, as the responses report links them. */
+export interface ChoiceRespondent {
+  userId: number;
+  fullName: string;
+}
+
+/** A choice's responses as a teacher sees them (`choiceResults`). */
+export interface ChoiceResults {
+  id: number;
+  /** Each option with how many chose it and who. */
+  options: {
+    /** The option's id, as `answerChoice` takes it; missing where the report doesn't give it (a role without `mod/choice:deleteresponses`). */
+    id?: number;
+    text: string;
+    count: number;
+    users: ChoiceRespondent[];
+  }[];
+  /** Who hasn't answered, where the choice shows them ("Show column for unanswered"). */
+  notAnswered?: ChoiceRespondent[];
+}
+
+/**
+ * The responses report's table (`table.results.names`): a column per option (the unanswered column
+ * first, id 0), the counts in its first row, the people in its second. Option ids come from the
+ * "select all" checkbox each column header has for those who can delete responses.
+ */
+export function readChoiceResults(page: Page): Promise<{ table: boolean; options: (ChoiceResults["options"][number] & { unanswered: boolean })[] }> {
+  return inPage(page, () => {
+    interface El {
+      id: string;
+      href: string;
+      textContent: string | null;
+      querySelector(s: string): El | null;
+      querySelectorAll(s: string): ArrayLike<El & { remove(): void }>;
+      cloneNode(deep: boolean): El;
+    }
+    const doc = (globalThis as unknown as { document: El }).document;
+    const table = doc.querySelector("#region-main table.results.names");
+    if (!table) return { table: false, options: [] };
+    // A cell's own text: without the checkboxes and their labels (in the site's language).
+    const own = (el: El | null) => {
+      if (!el) return "";
+      const copy = el.cloneNode(true);
+      for (const extra of Array.from(copy.querySelectorAll(".form-check, label, input, .userinitials, img"))) extra.remove();
+      return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
+    };
+    const heads = Array.from(table.querySelectorAll("thead th")).slice(1);
+    const rows = Array.from(table.querySelectorAll("tbody tr"));
+    const counts = Array.from(rows[0]?.querySelectorAll("td") ?? []);
+    const people = Array.from(rows[1]?.querySelectorAll("td") ?? []);
+    return {
+      table: true,
+      options: heads.map((head, i) => {
+        const toggle = head.querySelector('input[id^="select-response-option-"]');
+        const id = toggle ? Number(toggle.id.replace("select-response-option-", "")) : undefined;
+        const users = Array.from(people[i]?.querySelectorAll('a[href*="/user/view.php"]') ?? []).map((link) => ({
+          userId: Number(new URL(link.href).searchParams.get("id")),
+          fullName: own(link),
+        }));
+        // The unanswered column's people carry `userid[]` checkboxes, the options' `attemptid[]`.
+        const unanswered = id === 0 || people[i]?.querySelector('input[name="userid[]"]') != null;
+        return { ...(id !== undefined ? { id } : {}), text: own(head), count: Number.parseInt(own(counts[i] ?? null), 10) || users.length, users, unanswered };
+      }),
+    };
+  }, null);
+}
+
+/**
+ * A choice's responses, as its responses report shows them to a teacher: each option with its count
+ * and who chose it, and who hasn't answered where the choice shows that. The report names people
+ * whatever the choice publishes to students (its "Publish results" setting is about students).
+ * Needs `mod/choice:readresponses`; throws `ChoiceError` with Moodle's reason otherwise, or when the
+ * activity isn't a choice.
+ */
+export async function choiceResults(context: BrowserContext, siteUrl: string, activityId: number): Promise<ChoiceResults> {
+  const page = await openSitePage(context, siteUrl, `mod/choice/report.php?id=${activityId}`);
+  let read: Awaited<ReturnType<typeof readChoiceResults>>;
+  try {
+    const error = await moodleErrorMessage(page);
+    if ((await page.locator("body#page-mod-choice-report").count()) === 0 || error !== undefined) {
+      throw new ChoiceError(
+        `Moodle didn't show the responses of activity ${activityId}${error ? ` (Moodle says: ${error})` : ""}. Reading them takes a choice's id (module "choice") from the course structure and the capability mod/choice:readresponses, which teachers have.`,
+      );
+    }
+    read = await readChoiceResults(page);
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  // Nobody has answered (and no unanswered column): Moodle shows no table, the options are on the choice's page.
+  if (!read.table) {
+    const choice = await openChoice(context, siteUrl, activityId).then(async (view) => {
+      try {
+        return await readChoice(view);
+      } finally {
+        await view.close().catch(() => undefined);
+      }
+    });
+    return { id: activityId, options: choice.options.map((o) => ({ id: o.id, text: o.text, count: 0, users: [] })) };
+  }
+  const notAnswered = read.options.find((o) => o.unanswered);
+  return {
+    id: activityId,
+    options: read.options.filter((o) => !o.unanswered).map((o) => ({ ...(o.id !== undefined ? { id: o.id } : {}), text: o.text, count: o.count, users: o.users })),
+    ...(notAnswered ? { notAnswered: notAnswered.users } : {}),
+  };
+}
+
 /** Answers a choice with one option (several where it allows them) by id, as "Save my choice" does; returns the choice afterwards. */
 export async function answerChoice(context: BrowserContext, siteUrl: string, activityId: number, optionIds: number[]): Promise<{ changed: string; choice: Choice }> {
   if (optionIds.length === 0) throw new ChoiceError("Give the id of the option to choose.");

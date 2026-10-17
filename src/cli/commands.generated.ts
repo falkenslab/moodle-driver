@@ -1178,6 +1178,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "choiceResults",
+    "description": "A choice's responses, as its responses report shows them to a teacher: each option with its count and who chose it, and who hasn't answered where the choice shows that. The report names people whatever the choice publishes to students (its \"Publish results\" setting is about students). Needs `mod/choice:readresponses`; throws `ChoiceError` with Moodle's reason otherwise, or when the activity isn't a choice.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "completionReport",
     "description": "A course's progress report: every participant's completion of every activity that tracks it, page by page, in one group when given, only some people's when given their `userIds` (the report has no filter by user: its pages are read until all of them are found). People come as user id and full name only.",
     "params": [
@@ -5354,6 +5368,39 @@ export const COMMANDS: readonly CommandSpec[] = [
         "type": "Record<string, string>",
         "value": {
           "kind": "json"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "type",
+          "optional": true,
+          "type": "SurveyType",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "questionnaire",
+              "feedback"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "surveyResults",
+    "description": "What people answered in a feedback or a questionnaire, as its reports show a teacher: every response (who gave it, unless anonymous) and, per question, each response's answer, the counts of a choice question's options (counted from the answers, as Moodle's analysis counts them) and the average of numeric and rated ones. The module is found when not given. A feedback is read from its print page (the questions), its \"Show responses\" tables (who) and their CSV downloads (every answer: the tables show ten questions at most); it needs `mod/feedback:viewreports`. A questionnaire is read from its report's individual responses, one page each (in-progress ones too, as its list shows them), and names people without their user ids; it needs `mod/questionnaire:readallresponses` (students have it too, where the questionnaire lets them see all responses), and its page links to the report only once someone has answered. Throws `SurveyError` with Moodle's reason otherwise, or when the questionnaire plugin isn't installed.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
         }
       }
     ],

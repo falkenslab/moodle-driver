@@ -210,6 +210,14 @@ export interface MoodleMethods {
   /** One calendar event by its id, as `upcomingEvents` gives them. */
   calendarEvent(eventId: number): Promise<import("./areas/calendar/calendar.js").CalendarEvent>;
   /**
+   * A choice's responses, as its responses report shows them to a teacher: each option with its count
+   * and who chose it, and who hasn't answered where the choice shows that. The report names people
+   * whatever the choice publishes to students (its "Publish results" setting is about students).
+   * Needs `mod/choice:readresponses`; throws `ChoiceError` with Moodle's reason otherwise, or when the
+   * activity isn't a choice.
+   */
+  choiceResults(activityId: number): Promise<import("./areas/surveys/choice.js").ChoiceResults>;
+  /**
    * A course's progress report: every participant's completion of every activity that tracks it, page
    * by page, in one group when given, only some people's when given their `userIds` (the report has
    * no filter by user: its pages are read until all of them are found). People come as user id and
@@ -1021,6 +1029,21 @@ export interface MoodleMethods {
    * page. Every name is checked against the form first, so nothing is sent with a wrong one.
    */
   submitSurvey(activityId: number, responses: Record<string, string>, options?: { type?: import("./areas/surveys/surveys.js").SurveyType | undefined; }): Promise<{ changed: string; messages: string[]; }>;
+  /**
+   * What people answered in a feedback or a questionnaire, as its reports show a teacher: every
+   * response (who gave it, unless anonymous) and, per question, each response's answer, the counts of
+   * a choice question's options (counted from the answers, as Moodle's analysis counts them) and the
+   * average of numeric and rated ones. The module is found when not given.
+   *
+   * A feedback is read from its print page (the questions), its "Show responses" tables (who) and
+   * their CSV downloads (every answer: the tables show ten questions at most); it needs
+   * `mod/feedback:viewreports`. A questionnaire is read from its report's individual responses, one
+   * page each (in-progress ones too, as its list shows them), and names people without their user
+   * ids; it needs `mod/questionnaire:readallresponses` (students have it too, where the questionnaire
+   * lets them see all responses), and its page links to the report only once someone has answered.
+   * Throws `SurveyError` with Moodle's reason otherwise, or when the questionnaire plugin isn't installed.
+   */
+  surveyResults(activityId: number, options?: { type?: import("./areas/surveys/surveys.js").SurveyType | undefined; }): Promise<import("./areas/surveys/results.js").SurveyResults>;
   /**
    * Unenrols a user from a course: removes every enrolment of theirs the person may remove (its
    * unenrol link on the participants page), with their roles and group memberships in the course, as
