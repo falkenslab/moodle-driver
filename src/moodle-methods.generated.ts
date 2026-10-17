@@ -42,6 +42,15 @@ export interface MoodleMethods {
    */
   addBookChapter(activityId: number, input: import("./areas/activities/books.js").BookChapterInput): Promise<import("./areas/activities/books.js").BookChapterChange>;
   /**
+   * Adds a framework's competency to a course (nothing when it's there already), as the course
+   * competencies page's "Add competencies to course" does; the competency ids come from
+   * `competencyFrameworks`. Returns the course's competencies afterwards. Throws `CompetencyError`
+   * naming the capability when the person can't (moodle/competency:coursecompetencymanage, which
+   * editing teachers have) or with Moodle's reason (no such competency), `CompetenciesDisabledError` on
+   * a site with competencies off.
+   */
+  addCourseCompetency(courseId: number, competencyId: number): Promise<import("./areas/competencies/competencies.js").CourseCompetencyChange>;
+  /**
    * Adds an entry to a database activity through its "Add entry" form, as the person would: `values` by
    * field id or name (see `DatabaseEntryInput`); fields left out stay as the form has them (a date
    * field's form starts at today, and Moodle saves it). Local files go up to the field's draft area,
@@ -366,6 +375,23 @@ export interface MoodleMethods {
    */
   choiceResults(activityId: number): Promise<import("./areas/surveys/choice.js").ChoiceResults>;
   /**
+   * The competency frameworks a course can draw its competencies from (the visible ones of the site
+   * and of the course's categories), each with its competencies: their ids are what
+   * `addCourseCompetency` takes. Frameworks are made at site or category level; the driver only reads
+   * them. Throws `CompetencyError` naming the capability when the person can't view them
+   * (moodle/competency:competencyview), `CompetenciesDisabledError` on a site with competencies off.
+   */
+  competencyFrameworks(courseId: number): Promise<import("./areas/competencies/competencies.js").CompetencyFramework[]>;
+  /**
+   * A participant's rating in one of the course's competencies, as their competency page in the
+   * course shows it: the rating (null while unrated) and whether it's proficient, the competency's
+   * scale, and the evidence in the course (each rating given, with its note, who and when). A teacher
+   * reads anyone's in the course (moodle/competency:usercompetencyview), a student their own. Throws
+   * `CompetencyError` naming the capability when the person can't, or with Moodle's reason (a
+   * competency that isn't the course's), `CompetenciesDisabledError` on a site with competencies off.
+   */
+  competencyRating(courseId: number, userId: number, competencyId: number): Promise<import("./areas/competencies/competencies.js").CompetencyRating>;
+  /**
    * A course's progress report: every participant's completion of every activity that tracks it, page
    * by page, in one group when given, only some people's when given their `userIds` (the report has
    * no filter by user: its pages are read until all of them are found). People come as user id and
@@ -459,6 +485,14 @@ export interface MoodleMethods {
    * page can't be opened.
    */
   courseBlocks(courseId: number): Promise<import("./areas/courses/blocks.js").CourseBlock[]>;
+  /**
+   * A course's competencies, as its competencies page lists them: each one's short name, id number,
+   * description, framework and the course's activities linked to it. Anyone in the course with
+   * moodle/competency:coursecompetencyview (students and teachers by default) reads them. Throws
+   * `CompetencyError` naming the capability when the person can't, `CompetenciesDisabledError` on a
+   * site with competencies off.
+   */
+  courseCompetencies(courseId: number): Promise<import("./areas/competencies/competencies.js").CourseCompetency[]>;
   /**
    * A course's completion criteria, from its "Course completion" settings form: the overall
    * aggregation, each kind of criterion set (activities, other courses, a date, days enrolled,
@@ -1385,10 +1419,28 @@ export interface MoodleMethods {
    * rating period, or no permission) or the rating isn't on its scale.
    */
   rate(item: import("./areas/ratings/ratings.js").RateableItem, rating: string | number | null): Promise<{ changed: string; aggregate?: string | undefined; count?: number | undefined; }>;
+  /**
+   * Rates a participant in one of the course's competencies, as the rating dialog of their competency
+   * page in the course does: `rating` is a scale item's value (1 for the first) or its name, and the
+   * `note`, when given, is kept with the rating as its evidence. The new rating replaces the course's
+   * rating; Moodle may also push it to the participant's learning plans (the course's setting). Returns
+   * the rating afterwards. Throws a `MoodleError` with code `invalid-input` for a rating not on the
+   * scale, `CompetencyError` naming the capability when the person can't (moodle/competency:competencygrade,
+   * which editing teachers have) or with Moodle's reason (a participant who can't be rated in the
+   * course), `CompetenciesDisabledError` on a site with competencies off.
+   */
+  rateCompetency(courseId: number, userId: number, competencyId: number, input: import("./areas/competencies/competencies.js").CompetencyRatingInput): Promise<import("./areas/competencies/competencies.js").CompetencyRatingChange>;
   /** Every question of an attempt, page by page, with the page each is on. */
   readAttempt(attemptId: number): Promise<import("./areas/quizzes/attempts.js").Question[]>;
   /** A finished attempt's review, as far as the quiz's review options let the person see it. */
   readReview(attemptId: number): Promise<{ summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; }>;
+  /**
+   * Removes a competency from a course (nothing when it isn't there); Moodle unlinks it from the
+   * course's activities too, and keeps the ratings already given. Returns the course's competencies
+   * afterwards. Throws `CompetencyError` naming the capability when the person can't
+   * (moodle/competency:coursecompetencymanage), `CompetenciesDisabledError` on a site with competencies off.
+   */
+  removeCourseCompetency(courseId: number, competencyId: number): Promise<import("./areas/competencies/competencies.js").CourseCompetencyChange>;
   /** Removes a slot (by its place, from 1) from a quiz, as the edit page's delete icon does; the question stays in its bank. */
   removeQuizSlot(activityId: number, slot: number): Promise<import("./areas/quizzes/structure.js").QuizChange>;
   /**
@@ -1490,6 +1542,15 @@ export interface MoodleMethods {
   scorm(activityId: number): Promise<import("./areas/scorm/scorm.js").ScormActivity>;
   /** Sends a private message to a user, as the messaging drawer does; returns the message and its conversation. */
   sendMessage(userId: number, text: string): Promise<{ changed: string; messageId: number; conversationId?: number | undefined; }>;
+  /**
+   * Sets which of its course's competencies an activity is linked to (all of them at once: the ones
+   * not given are unlinked, `[]` unlinks them all), through the activity's settings form, its
+   * "Course competencies" field: Moodle has no service for it. Only competencies of the course can be
+   * linked (`addCourseCompetency` first). Returns the activity's competencies afterwards. Throws
+   * `CompetencyError` naming the capability when the person can't (moodle/competency:coursecompetencymanage)
+   * or for a competency that isn't the course's, `CompetenciesDisabledError` on a site with competencies off.
+   */
+  setActivityCompetencies(activityId: number, competencyIds: number[]): Promise<import("./areas/competencies/competencies.js").ActivityCompetencyChange>;
   /**
    * Sets a badge's criteria through its criterion forms: activity completion (course module ids),
    * course completion (with a minimum grade and a date), and manual award by role; `all` sets whether

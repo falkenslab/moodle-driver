@@ -266,6 +266,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addCourseCompetency",
+    "description": "Adds a framework's competency to a course (nothing when it's there already), as the course competencies page's \"Add competencies to course\" does; the competency ids come from `competencyFrameworks`. Returns the course's competencies afterwards. Throws `CompetencyError` naming the capability when the person can't (moodle/competency:coursecompetencymanage, which editing teachers have) or with Moodle's reason (no such competency), `CompetenciesDisabledError` on a site with competencies off.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "competencyId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "addDatabaseEntry",
     "description": "Adds an entry to a database activity through its \"Add entry\" form, as the person would: `values` by field id or name (see `DatabaseEntryInput`); fields left out stay as the form has them (a date field's form starts at today, and Moodle saves it). Local files go up to the field's draft area, as the file picker does. Returns the new entry's id. Throws `MoodleError` (`invalid-input`) for a field the form hasn't or a value it doesn't take, before anything is saved; `DatabaseError` when Moodle refuses the person (it takes `mod/data:writeentry`, within the database's dates and entry limits) or the entry (a required field without a value…, with Moodle's messages); `NotADatabaseError`.",
     "params": [
@@ -1870,6 +1892,50 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "competencyFrameworks",
+    "description": "The competency frameworks a course can draw its competencies from (the visible ones of the site and of the course's categories), each with its competencies: their ids are what `addCourseCompetency` takes. Frameworks are made at site or category level; the driver only reads them. Throws `CompetencyError` naming the capability when the person can't view them (moodle/competency:competencyview), `CompetenciesDisabledError` on a site with competencies off.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "competencyRating",
+    "description": "A participant's rating in one of the course's competencies, as their competency page in the course shows it: the rating (null while unrated) and whether it's proficient, the competency's scale, and the evidence in the course (each rating given, with its note, who and when). A teacher reads anyone's in the course (moodle/competency:usercompetencyview), a student their own. Throws `CompetencyError` naming the capability when the person can't, or with Moodle's reason (a competency that isn't the course's), `CompetenciesDisabledError` on a site with competencies off.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "competencyId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "completionReport",
     "description": "A course's progress report: every participant's completion of every activity that tracks it, page by page, in one group when given, only some people's when given their `userIds` (the report has no filter by user: its pages are read until all of them are found). People come as user id and full name only.",
     "params": [
@@ -2192,6 +2258,20 @@ export const COMMANDS: readonly CommandSpec[] = [
   {
     "name": "courseBlocks",
     "description": "The blocks on a course's page: each one's id, type (`html` for a text block, `calendar_upcoming`…), title, region and, for a text block, its content (HTML). Whom can edit the course's blocks get them all, hidden and empty ones too, with their weight: the page is read in editing mode (turned on for the read and back off after, when it was off) and each block's configure form gives its weight. Others get the blocks the page shows them, without weights. Throws `BlockError` when the course page can't be opened.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "courseCompetencies",
+    "description": "A course's competencies, as its competencies page lists them: each one's short name, id number, description, framework and the course's activities linked to it. Anyone in the course with moodle/competency:coursecompetencyview (students and teachers by default) reads them. Throws `CompetencyError` naming the capability when the person can't, `CompetenciesDisabledError` on a site with competencies off.",
     "params": [
       {
         "name": "courseId",
@@ -6603,6 +6683,59 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "rateCompetency",
+    "description": "Rates a participant in one of the course's competencies, as the rating dialog of their competency page in the course does: `rating` is a scale item's value (1 for the first) or its name, and the `note`, when given, is kept with the rating as its evidence. The new rating replaces the course's rating; Moodle may also push it to the participant's learning plans (the course's setting). Returns the rating afterwards. Throws a `MoodleError` with code `invalid-input` for a rating not on the scale, `CompetencyError` naming the capability when the person can't (moodle/competency:competencygrade, which editing teachers have) or with Moodle's reason (a participant who can't be rated in the course), `CompetenciesDisabledError` on a site with competencies off.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "competencyId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "input",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "rating",
+          "optional": false,
+          "type": "string | number",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "note",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "readAttempt",
     "description": "Every question of an attempt, page by page, with the page each is on.",
     "params": [
@@ -6622,6 +6755,28 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "attemptId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "removeCourseCompetency",
+    "description": "Removes a competency from a course (nothing when it isn't there); Moodle unlinks it from the course's activities too, and keeps the ratings already given. Returns the course's competencies afterwards. Throws `CompetencyError` naming the capability when the person can't (moodle/competency:coursecompetencymanage), `CompetenciesDisabledError` on a site with competencies off.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "competencyId",
         "optional": false,
         "type": "number",
         "value": {
@@ -7166,6 +7321,28 @@ export const COMMANDS: readonly CommandSpec[] = [
         "type": "string",
         "value": {
           "kind": "string"
+        }
+      }
+    ]
+  },
+  {
+    "name": "setActivityCompetencies",
+    "description": "Sets which of its course's competencies an activity is linked to (all of them at once: the ones not given are unlinked, `[]` unlinks them all), through the activity's settings form, its \"Course competencies\" field: Moodle has no service for it. Only competencies of the course can be linked (`addCourseCompetency` first). Returns the activity's competencies afterwards. Throws `CompetencyError` naming the capability when the person can't (moodle/competency:coursecompetencymanage) or for a competency that isn't the course's, `CompetenciesDisabledError` on a site with competencies off.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "competencyIds",
+        "optional": false,
+        "type": "number[]",
+        "value": {
+          "kind": "numbers"
         }
       }
     ]

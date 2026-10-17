@@ -58,6 +58,7 @@ import { createGroup, createGrouping, deleteGroup, deleteGrouping, groupings, se
 import { autoCreateGroups, importGroups } from "./areas/participants/autogroups.js";
 import { enrolmentMethods, setEnrolmentMethod } from "./areas/participants/methods.js";
 import { addNote, deleteNote, editNote, notes } from "./areas/participants/notes.js";
+import { addCourseCompetency, competencyFrameworks, competencyRating, courseCompetencies, rateCompetency, removeCourseCompetency, setActivityCompetencies } from "./areas/competencies/competencies.js";
 import { enrolUsers, potentialUsers, setUserRoles, unenrolUser } from "./areas/participants/enrolments.js";
 import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
@@ -235,6 +236,13 @@ const SITE_FUNCTIONS = {
   addNote,
   editNote,
   deleteNote,
+  competencyFrameworks,
+  courseCompetencies,
+  addCourseCompetency,
+  removeCourseCompetency,
+  setActivityCompetencies,
+  competencyRating,
+  rateCompetency,
   participationReport,
   pendingActivities,
   questionBanks,

@@ -104,6 +104,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `CompletionError` | [Finalización](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Insignias](../areas/badges.md): falta una capacidad de insignias (que se nombra), un criterio que Moodle no ofrece; un sitio con las insignias desactivadas |
 | `ExternalToolError` | [Herramientas externas](../areas/external-tools.md): falta una capacidad de LTI (que se nombra), una herramienta que el curso no lista o una herramienta del sitio que borrar, una actividad que no es una herramienta externa |
+| `CompetencyError`, `CompetenciesDisabledError` | [Competencias](../areas/competencies.md): falta una capacidad de competencias (que se nombra), una competencia que no es del curso, un participante al que no se puede valorar; un sitio con las competencias desactivadas |
 | `NoParticipantsError`, `EnrolmentError` | [Participantes](../areas/participants.md): no puede ver los participantes; Moodle se negó a matricular, desmatricular o asignar un rol |
 | `NoteError`, `NotesDisabledError` | [Participantes](../areas/participants.md#notes-about-participants): falta una capacidad de anotaciones (que se nombra), no existe la anotación; un sitio con las anotaciones desactivadas |
 | `ReportError` | [Registros e informes](../areas/logs-and-reports.md): la persona no puede ver el informe, o la actividad no es del curso |
