@@ -1,6 +1,6 @@
 # Encuestas y consultas
 
-Responder encuestas y consultas como lo hace un estudiante: leer las preguntas de una encuesta con sus campos y rellenarla página a página, y leer las opciones de una consulta y elegir una o varias. Se admiten dos módulos de encuesta: el módulo Retroalimentación de Moodle (`feedback`) y el plugin Cuestionario (`questionnaire`, mod_questionnaire). El módulo "survey" más antiguo de Moodle (instrumentos fijos como COLLES y ATTLS) no. Un profesor también puede leer lo que respondieron todos: `surveyResults` para una encuesta y `choiceResults` para una consulta, de los informes que Moodle muestra a los profesores.
+Responder encuestas y consultas como lo hace un estudiante: leer las preguntas de una encuesta con sus campos y rellenarla página a página, y leer las opciones de una consulta y elegir una o varias. Se admiten dos módulos de encuesta: el módulo Retroalimentación de Moodle (`feedback`) y el plugin Cuestionario (`questionnaire`, mod_questionnaire). El módulo "survey" más antiguo de Moodle (instrumentos fijos como COLLES y ATTLS) no. Un profesor también puede leer lo que respondieron todos: `surveyResults` para una encuesta y `choiceResults` para una consulta, de los informes que Moodle muestra a los profesores; y construir las preguntas de una retroalimentación: `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, y sus plantillas.
 
 **Términos:** [encuesta](../reference/glossary.md#survey), [consulta](../reference/glossary.md#choice), [retroalimentación](../reference/glossary.md#feedback).
 
@@ -116,6 +116,137 @@ interface SurveyOptionCount {
 - `rows`: la pregunta de valoración de un cuestionario, cada fila con sus recuentos por columna y su posición media (los números de las propias columnas, o sus posiciones cuando tienen nombre).
 
 Una retroalimentación se lee de su página de impresión (las preguntas y sus opciones), de sus tablas de "Mostrar respuestas" (quién respondió) y de las descargas CSV de esas tablas (todas las respuestas: las tablas muestran diez preguntas como mucho); necesita `mod/feedback:viewreports`, que tienen los profesores. Un cuestionario se lee de las respuestas individuales de su informe, una página por respuesta, en el orden de su lista de respuestas (también las que están en curso, como las muestra la lista); necesita `mod/questionnaire:readallresponses`, que tienen los profesores y también los estudiantes donde el cuestionario les deja ver todas las respuestas (su ajuste "Los estudiantes pueden ver TODAS las respuestas"). Lanza `SurveyError` cuando Moodle rechaza el informe o la página de un cuestionario no enlaza a él (como cuando nadie lo ha respondido aún) (el mensaje de Moodle y la capacidad están en el error), cuando el id no es una encuesta de ese módulo y cuando el plugin Cuestionario no está instalado en el sitio.
+
+## feedbackItems
+
+Los elementos de una retroalimentación tal como los construye su profesor en su página "Preguntas", en orden: las preguntas, las etiquetas y los elementos de información, y los saltos de página.
+
+```ts
+function feedbackItems(context: BrowserContext, siteUrl: string, activityId: number): Promise<FeedbackItemDefinition[]>;
+
+type FeedbackItemType = "multichoice" | "multichoicerated" | "textfield" | "textarea" | "numeric" | "info" | "label" | "captcha" | "pagebreak";
+
+interface FeedbackItemDefinition {
+  id: number;
+  type: FeedbackItemType;
+  position: number;
+  question: string;
+  label?: string;
+  required: boolean;
+  options?: FeedbackItemOption[];
+  display?: "radio" | "checkbox" | "dropdown";
+  horizontal?: boolean;
+  hideNotSelected?: boolean;
+  ignoreEmpty?: boolean;
+  range?: { from?: number; to?: number };
+  info?: "response-time" | "course" | "category";
+  contents?: string;
+  dependsOn?: { itemId: number; value: string };
+}
+
+interface FeedbackItemOption {
+  text: string;
+  weight?: number;
+}
+```
+
+- `type`: los nombres propios de Moodle (`FEEDBACK_ITEM_TYPES`), como los da `surveyResults`: opción múltiple (`multichoice`), opción múltiple valorada (`multichoicerated`), respuesta de texto corta (`textfield`), respuesta de texto larga (`textarea`), respuesta numérica (`numeric`), información (`info`), etiqueta (`label`), CAPTCHA (`captcha`) y salto de página (`pagebreak`).
+- `id`: el id del elemento, el mismo que da `surveyResults` a su pregunta; `position`: su lugar, desde 1.
+- `question`: el texto de la pregunta (vacío en una etiqueta o un salto de página); `label`: el campo "Etiqueta" de Moodle, un nombre corto del elemento en los informes y las dependencias.
+- `options`: las opciones de una pregunta de opciones en orden, las de una valorada con su `weight`; `display`: botones de opción, casillas (varias respuestas, solo en opción múltiple) o una lista desplegable; `horizontal`, `hideNotSelected` (sin la opción "No seleccionada") e `ignoreEmpty` (las respuestas vacías fuera del análisis): los demás ajustes de la pregunta de opciones.
+- `range`: el rango de un elemento numérico, cuando lo tiene; `info`: lo que muestra un elemento de información (la hora de la respuesta, el curso o su categoría); `contents`: el HTML de una etiqueta.
+- `dependsOn`: el elemento solo se muestra cuando otro, por su id, se respondió con `value`.
+
+Los elementos salen de la exportación de las preguntas de la retroalimentación (`export.php`), que necesita `mod/feedback:edititems` igual que construirlas (la tienen los profesores con permiso de edición); sin ella lanza `SurveyError` con el mensaje de Moodle, igual que cuando el id no es una retroalimentación. Una retroalimentación sin elementos se lee como ninguno.
+
+## addFeedbackItem
+
+Añade un elemento a una retroalimentación, como hacen su menú "Añadir pregunta" y el formulario del elemento.
+
+```ts
+function addFeedbackItem(context: BrowserContext, siteUrl: string, activityId: number, input: FeedbackItemInput & { after?: number }): Promise<{ changed: string; itemId: number; itemIds: number[] }>;
+
+interface FeedbackItemInput {
+  type: FeedbackItemType;
+  question?: string;
+  label?: string;
+  required?: boolean;
+  options?: (string | FeedbackItemOption)[];
+  display?: "radio" | "checkbox" | "dropdown";
+  horizontal?: boolean;
+  hideNotSelected?: boolean;
+  ignoreEmpty?: boolean;
+  range?: { from?: number; to?: number };
+  info?: "response-time" | "course" | "category";
+  contents?: string;
+  dependsOn?: { itemId: number; value: string } | null;
+  fields?: Record<string, FieldValue>;
+}
+```
+
+- `after`: el elemento tras el que va (0 lo pone el primero); por defecto va el último.
+- `question`: todos los tipos salvo la etiqueta y el salto de página necesitan una; una etiqueta recibe `contents` (HTML).
+- `options`: las opciones de una pregunta de opciones, una línea de texto cada una (sin `|`, el separador de Moodle); las de una valorada como `{ text, weight }`, con el peso como número entero (0 si se omite).
+- `required`: no en los elementos de información, las etiquetas y los saltos de página, que Moodle nunca hace obligatorios. `info: "response-time"` solo donde la retroalimentación no es anónima, como lo ofrece Moodle.
+- `dependsOn`: se muestra solo cuando otro elemento que admite respuesta se respondió con `value` (en Moodle, va en una página posterior a la de ese elemento).
+- `fields`: cualquier otro campo del formulario del elemento por su nombre (`itemsize` e `itemmaxlength` de un texto corto, `itemwidth` e `itemheight` de uno largo…).
+- Devuelve el id del elemento nuevo y los elementos de la retroalimentación en orden.
+
+Un salto de página y un CAPTCHA no tienen formulario: Moodle los añade al final cuando se abre su enlace, y el driver los mueve luego adonde dice `after`. Moodle no añade un salto de página a una retroalimentación sin elementos ni justo tras otro salto de página al final, y un CAPTCHA como mucho (cuya comprobación solo funciona con las claves de reCAPTCHA del sitio). Lanza `SurveyError`, antes de guardar nada, para un tipo que el menú "Añadir pregunta" de la retroalimentación no ofrece, para lo que el tipo no admite (opciones en un elemento de texto, `required` en una etiqueta…) y para un elemento de `after` o de `dependsOn` que la retroalimentación no tiene; `FormError` con los mensajes de Moodle por campo cuando rechaza el formulario.
+
+## editFeedbackItem
+
+Cambia un elemento mediante su formulario con lo que se da; el resto queda como está.
+
+```ts
+function editFeedbackItem(context: BrowserContext, siteUrl: string, activityId: number, itemId: number, changes: Partial<Omit<FeedbackItemInput, "type">>): Promise<{ changed: string; itemId: number }>;
+```
+
+Las `options` dadas las sustituyen todas; `dependsOn: null` quita la dependencia. Un elemento conserva su tipo y su lugar (`moveFeedbackItem` lo mueve). Un salto de página y un CAPTCHA no tienen nada que cambiar: `SurveyError`, igual que para un elemento que la retroalimentación no tiene, sin cambios o con lo que el tipo no admite.
+
+## moveFeedbackItem
+
+Mueve un elemento a una posición, desde 1, como lo hace el arrastrar y soltar de la página "Preguntas" (el servicio `mod_feedback_questions_reorder` de Moodle).
+
+```ts
+function moveFeedbackItem(context: BrowserContext, siteUrl: string, activityId: number, itemId: number, position: number): Promise<{ changed: string; itemId: number; itemIds: number[] }>;
+```
+
+Devuelve los elementos en su nuevo orden. Lanza `SurveyError` para un elemento que la retroalimentación no tiene o una posición fuera de 1 al número de elementos.
+
+## deleteFeedbackItem
+
+Borra un elemento, como lo hace la acción de borrar de la página "Preguntas" una vez confirmada; las respuestas que se le dieron se van con él, como en Moodle.
+
+```ts
+function deleteFeedbackItem(context: BrowserContext, siteUrl: string, activityId: number, itemId: number): Promise<{ changed: string; itemId: number; itemIds: number[] }>;
+```
+
+Devuelve los elementos que quedan, en orden; `SurveyError` para un elemento que la retroalimentación no tiene.
+
+## Plantillas de retroalimentación {#feedback-templates}
+
+Una plantilla guarda los elementos de una retroalimentación para usarlos en otra: las plantillas propias del curso, o públicas que puede usar cualquier curso.
+
+```ts
+function feedbackTemplates(context: BrowserContext, siteUrl: string, activityId: number): Promise<FeedbackTemplate[]>;
+function saveFeedbackTemplate(context: BrowserContext, siteUrl: string, activityId: number, name: string, options?: { public?: boolean }): Promise<{ changed: string; templateId: number }>;
+function useFeedbackTemplate(context: BrowserContext, siteUrl: string, activityId: number, templateId: number, options?: { replace?: boolean }): Promise<{ changed: string; itemIds: number[] }>;
+function deleteFeedbackTemplate(context: BrowserContext, siteUrl: string, activityId: number, templateId: number): Promise<{ changed: string; templateId: number }>;
+
+interface FeedbackTemplate {
+  id: number;
+  name: string;
+  public: boolean;
+}
+```
+
+- `feedbackTemplates`: las plantillas que puede usar la retroalimentación, primero las del curso, como las enumera su página "Plantillas".
+- `saveFeedbackTemplate`: los elementos de la retroalimentación como plantilla nueva, como hace "Guardar como nueva plantilla": propia del curso, o pública con `public`, que necesita `mod/feedback:createpublictemplate` en todo el sitio (los gestores). Una del curso necesita `mod/feedback:createprivatetemplate`, que tienen los profesores con permiso de edición.
+- `useFeedbackTemplate`: los elementos de la plantilla añadidos tras los de la retroalimentación, como hace "Usar esta plantilla"; con `replace`, en su lugar. El propio formulario de Moodle empieza sustituyéndolos; aquí está desactivado salvo que se pida, así que no se pierde nada sin pedirlo. Devuelve los elementos después.
+- `deleteFeedbackTemplate`: como el borrado de la página "Plantillas" una vez confirmado; una pública necesita `mod/feedback:createpublictemplate` y `mod/feedback:deletetemplate` en todo el sitio.
+
+Guardar y usar pasan por los formularios dinámicos de Moodle (el servicio `core_form_dynamic_form`), como sus diálogos. Cada una lanza `SurveyError` para una plantilla que la retroalimentación no puede usar, para una retroalimentación sin elementos que guardar y cuando Moodle lo rechaza (la capacidad está en el error).
 
 ## getChoice
 
@@ -237,10 +368,31 @@ const { options } = await moodle.choiceResults(40);
 for (const option of options) console.log(`${option.text} (${option.count}): ${option.users.map((u) => u.fullName).join(", ")}`);
 ```
 
+Como profesor, construir las preguntas de una retroalimentación y guardarlas como plantilla:
+
+```ts
+// `moodle` es el objeto de createMoodle(), como en las páginas de primeros pasos.
+
+// Una retroalimentación (módulo del curso 34): una pregunta de opciones obligatoria, una valorada y luego una segunda página con una respuesta de texto.
+const help = await moodle.addFeedbackItem(34, { type: "multichoice", question: "¿Te ayudó el curso?", required: true, options: ["Sí", "No"] });
+await moodle.addFeedbackItem(34, { type: "multichoicerated", question: "El ritmo", options: [{ text: "Demasiado lento", weight: 1 }, { text: "Adecuado", weight: 3 }, { text: "Demasiado rápido", weight: 1 }] });
+await moodle.addFeedbackItem(34, { type: "pagebreak" });
+await moodle.addFeedbackItem(34, { type: "textarea", question: "¿Qué cambiarías?" });
+// Un texto de bienvenida al principio, y la primera pregunta con otras palabras.
+await moodle.addFeedbackItem(34, { type: "label", contents: "<p>Gracias por tu tiempo.</p>", after: 0 });
+await moodle.editFeedbackItem(34, help.itemId, { question: "¿Te ayudó este curso?" });
+for (const item of await moodle.feedbackItems(34)) console.log(`${item.position}. ${item.type} ${item.question}`);
+
+// Guardadas como plantilla del curso y usadas luego en otra retroalimentación (módulo del curso 35).
+const { templateId } = await moodle.saveFeedbackTemplate(34, "Fin de curso");
+await moodle.useFeedbackTemplate(35, templateId);
+```
+
 ## Categorías de datos {#data-categories}
 
 - `getSurvey`, `getChoice`: `course-content` y `own` (la actividad y la respuesta de la persona).
 - `submitSurvey`, `answerChoice`: `own`.
 - `surveyResults`, `choiceResults`: `course-content`, `others-aggregate` y `others-personal` (la actividad, sus recuentos y las respuestas de todos con sus nombres).
+- `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, `feedbackTemplates`, `saveFeedbackTemplate`, `useFeedbackTemplate`, `deleteFeedbackTemplate`: `course-content`.
 
 Consulta [Categorías de datos](../concepts/data-categories.md).

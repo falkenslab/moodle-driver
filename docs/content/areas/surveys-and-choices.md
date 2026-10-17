@@ -1,6 +1,6 @@
 # Surveys and choices
 
-Answering surveys and choices as a student does: reading a survey's questions with their fields and filling it in page by page, and reading a choice's options and choosing one or several. Two survey modules are supported: Moodle's feedback (`feedback`) and the questionnaire plugin (`questionnaire`, mod_questionnaire). Moodle's older "survey" module (fixed instruments such as COLLES and ATTLS) isn't. A teacher can also read what everyone answered: `surveyResults` for a survey and `choiceResults` for a choice, from the reports Moodle shows teachers.
+Answering surveys and choices as a student does: reading a survey's questions with their fields and filling it in page by page, and reading a choice's options and choosing one or several. Two survey modules are supported: Moodle's feedback (`feedback`) and the questionnaire plugin (`questionnaire`, mod_questionnaire). Moodle's older "survey" module (fixed instruments such as COLLES and ATTLS) isn't. A teacher can also read what everyone answered: `surveyResults` for a survey and `choiceResults` for a choice, from the reports Moodle shows teachers; and build a feedback's questions: `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, and its templates.
 
 **Terms:** [survey](../reference/glossary.md#survey), [choice](../reference/glossary.md#choice), [feedback](../reference/glossary.md#feedback).
 
@@ -116,6 +116,137 @@ interface SurveyOptionCount {
 - `rows`: a questionnaire's rate question, each row with its counts per column and its average rank (the columns' own numbers, or their positions when they're named).
 
 A feedback is read from its print page (the questions and their options), its "Show responses" tables (who answered) and those tables' CSV downloads (every answer: the tables show ten questions at most); it takes `mod/feedback:viewreports`, which teachers have. A questionnaire is read from its report's individual responses, one page per response, in the order of its list of responses (in-progress responses too, as the list shows them); it takes `mod/questionnaire:readallresponses`, which teachers have and students too where the questionnaire lets them see all responses (its "Students can view ALL responses" setting). Throws `SurveyError` when Moodle refuses the report or a questionnaire's page doesn't link to it (as when nobody has answered it yet) (Moodle's message and the capability are in the error), when the id isn't a survey of that module, and when the questionnaire plugin isn't installed on the site.
+
+## feedbackItems
+
+A feedback's items as its teacher builds them on its "Questions" page, in order: the questions, the labels and information items, and the page breaks.
+
+```ts
+function feedbackItems(context: BrowserContext, siteUrl: string, activityId: number): Promise<FeedbackItemDefinition[]>;
+
+type FeedbackItemType = "multichoice" | "multichoicerated" | "textfield" | "textarea" | "numeric" | "info" | "label" | "captcha" | "pagebreak";
+
+interface FeedbackItemDefinition {
+  id: number;
+  type: FeedbackItemType;
+  position: number;
+  question: string;
+  label?: string;
+  required: boolean;
+  options?: FeedbackItemOption[];
+  display?: "radio" | "checkbox" | "dropdown";
+  horizontal?: boolean;
+  hideNotSelected?: boolean;
+  ignoreEmpty?: boolean;
+  range?: { from?: number; to?: number };
+  info?: "response-time" | "course" | "category";
+  contents?: string;
+  dependsOn?: { itemId: number; value: string };
+}
+
+interface FeedbackItemOption {
+  text: string;
+  weight?: number;
+}
+```
+
+- `type`: Moodle's own names (`FEEDBACK_ITEM_TYPES`), as `surveyResults` gives them: multiple choice (`multichoice`), rated multiple choice (`multichoicerated`), short text answer (`textfield`), longer text answer (`textarea`), numeric answer (`numeric`), information (`info`), label (`label`), CAPTCHA (`captcha`) and page break (`pagebreak`).
+- `id`: the item's id, the same `surveyResults` gives its question; `position`: its place, from 1.
+- `question`: the question's text (empty for a label or a page break); `label`: Moodle's "Label" field, a short name for the item in reports and dependencies.
+- `options`: a choice's options in order, a rated choice's with their `weight`; `display`: radio buttons, checkboxes (several answers, multiple choice only) or a drop-down list; `horizontal`, `hideNotSelected` (no "Not selected" option) and `ignoreEmpty` (empty answers left out of the analysis): the choice's other settings.
+- `range`: a numeric item's range, where it has one; `info`: what an information item shows (the time of the response, the course or its category); `contents`: a label's HTML.
+- `dependsOn`: the item is shown only when another one, by its id, was answered with `value`.
+
+The items come from the feedback's export of its questions (`export.php`), which takes `mod/feedback:edititems` as building them does (editing teachers have it); throws `SurveyError` with Moodle's message without it, or when the id isn't a feedback. A feedback without items reads as none.
+
+## addFeedbackItem
+
+Adds an item to a feedback, as its "Add question" menu and the item's form do.
+
+```ts
+function addFeedbackItem(context: BrowserContext, siteUrl: string, activityId: number, input: FeedbackItemInput & { after?: number }): Promise<{ changed: string; itemId: number; itemIds: number[] }>;
+
+interface FeedbackItemInput {
+  type: FeedbackItemType;
+  question?: string;
+  label?: string;
+  required?: boolean;
+  options?: (string | FeedbackItemOption)[];
+  display?: "radio" | "checkbox" | "dropdown";
+  horizontal?: boolean;
+  hideNotSelected?: boolean;
+  ignoreEmpty?: boolean;
+  range?: { from?: number; to?: number };
+  info?: "response-time" | "course" | "category";
+  contents?: string;
+  dependsOn?: { itemId: number; value: string } | null;
+  fields?: Record<string, FieldValue>;
+}
+```
+
+- `after`: the item it goes after (0 puts it first); by default it goes last.
+- `question`: every type but a label and a page break needs one; a label takes `contents` (HTML).
+- `options`: a choice's options, one line of text each (without `|`, Moodle's separator); a rated choice's as `{ text, weight }`, the weight a whole number (0 when left out).
+- `required`: not for information items, labels and page breaks, which Moodle never makes required. `info: "response-time"` only where the feedback isn't anonymous, as Moodle offers it.
+- `dependsOn`: shown only when another item that takes answers was answered with `value` (in Moodle, it goes on a later page than that item).
+- `fields`: any other field of the item's form by name (a short text's `itemsize` and `itemmaxlength`, a long text's `itemwidth` and `itemheight`…).
+- Returns the new item's id and the feedback's items in order.
+
+A page break and a CAPTCHA have no form: Moodle adds them at the end when their link is opened, and the driver then moves them where `after` says. Moodle adds no page break to a feedback without items or right after another page break at the end, and one CAPTCHA at most (whose check works only with the site's reCAPTCHA keys). Throws `SurveyError`, before anything is saved, for a type the feedback's "Add question" menu doesn't offer, for what the type doesn't take (options on a text item, `required` on a label…), and for an `after` or a `dependsOn` item the feedback doesn't have; `FormError` with Moodle's messages by field when it refuses the form.
+
+## editFeedbackItem
+
+Changes an item through its form with what's given; the rest stays as it is.
+
+```ts
+function editFeedbackItem(context: BrowserContext, siteUrl: string, activityId: number, itemId: number, changes: Partial<Omit<FeedbackItemInput, "type">>): Promise<{ changed: string; itemId: number }>;
+```
+
+Given `options` replace them all; `dependsOn: null` removes the dependency. An item keeps its type and its place (`moveFeedbackItem` moves it). A page break and a CAPTCHA have nothing to change: `SurveyError`, as for an item the feedback doesn't have, no changes, or what the type doesn't take.
+
+## moveFeedbackItem
+
+Moves an item to a position, from 1, as the "Questions" page's drag and drop does (Moodle's `mod_feedback_questions_reorder` service).
+
+```ts
+function moveFeedbackItem(context: BrowserContext, siteUrl: string, activityId: number, itemId: number, position: number): Promise<{ changed: string; itemId: number; itemIds: number[] }>;
+```
+
+Returns the items in their new order. Throws `SurveyError` for an item the feedback doesn't have or a position outside 1 to the number of items.
+
+## deleteFeedbackItem
+
+Deletes an item, as the "Questions" page's delete action does once confirmed; the answers given to it go with it, as in Moodle.
+
+```ts
+function deleteFeedbackItem(context: BrowserContext, siteUrl: string, activityId: number, itemId: number): Promise<{ changed: string; itemId: number; itemIds: number[] }>;
+```
+
+Returns the items left, in order; `SurveyError` for an item the feedback doesn't have.
+
+## Feedback templates
+
+A template keeps a feedback's items to use in another: the course's own templates, or public ones every course can use.
+
+```ts
+function feedbackTemplates(context: BrowserContext, siteUrl: string, activityId: number): Promise<FeedbackTemplate[]>;
+function saveFeedbackTemplate(context: BrowserContext, siteUrl: string, activityId: number, name: string, options?: { public?: boolean }): Promise<{ changed: string; templateId: number }>;
+function useFeedbackTemplate(context: BrowserContext, siteUrl: string, activityId: number, templateId: number, options?: { replace?: boolean }): Promise<{ changed: string; itemIds: number[] }>;
+function deleteFeedbackTemplate(context: BrowserContext, siteUrl: string, activityId: number, templateId: number): Promise<{ changed: string; templateId: number }>;
+
+interface FeedbackTemplate {
+  id: number;
+  name: string;
+  public: boolean;
+}
+```
+
+- `feedbackTemplates`: the templates the feedback can use, the course's first, as its "Templates" page lists them.
+- `saveFeedbackTemplate`: the feedback's items as a new template, as "Save as new template" does: the course's own, or public with `public`, which takes `mod/feedback:createpublictemplate` in the whole site (managers). A course's own takes `mod/feedback:createprivatetemplate`, which editing teachers have.
+- `useFeedbackTemplate`: the template's items added after the feedback's, as "Use this template" does; with `replace`, in their place. Moodle's own form starts with replacing them; here it's off unless asked, so nothing is lost unasked. Returns the items afterwards.
+- `deleteFeedbackTemplate`: as the "Templates" page's delete does once confirmed; a public one takes `mod/feedback:createpublictemplate` and `mod/feedback:deletetemplate` in the whole site.
+
+Saving and using go through Moodle's dynamic forms (the `core_form_dynamic_form` service), as their dialogs do. Each one throws `SurveyError` for a template the feedback can't use, for a feedback without items to save, and when Moodle refuses (the capability is in the error).
 
 ## getChoice
 
@@ -237,10 +368,31 @@ const { options } = await moodle.choiceResults(40);
 for (const option of options) console.log(`${option.text} (${option.count}): ${option.users.map((u) => u.fullName).join(", ")}`);
 ```
 
+As a teacher, building a feedback's questions and keeping them as a template:
+
+```ts
+// `moodle` is the object from createMoodle(), as in the getting started pages.
+
+// A feedback (course module 34): a required choice, a rated one, then a second page with a text answer.
+const help = await moodle.addFeedbackItem(34, { type: "multichoice", question: "Did the course help you?", required: true, options: ["Yes", "No"] });
+await moodle.addFeedbackItem(34, { type: "multichoicerated", question: "The pace", options: [{ text: "Too slow", weight: 1 }, { text: "Right", weight: 3 }, { text: "Too fast", weight: 1 }] });
+await moodle.addFeedbackItem(34, { type: "pagebreak" });
+await moodle.addFeedbackItem(34, { type: "textarea", question: "What would you change?" });
+// A welcome text first, and the first question reworded.
+await moodle.addFeedbackItem(34, { type: "label", contents: "<p>Thanks for your time.</p>", after: 0 });
+await moodle.editFeedbackItem(34, help.itemId, { question: "Did this course help you?" });
+for (const item of await moodle.feedbackItems(34)) console.log(`${item.position}. ${item.type} ${item.question}`);
+
+// Kept as a template of the course, then used in another feedback (course module 35).
+const { templateId } = await moodle.saveFeedbackTemplate(34, "End of course");
+await moodle.useFeedbackTemplate(35, templateId);
+```
+
 ## Data categories
 
 - `getSurvey`, `getChoice`: `course-content` and `own` (the activity and the person's answer).
 - `submitSurvey`, `answerChoice`: `own`.
 - `surveyResults`, `choiceResults`: `course-content`, `others-aggregate` and `others-personal` (the activity, its counts, and everyone's answers with their names).
+- `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, `feedbackTemplates`, `saveFeedbackTemplate`, `useFeedbackTemplate`, `deleteFeedbackTemplate`: `course-content`.
 
 See [Data categories](../concepts/data-categories.md).

@@ -43,6 +43,16 @@ export interface MoodleMethods {
    * size its form doesn't offer); `NotADatabaseError` when the id isn't a database.
    */
   addDatabaseField(activityId: number, field: import("./areas/databases/fields.js").DatabaseFieldInput): Promise<{ changed: string; fieldId: number; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
+  /**
+   * Adds an item to a feedback through its questions page, after item `after` (0 puts it first; by
+   * default it goes last): a question of any type the feedback's "Add question" menu offers, with
+   * its options and settings, a label with its contents, or a page break or a CAPTCHA (which Moodle
+   * adds at the end without a form, then moved; it refuses a page break first or right after another
+   * one at the end, and a second CAPTCHA). Throws `SurveyError` for a
+   * type the menu doesn't offer, or what the type doesn't take, before anything is saved; `FormError`
+   * with Moodle's messages when it refuses the form. Returns the new item's id and the items in order.
+   */
+  addFeedbackItem(activityId: number, input: import("./areas/surveys/items.js").FeedbackItemInput & { after?: number | undefined; }): Promise<{ changed: string; itemId: number; itemIds: number[]; }>;
   /** Adds a grade category (at the course's top level, or inside `parentId`); returns it as the setup shows it. */
   addGradeCategory(courseId: number, options: { name: string; aggregation?: "mean" | "median" | "lowest" | "highest" | "mode" | "weighted-mean" | "simple-weighted-mean" | "mean-with-extra-credits" | "natural" | undefined; parentId?: number | undefined; }): Promise<{ changed: string; category?: import("./areas/grades/gradebook.js").GradebookCategory | undefined; }>;
   /**
@@ -403,6 +413,16 @@ export interface MoodleMethods {
   /** Deletes a calendar event the person can manage. */
   deleteEvent(eventId: number): Promise<{ changed: string; }>;
   /**
+   * Deletes an item of a feedback, as its questions page's delete action does once confirmed; the
+   * answers people gave to it go with it, as in Moodle. Returns the items left, in order.
+   */
+  deleteFeedbackItem(activityId: number, itemId: number): Promise<{ changed: string; itemId: number; itemIds: number[]; }>;
+  /**
+   * Deletes a feedback template, as its templates page does once confirmed. A public one takes
+   * `mod/feedback:createpublictemplate` and `mod/feedback:deletetemplate` in the whole site.
+   */
+  deleteFeedbackTemplate(activityId: number, templateId: number): Promise<{ changed: string; templateId: number; }>;
+  /**
    * Deletes a grade category. Moodle moves what it held (items and categories) into its parent and
    * deletes the grades of its total; the course's own category can't be deleted.
    */
@@ -476,6 +496,13 @@ export interface MoodleMethods {
    */
   editDatabaseField(activityId: number, fieldId: number, changes: import("./areas/databases/fields.js").DatabaseFieldChanges): Promise<{ changed: string; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
   /**
+   * Changes an item of a feedback through its form, with what's given: its question, label, whether
+   * it's required, a choice's options (given, they replace them all) and settings, a numeric item's
+   * range, an information item's kind, a label's contents, its dependency and other fields. An item
+   * keeps its type and place (`moveFeedbackItem` moves it); a page break has nothing to change.
+   */
+  editFeedbackItem(activityId: number, itemId: number, changes: Partial<Omit<import("./areas/surveys/items.js").FeedbackItemInput, "type">>): Promise<{ changed: string; itemId: number; }>;
+  /**
    * Changes a page of a lesson through its form in the lesson editor, with what's given: its title,
    * contents, buttons or answers (given, they replace them all: the form's other rows are blanked, and
    * Moodle drops blank ones), options and other fields. A page keeps its type. A jump to a page the
@@ -514,6 +541,16 @@ export interface MoodleMethods {
    * Throws `EnrolmentError` when the person can't manage the course's enrolment methods.
    */
   enrolmentMethods(courseId: number): Promise<import("./areas/participants/methods.js").EnrolmentMethod[]>;
+  /**
+   * The items of a feedback as its teacher builds them, in order: each one's id, type, position,
+   * question, whether it's required, a choice's options (with a rated choice's weights) and how
+   * they're shown, a numeric item's range, an information item's kind, a label's contents and the
+   * item it depends on. Read from the feedback's export of its items (`export.php`), which takes
+   * `mod/feedback:edititems`, as building them does; throws `SurveyError` without it.
+   */
+  feedbackItems(activityId: number): Promise<import("./areas/surveys/items.js").FeedbackItemDefinition[]>;
+  /** The templates a feedback can use: the course's own and the site's public ones (`manage_templates.php`, which takes `mod/feedback:edititems`). */
+  feedbackTemplates(activityId: number): Promise<import("./areas/surveys/items.js").FeedbackTemplate[]>;
   /** Submits an attempt for grading, and gives its review when the quiz shows it. */
   finishQuizAttempt(attemptId: number): Promise<{ changed: string; attemptId: number; finished: true; review: { summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; } | undefined; }>;
   /**
@@ -645,6 +682,8 @@ export interface MoodleMethods {
    * the chapter isn't in the book.
    */
   moveBookChapter(activityId: number, chapterId: number, options: { direction: "up" | "down"; }): Promise<import("./areas/activities/books.js").BookChapterChange>;
+  /** Moves an item of a feedback to `position` (from 1), as the questions page's drag and drop does; returns the items in order. */
+  moveFeedbackItem(activityId: number, itemId: number, position: number): Promise<{ changed: string; itemId: number; itemIds: number[]; }>;
   /** Moves a page of a lesson after page `after` (0 puts it first), as the editor's move link does; returns the pages in order. */
   moveLessonPage(activityId: number, pageId: number, after: number): Promise<{ changed: string; pageIds: number[]; }>;
   /** The person's own grade report for a course. */
@@ -849,6 +888,12 @@ export interface MoodleMethods {
    * submission ("new") for them on opening it.
    */
   rubric(activityId: number): Promise<{ assignment: { id: number; }; } & import("./areas/assignments/grading.js").GradingDefinition>;
+  /**
+   * Saves a feedback's items as a new template, as its "Save as new template" does: the course's own,
+   * or public (every course's) with `public`, which takes `mod/feedback:createpublictemplate` in the
+   * whole site (managers). Returns the new template's id.
+   */
+  saveFeedbackTemplate(activityId: number, name: string, options?: { public?: boolean | undefined; }): Promise<{ changed: string; templateId: number; }>;
   /** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */
   saveSubmission(activityId: number, input: { onlineText?: string | undefined; files?: string[] | undefined; }): Promise<{ changed: string; assignment: import("./areas/assignments/student.js").StudentAssignment; }>;
   /**
@@ -1099,6 +1144,12 @@ export interface MoodleMethods {
    * get from then on.
    */
   updateQuestion(activityId: number, questionId: number, input: Partial<Omit<import("./areas/questions/banks.js").QuestionInput, "type">>): Promise<{ changed: string; questionId?: number | undefined; }>;
+  /**
+   * Adds a template's items to a feedback, as its "Use this template" does: after the items it has,
+   * or in their place with `replace` (Moodle's own default; here it's off, so nothing is lost
+   * unasked). Returns the items afterwards, in order.
+   */
+  useFeedbackTemplate(activityId: number, templateId: number, options?: { replace?: boolean | undefined; }): Promise<{ changed: string; itemIds: number[]; }>;
   /**
    * A user by id, or `undefined` when there's nobody: no such user, one the person may not see, or a
    * deleted account. Moodle keeps a deleted account's record and its user service still gives it to an

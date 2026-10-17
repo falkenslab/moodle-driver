@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { ActivitySettingsError, ChoiceError, LessonError, MoodleError, NotAnH5PActivityError, ScormError, SurveyError, type FieldValue, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
-import { COURSE, SITE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { COURSE, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { notAScormPackage, revisedScormPackage, scormPackage, siteFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
@@ -342,6 +342,110 @@ describe("doing activities", () => {
       }
       const numeric = results.questions.find((q) => q.type === "numeric" && q.answers.length > 0);
       if (numeric) assert.equal(typeof numeric.average, "number");
+    });
+  });
+
+  describe("feedback items", () => {
+    let feedbackId: number;
+    const ids: Record<string, number> = {};
+
+    before(async () => {
+      // Not anonymous (2): its information items can show the response time.
+      feedbackId = (await (await as("teacher")).createActivity({ courseId: course.id, sectionId: course.sectionId, type: "feedback", name: "Driver check items", visibility: "shown", settings: { anonymous: 2 } })).activityId!;
+    }, SETUP);
+
+    it("addFeedbackItem: one item of each type, a page break put after the second", SLOW, async () => {
+      const teacher = await as("teacher");
+      ids.choice = (await teacher.addFeedbackItem(feedbackId, { type: "multichoice", question: "Did it help?", label: "help", required: true, options: ["Yes", "No"] })).itemId;
+      ids.rated = (await teacher.addFeedbackItem(feedbackId, { type: "multichoicerated", question: "The pace", options: [{ text: "Slow", weight: 1 }, { text: "Right", weight: 3 }], display: "dropdown" })).itemId;
+      ids.short = (await teacher.addFeedbackItem(feedbackId, { type: "textfield", question: "One word" })).itemId;
+      ids.long = (await teacher.addFeedbackItem(feedbackId, { type: "textarea", question: "Tell us more" })).itemId;
+      ids.numeric = (await teacher.addFeedbackItem(feedbackId, { type: "numeric", question: "Hours a week", range: { from: 0, to: 10 } })).itemId;
+      ids.info = (await teacher.addFeedbackItem(feedbackId, { type: "info", question: "Answered on", info: "response-time" })).itemId;
+      ids.label = (await teacher.addFeedbackItem(feedbackId, { type: "label", contents: "<p>Thanks for answering.</p>" })).itemId;
+      const pagebreak = await teacher.addFeedbackItem(feedbackId, { type: "pagebreak", after: ids.rated });
+      ids.pagebreak = pagebreak.itemId;
+      assert.deepEqual(pagebreak.itemIds, [ids.choice, ids.rated, ids.pagebreak, ids.short, ids.long, ids.numeric, ids.info, ids.label]);
+      await assert.rejects(teacher.addFeedbackItem(feedbackId, { type: "essay" as never, question: "x" }), (error: unknown) => error instanceof SurveyError && /doesn't offer items of type "essay"/.test(error.message));
+      await assert.rejects(teacher.addFeedbackItem(pageId, { type: "textfield", question: "x" }), SurveyError);
+      await assert.rejects((await as("student")).addFeedbackItem(feedbackId, { type: "textfield", question: "x" }), (error: unknown) => error instanceof SurveyError && /mod\/feedback:edititems/.test(error.message));
+    });
+
+    it("editFeedbackItem and moveFeedbackItem: a question changed, a dependency set and removed, the label put first", SLOW, async () => {
+      const teacher = await as("teacher");
+      await teacher.editFeedbackItem(feedbackId, ids.short!, { question: "One word, please", required: true });
+      await teacher.editFeedbackItem(feedbackId, ids.long!, { dependsOn: { itemId: ids.choice!, value: "Yes" } });
+      assert.deepEqual((await teacher.feedbackItems(feedbackId)).find((i) => i.id === ids.long)?.dependsOn, { itemId: ids.choice, value: "Yes" });
+      await teacher.editFeedbackItem(feedbackId, ids.long!, { dependsOn: null });
+      await assert.rejects(teacher.editFeedbackItem(feedbackId, ids.pagebreak!, { question: "x" }), SurveyError);
+      const moved = await teacher.moveFeedbackItem(feedbackId, ids.label!, 1);
+      assert.deepEqual(moved.itemIds, [ids.label, ids.choice, ids.rated, ids.pagebreak, ids.short, ids.long, ids.numeric, ids.info]);
+    });
+
+    it("feedbackItems: read back as built, then answered by the student with submitSurvey", SLOW, async () => {
+      const items = await (await as("teacher")).feedbackItems(feedbackId);
+      assert.deepEqual(items, [
+        { id: ids.label, type: "label", position: 1, question: "", required: false, contents: "<p>Thanks for answering.</p>" },
+        { id: ids.choice, type: "multichoice", position: 2, question: "Did it help?", label: "help", required: true, options: [{ text: "Yes" }, { text: "No" }], display: "radio", horizontal: false, hideNotSelected: false, ignoreEmpty: false },
+        // A drop-down's rated choice: Moodle saves it with "hide the Not selected option" on.
+        { id: ids.rated, type: "multichoicerated", position: 3, question: "The pace", required: false, options: [{ text: "Slow", weight: 1 }, { text: "Right", weight: 3 }], display: "dropdown", horizontal: false, hideNotSelected: true, ignoreEmpty: false },
+        { id: ids.pagebreak, type: "pagebreak", position: 4, question: "", required: false },
+        { id: ids.short, type: "textfield", position: 5, question: "One word, please", required: true },
+        { id: ids.long, type: "textarea", position: 6, question: "Tell us more", required: false },
+        { id: ids.numeric, type: "numeric", position: 7, question: "Hours a week", required: false, range: { from: 0, to: 10 } },
+        { id: ids.info, type: "info", position: 8, question: "Answered on", required: false, info: "response-time" },
+      ]);
+      await assert.rejects((await as("student")).feedbackItems(feedbackId), SurveyError);
+
+      const student = await as("student");
+      const survey = await student.getSurvey(feedbackId);
+      const field = (text: string) => survey.questions.find((q) => q.text.includes(text))?.fields[0];
+      const choice = field("Did it help?")!;
+      const pace = field("The pace")!;
+      assert.deepEqual(new Set(survey.questions.map((q) => q.page)), new Set([0, 1]));
+      const done = await student.submitSurvey(feedbackId, {
+        [choice.name]: choice.options!.find((o) => o.label === "Yes")!.value,
+        [pace.name]: pace.options!.find((o) => o.label.includes("Right"))!.value,
+        [field("One word")!.name]: "Clear",
+        [field("Tell us more")!.name]: "Nothing else",
+        [field("Hours a week")!.name]: "4",
+      });
+      assert.match(done.changed, /Submitted feedback/);
+    });
+
+    it("saveFeedbackTemplate, feedbackTemplates, useFeedbackTemplate and deleteFeedbackTemplate: the items saved, used in another feedback, deleted", SLOW, async () => {
+      const teacher = await as("teacher");
+      const name = `Driver check template ${Date.now()}`;
+      const { templateId } = await teacher.saveFeedbackTemplate(feedbackId, name);
+      cleanup(() => teacher.deleteFeedbackTemplate(feedbackId, templateId).catch(() => undefined));
+      assert.deepEqual((await teacher.feedbackTemplates(feedbackId)).find((t) => t.id === templateId), { id: templateId, name, public: false });
+      const otherId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "feedback", name: "Driver check from template", visibility: "shown" })).activityId!;
+      await teacher.addFeedbackItem(otherId, { type: "textfield", question: "Already here" });
+      const used = await teacher.useFeedbackTemplate(otherId, templateId);
+      assert.equal(used.itemIds.length, 9);
+      const types = (await teacher.feedbackItems(otherId)).map((i) => i.type);
+      assert.deepEqual(types, ["textfield", "label", "multichoice", "multichoicerated", "pagebreak", "textfield", "textarea", "numeric", "info"]);
+      const replaced = await teacher.useFeedbackTemplate(otherId, templateId, { replace: true });
+      assert.equal(replaced.itemIds.length, 8);
+      assert.equal(replaced.itemIds.some((id) => used.itemIds.includes(id)), false);
+      const deleted = await teacher.deleteFeedbackItem(otherId, replaced.itemIds.at(-1)!);
+      assert.equal(deleted.itemIds.length, 7);
+      await teacher.deleteFeedbackTemplate(feedbackId, templateId);
+      assert.equal((await teacher.feedbackTemplates(feedbackId)).some((t) => t.id === templateId), false);
+    });
+
+    it("feedbackItems: the content course's feedback, read only", SLOW, async () => {
+      const teacher = await as("teacher");
+      const feedback = (await teacher.courseStructure(COURSE)).flatMap((s) => s.activities).find((a) => a.type === "feedback");
+      assert.ok(feedback, "course 3 has a feedback");
+      const items = await teacher.feedbackItems(feedback.id);
+      assert.ok(items.length > 0);
+      assert.deepEqual(
+        items.map((i) => i.position),
+        items.map((_, i) => i + 1),
+      );
+      // Every question its results show is one of its items, of the same type.
+      for (const question of (await teacher.surveyResults(feedback.id)).questions) assert.equal(items.find((i) => i.id === question.id)?.type, question.type);
     });
   });
 
