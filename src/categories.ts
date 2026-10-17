@@ -262,6 +262,18 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   removeReviewer: ["others-personal", "others-write"],
   allocateRandomly: ["others-personal", "others-write"],
   scheduleAllocation: ["others-write"],
+  // A submission: the person's own, or someone else's work; submitting is the person's own.
+  workshopSubmission: ["own", "others-personal"],
+  saveWorkshopSubmission: OWN,
+  // Examples are what the teacher prepares; assessing one is a reference (or the person's practice).
+  workshopExamples: CONTENT,
+  addWorkshopExample: CONTENT,
+  editWorkshopExample: CONTENT,
+  deleteWorkshopExample: CONTENT,
+  assessWorkshopExample: ["course-content", "own"],
+  // Calculating and overriding decide everyone's grades, and read them back.
+  calculateWorkshopGrades: ["others-personal", "others-write"],
+  overrideWorkshopGrade: ["others-personal", "others-write"],
   // Everyone's grades, as Moodle exports them.
   exportGrades: PERSONAL,
 

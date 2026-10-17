@@ -131,8 +131,11 @@ export { questionCategories, addQuestionCategory, editQuestionCategory, deleteQu
 // Forums, surveys, choices, lessons, H5P.
 export { forumGrades, gradeForumUser, type ForumGrade, type ForumGrades } from "./areas/forums/grading.js";
 export { rate, type RateableItem } from "./areas/ratings/ratings.js";
-export { workshopInfo, setWorkshopPhase, assessWorkshopSubmission, WorkshopError, WORKSHOP_PHASES, type WorkshopPhase, type WorkshopInfo, type WorkshopSubmission, type WorkshopAssessment, type WorkshopCriterion } from "./areas/workshops/workshops.js";
+export { workshopInfo, setWorkshopPhase, assessWorkshopSubmission, WorkshopError, WORKSHOP_PHASES, type WorkshopPhase, type WorkshopInfo, type WorkshopSubmission, type WorkshopAssessment, type WorkshopCriterion, type WorkshopAssessmentInput } from "./areas/workshops/workshops.js";
 export { workshopAllocation, allocateReviewer, removeReviewer, allocateRandomly, scheduleAllocation, type WorkshopAllocation, type WorkshopAllocatedSubmission, type WorkshopReviewer, type WorkshopReviewerChoice, type WorkshopReviewerRemoval, type RandomAllocationSettings, type ScheduledAllocationSettings, type ScheduledAllocation } from "./areas/workshops/allocation.js";
+export { workshopSubmission, saveWorkshopSubmission, type WorkshopSubmissionContent, type WorkshopSubmissionRef, type WorkshopSubmissionInput, type WorkshopAttachment } from "./areas/workshops/submissions.js";
+export { workshopExamples, addWorkshopExample, editWorkshopExample, deleteWorkshopExample, assessWorkshopExample, type WorkshopExample, type WorkshopExampleInput } from "./areas/workshops/examples.js";
+export { calculateWorkshopGrades, overrideWorkshopGrade, type WorkshopComparison, type WorkshopGradeOverride } from "./areas/workshops/evaluation.js";
 export { NotAForumError, ForumError } from "./areas/forums/discussions.js";
 export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, setDiscussionSubscription, editPost, deletePost, type ForumDiscussion, type ForumPost, type DiscussionPosts, type PostInput, type PostChanges } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";

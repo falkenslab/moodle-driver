@@ -89,7 +89,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `BackupError` | [Copia, copia de seguridad y restauración](../areas/copy-backup-restore.md): Moodle se negó, o no terminó a tiempo |
 | `SubmissionError` | [Tareas](../areas/assignments.md): nada que entregar, no se puede editar la entrega… |
 | `NotAnAssignmentError`, `GradingError` | [Calificación](../areas/grading.md): no es una tarea que la persona pueda calificar; Moodle no guardó la calificación |
-| `WorkshopError` | [Calificación](../areas/grading.md#workshopinfo): no es un taller; Moodle se negó a cambiar su fase o no ofrece ninguna evaluación; la persona no puede asignar (`mod/workshop:allocate`) o el revisor no es uno de los que ofrece Moodle |
+| `WorkshopError` | [Calificación](../areas/grading.md#workshopinfo): no es un taller; Moodle se negó a cambiar su fase o no ofrece ninguna evaluación; la persona no puede asignar (`mod/workshop:allocate`) o el revisor no es uno de los que ofrece Moodle; Moodle no acepta una entrega ahora, o a la persona le falta `mod/workshop:submit`, `mod/workshop:manageexamples` o `mod/workshop:overridegrades`; calificaciones calculadas o anuladas fuera de la fase de calificación de evaluaciones |
 | `QuizError` | [Cuestionarios](../areas/quizzes.md): intentos, revisiones, resultados, excepciones, estructura |
 | `QuestionBankError` | [Bancos de preguntas](../areas/question-banks.md) |
 | `NotAForumError`, `ForumError` | [Foros](../areas/forums.md) |

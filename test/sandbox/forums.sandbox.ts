@@ -1,7 +1,8 @@
 // Forums, ratings and workshops against the sandbox: course 3's forum only read; a forum (rated, and
 // graded as a whole), a glossary, a database and a workshop made on the scratch course, where the
 // student posts, submits and adds entries and the teacher replies, moderates, rates, grades,
-// allocates reviewers (two more seeded students, enrolled there) and assesses.
+// allocates reviewers (two more seeded students, enrolled there) and assesses; a second workshop goes
+// through a full cycle (examples, submitting, allocating, assessing, calculating and overriding grades).
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -77,21 +78,6 @@ async function defineWorkshopAspect(moodle: Moodle, activityId: number): Promise
   try {
     await setFields(page, { "description__idx_0_editor[text]": "<p>Is it clear?</p>", "grade__idx_0[modgrade_type]": "point", "grade__idx_0[modgrade_point]": 10 });
     await submitForm(page, "saveandclose");
-  } finally {
-    await page.close();
-  }
-}
-
-/** Submits work to a workshop in its submission phase, through its submission form; the submission's id. */
-async function submitWorkshopWork(moodle: Moodle, activityId: number, title: string): Promise<number> {
-  const page = await openForm(await moodle.context(), SITE, `mod/workshop/submission.php?cmid=${activityId}&edit=on`);
-  try {
-    await setFields(page, { title, "content_editor[text]": "<p>Work submitted by the sandbox suite.</p>" });
-    await submitForm(page, "submitbutton");
-    // Moodle lands on the submission: submission.php?cmid=<cm>&id=<submission>.
-    const id = Number(new URL(page.url()).searchParams.get("id"));
-    assert.ok(id > 0, `the workshop submission wasn't saved (landed on ${page.url()})`);
-    return id;
   } finally {
     await page.close();
   }
@@ -392,7 +378,7 @@ describe("forums, ratings and workshops on the scratch course", () => {
     });
 
     it("workshopInfo: the student's submission in the teacher's report", { timeout: 300_000 }, async () => {
-      submissionId = await submitWorkshopWork(await as("student"), workshopId, "Driver check suite work");
+      submissionId = (await (await as("student")).saveWorkshopSubmission(workshopId, { title: "Driver check suite work", content: "<p>Work submitted by the sandbox suite.</p>" })).submissionId;
       const info = await (await as("teacher")).workshopInfo(workshopId);
       assert.equal(info.activityId, workshopId);
       const submission = info.submissions.find((s) => s.id === submissionId);
@@ -505,6 +491,143 @@ describe("forums, ratings and workshops on the scratch course", () => {
       await assert.rejects(teacher.removeReviewer(workshopId, { submissionId, reviewerId: teacherId }), /already assessed/);
       const removed = await teacher.removeReviewer(workshopId, { submissionId, reviewerId: teacherId, evenIfAssessed: true });
       assert.ok(!removed.submission.reviewers.some((r) => r.reviewerId === teacherId));
+    });
+
+    describe("a full cycle, with examples and self-assessment", () => {
+      let cycleId: number;
+      let workId: number;
+      let exampleId: number;
+      let selfAssessmentId: number;
+      let teacherAssessmentId: number;
+
+      before(async () => {
+        cycleId = await newActivity(course, "workshop", "Driver check suite cycle workshop", { useexamples: true, examplesmode: 0, useselfassessment: true, nattachments: 2 });
+        await defineWorkshopAspect(await as("teacher"), cycleId);
+      });
+
+      it("addWorkshopExample: the teacher adds an example with an attachment; the student can't", { timeout: 300_000 }, async () => {
+        const teacher = await as("teacher");
+        const added = await teacher.addWorkshopExample(cycleId, { title: "Driver check suite example", content: "<p>An example by the sandbox suite.</p>", attachments: [notes] });
+        exampleId = added.exampleId;
+        assert.ok(exampleId > 0);
+        assert.equal(added.example.title, "Driver check suite example");
+        assert.equal(added.example.content, "<p>An example by the sandbox suite.</p>");
+        assert.deepEqual(
+          added.example.attachments.map((a) => a.name),
+          ["suite-notes.txt"],
+        );
+        await assert.rejects((await as("student")).addWorkshopExample(cycleId, { title: "Driver check suite refused" }), (error: Error) => error instanceof WorkshopError && /mod\/workshop:manageexamples/.test(error.message));
+      });
+
+      it("workshopExamples: the example, not assessed yet; the student sees none", { timeout: 300_000 }, async () => {
+        assert.deepEqual(await (await as("teacher")).workshopExamples(cycleId), [{ id: exampleId, title: "Driver check suite example", assessed: false }]);
+        await assert.rejects((await as("student")).workshopExamples(cycleId), WorkshopError);
+      });
+
+      it("assessWorkshopExample: the teacher's reference assessment", { timeout: 300_000 }, async () => {
+        const teacher = await as("teacher");
+        const result = await teacher.assessWorkshopExample(cycleId, exampleId, { criteria: [{ grade: 9, comment: "A good example." }] });
+        assert.ok(result.assessmentId > 0);
+        assert.equal(result.grade, 72);
+        assert.equal(result.maxGrade, 80);
+        assert.deepEqual(await teacher.workshopExamples(cycleId), [{ id: exampleId, title: "Driver check suite example", assessed: true, grade: 72, maxGrade: 80 }]);
+      });
+
+      it("editWorkshopExample: a new title, the attachment replaced", { timeout: 300_000 }, async () => {
+        const result = await (await as("teacher")).editWorkshopExample(cycleId, exampleId, { title: "Driver check suite example, edited", attachments: [extra] });
+        assert.equal(result.example.title, "Driver check suite example, edited");
+        assert.equal(result.example.content, "<p>An example by the sandbox suite.</p>");
+        assert.deepEqual(
+          result.example.attachments.map((a) => a.name),
+          ["suite-extra.txt"],
+        );
+      });
+
+      it("deleteWorkshopExample: a second example deleted", { timeout: 300_000 }, async () => {
+        const teacher = await as("teacher");
+        const second = await teacher.addWorkshopExample(cycleId, { title: "Driver check suite example to delete", content: "<p>Deleted by the sandbox suite.</p>" });
+        await teacher.deleteWorkshopExample(cycleId, second.exampleId);
+        assert.deepEqual(
+          (await teacher.workshopExamples(cycleId)).map((e) => e.id),
+          [exampleId],
+        );
+        await assert.rejects(teacher.deleteWorkshopExample(cycleId, second.exampleId), WorkshopError);
+      });
+
+      it("saveWorkshopSubmission: the student submits with attachments, then edits; the teacher can't submit", { timeout: 300_000 }, async () => {
+        const student = await as("student");
+        await assert.rejects(student.saveWorkshopSubmission(cycleId, { title: "Driver check suite too early" }), (error: Error) => error instanceof WorkshopError && /submission phase/.test(error.message));
+        await (await as("teacher")).setWorkshopPhase(cycleId, "submission");
+        const added = await student.saveWorkshopSubmission(cycleId, { title: "Driver check suite cycle work", content: "<p>Cycle work by the sandbox suite.</p>", attachments: [notes, extra] });
+        workId = added.submissionId;
+        assert.equal(added.submission.title, "Driver check suite cycle work");
+        assert.deepEqual(added.submission.attachments.map((a) => a.name).sort(), ["suite-extra.txt", "suite-notes.txt"]);
+        assert.equal(added.submission.editable, true);
+        const edited = await student.saveWorkshopSubmission(cycleId, { title: "Driver check suite cycle work, edited", attachments: [notes] });
+        assert.equal(edited.submissionId, workId);
+        assert.equal(edited.submission.content, "<p>Cycle work by the sandbox suite.</p>");
+        assert.deepEqual(
+          edited.submission.attachments.map((a) => a.name),
+          ["suite-notes.txt"],
+        );
+        await assert.rejects((await as("teacher")).saveWorkshopSubmission(cycleId, { title: "Driver check suite refused" }), (error: Error) => error instanceof WorkshopError && /mod\/workshop:submit/.test(error.message));
+      });
+
+      it("workshopSubmission: the student's own, and the teacher's by id and by author", { timeout: 300_000 }, async () => {
+        const own = await (await as("student")).workshopSubmission(cycleId);
+        assert.equal(own?.id, workId);
+        assert.equal(own?.authorId, studentId);
+        const teacher = await as("teacher");
+        const byId = await teacher.workshopSubmission(cycleId, { submissionId: workId });
+        assert.deepEqual({ ...byId, editable: undefined }, { ...own, editable: undefined });
+        assert.equal(byId?.editable, false);
+        assert.deepEqual(await teacher.workshopSubmission(cycleId, { authorId: studentId }), byId);
+        assert.equal(await teacher.workshopSubmission(cycleId, { authorId: reviewerIds[0]! }), undefined);
+        await assert.rejects(teacher.workshopSubmission(cycleId), /mod\/workshop:submit/);
+        await assert.rejects(teacher.workshopExamples(cycleId), /setup phase only/);
+      });
+
+      it("assessWorkshopExample: the student's practice assessment of the example", { timeout: 300_000 }, async () => {
+        const result = await (await as("student")).assessWorkshopExample(cycleId, exampleId, { criteria: [{ grade: 7 }] });
+        assert.ok(result.assessmentId > 0);
+        assert.equal(result.grade, 56);
+      });
+
+      it("calculateWorkshopGrades: after the seeded students and a self-assessment are allocated and assessed", { timeout: 600_000 }, async () => {
+        const teacher = await as("teacher");
+        for (const reviewerId of [...reviewerIds, studentId]) await teacher.allocateReviewer(cycleId, { submissionId: workId, reviewerId });
+        await teacher.setWorkshopPhase(cycleId, "assessment");
+        await assert.rejects(teacher.calculateWorkshopGrades(cycleId), /evaluation phase/);
+        selfAssessmentId = (await (await as("student")).assessWorkshopSubmission(cycleId, workId, { criteria: [{ grade: 6 }] })).assessmentId;
+        teacherAssessmentId = (await teacher.assessWorkshopSubmission(cycleId, workId, { criteria: [{ grade: 8 }] })).assessmentId;
+        await teacher.setWorkshopPhase(cycleId, "evaluation");
+        await assert.rejects((await as("student")).calculateWorkshopGrades(cycleId), /mod\/workshop:overridegrades/);
+        const result = await teacher.calculateWorkshopGrades(cycleId, { comparison: "lax" });
+        assert.equal(result.comparison, "lax");
+        assert.equal(result.phase, "evaluation");
+        // The mean of 48 (6 of 10) and 64 (8 of 10); the allocations not assessed don't count.
+        assert.equal(result.submissions.find((s) => s.id === workId)?.grade, 56);
+        const self = result.assessments.find((a) => a.id === selfAssessmentId);
+        assert.equal(self?.reviewerId, studentId);
+        assert.equal(typeof self?.gradingGrade, "number");
+        assert.deepEqual((await teacher.workshopInfo(cycleId)).submissions, result.submissions);
+      });
+
+      it("overrideWorkshopGrade: the submission's grade and the self-assessment's, then the submission's removed", { timeout: 300_000 }, async () => {
+        const teacher = await as("teacher");
+        const submission = await teacher.overrideWorkshopGrade(cycleId, { submissionId: workId, grade: 70, feedback: "<p>Overridden by the sandbox suite.</p>" });
+        assert.equal(submission.submission?.grade, 56);
+        assert.equal(submission.submission?.gradeOverride, 70);
+        const assessment = await teacher.overrideWorkshopGrade(cycleId, { assessmentId: selfAssessmentId, grade: 15 });
+        assert.equal(assessment.assessment?.gradingGradeOverride, 15);
+        await assert.rejects(teacher.overrideWorkshopGrade(cycleId, { submissionId: workId, grade: 81 }), /from 0 to 80/);
+        // The teacher's own assessment stays theirs to change in the evaluation phase: Moodle offers no override of it.
+        await assert.rejects(teacher.overrideWorkshopGrade(cycleId, { assessmentId: teacherAssessmentId, grade: 10 }), WorkshopError);
+        await assert.rejects((await as("student")).overrideWorkshopGrade(cycleId, { submissionId: workId, grade: 10 }), WorkshopError);
+        const removed = await teacher.overrideWorkshopGrade(cycleId, { submissionId: workId, grade: null });
+        assert.equal(removed.submission?.gradeOverride, undefined);
+        assert.equal(removed.submission?.grade, 56);
+      });
     });
   });
 });

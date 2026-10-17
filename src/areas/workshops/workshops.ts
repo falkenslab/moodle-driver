@@ -66,7 +66,7 @@ export interface WorkshopInfo {
 }
 
 /** The user plan's current phase, `undefined` when the page has none. */
-async function currentPhase(page: Page): Promise<WorkshopPhase | undefined> {
+export async function currentPhase(page: Page): Promise<WorkshopPhase | undefined> {
   const code = await page.evaluate(() => {
     const dt = (globalThis as unknown as { document: { querySelector(s: string): { className: string } | null } }).document.querySelector("dl.phase dt.active");
     return /\bphase(\d+)\b/.exec(dt?.className ?? "")?.[1];
@@ -74,7 +74,7 @@ async function currentPhase(page: Page): Promise<WorkshopPhase | undefined> {
   return WORKSHOP_PHASES.find((phase) => String(PHASE_CODES[phase]) === code);
 }
 
-async function openWorkshop(context: BrowserContext, siteUrl: string, activityId: number, pageNumber = 0): Promise<Page> {
+export async function openWorkshop(context: BrowserContext, siteUrl: string, activityId: number, pageNumber = 0): Promise<Page> {
   const page = await openSitePage(context, siteUrl, `mod/workshop/view.php?id=${activityId}${pageNumber > 0 ? `&page=${pageNumber}` : ""}`);
   if ((await page.locator("body#page-mod-workshop-view").count()) === 0) {
     await page.close().catch(() => undefined);
@@ -408,6 +408,29 @@ async function assessmentGrade(page: Page): Promise<{ grade?: number; maxGrade?:
   return { ...(grade !== undefined ? { grade } : {}), ...(maxGrade !== undefined ? { maxGrade } : {}) };
 }
 
+/** What to fill in an assessment form: the criteria in its order, the overall feedback, any other field by name. */
+export interface WorkshopAssessmentInput {
+  criteria?: WorkshopCriterion[];
+  feedback?: string;
+  fields?: Record<string, FieldValue>;
+}
+
+/**
+ * Fills the assessment form open in `page` (a submission's or an example's: the grading strategy's
+ * own) and saves it with "Save and continue", which comes back to the assessment, whose header then
+ * shows the grade it gives. `noForm` is the message when the page has no form to fill.
+ */
+export async function fillAssessmentForm(page: Page, activityId: number, submissionId: number, { criteria = [], feedback, fields = {} }: WorkshopAssessmentInput, noForm: string): Promise<{ grade?: number; maxGrade?: number }> {
+  await page.waitForLoadState("load");
+  const form = await readAssessmentForm(page);
+  if (!form.strategy) throw new WorkshopError(noForm);
+  if (feedback !== undefined && !form.feedback) throw new WorkshopError(`Workshop ${activityId} has no overall feedback: it's off in its settings.`);
+  const values = { ...criteriaValues(submissionId, form.strategy, form.criteria, criteria), ...(feedback !== undefined ? { "feedbackauthor_editor[text]": feedback } : {}), ...fields };
+  await setFields(page, values, "form.assessmentform");
+  await submitForm(page, "saveandcontinue");
+  return assessmentGrade(page);
+}
+
 /**
  * Assesses a submission as the person, through the workshop's assessment form (its grading
  * strategy's: accumulative, comments, number of errors or rubric), as "Assess" on the submission's
@@ -433,15 +456,7 @@ export async function assessWorkshopSubmission(
     if ((await page.locator("body#page-mod-workshop-submission").count()) === 0) throw new WorkshopError(`Activity ${activityId} isn't a workshop with submission ${submissionId}.`);
     const assessmentId = await ownAssessment(page, activityId, submissionId);
     if (!/\/mod\/workshop\/assessment\.php/.test(page.url())) await page.goto(new URL(`mod/workshop/assessment.php?asid=${assessmentId}`, siteUrl).href, { waitUntil: "domcontentloaded" });
-    await page.waitForLoadState("load");
-    const form = await readAssessmentForm(page);
-    if (!form.strategy) throw new WorkshopError(`Assessment ${assessmentId} has no form you can fill: assessing is only open in the assessment phase.`);
-    if (feedback !== undefined && !form.feedback) throw new WorkshopError(`Workshop ${activityId} has no overall feedback: it's off in its settings.`);
-    const values = { ...criteriaValues(submissionId, form.strategy, form.criteria, criteria), ...(feedback !== undefined ? { "feedbackauthor_editor[text]": feedback } : {}), ...fields };
-    await setFields(page, values, "form.assessmentform");
-    // "Save and continue" comes back to the assessment, whose header then shows the grade.
-    await submitForm(page, "saveandcontinue");
-    const shown = await assessmentGrade(page);
+    const shown = await fillAssessmentForm(page, activityId, submissionId, { criteria, feedback, fields }, `Assessment ${assessmentId} has no form you can fill: assessing is only open in the assessment phase.`);
     return {
       changed: `Submission ${submissionId} of workshop ${activityId} assessed${shown.grade !== undefined ? `: ${shown.grade}${shown.maxGrade !== undefined ? ` of ${shown.maxGrade}` : ""}` : ""}.`,
       assessmentId,

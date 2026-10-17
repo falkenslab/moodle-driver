@@ -109,6 +109,16 @@ export interface MoodleMethods {
    */
   addSection(courseId: number, options?: { name?: string | undefined; afterSectionId?: number | undefined; summary?: string | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
+   * Adds an example submission to a workshop, as "Add example submission" does, with the
+   * submission's own form: a title, its text (HTML, with `embed`'s files) and attached files. Moodle
+   * asks for its reference assessment next (`assessWorkshopExample`). Examples matter only where the
+   * workshop uses them ("Use examples" in its settings). Returns a sentence of what changed, the
+   * example's id, and the example as its page shows it. Throws `WorkshopError` when the person can't
+   * manage examples (Moodle's `mod/workshop:manageexamples`, a teacher's); `FormError` when Moodle
+   * refuses the form.
+   */
+  addWorkshopExample(activityId: number, input: import("./areas/workshops/submissions.js").WorkshopSubmissionInput & { title: string; }): Promise<{ changed: string; exampleId: number; example: { id: number; title: string; content: string; attachments: import("./areas/workshops/submissions.js").WorkshopAttachment[]; }; }>;
+  /**
    * Allocates a marker (the user id of someone who can grade; several where the assignment uses
    * several markers per submission) to participants' submissions, as the grading table's "Allocate
    * marker" does. Moodle leaves alone submissions past marking (marking completed, in review, ready
@@ -150,6 +160,17 @@ export interface MoodleMethods {
    * it or the person can't manage the database, `NotADatabaseError` when the id isn't a database.
    */
   applyDatabasePreset(activityId: number, presetId: string): Promise<{ changed: string; fields: import("./areas/databases/fields.js").DatabaseField[]; }>;
+  /**
+   * Assesses an example submission through the workshop's assessment form (its grading strategy's,
+   * filled as `assessWorkshopSubmission` fills a submission's), as "Assess" on the example does: for
+   * a teacher who manages examples, its reference assessment, which participants' assessments of it
+   * are compared with; for a participant, their own practice assessment, where the workshop lets them
+   * assess examples now (its examples mode and phase). Returns a sentence of what changed, the
+   * assessment's id, and the grade it gives out of the workshop's grade. Throws `WorkshopError` when
+   * Moodle offers no assessment of it or a criterion's grade isn't one it takes; `FormError` when
+   * Moodle refuses the form.
+   */
+  assessWorkshopExample(activityId: number, exampleId: number, input: import("./areas/workshops/workshops.js").WorkshopAssessmentInput): Promise<{ changed: string; assessmentId: number; grade?: number | undefined; maxGrade?: number | undefined; }>;
   /**
    * Assesses a submission as the person, through the workshop's assessment form (its grading
    * strategy's: accumulative, comments, number of errors or rubric), as "Assess" on the submission's
@@ -239,6 +260,17 @@ export interface MoodleMethods {
    * activity isn't a book the person can read.
    */
   bookChapters(activityId: number, options?: { content?: boolean | undefined; }): Promise<import("./areas/activities/books.js").BookChapter[]>;
+  /**
+   * Calculates a workshop's grades, as "Re-calculate grades" in the evaluation phase does: Moodle
+   * calculates each submission's grade from its assessments (weighted), and each assessment's grade
+   * for assessing by the workshop's grading evaluation method ("Comparison with the best assessment"
+   * by default), with `comparison` as its strictness when given (the form keeps the last one used:
+   * "fair" at first). Overridden grades stay. Returns a sentence of what changed, the comparison used,
+   * and the workshop's submissions and assessments with their grades afterwards (as `workshopInfo`).
+   * Throws `WorkshopError` outside the evaluation phase, or when the person can't override grades
+   * (Moodle's `mod/workshop:overridegrades`, a teacher's).
+   */
+  calculateWorkshopGrades(activityId: number, options?: { comparison?: import("./areas/workshops/evaluation.js").WorkshopComparison | undefined; }): Promise<{ changed: string; comparison?: import("./areas/workshops/evaluation.js").WorkshopComparison | undefined; } & import("./areas/workshops/workshops.js").WorkshopInfo>;
   /** One calendar event by its id, as `upcomingEvents` gives them. */
   calendarEvent(eventId: number): Promise<import("./areas/calendar/calendar.js").CalendarEvent>;
   /**
@@ -521,6 +553,13 @@ export interface MoodleMethods {
   /** Deletes a section and every activity in it, with their participants' data. */
   deleteSection(courseId: number, sectionId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
+   * Deletes an example submission, as "Delete example" and its confirmation do: Moodle deletes its
+   * assessments with it (the reference one and the participants'). Returns a sentence of what
+   * changed. Throws `WorkshopError` when the person can't manage examples or the example isn't the
+   * workshop's.
+   */
+  deleteWorkshopExample(activityId: number, exampleId: number): Promise<{ changed: string; }>;
+  /**
    * A discussion's posts, oldest first, with their messages as text, and whether the person is
    * subscribed to it (`subscribed`, undefined where they can't subscribe or it's forced). With `limit`,
    * `posts` is a page of them (see "Long lists" in the docs' concepts): Moodle's service has no paging,
@@ -607,6 +646,13 @@ export interface MoodleMethods {
    * (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
    */
   editSection(courseId: number, sectionId: number, options: { name?: string | undefined; visible?: boolean | undefined; summary?: string | undefined; restrictions?: import("./areas/activities/conditions.js").Restrictions | undefined; afterSectionId?: number | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Changes an example submission through its form, as "Edit example" does: only what's given
+   * changes (`attachments` replace those there). Returns a sentence of what changed and the example
+   * afterwards. Throws `WorkshopError` when the person can't manage examples or the example isn't the
+   * workshop's.
+   */
+  editWorkshopExample(activityId: number, exampleId: number, input: import("./areas/workshops/submissions.js").WorkshopSubmissionInput): Promise<{ changed: string; example: { id: number; title: string; content: string; attachments: import("./areas/workshops/submissions.js").WorkshopAttachment[]; }; }>;
   /**
    * Enrols users in a course by manual enrolment, as the participants page's "Enrol users" dialog does:
    * with `roleId` or the enrolment's default role, from `start` (now, unless given) until `end` (the
@@ -872,6 +918,18 @@ export interface MoodleMethods {
   /** Sets someone's completion of an activity as a teacher does from the progress report; returns the state saved. */
   overrideCompletion(activityId: number, userId: number, state: "incomplete" | "complete" | "complete-pass" | "complete-fail"): Promise<{ changed: string; state: "incomplete" | "complete" | "complete-pass" | "complete-fail"; overridden: boolean; }>;
   /**
+   * Overrides a grade Moodle calculated in a workshop, as its forms do: a submission's grade (the
+   * "Feedback for the author" form of the submission's page, in the evaluation phase), or an
+   * assessment's grade for assessing (the "Assessment settings" form of the assessment's page, for
+   * an assessment the person can't change themselves), with feedback when given. `grade: null`
+   * removes the override, so the calculated grade counts again. Returns a sentence of what changed and
+   * the submission or assessment afterwards, as `workshopInfo` reads it. Throws `WorkshopError` when
+   * Moodle shows no override (the phase, or the person lacks `mod/workshop:overridegrades`, a
+   * teacher's), the grade isn't one the form takes, or the submission or assessment isn't the
+   * workshop's.
+   */
+  overrideWorkshopGrade(activityId: number, options: import("./areas/workshops/evaluation.js").WorkshopGradeOverride): Promise<{ changed: string; submission?: import("./areas/workshops/workshops.js").WorkshopSubmission | undefined; assessment?: import("./areas/workshops/workshops.js").WorkshopAssessment | undefined; }>;
+  /**
    * The roles and groups the participants page filters by in a course (its filters' options), as the
    * person may use them: every group, or only their own in a course with separate groups. "No roles"
    * and "no group" left out.
@@ -1053,6 +1111,18 @@ export interface MoodleMethods {
   rubric(activityId: number): Promise<{ assignment: { id: number; }; } & import("./areas/assignments/grading.js").GradingDefinition>;
   /** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */
   saveSubmission(activityId: number, input: { onlineText?: string | undefined; files?: string[] | undefined; }): Promise<{ changed: string; assignment: import("./areas/assignments/student.js").StudentAssignment; }>;
+  /**
+   * Adds the person's submission to a workshop, or changes the one they have, through Moodle's
+   * submission form, as "Add submission" and "Edit submission" do: only what's given changes (a new
+   * one needs a title). Moodle takes submissions in the submission phase, within its dates (and in
+   * the assessment phase too where the workshop takes late submissions, for a first submission only).
+   * Returns a sentence of what changed, the submission's id, and the submission afterwards. Throws
+   * `WorkshopError` when Moodle doesn't let the person submit (it takes `mod/workshop:submit`, a
+   * student's) or not now (the phase, the dates, examples to assess first), or the workshop doesn't
+   * take what's given; `FormError` when Moodle refuses the form (too many attachments, a required
+   * part missing).
+   */
+  saveWorkshopSubmission(activityId: number, input: import("./areas/workshops/submissions.js").WorkshopSubmissionInput): Promise<{ changed: string; submissionId: number; submission: import("./areas/workshops/submissions.js").WorkshopSubmissionContent; }>;
   /**
    * Turns the scheduled allocation on or off, as Moodle's scheduled allocation form does: when on,
    * Moodle runs the random allocation by itself at the end of the submission phase (once the
@@ -1334,6 +1404,14 @@ export interface MoodleMethods {
    */
   workshopAllocation(activityId: number): Promise<import("./areas/workshops/allocation.js").WorkshopAllocation>;
   /**
+   * A workshop's example submissions, as its page lists them to a teacher: each one's title, and
+   * whether its reference assessment is made, with its grade. Moodle lists them in the setup phase
+   * only, where the workshop uses examples ("Use examples" in its settings), to those who can manage
+   * them (`mod/workshop:manageexamples`, a teacher's). Throws `WorkshopError` in another phase, when
+   * the page has no examples (examples off, or the capability missing), or the id isn't a workshop's.
+   */
+  workshopExamples(activityId: number): Promise<import("./areas/workshops/examples.js").WorkshopExample[]>;
+  /**
    * A workshop's phase, and its report as the workshop's page shows it to a teacher: every submission
    * (its author, title, and grade once calculated) and every assessment (reviewer, the submission's
    * author, the grade it gives, its weight, the grade for assessing once calculated), all of its pages.
@@ -1343,4 +1421,14 @@ export interface MoodleMethods {
    * that isn't a workshop the person can view.
    */
   workshopInfo(activityId: number): Promise<import("./areas/workshops/workshops.js").WorkshopInfo>;
+  /**
+   * A workshop submission as its page shows it: its title, its text (HTML) and attached files, its
+   * author (where Moodle shows authors' names), and whether the person can edit it now. Without
+   * options, the person's own submission (`undefined` when they haven't submitted); with
+   * `submissionId`, that one, which Moodle shows its author, its reviewers and those who can see every
+   * submission (teachers); with `authorId`, that participant's, found in the workshop's report
+   * (`undefined` when they have none). Throws `WorkshopError` when Moodle doesn't let the person see it
+   * or the id isn't a workshop's.
+   */
+  workshopSubmission(activityId: number, options?: import("./areas/workshops/submissions.js").WorkshopSubmissionRef): Promise<import("./areas/workshops/submissions.js").WorkshopSubmissionContent | undefined>;
 }

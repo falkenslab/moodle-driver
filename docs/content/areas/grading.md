@@ -1,6 +1,6 @@
 # Grading
 
-The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop's phases, allocation and assessments with `workshopInfo`, `setWorkshopPhase`, `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly`, `scheduleAllocation` and `assessWorkshopSubmission`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, defining a rubric or a marking guide, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
+The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop from start to end: its phases, allocation and assessments with `workshopInfo`, `setWorkshopPhase`, `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly`, `scheduleAllocation` and `assessWorkshopSubmission`, a participant's submission with `workshopSubmission` and `saveWorkshopSubmission`, example submissions with `workshopExamples`, `addWorkshopExample`, `editWorkshopExample`, `deleteWorkshopExample` and `assessWorkshopExample`, and its grades with `calculateWorkshopGrades` and `overrideWorkshopGrade`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, defining a rubric or a marking guide, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
 **Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale), [workshop](../reference/glossary.md#workshop).
 
@@ -316,7 +316,7 @@ interface WorkshopAssessment {
 - `submissions`: one per participant who submitted, with the grade for the submission once the evaluation phase calculated it (out of the workshop's "grade for submission"), and the teacher's override of it.
 - `assessments`: every assessment of a submission, with its reviewer (left out when the person can't see reviewers' names), the submission's author, the grade it gives (out of the same maximum; left out until it's assessed), its weight, and the grade for the assessment itself once calculated.
 
-It reads the workshop's page (`mod/workshop/view.php`), every page of its report, by the phase list's and the report's classes and links, so it works in any language. Moodle shows the report from the submission phase on to those who can see every submission (a teacher), in the course's current group; for a student both lists are empty. Grades are numbers as Moodle shows them, with as many decimals as the workshop's settings say. Calculating the grades in the evaluation phase ("Re-calculate grades") isn't covered. It throws `WorkshopError` for an activity that isn't a workshop the person can view.
+It reads the workshop's page (`mod/workshop/view.php`), every page of its report, by the phase list's and the report's classes and links, so it works in any language. Moodle shows the report from the submission phase on to those who can see every submission (a teacher), in the course's current group; for a student both lists are empty. Grades are numbers as Moodle shows them, with as many decimals as the workshop's settings say. The evaluation phase's grades are calculated with [`calculateWorkshopGrades`](#calculateworkshopgrades). It throws `WorkshopError` for an activity that isn't a workshop the person can view.
 
 ## setWorkshopPhase
 
@@ -326,7 +326,7 @@ Switches a workshop to a phase, as the phase links on its page do.
 function setWorkshopPhase(context: BrowserContext, siteUrl: string, activityId: number, phase: WorkshopPhase): Promise<{ changed: string; phase: WorkshopPhase }>;
 ```
 
-It opens Moodle's confirmation (`mod/workshop/switchphase.php`) and confirms it, then reads the phase from the workshop's page it lands on. Any phase can be chosen, forwards or back. Switching does only that: submissions are allocated to reviewers with the functions below (Moodle's "Allocate submissions"), and grades are calculated on Moodle's pages. It throws `WorkshopError` with Moodle's reason when the person can't switch phases (a student), and `MoodleError` (`invalid-input`) for a phase that isn't one of the five.
+It opens Moodle's confirmation (`mod/workshop/switchphase.php`) and confirms it, then reads the phase from the workshop's page it lands on. Any phase can be chosen, forwards or back. Switching does only that: submissions are allocated to reviewers with the functions below (Moodle's "Allocate submissions"), and grades are calculated with `calculateWorkshopGrades`. It throws `WorkshopError` with Moodle's reason when the person can't switch phases (a student), and `MoodleError` (`invalid-input`) for a phase that isn't one of the five.
 
 ## assessWorkshopSubmission
 
@@ -354,7 +354,7 @@ interface WorkshopCriterion {
 
 A teacher who hasn't assessed the submission gets an assessment of their own, as "Assess" on the submission's page (`mod/workshop/submission.php`) does; one the person already made (a teacher's, or a reviewer's allocated one) is changed. The form (`mod/workshop/assessment.php`) is filled by its field names and saved with "Save and continue". Moodle only lets anyone assess in the assessment phase. It throws `WorkshopError` when Moodle offers no assessment (another phase, or the person isn't a reviewer or teacher), when a criterion's grade isn't one it takes (the error lists those it takes), when more criteria are given than the form has, or when the workshop has no overall feedback; `FormError` with Moodle's messages when it refuses the form (a criterion without a grade).
 
-Students submit to a workshop on Moodle's pages: the driver has no workshop submission.
+A participant submits with [`saveWorkshopSubmission`](#saveworkshopsubmission). A reviewer allocated to their own submission (self-assessment) assesses it the same way.
 
 ## workshopAllocation
 
@@ -479,6 +479,170 @@ interface ScheduledAllocation {
 
 When it's on, Moodle runs the random allocation by itself, with these settings, at the end of the submission phase: once the workshop's submissions deadline has passed, from its scheduled tasks. The settings left out keep what the form has. It returns the scheduled allocation as the form shows it afterwards, with `status`, Moodle's words about it (a workshop without a submissions deadline is never allocated, and the status says so). Errors as in `allocateRandomly`.
 
+## workshopSubmission
+
+A workshop submission as its page shows it.
+
+```ts
+function workshopSubmission(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  which?: { submissionId?: number; authorId?: number },
+): Promise<WorkshopSubmissionContent | undefined>;
+
+interface WorkshopSubmissionContent {
+  id: number;
+  title: string;
+  content: string;
+  authorId?: number;
+  author?: string;
+  attachments: WorkshopAttachment[];
+  editable: boolean;
+}
+
+interface WorkshopAttachment {
+  name: string;
+  url: string;
+}
+```
+
+- Without `which`: the person's own submission, `undefined` before they submit.
+- `submissionId`: that submission, which Moodle shows its author, its reviewers and those who can see every submission (a teacher).
+- `authorId`: that participant's submission, found in the workshop's report (a teacher's), `undefined` when they have none.
+- `content`: its text (HTML), with the site's URLs for the files embedded in it; `attachments`: its attached files, each with its URL on the site (`downloadFile` saves one); `author`: left out where Moodle hides authors' names; `editable`: whether Moodle lets the person edit it now (their own, in the submission phase).
+
+It reads the submission's page (`mod/workshop/submission.php`) by its box's classes. It throws `WorkshopError` when Moodle doesn't let the person see the submission, when someone without a submission of their own can't submit (`mod/workshop:submit`, a student's: a teacher has none to read), or for an id that isn't a workshop's; `MoodleError` (`invalid-input`) with both `submissionId` and `authorId`.
+
+## saveWorkshopSubmission
+
+Adds the person's submission to a workshop, or changes the one they have, through Moodle's submission form.
+
+```ts
+function saveWorkshopSubmission(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  input: WorkshopSubmissionInput,
+): Promise<{ changed: string; submissionId: number; submission: WorkshopSubmissionContent }>;
+
+interface WorkshopSubmissionInput {
+  title?: string;
+  content?: string;
+  attachments?: string[];
+  embed?: string[];
+}
+```
+
+- `title`: Moodle requires one, so a new submission takes it; editing, left out keeps the one there.
+- `content`: the text (HTML), where the workshop takes online text.
+- `attachments`: local files (absolute paths) to attach; they replace the files attached before, up to the workshop's "Maximum number of submission attachments". Left out keeps them; `[]` removes them.
+- `embed`: local files to embed in the content, which names each by its file name (`<img src="shot.png">`), uploaded as Moodle's editor inserts them (see [Embedding files in rich text](files.md#embedding-files-in-rich-text)).
+
+It does what "Add submission" and "Edit submission" do: only what's given changes. Moodle takes submissions in the submission phase, within its dates, and after any examples the workshop asks to assess first; where the workshop takes late submissions, a first submission in the assessment phase too. It throws `WorkshopError` when the person can't submit (`mod/workshop:submit`, a student's), when Moodle doesn't take the submission now (the error says when it does), or when the workshop doesn't take online text or attachments; `FormError` with Moodle's messages when it refuses the form (too many attachments, a required part missing); `MoodleError` (`invalid-input`) with nothing to save, or a new submission without a title.
+
+## workshopExamples
+
+A workshop's example submissions, as its page lists them to a teacher.
+
+```ts
+function workshopExamples(context: BrowserContext, siteUrl: string, activityId: number): Promise<WorkshopExample[]>;
+
+interface WorkshopExample {
+  id: number;
+  title: string;
+  assessed: boolean;
+  grade?: number;
+  maxGrade?: number;
+}
+```
+
+Examples are submissions the teacher prepares and assesses (the reference assessment) so participants practise assessing before their own work, or before assessing their peers, as the workshop's settings say ("Use examples" and its mode). `assessed` says whether the reference assessment is made, and `grade` is the grade it gives, out of `maxGrade` (the workshop's grade for submission). Moodle lists examples on the workshop's page in the setup phase only; the driver throws `WorkshopError` in another phase, and when the page lists none (the workshop doesn't use examples, or the person can't manage them: `mod/workshop:manageexamples`, a teacher's).
+
+## addWorkshopExample, editWorkshopExample and deleteWorkshopExample
+
+Add, change and delete a workshop's example submissions, as "Add example submission", "Edit example" and "Delete example" do.
+
+```ts
+function addWorkshopExample(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  input: WorkshopSubmissionInput & { title: string },
+): Promise<{ changed: string; exampleId: number; example: { id: number; title: string; content: string; attachments: WorkshopAttachment[] } }>;
+
+function editWorkshopExample(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  exampleId: number,
+  input: WorkshopSubmissionInput,
+): Promise<{ changed: string; example: { id: number; title: string; content: string; attachments: WorkshopAttachment[] } }>;
+
+function deleteWorkshopExample(context: BrowserContext, siteUrl: string, activityId: number, exampleId: number): Promise<{ changed: string }>;
+```
+
+An example takes the submission's own form (`mod/workshop/exsubmission.php`), so the input is `saveWorkshopSubmission`'s: a title, the text, attachments that replace those there, files to embed. Moodle asks for an example's reference assessment once it's added: `assessWorkshopExample` makes it. Deleting goes through Moodle's confirmation and deletes the example's assessments with it. Examples matter only where the workshop uses them, which Moodle doesn't check when they're added. They throw `WorkshopError` when the person can't manage examples (`mod/workshop:manageexamples`) or the example isn't there; `FormError` when Moodle refuses the form.
+
+## assessWorkshopExample
+
+Assesses an example submission through the workshop's assessment form, as "Assess" on the example does.
+
+```ts
+function assessWorkshopExample(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  exampleId: number,
+  input: { criteria?: WorkshopCriterion[]; feedback?: string; fields?: Record<string, FieldValue> },
+): Promise<{ changed: string; assessmentId: number; grade?: number; maxGrade?: number }>;
+```
+
+For a teacher who manages examples, it's the example's reference assessment, which participants' assessments of the example are compared with; for a participant, their own practice assessment, where the workshop lets them assess examples now (voluntarily, or before submitting or assessing, in that phase). The form is the grading strategy's, filled as [`assessWorkshopSubmission`](#assessworkshopsubmission) fills a submission's (`criteria` in the form's order, `feedback` where the workshop has overall feedback), on `mod/workshop/exassessment.php`, and saved with "Save and continue"; `grade` is the grade it gives out of `maxGrade`. It throws `WorkshopError` when Moodle offers no assessment of the example, or when a criterion's grade isn't one it takes; `FormError` when Moodle refuses the form.
+
+## calculateWorkshopGrades
+
+Calculates a workshop's grades, as "Re-calculate grades" in the evaluation phase does.
+
+```ts
+function calculateWorkshopGrades(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  options?: { comparison?: WorkshopComparison },
+): Promise<{ changed: string; comparison?: WorkshopComparison } & WorkshopInfo>;
+
+type WorkshopComparison = "very strict" | "strict" | "fair" | "lax" | "very lax";
+```
+
+Moodle calculates each submission's grade from its assessments (their weighted mean; allocations not assessed don't count), and each assessment's grade for assessing by the workshop's grading evaluation method, "Comparison with the best assessment" unless another is installed. `comparison` is that method's strictness (Moodle's "Comparison of assessments"); left out, the form keeps the last one used ("fair" at first). Overridden grades stay. It returns the comparison used and the workshop as [`workshopInfo`](#workshopinfo) reads it afterwards, the grades included. The settings form is on the workshop's page (`mod/workshop/view.php`, posting to `mod/workshop/aggregate.php`), found by its class and filled by its field name. It throws `WorkshopError` outside the evaluation phase, when the person can't override grades (`mod/workshop:overridegrades`, a teacher's), or when the evaluation method has no comparison and one is given; `MoodleError` (`invalid-input`) for a comparison that isn't one of the five.
+
+## overrideWorkshopGrade
+
+Overrides a grade Moodle calculated in a workshop: a submission's grade, or an assessment's grade for assessing.
+
+```ts
+function overrideWorkshopGrade(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  override: WorkshopGradeOverride,
+): Promise<{ changed: string; submission?: WorkshopSubmission; assessment?: WorkshopAssessment }>;
+
+interface WorkshopGradeOverride {
+  submissionId?: number;
+  assessmentId?: number;
+  grade: number | null;
+  feedback?: string;
+}
+```
+
+- `submissionId` or `assessmentId` (one of the two): the submission whose grade to override ("Override grade for submission", on the submission's page), or the assessment whose grade for assessing to override ("Override grade for assessment", in the "Assessment settings" of the assessment's page).
+- `grade`: a whole number from 0 to the workshop's grade for submission (or for assessment); `null` removes the override, so the calculated grade counts again.
+- `feedback`: the feedback for the author (a submission's) or for the reviewer (an assessment's), HTML; left out keeps what's there.
+
+It returns the submission or the assessment afterwards, as `workshopInfo` reads it (`gradeOverride`, `gradingGradeOverride`). Moodle offers a submission's override in the evaluation phase only, and an assessment's in any phase but not on the person's own assessment while they can still change it (a teacher's own, in the evaluation phase). It throws `WorkshopError` where Moodle shows no override (the phase, the person's own assessment, or without `mod/workshop:overridegrades`), for a grade the form doesn't take, or for a submission or assessment that isn't the workshop's; `MoodleError` (`invalid-input`) without one of the two ids, or for a grade that isn't a whole number.
+
 ## Example
 
 ```ts
@@ -529,6 +693,12 @@ for (const submission of workshop.submissions) {
   });
   console.log(submission.author, result.grade, "of", result.maxGrade);
 }
+
+// Then the evaluation phase: calculate the grades, and raise one.
+await moodle.setWorkshopPhase(58, "evaluation");
+const graded = await moodle.calculateWorkshopGrades(58, { comparison: "fair" });
+const first = graded.submissions[0];
+if (first) await moodle.overrideWorkshopGrade(58, { submissionId: first.id, grade: 70, feedback: "<p>Better than the reviews say.</p>" });
 ```
 
 An assignment with group submissions and the marking workflow: grade one member for the whole group, then release the group's grades.
@@ -549,4 +719,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), and `assessWorkshopSubmission` `others-personal` and `others-write`. `workshopAllocation` is `others-personal`, `allocateReviewer`, `removeReviewer` and `allocateRandomly` `others-personal` and `others-write` (they decide who assesses whose work), and `scheduleAllocation` `others-write`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), and `assessWorkshopSubmission` `others-personal` and `others-write`. `workshopAllocation` is `others-personal`, `allocateReviewer`, `removeReviewer` and `allocateRandomly` `others-personal` and `others-write` (they decide who assesses whose work), and `scheduleAllocation` `others-write`. `workshopSubmission` is `own` and `others-personal` (someone else's work too), `saveWorkshopSubmission` `own`; `workshopExamples`, `addWorkshopExample`, `editWorkshopExample` and `deleteWorkshopExample` are `course-content`, and `assessWorkshopExample` `course-content` and `own` (a teacher's reference assessment, or a participant's practice); `calculateWorkshopGrades` and `overrideWorkshopGrade` are `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).
