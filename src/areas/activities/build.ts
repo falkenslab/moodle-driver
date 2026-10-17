@@ -7,11 +7,12 @@ import { courseState } from "../courses/state.js";
 import { editCourse, renameActivity, renameSection } from "../../core/editor.js";
 import { checkEmbeds, editorTexts, embedFiles } from "../../core/embed.js";
 import { checkLocalFiles } from "../../core/files.js";
-import { deleteDraftFile, draftFiles, formValue, openForm, setFields, submitForm, uploadToDraft, type DraftFile, type DraftUpload, type FieldValue } from "../../core/forms.js";
+import { FormError, deleteDraftFile, draftFiles, formValue, openForm, setFields, submitForm, uploadToDraft, type DraftFile, type DraftUpload, type FieldValue } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { structureOf, type CourseSection } from "../courses/structure.js";
 import { questionBanks } from "../questions/banks.js";
+import { scorm, type ScormActivity } from "../scorm/scorm.js";
 import { MoodleError } from "../../core/errors.js";
 import { completionValues, gradeItemsByActivity, hasGradeCondition, parseRestrictions, readCompletion, restrictionsJson, type Completion, type Restrictions } from "./conditions.js";
 
@@ -58,6 +59,8 @@ export interface CourseChange {
   url?: string;
   /** A file resource's or folder's files after `updateActivity` changed them. */
   files?: DraftFile[];
+  /** A SCORM as `scorm` reads it after `updateActivity` gave it a new package. */
+  scorm?: ScormActivity;
   sections: CourseSection[];
 }
 
@@ -198,11 +201,20 @@ export async function createActivity(
 /**
  * Changes an existing activity through its form: only what's given changes. A file resource's or
  * folder's files stay as they are unless `files` says what to add, remove or replace.
+ *
+ * `package` (a local `.zip`, absolute path) replaces a SCORM's package in place: the activity keeps
+ * its id, settings and grade item, and the result has it as `scorm` reads it afterwards. Moodle
+ * matches the new package's SCOs to the old ones by their identifier in the manifest: one kept keeps
+ * its tracks (the attempts made in it) and a new one starts not attempted (confirmed empirically,
+ * 5.2), one gone is deleted with its tracks (`scorm_parse_scorm`). A package Moodle can't read is an `ActivitySettingsError`, with
+ * nothing changed.
  */
-export async function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields & { files?: FileChanges }): Promise<CourseChange> {
-  const { files, ...fields } = input;
+export async function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields & { files?: FileChanges; package?: string }): Promise<CourseChange> {
+  const { files, package: pkg, ...fields } = input;
   if (files?.replace && (files.add || files.remove)) throw new MoodleError("Give files.replace alone, or files.add and files.remove.", "invalid-input");
+  if (files && pkg !== undefined) throw new MoodleError("Give a SCORM's new package as package alone, without files.", "invalid-input");
   if (files) await checkLocalFiles([...localPaths(files.add), ...localPaths(files.replace)]);
+  if (pkg !== undefined) await checkLocalFiles([pkg]);
   if (fields.embed) await checkEmbeds(richTextsOf(fields), fields.embed);
   const page = await openForm(context, siteUrl, `course/modedit.php?update=${activityId}&return=0`);
   let courseId: number;
@@ -215,17 +227,39 @@ export async function updateActivity(context: BrowserContext, siteUrl: string, a
       if (!area) throw new MoodleError(`A ${type} has no files in its form.`, "not-available");
       filesDone = await changeFiles(page, area.draft, files);
     }
+    if (pkg !== undefined) {
+      if (type !== "scorm") throw new MoodleError(`Activity ${activityId} is a ${type}: package is for a SCORM (module "scorm").`, "invalid-input");
+      const area = await fileArea(page);
+      // A SCORM taken from a URL (an external manifest) has no package field to put a file in.
+      if (!area?.single) throw new MoodleError(`SCORM ${activityId} isn't an uploaded package: its form has no package to replace.`, "not-available");
+      const replaced = await changeFiles(page, area.draft, { replace: [pkg] });
+      filesDone = { done: `package replaced by ${path.basename(pkg)}`, files: replaced.files };
+    }
     const values = fieldsFor(type, fields, await conditionValues(context, siteUrl, page, courseId, fields));
     if (fields.embed) await embedFiles(page, values, fields.embed);
     await setFields(page, values);
-    await submitForm(page, "submitbutton2");
+    try {
+      await submitForm(page, "submitbutton2");
+    } catch (error) {
+      // Moodle checks the package when the form is saved, and saves nothing when it refuses it.
+      const refused = pkg !== undefined && error instanceof FormError ? error.fields.find((f) => f.field === "packagefile") : undefined;
+      if (refused) throw new ActivitySettingsError(`Moodle refused the new package for SCORM ${activityId}, which keeps its old one: ${refused.message}`);
+      throw error;
+    }
   } finally {
     await page.close().catch(() => undefined);
   }
   const after = await courseState(context, siteUrl, courseId);
   const cm = after.cm.find((c) => Number(c.id) === activityId);
   const done = filesDone?.done ? `: ${filesDone.done}` : "";
-  return { changed: `Updated activity ${activityId}${cm ? ` "${cm.name}"` : ""}${done}.`, activityId: activityId, url: cm?.url, files: filesDone?.files, sections: structureOf(after) };
+  return {
+    changed: `Updated activity ${activityId}${cm ? ` "${cm.name}"` : ""}${done}.`,
+    activityId: activityId,
+    url: cm?.url,
+    files: filesDone?.files,
+    ...(pkg !== undefined ? { scorm: await scorm(context, siteUrl, activityId) } : {}),
+    sections: structureOf(after),
+  };
 }
 
 /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
@@ -439,7 +473,7 @@ export function readFormFields(page: Page): Promise<FormField[]> {
   );
 }
 
-/** Nobody can see that activity's settings: not an activity, or not the person's to edit. */
+/** Nobody can see that activity's settings (not an activity, or not the person's to edit), or Moodle refused a SCORM's new package. */
 export class ActivitySettingsError extends MoodleError {
   override name = "ActivitySettingsError";
   constructor(message: string) {

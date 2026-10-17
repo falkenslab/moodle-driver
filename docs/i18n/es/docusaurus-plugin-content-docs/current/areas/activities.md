@@ -15,6 +15,7 @@ Todas las funciones de esta página salvo `activitySettings` y `courseActivityTy
 - `sectionId`: la sección añadida, en `addSection`.
 - `url`: la página de la actividad, tras crearla o actualizarla.
 - `files`: los archivos de un recurso de archivo o de una carpeta, después de que `updateActivity` los cambie (`DraftFile[]`, `{ name, size }`).
+- `scorm`: un SCORM tal como lo lee [scorm](scorm.md), después de que `updateActivity` le dé un nuevo `package`.
 - `sections`: las `CourseSection[]` del curso tras el cambio, tal como las da [courseStructure](courses.md) (sin detalles).
 
 ## createActivity
@@ -65,7 +66,7 @@ Errores:
 Cambia una actividad existente mediante su formulario: solo cambia lo que se indica, y los archivos que ya hay se quedan salvo que `files` diga otra cosa.
 
 ```ts
-function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields & { files?: FileChanges }): Promise<CourseChange>;
+function updateActivity(context: BrowserContext, siteUrl: string, activityId: number, input: ActivityFields & { files?: FileChanges; package?: string }): Promise<CourseChange>;
 
 interface FileChanges {
   add?: (string | DraftUpload)[]; // rutas locales, o { from, to } para otro nombre o una subcarpeta
@@ -74,7 +75,7 @@ interface FileChanges {
 }
 ```
 
-Recibe los mismos `ActivityFields` que `createActivity`, y lee el módulo y el curso de la actividad del formulario. Los errores son los mismos casos de `FormError`, y un `MoodleError` (`invalid-input`) por `content` en un tipo que no es una página ni un área de texto y medios.
+Recibe los mismos `ActivityFields` que `createActivity`, y lee el módulo y el curso de la actividad del formulario. `package` es el nuevo paquete de un SCORM, un `.zip` local (consulta [Sustituir el paquete de un SCORM](scorm.md#replacing-a-scorms-package)). Los errores son los mismos casos de `FormError`, y un `MoodleError` (`invalid-input`) por `content` en un tipo que no es una página ni un área de texto y medios.
 
 ### Cambiar los archivos de un recurso o de una carpeta {#changing-a-resources-or-folders-files}
 

@@ -1,6 +1,6 @@
 # SCORM
 
-SCORM activities (module `scorm`): what the person sees on the activity's page (attempts allowed and made, the grading method, the grade reported and each attempt's) and its SCOs with the person's status and score; Moodle's player opened on the working tab to do it; and, for a teacher, a SCORM created from a package. A package is the teacher's own HTML and JavaScript: the driver doesn't do it, and never writes its tracks or a grade. Its result comes only from doing it in the player.
+SCORM activities (module `scorm`): what the person sees on the activity's page (attempts allowed and made, the grading method, the grade reported and each attempt's) and its SCOs with the person's status and score; Moodle's player opened on the working tab to do it; and, for a teacher, a SCORM created from a package, and its package replaced. A package is the teacher's own HTML and JavaScript: the driver doesn't do it, and never writes its tracks or a grade. Its result comes only from doing it in the player.
 
 **Terms:** [SCORM](../reference/glossary.md#scorm), [attempt](../reference/glossary.md#attempt), [working tab](../reference/glossary.md#working-tab).
 
@@ -72,6 +72,21 @@ await moodle.createActivity({ courseId: 3, sectionId: 7, type: "scorm", name: "C
 ```
 
 Other settings go in `settings` by their form field names (`maxattempt`, `grademethod`, `whatgrade`, `skipview`…).
+
+## Replacing a SCORM's package
+
+`updateActivity` with `package`, a local `.zip` (absolute path), replaces a SCORM's package in place, in its form's package field: the activity keeps its id, its settings (attempts, grading) and its grade item, so its links and its place in the gradebook stay. The result's `scorm` is the activity as `scorm` reads it afterwards, and `files` its new package:
+
+```ts fragment
+const done = await moodle.updateActivity(44, { package: "/home/ada/scorm/check-v2.zip" });
+console.log(done.changed); // Updated activity 44 "Check what you know": package replaced by check-v2.zip.
+for (const sco of done.scorm?.scos ?? []) console.log(sco.title);
+```
+
+What happens to the attempts made doesn't depend on the activity's settings: Moodle matches the new package's SCOs to the old ones by their `identifier` in `imsmanifest.xml`. A SCO the new package keeps (even retitled) keeps its id and everyone's tracks in it; a SCO it no longer has is deleted with its tracks; a new one starts not attempted. Keep the identifiers to keep the attempts.
+
+- A zip Moodle can't read as a package (no `imsmanifest.xml`): `ActivitySettingsError` with Moodle's message, and the activity keeps its old package.
+- `package` for an activity that isn't a SCORM, or with `files`: a `MoodleError` (`invalid-input`); for a SCORM taken from a URL rather than uploaded: `not-available`.
 
 ## Example
 

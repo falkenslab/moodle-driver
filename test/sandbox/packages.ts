@@ -115,6 +115,25 @@ export function scormPackage(name = "driver-check-scorm.zip"): string {
   return file;
 }
 
+// The package corrected: its SCO keeps its identifier (item1) under a new title, and a second one is added.
+const REVISED_MANIFEST = MANIFEST.replace("<title>Only lesson</title>", "<title>First lesson</title>")
+  .replace("</item>", '</item>\n      <item identifier="item2" identifierref="res2"><title>Second lesson</title></item>')
+  .replace("</resource>", '</resource>\n    <resource identifier="res2" type="webcontent" adlcp:scormtype="sco" href="second.html"><file href="second.html"/></resource>');
+
+/** A second version of `scormPackage`'s: its SCO retitled "First lesson" (same identifier), and a new SCO "Second lesson": its path. */
+export function revisedScormPackage(name = "driver-check-scorm-v2.zip"): string {
+  const file = path.join(dir, name);
+  writeFileSync(file, zip({ "imsmanifest.xml": REVISED_MANIFEST, "index.html": SCO.replace("Only lesson", "First lesson"), "second.html": SCO.replace("Only lesson", "Second lesson") }));
+  return file;
+}
+
+/** A zip that isn't a SCORM package (no imsmanifest.xml): its path. */
+export function notAScormPackage(name = "driver-check-not-scorm.zip"): string {
+  const file = path.join(dir, name);
+  writeFileSync(file, zip({ "readme.txt": "Not a SCORM package.\n" }));
+  return file;
+}
+
 /** Downloads a file of the site (no session needed) into the temporary folder: its path, or undefined when the site doesn't serve it. */
 export async function siteFile(url: string, name: string): Promise<string | undefined> {
   const response = await fetch(url);

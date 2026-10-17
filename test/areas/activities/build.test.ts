@@ -20,13 +20,13 @@ after(async () => {
 });
 
 /** An activity form reduced to what the driver touches, shaped like Moodle 5.2's `modedit.php`; made up. */
-function activityForm(values: { name?: string; error?: string; fileField?: string } = {}): string {
+function activityForm(values: { name?: string; error?: string; fileField?: string; module?: string; fileError?: string } = {}): string {
   return `<form class="mform" action="modedit.php" method="post">
-<input type="hidden" name="course" value="5"><input type="hidden" name="modulename" value="resource"><input type="hidden" name="sesskey" value="s1">
+<input type="hidden" name="course" value="5"><input type="hidden" name="modulename" value="${values.module ?? "resource"}"><input type="hidden" name="sesskey" value="s1">
 <input type="text" name="name" id="id_name" value="${values.name ?? ""}"><div id="id_error_name">${values.error ?? ""}</div>
 <textarea name="introeditor[text]" id="id_introeditor"></textarea><input type="hidden" name="introeditor[itemid]" value="888">
 <input type="hidden" name="showdescription" value="0"><input type="checkbox" name="showdescription" value="1">
-<input type="hidden" name="${values.fileField ?? "files"}" value="777">
+<input type="hidden" name="${values.fileField ?? "files"}" value="777"><div id="id_error_${values.fileField ?? "files"}">${values.fileError ?? ""}</div>
 <select name="visible"><option value="1">Show</option><option value="0">Hide</option></select>
 <input type="submit" name="submitbutton2" value="Save and return"></form>
 <script>var filepicker = {"repositories":{"5":{"id":"5","name":"Upload a file","type":"upload"}}};</script>`;
@@ -207,6 +207,42 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     await assert.rejects(updateActivity(context, SITE, 40, { files: { replace: [], remove: ["a.txt"] } }), (error: Error & { code?: string }) => error.code === "invalid-input");
     assert.equal(posts.length, 0);
     assert.deepEqual([...draft.keys()], ["/a.txt"]);
+    await context.close();
+  });
+
+  it("replaces a SCORM's package in place and reads the SCORM afterwards", async () => {
+    const { context, posts, draft, uploads } = await site();
+    draft.set("/quiz.zip", 2);
+    await writeFile(path.join(dir, "quiz-v2.zip"), "PK v2");
+    await writeFile(path.join(dir, "bad.zip"), "PK");
+    // A SCORM's form (its package in packagefile); Moodle refuses a package it can't read, by that field (Moodle 5.2's wording).
+    await context.route(`${SITE}course/modedit.php**`, (route: Route) => {
+      if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, body: activityForm({ name: "Check", module: "scorm", fileField: "packagefile" }) }) });
+      posts.push(new URLSearchParams(route.request().postData() ?? ""));
+      if (draft.has("/bad.zip")) return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, body: activityForm({ module: "scorm", fileField: "packagefile", fileError: "Incorrect file package - missing imsmanifest.xml or AICC structure" }) }) });
+      return route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, body: "<p>Course page</p>" }) });
+    });
+    await context.route(`${SITE}mod/scorm/view.php**`, (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-mod-scorm-view", body: '<div data-activityname="Check"></div><div role="main"><div class="generalbox"><p>Number of attempts allowed: Unlimited<br>Number of attempts you have made: 0<br>Grading method: Highest attempt<br>Grade reported: None</p></div></div>' }) }),
+    );
+    const result = await updateActivity(context, SITE, 40, { package: path.join(dir, "quiz-v2.zip") });
+    assert.equal(result.changed, "Updated activity 40: package replaced by quiz-v2.zip.");
+    assert.deepEqual(result.files, [{ name: "quiz-v2.zip", size: 5 }]);
+    assert.deepEqual([result.scorm?.id, result.scorm?.name, result.scorm?.attemptsMade], [40, "Check", 0]);
+    assert.deepEqual(uploads, ["777:quiz-v2.zip"]);
+    // A package Moodle refuses: its message, as the activity's settings error.
+    await assert.rejects(updateActivity(context, SITE, 40, { package: path.join(dir, "bad.zip") }), (error: unknown) => error instanceof ActivitySettingsError && /keeps its old one: Incorrect file package/.test(error.message));
+    assert.equal(posts.length, 2);
+    await context.close();
+  });
+
+  it("refuses a package for another module, and a package with files, without saving", async () => {
+    const { context, posts } = await site();
+    await writeFile(path.join(dir, "quiz-v2.zip"), "PK v2");
+    await assert.rejects(updateActivity(context, SITE, 40, { package: path.join(dir, "quiz-v2.zip") }), (error: Error & { code?: string }) => error.code === "invalid-input" && /is a resource: package is for a SCORM/.test(error.message));
+    await assert.rejects(updateActivity(context, SITE, 40, { package: path.join(dir, "quiz-v2.zip"), files: { add: [path.join(dir, "brief.txt")] } }), (error: Error & { code?: string }) => error.code === "invalid-input");
+    await assert.rejects(updateActivity(context, SITE, 40, { package: "quiz-v2.zip" }), /absolute paths/);
+    assert.equal(posts.length, 0);
     await context.close();
   });
 

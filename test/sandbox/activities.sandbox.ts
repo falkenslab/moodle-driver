@@ -2,10 +2,10 @@
 // and an H5P activity, each made by the teacher (the H5P by the admin) on a scratch course.
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
-import { ChoiceError, LessonError, NotAnH5PActivityError, ScormError, SurveyError, type FieldValue, type Moodle } from "../../src/index.js";
+import { ActivitySettingsError, ChoiceError, LessonError, MoodleError, NotAnH5PActivityError, ScormError, SurveyError, type FieldValue, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
 import { SITE, as, scratchCourse, type ScratchCourse } from "./harness.js";
-import { scormPackage, siteFile } from "./packages.js";
+import { notAScormPackage, revisedScormPackage, scormPackage, siteFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
 const SLOW = { timeout: 900_000 };
@@ -214,6 +214,34 @@ describe("doing activities", () => {
       assert.equal(activity.attemptsMade, 1);
       await (await student.tab()).goto("about:blank");
       await assert.rejects(student.openScorm(pageId), ScormError);
+    });
+
+    it("updateActivity: a SCORM's new package, in place, its SCO kept with the student's track", SLOW, async () => {
+      const teacher = await as("teacher");
+      const gradeItems = async () => (await teacher.gradebookSetup(course.id)).items.filter((item) => item.type === "scorm").map((item) => item.id);
+      const items = await gradeItems();
+      assert.equal(items.length, 1);
+      const before = (await (await as("student")).scorm(scormId)).scos;
+      const done = await teacher.updateActivity(scormId, { package: revisedScormPackage() });
+      assert.match(done.changed, /package replaced by driver-check-scorm-v2\.zip/);
+      assert.deepEqual(done.files?.map((f) => f.name), ["driver-check-scorm-v2.zip"]);
+      assert.equal(done.scorm?.id, scormId);
+      assert.deepEqual(done.scorm?.scos.map((s) => s.title), ["First lesson", "Second lesson"]);
+      assert.equal(done.sections.flatMap((s) => s.activities).filter((a) => a.type === "scorm").length, 1);
+      assert.deepEqual(await gradeItems(), items);
+      // The SCO with the same identifier keeps its id and the student's track; the new one starts not attempted.
+      const activity = await (await as("student")).scorm(scormId);
+      assert.equal(activity.attemptsMade, 1);
+      assert.deepEqual(activity.scos.map((s) => [s.title, s.status]), [["First lesson", "completed"], ["Second lesson", "not-attempted"]]);
+      assert.equal(activity.scos[0]!.id, before[0]!.id);
+    });
+
+    it("updateActivity: a zip that isn't a SCORM package, refused with nothing changed", SLOW, async () => {
+      const teacher = await as("teacher");
+      await assert.rejects(teacher.updateActivity(scormId, { package: notAScormPackage() }), ActivitySettingsError);
+      assert.deepEqual((await teacher.activitySettings(scormId)).files?.map((f) => f.name), ["driver-check-scorm-v2.zip"]);
+      assert.deepEqual((await (await as("student")).scorm(scormId)).scos.map((s) => s.title), ["First lesson", "Second lesson"]);
+      await assert.rejects(teacher.updateActivity(pageId, { package: revisedScormPackage() }), (error: unknown) => error instanceof MoodleError && error.code === "invalid-input");
     });
   });
 
