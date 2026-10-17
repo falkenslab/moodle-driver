@@ -46,13 +46,19 @@ try {
   const accounts = { admin: sandbox.admin, teacher: sandbox.teacher, student, sandboxCourseId: sandbox.course.id };
   writeFileSync(path.join(work, "accounts.json"), JSON.stringify(accounts), { mode: 0o600 });
 
-  const files = process.argv.slice(2);
+  // `--grep <pattern>` runs only the tests whose name matches (node's --test-name-pattern), to check
+  // a new block without the rest of its file.
+  const args = process.argv.slice(2);
+  const grepAt = args.indexOf("--grep");
+  const grep = grepAt >= 0 ? args.splice(grepAt, 2)[1] : undefined;
+  const files = args;
+  const pattern = grep ? ` --test-name-pattern='${grep.replaceAll("'", "'\\''")}'` : "";
   const command = [
     "bash",
     "-c",
     [
       // One file at a time: they share the accounts' sessions.
-      `npx tsx --test --test-concurrency=1 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=/sandbox/report.tap ${files.length > 0 ? files.map((f) => `'${f}'`).join(" ") : "'test/sandbox/**/*.sandbox.ts'"}; code=$?`,
+      `npx tsx --test --test-concurrency=1${pattern} --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=/sandbox/report.tap ${files.length > 0 ? files.map((f) => `'${f}'`).join(" ") : "'test/sandbox/**/*.sandbox.ts'"}; code=$?`,
       `npx tsx test/sandbox/summary.ts /sandbox/report.tap${files.length > 0 ? " --partial" : ""} || code=1`,
       "exit $code",
     ].join("; "),

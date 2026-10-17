@@ -39,6 +39,7 @@ El Moodle simulado representa lo que lee el driver, pero solo un sitio real lo c
 ```bash
 npm run test:sandbox                                      # todos los archivos de test/sandbox/
 npm run test:sandbox -- test/sandbox/forums.sandbox.ts    # algunos
+npm run test:sandbox -- test/sandbox/forums.sandbox.ts --grep "forumGrades"  # solo las pruebas cuyo nombre coincide
 ```
 
 - Las cuentas se leen del sandbox cuando empieza la batería (`node manage.mjs info --json`; `MOODLE_SANDBOX_DIR` apunta a otro sitio) en una carpeta temporal que solo puedes leer tú, borrada al final. No se imprime ni se guarda ninguna contraseña. Los perfiles del navegador de las cuentas se quedan en `~/.moodle-driver-sandbox` (una carpeta por checkout; `MOODLE_SANDBOX_PROFILES` la traslada), para que las ejecuciones siguientes no vuelvan a iniciar sesión: contienen las cookies de sesión del sandbox, nada más.

@@ -39,6 +39,7 @@ The fake Moodle stands for what the driver reads, but only a real site confirms 
 ```bash
 npm run test:sandbox                                      # every file in test/sandbox/
 npm run test:sandbox -- test/sandbox/forums.sandbox.ts    # some
+npm run test:sandbox -- test/sandbox/forums.sandbox.ts --grep "forumGrades"  # only the tests whose name matches
 ```
 
 - The accounts are read from the sandbox when the suite starts (`node manage.mjs info --json`; `MOODLE_SANDBOX_DIR` points elsewhere) into a temporary folder only you can read, deleted at the end. No password is printed or stored. The accounts' browser profiles stay in `~/.moodle-driver-sandbox` (one folder per checkout; `MOODLE_SANDBOX_PROFILES` moves it), so later runs don't log in again: they hold the sandbox's session cookies, nothing else.
