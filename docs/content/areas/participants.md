@@ -1,6 +1,6 @@
 # Participants
 
-This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`), giving or taking roles (`setUserRoles`), making groups and groupings and choosing their members (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…), and setting how people get in: the course's enrolment methods (`enrolmentMethods`, `setEnrolmentMethod`). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
+This area lists who is in a course: its participants with their roles and groups (`participants`), its groups with their members (`groups`), and the roles and groups the participants page filters by (`participantFilters`). A teacher also changes who is in it: enrolling users (`potentialUsers`, `enrolUsers`), unenrolling them (`unenrolUser`), giving or taking roles (`setUserRoles`), making groups and groupings and choosing their members (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…), setting how people get in: the course's enrolment methods (`enrolmentMethods`, `setEnrolmentMethod`), and keeping notes about the participants (`notes`, `addNote`, `editNote`, `deleteNote`). Reading is mostly for teachers, but it works for anyone who can open the course's participants page: a student sees what Moodle shows them there (in a course with separate groups, only their own group).
 
 **Terms:** [participant](../reference/glossary.md#participant), [role](../reference/glossary.md#role), [group](../reference/glossary.md#group).
 
@@ -213,6 +213,48 @@ It throws `EnrolmentError` for a method the course doesn't have and can't add, w
 
 A student enrols with the key in Moodle itself (the course's "Enrol me"); the driver only sets the method up.
 
+## Notes about participants
+
+A teacher keeps notes about a course's participants on Moodle's notes pages: the notes page lists them (`notes/index.php`), its form writes and edits them (`notes/edit.php`), and its confirmation deletes them (`notes/delete.php`). Of Moodle's notes services only `core_notes_create_notes` is open to AJAX, and it files a site note under the site's front page instead of the course, unlike the form (as Moodle 5.2's `notes/externallib.php` does it); so the driver uses the pages for everything.
+
+```ts
+function notes(context: BrowserContext, siteUrl: string, courseId: number, options?: { userId?: number; limit?: number; offset?: number }): Promise<ParticipantNote[]>; // ListPage<ParticipantNote> with limit
+function addNote(context: BrowserContext, siteUrl: string, courseId: number, userId: number, fields: { content: string; context?: NoteContext }): Promise<NoteChange>;
+function editNote(context: BrowserContext, siteUrl: string, noteId: number, fields: { content?: string; context?: NoteContext }): Promise<NoteChange>;
+function deleteNote(context: BrowserContext, siteUrl: string, noteId: number): Promise<NoteChange>;
+
+type NoteContext = "personal" | "course" | "site";
+
+interface ParticipantNote {
+  id: number;
+  courseId: number; // the course it was written in: a site note may come from another
+  userId: number; // the participant it's about
+  userName: string;
+  content: string; // HTML
+  context: NoteContext;
+  authorId: number;
+  authorName: string;
+  created?: string; // ISO
+  modified?: string;
+  editable: boolean; // the page shows the person its edit and delete links
+}
+
+interface NoteChange {
+  changed: string;
+  noteId: number;
+  note?: ParticipantNote; // afterwards; none after deleting it
+}
+```
+
+A note's context is who sees it: `personal`, its author only (Moodle calls it a draft); `course`, whoever can view the course's notes (teachers, by default); `site`, whoever can view notes in any course the participant is in.
+
+- `notes` reads what the notes page shows the person: the site notes (from any course; without `userId`, about anyone on the site), the course notes, then the person's own personal notes (nobody else's are shown, even to an admin), each group the latest first. `userId` keeps the notes about one participant. `limit` and `offset` page them (see [Long lists](../concepts/calling-functions.md#long-lists)); the page itself doesn't page, so it is read whole. The dates are read back from the page's text with the site language's date format, in the person's time zone; one that can't be read is left out.
+- `addNote` writes a note about a participant with its content (HTML) and context (`course` unless given), and returns its id and the note.
+- `editNote` changes a note's content and, with `context`, who sees it; what isn't given stays. Moodle lets the person edit course notes and their own personal notes where they can manage notes, and site notes with that capability on the whole site.
+- `deleteNote` deletes a note, as its delete link does after Moodle's confirmation.
+
+Reading takes `moodle/notes:view`, writing `moodle/notes:manage` (both teachers' by default, not students'). A missing one throws `NoteError` naming it; a note that doesn't exist throws `NoteError` with Moodle's message; a site with notes off (Site administration > Advanced features > Enable notes) throws `NotesDisabledError` (code `notes-disabled`), whatever the function.
+
 ## Messaging participants
 
 `messageParticipants` (in [Messages](messages.md)) writes one message to several participants at once, chosen as `participants` chooses them: by role, group or inactivity.
@@ -256,3 +298,5 @@ From `DATA_CATEGORIES` (see [Data categories](../concepts/data-categories.md)):
 - `setGroupMembers`: `others-personal` and `others-write`.
 - `enrolmentMethods`, `setEnrolmentMethod`: `course-content`.
 - `enrolUsers`, `unenrolUser`, `setUserRoles`: `others-personal` and `others-write` (deciding who is in the course and with which role).
+- `notes`: `others-personal`.
+- `addNote`, `editNote`, `deleteNote`: `others-personal` and `others-write` (a judgement about someone, as feedback is).

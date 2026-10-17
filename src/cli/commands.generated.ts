@@ -649,6 +649,57 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addNote",
+    "description": "Writes a note about a participant of the course, through the notes page's form: its content (HTML) and who sees it (`course` unless given; `personal` for the author only, `site` for every course the participant is in). Returns its id and the note. Throws `NoteError` naming the capability when the person can't (moodle/notes:manage, which teachers have) or with Moodle's reason (no such participant), `NotesDisabledError` on a site with notes off.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "userId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "fields",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "content",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its content (HTML)."
+        },
+        {
+          "name": "context",
+          "optional": true,
+          "type": "NoteContext",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "course",
+              "personal",
+              "site"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addQuestionCategory",
     "description": "Adds a category to a bank, as the categories page's \"Add category\" does: at the top level, or inside `parentId`, with an optional description (HTML). Returns the category made.",
     "params": [
@@ -2831,6 +2882,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "deleteNote",
+    "description": "Deletes a note, as its delete link does after Moodle's confirmation. Throws `NoteError` naming the capability when the person can't (moodle/notes:manage in the note's course), or when there's no such note; `NotesDisabledError` on a site with notes off.",
+    "params": [
+      {
+        "name": "noteId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
     "name": "deletePost",
     "description": "Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a discussion's first post takes the whole discussion. Only a moderator deletes a post with replies, or someone else's. `replies` says how many replies went with it. Throws `ForumError` with Moodle's reason when it refuses.",
     "params": [
@@ -3571,6 +3636,49 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "boolean",
           "value": {
             "kind": "boolean"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "editNote",
+    "description": "Changes a note's content and, with `context`, who sees it, through its edit form. Moodle lets the person edit course notes and their own personal notes in a course where they can manage notes, and site notes with that capability on the whole site. Returns the note afterwards. Throws `NoteError` naming the capability when the person can't, or when there's no such note; `NotesDisabledError` on a site with notes off.",
+    "params": [
+      {
+        "name": "noteId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "fields",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "content",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its content (HTML)."
+        },
+        {
+          "name": "context",
+          "optional": true,
+          "type": "NoteContext",
+          "value": {
+            "kind": "enum",
+            "values": [
+              "course",
+              "personal",
+              "site"
+            ]
           }
         }
       ]
@@ -5405,6 +5513,54 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "notes",
+    "description": "The notes about a course's participants, as its notes page shows them: site notes (written in any course), course notes, then the person's own personal notes (nobody else sees those), each the latest first; only the notes about one participant with `userId`. Each one's participant, content, context, author and dates. Paged with `limit` and `offset` (read whole, Moodle's page doesn't page). Throws `NoteError` naming the capability when the person can't view the course's notes (moodle/notes:view, which teachers have), `NotesDisabledError` on a site with notes off.",
+    "params": [
+      {
+        "name": "courseId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "userId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Only the notes about this participant."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
+        }
+      ]
+    }
   },
   {
     "name": "notifications",

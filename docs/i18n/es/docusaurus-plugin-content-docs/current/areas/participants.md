@@ -1,6 +1,6 @@
 # Participantes
 
-Esta área enumera quién está en un curso: sus participantes con sus roles y grupos (`participants`), sus grupos con sus miembros (`groups`) y los roles y grupos por los que filtra la página de participantes (`participantFilters`). Un profesor también cambia quién está en él: matriculando usuarios (`potentialUsers`, `enrolUsers`), dándolos de baja (`unenrolUser`), dando o quitando roles (`setUserRoles`), creando grupos y agrupamientos y eligiendo sus miembros (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…) y fijando cómo entra la gente: los métodos de matriculación del curso (`enrolmentMethods`, `setEnrolmentMethod`). Leer es sobre todo para profesores, pero funciona para cualquiera que pueda abrir la página de participantes del curso: un estudiante ve lo que Moodle le muestra ahí (en un curso con grupos separados, solo su propio grupo).
+Esta área enumera quién está en un curso: sus participantes con sus roles y grupos (`participants`), sus grupos con sus miembros (`groups`) y los roles y grupos por los que filtra la página de participantes (`participantFilters`). Un profesor también cambia quién está en él: matriculando usuarios (`potentialUsers`, `enrolUsers`), dándolos de baja (`unenrolUser`), dando o quitando roles (`setUserRoles`), creando grupos y agrupamientos y eligiendo sus miembros (`createGroup`, `setGroupMembers`, `groupings`, `createGrouping`…), fijando cómo entra la gente: los métodos de matriculación del curso (`enrolmentMethods`, `setEnrolmentMethod`), y guardando anotaciones sobre los participantes (`notes`, `addNote`, `editNote`, `deleteNote`). Leer es sobre todo para profesores, pero funciona para cualquiera que pueda abrir la página de participantes del curso: un estudiante ve lo que Moodle le muestra ahí (en un curso con grupos separados, solo su propio grupo).
 
 **Términos:** [participante](../reference/glossary.md#participant), [rol](../reference/glossary.md#role), [grupo](../reference/glossary.md#group).
 
@@ -213,6 +213,48 @@ Lanza `EnrolmentError` para un método que el curso no tiene y no puede añadir,
 
 Un estudiante se matricula con la clave en el propio Moodle (el "Matricularme" del curso); el driver solo configura el método.
 
+## Anotaciones sobre los participantes {#notes-about-participants}
+
+Un profesor guarda anotaciones sobre los participantes de un curso en las páginas de anotaciones de Moodle: la página de anotaciones las lista (`notes/index.php`), su formulario las escribe y las edita (`notes/edit.php`) y su confirmación las borra (`notes/delete.php`). De los servicios de anotaciones de Moodle solo `core_notes_create_notes` está abierto a AJAX, y archiva una anotación del sitio bajo la portada del sitio en lugar del curso, a diferencia del formulario (así lo hace `notes/externallib.php` en Moodle 5.2); por eso el driver usa las páginas para todo.
+
+```ts
+function notes(context: BrowserContext, siteUrl: string, courseId: number, options?: { userId?: number; limit?: number; offset?: number }): Promise<ParticipantNote[]>; // ListPage<ParticipantNote> con limit
+function addNote(context: BrowserContext, siteUrl: string, courseId: number, userId: number, fields: { content: string; context?: NoteContext }): Promise<NoteChange>;
+function editNote(context: BrowserContext, siteUrl: string, noteId: number, fields: { content?: string; context?: NoteContext }): Promise<NoteChange>;
+function deleteNote(context: BrowserContext, siteUrl: string, noteId: number): Promise<NoteChange>;
+
+type NoteContext = "personal" | "course" | "site";
+
+interface ParticipantNote {
+  id: number;
+  courseId: number; // el curso en que se escribió: una anotación del sitio puede venir de otro
+  userId: number; // el participante del que trata
+  userName: string;
+  content: string; // HTML
+  context: NoteContext;
+  authorId: number;
+  authorName: string;
+  created?: string; // ISO
+  modified?: string;
+  editable: boolean; // la página le muestra a la persona sus enlaces de editar y borrar
+}
+
+interface NoteChange {
+  changed: string;
+  noteId: number;
+  note?: ParticipantNote; // después; ninguna tras borrarla
+}
+```
+
+El contexto de una anotación es quién la ve: `personal`, solo su autor (Moodle la llama borrador); `course`, quien puede ver las anotaciones del curso (los profesores, por defecto); `site`, quien puede ver anotaciones en cualquier curso en que esté el participante.
+
+- `notes` lee lo que la página de anotaciones le muestra a la persona: las anotaciones del sitio (de cualquier curso; sin `userId`, sobre cualquiera del sitio), las del curso y después las anotaciones personales de la propia persona (las de nadie más se muestran, ni siquiera a un administrador), cada grupo de la más reciente a la más antigua. `userId` deja las anotaciones sobre un participante. `limit` y `offset` las paginan (consulta [Listas largas](../concepts/calling-functions.md#long-lists)); la página en sí no pagina, así que se lee entera. Las fechas se leen del texto de la página con el formato de fecha del idioma del sitio, en la zona horaria de la persona; la que no se puede leer se deja fuera.
+- `addNote` escribe una anotación sobre un participante con su contenido (HTML) y su contexto (`course` si no se indica), y devuelve su id y la anotación.
+- `editNote` cambia el contenido de una anotación y, con `context`, quién la ve; lo que no se indica se queda igual. Moodle deja editar las anotaciones del curso y las anotaciones personales propias donde la persona puede gestionar anotaciones, y las del sitio con esa capacidad en todo el sitio.
+- `deleteNote` borra una anotación, como hace su enlace de borrar tras la confirmación de Moodle.
+
+Leer requiere `moodle/notes:view` y escribir `moodle/notes:manage` (las dos de los profesores por defecto, no de los estudiantes). Si falta una, se lanza `NoteError` nombrándola; una anotación que no existe lanza `NoteError` con el mensaje de Moodle; un sitio con las anotaciones desactivadas (Administración del sitio > Características avanzadas > Habilitar anotaciones) lanza `NotesDisabledError` (código `notes-disabled`), sea cual sea la función.
+
 ## Enviar mensajes a los participantes {#messaging-participants}
 
 `messageParticipants` (en [Mensajes](messages.md)) escribe un mensaje a varios participantes a la vez, elegidos como los elige `participants`: por rol, grupo o inactividad.
@@ -256,3 +298,5 @@ De `DATA_CATEGORIES` (consulta [Categorías de datos](../concepts/data-categorie
 - `setGroupMembers`: `others-personal` y `others-write`.
 - `enrolmentMethods`, `setEnrolmentMethod`: `course-content`.
 - `enrolUsers`, `unenrolUser`, `setUserRoles`: `others-personal` y `others-write` (decidir quién está en el curso y con qué rol).
+- `notes`: `others-personal`.
+- `addNote`, `editNote`, `deleteNote`: `others-personal` y `others-write` (un juicio sobre alguien, como lo es la retroalimentación).

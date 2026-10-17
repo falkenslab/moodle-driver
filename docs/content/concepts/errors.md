@@ -104,6 +104,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `CompletionError` | [Completion](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Badges](../areas/badges.md): a missing badge capability (named), a criterion Moodle doesn't offer; a site with badges off |
 | `NoParticipantsError`, `EnrolmentError` | [Participants](../areas/participants.md): can't see the participants; Moodle refused to enrol, unenrol or give a role |
+| `NoteError`, `NotesDisabledError` | [Participants](../areas/participants.md#notes-about-participants): a missing notes capability (named), no such note; a site with notes off |
 | `ReportError` | [Logs and reports](../areas/logs-and-reports.md): the person can't see the report, or the activity isn't the course's |
 | `CalendarError` | [Calendar](../areas/calendar.md) |
 | `MessageError` | [Messages](../areas/messages.md) |

@@ -219,6 +219,21 @@ moodle add-lesson-page <activityId> <input> [--options]
 | `input` | `LessonPageInput` |  |
 | `--after` | `number` |  |
 
+## addNote
+
+Writes a note about a participant of the course, through the notes page's form: its content (HTML) and who sees it (`course` unless given; `personal` for the author only, `site` for every course the participant is in). Returns its id and the note. Throws `NoteError` naming the capability when the person can't (moodle/notes:manage, which teachers have) or with Moodle's reason (no such participant), `NotesDisabledError` on a site with notes off.
+
+```bash
+moodle add-note <courseId> <userId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `userId` | `number` |  |
+| `--content` (required) | `string` | Its content (HTML). |
+| `--context` | `NoteContext` |  |
+
 ## addQuestionCategory
 
 Adds a category to a bank, as the categories page's "Add category" does: at the top level, or inside `parentId`, with an optional description (HTML). Returns the category made.
@@ -1135,6 +1150,18 @@ moodle delete-lesson-page <activityId> <pageId>
 | `activityId` | `number` |  |
 | `pageId` | `number` |  |
 
+## deleteNote
+
+Deletes a note, as its delete link does after Moodle's confirmation. Throws `NoteError` naming the capability when the person can't (moodle/notes:manage in the note's course), or when there's no such note; `NotesDisabledError` on a site with notes off.
+
+```bash
+moodle delete-note <noteId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `noteId` | `number` |  |
+
 ## deletePost
 
 Deletes a post and its replies through Moodle's own confirmation (`post.php?delete=`); a discussion's first post takes the whole discussion. Only a moderator deletes a post with replies, or someone else's. `replies` says how many replies went with it. Throws `ForumError` with Moodle's reason when it refuses.
@@ -1370,6 +1397,20 @@ moodle edit-lesson-page <activityId> <pageId> --options
 | `--answers` | `LessonAnswer[]` | A question page's answers, in order (given, they replace them all); an essay or structural page's single row. |
 | `--multiple-answers` | `boolean` |  |
 | `--case-sensitive` | `boolean` |  |
+
+## editNote
+
+Changes a note's content and, with `context`, who sees it, through its edit form. Moodle lets the person edit course notes and their own personal notes in a course where they can manage notes, and site notes with that capability on the whole site. Returns the note afterwards. Throws `NoteError` naming the capability when the person can't, or when there's no such note; `NotesDisabledError` on a site with notes off.
+
+```bash
+moodle edit-note <noteId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `noteId` | `number` |  |
+| `--content` | `string` | Its content (HTML). |
+| `--context` | `NoteContext` |  |
 
 ## editPost
 
@@ -2081,6 +2122,21 @@ moodle my-grades <courseId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` | `number` |  |
+
+## notes
+
+The notes about a course's participants, as its notes page shows them: site notes (written in any course), course notes, then the person's own personal notes (nobody else sees those), each the latest first; only the notes about one participant with `userId`. Each one's participant, content, context, author and dates. Paged with `limit` and `offset` (read whole, Moodle's page doesn't page). Throws `NoteError` naming the capability when the person can't view the course's notes (moodle/notes:view, which teachers have), `NotesDisabledError` on a site with notes off.
+
+```bash
+moodle notes <courseId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `courseId` | `number` |  |
+| `--user-id` | `number` | Only the notes about this participant. |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## notifications
 
