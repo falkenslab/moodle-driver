@@ -22,9 +22,10 @@ interface FakeGrade {
 /**
  * The single view report's user screen as Moodle 5.2 renders it, reduced: in editing mode a row per
  * item with `finalgrade_`, `feedback_`, `override_` (not for a manual item) and `exclude_` fields and
- * their `old` twins; out of it, only texts. The editing switch posts to editmode.php. Made-up user 5.
+ * their `old` twins; out of it, only texts. The editing switch posts to editmode.php; Moodle 4.5's
+ * Classic theme shows instead a "Turn editing on/off" button, a GET form sending `edit` to the report. Made-up user 5.
  */
-function fakeSingleView(grades: FakeGrade[], { maxGrade = 10 } = {}) {
+function fakeSingleView(grades: FakeGrade[], { maxGrade = 10, classic = false } = {}) {
   const state = { editing: false, posts: [] as Record<string, string>[], modes: [] as string[] };
   const row = (g: FakeGrade) => {
     const s = `_${g.itemId}_5`;
@@ -44,7 +45,11 @@ function fakeSingleView(grades: FakeGrade[], { maxGrade = 10 } = {}) {
     moodlePage({
       userId: 3,
       bodyId: "page-grade-report-singleview-index",
-      body: `<form action="${SITE}editmode.php" method="post" class="editmode-switch-form"><input type="checkbox" name="setmode"${state.editing ? " checked" : ""}><input type="hidden" name="sesskey" value="s1"><input type="hidden" name="context" value="30"></form>
+      body: `${
+        classic
+          ? `<div class="singlebutton"><form method="get" action="${SITE}grade/report/singleview/index.php"><input type="hidden" name="id" value="3"><input type="hidden" name="item" value="user"><input type="hidden" name="itemid" value="5"><input type="hidden" name="edit" value="${state.editing ? "off" : "on"}"><input type="hidden" name="sesskey" value="s1"><button type="submit">Turn editing</button></form></div>`
+          : `<form action="${SITE}editmode.php" method="post" class="editmode-switch-form"><input type="checkbox" name="setmode"${state.editing ? " checked" : ""}><input type="hidden" name="sesskey" value="s1"><input type="hidden" name="context" value="30"></form>`
+      }
 ${notice}<form method="post"><table id="singleview-grades"><tbody>${grades.map(row).join("")}</tbody></table>
 ${state.editing ? `<input type="hidden" name="sesskey" value="s1"><input type="submit" value="Save">` : ""}</form>`,
     });
@@ -57,6 +62,12 @@ ${state.editing ? `<input type="hidden" name="sesskey" value="s1"><input type="s
     });
     await context.route(`${SITE}grade/report/singleview/index.php**`, async (route) => {
       let notice = "";
+      // The Classic button's `edit`: sticky, PARAM_BOOL.
+      const edit = new URL(route.request().url()).searchParams.get("edit");
+      if (classic && edit !== null) {
+        state.modes.push(edit === "on" ? "1" : "0");
+        state.editing = edit === "on";
+      }
       if (route.request().method() === "POST") {
         const data = Object.fromEntries(new URLSearchParams(route.request().postData() ?? ""));
         state.posts.push(data);
@@ -97,6 +108,15 @@ describe("setGrade", { skip: !browser && "no system browser" }, () => {
     assert.equal(fake.state.posts[0]?.finalgrade_30_5, "8.5");
     assert.deepEqual(fake.state.modes, ["1", "0"]);
     assert.equal((await setGrade(context, SITE, 3, 30, 5, { grade: 8.5 })).changed, "Nothing to change.");
+    await context.close();
+  });
+
+  it("turns editing on and off with Moodle 4.5's Classic button", async () => {
+    const fake = fakeSingleView([{ itemId: 30, kind: "manual", grade: "", feedback: "", overridden: false, excluded: false }], { classic: true });
+    const context = await open(fake);
+    const set = await setGrade(context, SITE, 3, 30, 5, { grade: 7 });
+    assert.equal(set.grade.grade, "7.00");
+    assert.deepEqual(fake.state.modes, ["1", "0"]);
     await context.close();
   });
 

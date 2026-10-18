@@ -88,22 +88,33 @@ function readRow(page: Page, itemId: number, userId: number): Promise<RowState> 
   );
 }
 
-/** Turns the person's editing mode on or off through the page's own switch (editmode.php). */
+/**
+ * The editing mode's switch: Boost's (editmode.php), or the "Turn editing on/off" button themes
+ * without the switch show (Classic: `haseditswitch` false), a form sending `edit` to the report itself.
+ */
+const SWITCH = 'form.editmode-switch-form, form[action*="/grade/report/singleview/index.php"]:has(input[name="edit"])';
+
+/** Turns the person's editing mode on or off through the page's own switch (editmode.php) or its editing button. */
 function setEditingMode(page: Page, on: boolean): Promise<boolean> {
-  return page.evaluate(async (on) => {
-    const g = globalThis as unknown as {
-      document: { querySelector(s: string): unknown };
-      FormData: new (form: unknown) => Iterable<[string, string]>;
-      URLSearchParams: new (init: Iterable<[string, string]>) => { set(name: string, value: string): void };
-      fetch(url: string, init: object): Promise<{ ok: boolean }>;
-    };
-    const form = g.document.querySelector("form.editmode-switch-form") as { action: string } | null;
-    if (!form) return false;
-    // Posted as the form posts itself, urlencoded.
-    const data = new g.URLSearchParams(new g.FormData(form));
-    data.set("setmode", on ? "1" : "0");
-    return (await g.fetch(form.action, { method: "POST", body: data, credentials: "same-origin" })).ok;
-  }, on);
+  return page.evaluate(
+    async ([on, switchSelector]) => {
+      const g = globalThis as unknown as {
+        document: { querySelector(s: string): unknown };
+        FormData: new (form: unknown) => Iterable<[string, string]>;
+        URLSearchParams: new (init: Iterable<[string, string]>) => { set(name: string, value: string): void; toString(): string };
+        fetch(url: string, init: object): Promise<{ ok: boolean }>;
+      };
+      const form = g.document.querySelector(switchSelector) as { action: string; method: string; classList: { contains(c: string): boolean } } | null;
+      if (!form) return false;
+      // Sent as the form sends itself: the switch's `setmode` posted, or the button's `edit` (a GET in the report).
+      const data = new g.URLSearchParams(new g.FormData(form));
+      if (form.classList.contains("editmode-switch-form")) data.set("setmode", on ? "1" : "0");
+      else data.set("edit", on ? "on" : "off");
+      if (form.method.toLowerCase() === "get") return (await g.fetch(`${form.action}?${data.toString()}`, { credentials: "same-origin" })).ok;
+      return (await g.fetch(form.action, { method: "POST", body: data, credentials: "same-origin" })).ok;
+    },
+    [on, SWITCH] as const,
+  );
 }
 
 function sameGrade(row: RowState, grade: number | string | null): boolean {

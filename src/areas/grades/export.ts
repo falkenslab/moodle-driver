@@ -19,6 +19,8 @@ export const GRADE_EXPORT_FORMATS = Object.keys(PLUGINS) as GradeExportFormat[];
 /** How grades are written: the points, the percentage, the letter (several for every format but XML). */
 export type GradeExportDisplay = "real" | "percentage" | "letter";
 const DISPLAY_CODES: Record<GradeExportDisplay, number> = { real: 1, percentage: 2, letter: 3 };
+/** How long Moodle may take to start sending the file (a big course's grades). */
+const EXPORT_TIMEOUT = 180_000;
 
 /** What `exportGrades` exports and where it saves it, as the export form chooses. */
 export interface ExportGradesOptions {
@@ -91,7 +93,34 @@ export async function exportGrades(context: BrowserContext, siteUrl: string, cou
     if (feedback !== undefined) values.export_feedback = feedback;
     if (format === "csv") values.separator = "comma";
     await setFields(page, values);
-    const [download] = await Promise.all([page.waitForEvent("download"), page.click('form.mform [name="submitbutton"]', { noWaitAfter: true })]);
+    // Sent as its button sends it, from the page: Moodle 4.5 puts the button in a sticky footer a
+    // theme's own footer or a banner may cover, which a click would wait on forever. A big course's
+    // file takes a while; a page instead of a file is Moodle refusing.
+    const downloaded = page.waitForEvent("download", { timeout: EXPORT_TIMEOUT });
+    const landed = page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: EXPORT_TIMEOUT });
+    downloaded.catch(() => undefined);
+    landed.catch(() => undefined);
+    const sent = await page.evaluate(() => {
+      const button = (globalThis as unknown as { document: { querySelector(s: string): { form: { requestSubmit(submitter: unknown): void } | null } | null } }).document.querySelector(
+        'form.mform [name="submitbutton"]',
+      );
+      if (!button?.form) return false;
+      button.form.requestSubmit(button);
+      return true;
+    });
+    if (!sent) throw new GradebookError(`Course ${courseId}'s export form as ${format} has no button to send it.`);
+    // A navigation turned into a download may end as aborted: the download is the answer then.
+    const download = await Promise.race([
+      downloaded,
+      landed.then(
+        () => undefined,
+        () => downloaded,
+      ),
+    ]);
+    if (!download) {
+      const refused = await moodleErrorMessage(page);
+      throw new GradebookError(`Moodle answered course ${courseId}'s export as ${format} with a page, not a file: ${refused ?? `see ${page.url()}`}.`);
+    }
     const failure = await download.failure();
     if (failure) throw new GradebookError(`Moodle didn't send course ${courseId}'s grades as ${format}: ${failure}.`);
     await mkdir(destDir, { recursive: true });

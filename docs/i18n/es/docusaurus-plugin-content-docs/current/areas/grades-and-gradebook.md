@@ -237,7 +237,7 @@ interface GradebookGrade {
 
 Hay que dar al menos una opción. Cuando la calificación ya está como se pide, no se envía nada y `changed` es "Nothing to change.". `grade` llega tal como la muestra el informe ("8.50", el nombre del elemento de la escala).
 
-Los campos del informe solo se muestran en modo edición: cuando la persona tiene el modo edición desactivado, se activa para el cambio con el propio interruptor de la página y se vuelve a desactivar después. Una calificación bloqueada, un elemento o una persona que el libro de calificaciones del curso no tiene y los avisos de Moodle al guardar (una calificación fuera de rango en un sitio con calificaciones ilimitadas) lanzan `GradebookError`. Calificar la entrega de una tarea, con su rúbrica y sus archivos de retroalimentación, es [`gradeSubmission`](grading.md); una anulación aquí es lo que Moodle muestra en el libro de calificaciones por encima de la calificación propia de la tarea.
+Los campos del informe solo se muestran en modo edición: cuando la persona tiene el modo edición desactivado, se activa para el cambio con el propio interruptor de la página (o, en los temas que no lo tienen, como Classic en Moodle 4.5, con su botón «Activar edición») y se vuelve a desactivar después. Una calificación bloqueada, un elemento o una persona que el libro de calificaciones del curso no tiene y los avisos de Moodle al guardar (una calificación fuera de rango en un sitio con calificaciones ilimitadas) lanzan `GradebookError`. Calificar la entrega de una tarea, con su rúbrica y sus archivos de retroalimentación, es [`gradeSubmission`](grading.md); una anulación aquí es lo que Moodle muestra en el libro de calificaciones por encima de la calificación propia de la tarea.
 
 ## exportGrades
 
