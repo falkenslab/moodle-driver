@@ -6,11 +6,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { before, describe, it } from "node:test";
 import { GradebookError, NoGradeReportError, type GradeScale, type GradebookCategory, type GradebookItem } from "../../src/index.js";
-import { COURSE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { COURSE, as, cleanup, scratchCourse, userId, type ScratchCourse, CONTENT_ASSIGNMENT, CONTENT_ASSIGNMENT_ITEM } from "./harness.js";
 
 /** Course 3's assignment and its grade item, as the sandbox seeds them (read only). */
-const ASSIGNMENT = 35;
-const ASSIGNMENT_ITEM = 17;
+const ASSIGNMENT = CONTENT_ASSIGNMENT;
+const ASSIGNMENT_ITEM = CONTENT_ASSIGNMENT_ITEM;
 const SLOW = { timeout: 300_000 };
 
 describe("grades and the gradebook", () => {

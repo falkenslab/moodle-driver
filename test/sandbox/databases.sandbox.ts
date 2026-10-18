@@ -185,7 +185,9 @@ describe("database entries", () => {
     assert.ok(mine?.created && mine.modified && Math.abs(Date.parse(mine.created) - Date.now()) < 3_600_000, JSON.stringify(mine));
     const values = valuesOf(mine);
     assert.deepEqual([values.Title, values.Colour, values.Born], ["Driver check student", "Blue", "2001-03-05"]);
-    assert.match(JSON.stringify(values.Photo), /"name":"photo\.png","url":"http:\/\/localhost:8080\/pluginfile\.php\/\d+\/mod_data\/content\/\d+\/photo\.png"/);
+    const photo = JSON.stringify(values.Photo);
+    assert.ok(photo.includes(`"name":"photo.png","url":"${SITE}pluginfile.php/`), photo);
+    assert.match(photo, /\/mod_data\/content\/\d+\/photo\.png"/);
     assert.equal(entries.find((e) => e.id === teacherEntry)?.approved, true, "the teacher's own entries need no approval");
     const seen = await (await as("student")).databaseEntries(databaseId);
     assert.deepEqual(seen.map((e) => e.id).sort(), [studentEntry, teacherEntry].sort());

@@ -363,7 +363,7 @@ describe("reports and course life cycle", () => {
     // Nothing in its XML names the teacher, the site or the course.
     const me = await teacher.whoAmI();
     const xml = readTgz(readFileSync(file.path)).filter(([name]) => name.endsWith(".xml")).map(([, data]) => data.toString("utf8")).join("\n");
-    for (const text of [me.fullName, "localhost:8080", `drivercheck-lifecycle-anonymous`, "Driver check lifecycle-anonymous"]) assert.ok(!xml.includes(text), text);
+    for (const text of [me.fullName, new URL(SITE).host, `drivercheck-lifecycle-anonymous`, "Driver check lifecycle-anonymous"]) assert.ok(!xml.includes(text), text);
     assert.doesNotMatch(xml, /<(userid|usermodified|usercreated|createdby|modifiedby|ownerid)>[1-9]/);
 
     // Restored on the same site, as from another: links to what came with it decoded, the rest to the anonymous site.

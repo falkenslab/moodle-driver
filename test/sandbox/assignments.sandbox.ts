@@ -7,10 +7,10 @@ import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { GradingError, NotAnAssignmentError, SubmissionError, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
-import { SITE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { SITE, as, scratchCourse, userId, type ScratchCourse, CONTENT_ASSIGNMENT } from "./harness.js";
 
 /** Course 3's assignment, graded by rubric, as the sandbox seeds it (read only). */
-const ASSIGNMENT = 35;
+const ASSIGNMENT = CONTENT_ASSIGNMENT;
 /** Course 3's page "Apuntes: bucles": not an assignment. */
 const PAGE = 5;
 const SLOW = { timeout: 300_000 };

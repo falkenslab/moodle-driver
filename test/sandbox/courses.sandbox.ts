@@ -463,7 +463,7 @@ describe("the browser and the session", () => {
 
   it("createMoodle: an object on the student's browser is the student", SLOW, async () => {
     const student = await as("student");
-    const moodle = createMoodle({ site: "http://localhost:8080", browser: student.browser });
+    const moodle = createMoodle({ site: SITE.slice(0, -1), browser: student.browser });
     assert.equal(moodle.site, SITE);
     assert.equal((await moodle.whoAmI()).userId, await userId("student"));
     assert.ok((await moodle.listCourses()).some((c) => c.id === COURSE));

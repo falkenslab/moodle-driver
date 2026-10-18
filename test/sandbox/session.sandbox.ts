@@ -10,7 +10,7 @@ describe("session and site", () => {
     const info = await publicSiteInfo(SITE);
     assert.ok(info.name);
     // Moodle's own wwwroot, without the trailing slash the driver's site URLs have.
-    assert.equal(info.url, "http://localhost:8080");
+    assert.equal(info.url, SITE.slice(0, -1));
   });
 
   it("whoAmI: each account is who the sandbox says", async () => {
@@ -26,12 +26,12 @@ describe("session and site", () => {
   });
 
   it("parseSiteUrl: the sandbox's URL normalized", () => {
-    assert.equal(parseSiteUrl("http://localhost:8080"), SITE);
+    assert.equal(parseSiteUrl(SITE.slice(0, -1)), SITE);
   });
 
   it("readWwwroot: the sandbox's wwwroot from a page's HTML", async () => {
     const html = await (await fetch(SITE)).text();
-    assert.equal(readWwwroot(html), "http://localhost:8080");
+    assert.equal(readWwwroot(html), SITE.slice(0, -1));
   });
 
   it("findMoodleSite: finds the sandbox from one of its course URLs", async () => {

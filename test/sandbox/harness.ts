@@ -13,17 +13,27 @@ import type { Page } from "playwright-core";
 import { createMoodle, type Moodle } from "../../src/index.js";
 import { openForm, setFields, submitForm } from "../../src/internals.js";
 
-export const SITE = "http://localhost:8080/";
-/** The content course every read uses (never written): the sandbox's course with seeded activity. */
-export const COURSE = 3;
 
 export type Role = "student" | "teacher" | "admin";
 interface Accounts extends Record<Role, { username: string; password: string }> {
   sandboxCourseId: number;
+  site?: string;
+  series?: string;
+  contentCourseId?: number;
+  contentAssignmentId?: number;
+  contentAssignmentItemId?: number;
 }
 const accounts = JSON.parse(readFileSync("/sandbox/accounts.json", "utf8")) as Accounts;
 /** The sandbox's own course: no test may use it. */
 export const FORBIDDEN_COURSE = accounts.sandboxCourseId;
+export const SITE = accounts.site ?? "http://localhost:8080/";
+/** The Moodle series the sandbox runs ("5.2", "4.5"). */
+export const SERIES = accounts.series ?? "5.2";
+/** The content course every read uses (never written), found by its short name; an id no record has on a site without it. */
+export const COURSE = accounts.contentCourseId ?? 3;
+/** Its seeded assignment ("Tarea MCP") and that assignment's grade item. */
+export const CONTENT_ASSIGNMENT = accounts.contentAssignmentId ?? 35;
+export const CONTENT_ASSIGNMENT_ITEM = accounts.contentAssignmentItemId ?? 17;
 
 const open = new Map<Role, Promise<Moodle>>();
 
