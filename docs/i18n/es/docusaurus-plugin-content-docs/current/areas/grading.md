@@ -197,7 +197,7 @@ Asigna un evaluador a las entregas de varios participantes, como hace "Asignar e
 function allocateMarker(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], markerId: number | number[]): Promise<{ changed: string }>;
 ```
 
-- `markerId`: el id de usuario de alguien del curso que puede calificar la tarea; un array cuando la tarea usa varios evaluadores por entrega (el "Número de evaluadores" de Moodle 5.2), uno por evaluador en orden. Los que no se indican quedan sin asignar.
+- `markerId`: el id de usuario de alguien del curso que puede calificar la tarea; un array cuando la tarea usa varios evaluadores por entrega (el "Número de evaluadores" de Moodle 5.2), uno por evaluador en orden. Los que no se indican quedan sin asignar. Moodle 4.5 tiene un evaluador por entrega: allí, un solo id.
 
 Moodle no toca las entregas cuyo estado ya ha pasado de la calificación (calificación completada, en revisión, lista para publicar, publicada). `assignmentSubmissions` da los `markers` de cada entrega.
 

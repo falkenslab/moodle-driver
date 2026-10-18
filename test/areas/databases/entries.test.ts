@@ -48,6 +48,13 @@ describe("databaseEntries", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("names a date field from Moodle 4.5's add entry template too", async () => {
+    const { context } = await site({ moodle45: true });
+    const [first] = await databaseEntries(context, SITE, 40);
+    assert.deepEqual(first?.values?.find((v) => v.fieldId === FIELD.BORN), { fieldId: FIELD.BORN, name: "Born", value: "2001-03-05" });
+    await context.close();
+  });
+
   it("pages through the list's own pages, and searches with Moodle's simple search", async () => {
     const { context, db } = await site({ perPage: 2 });
     db.entries.push({ ...db.entries[1]!, id: 23, values: { [FIELD.TITLE]: "Third" } });

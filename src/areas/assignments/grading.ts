@@ -457,15 +457,18 @@ export async function allocateMarker(context: BrowserContext, siteUrl: string, a
   if (userIds.length > 0) await requireGradingFeature(context, siteUrl, activityId, userIds[0]!, "markers");
   const page = await openBatchForm(context, siteUrl, activityId, "viewbatchmarkingallocation", userIds, "allocate markers");
   try {
-    // One select per marker the assignment uses: allocatedmarker1, allocatedmarker2…
+    // One select per marker the assignment uses: allocatedmarker1, allocatedmarker2… Moodle 4.5
+    // allocates one marker, its select named allocatedmarker (confirmed empirically, 4.5).
+    const single = (await page.locator('form.mform select[name="allocatedmarker"]').count()) > 0;
+    const slot = (index: number) => (single ? "allocatedmarker" : `allocatedmarker${index + 1}`);
     const slots = await page.locator('form.mform select[name^="allocatedmarker"]').count();
     if (markerIds.length > slots) throw new GradingError(`Assignment ${activityId} uses ${slots} marker${slots === 1 ? "" : "s"} per submission; ${markerIds.length} given.`);
     for (const [index, id] of markerIds.entries()) {
-      if ((await page.locator(`form.mform [name="allocatedmarker${index + 1}"] option[value="${id}"]`).count()) === 0) {
+      if ((await page.locator(`form.mform [name="${slot(index)}"] option[value="${id}"]`).count()) === 0) {
         throw new GradingError(`User ${id} can't mark assignment ${activityId}: markers are the course's users who can grade it.`);
       }
     }
-    await setFields(page, Object.fromEntries(markerIds.map((id, index) => [`allocatedmarker${index + 1}`, String(id)])));
+    await setFields(page, Object.fromEntries(markerIds.map((id, index) => [slot(index), String(id)])));
     await submitForm(page, "submitbutton");
   } finally {
     await page.close().catch(() => undefined);

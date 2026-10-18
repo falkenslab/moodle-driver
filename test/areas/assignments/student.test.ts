@@ -107,6 +107,20 @@ describe("studentAssignment, saveSubmission and submitForGrading", { skip: !brow
     await context.close();
   });
 
+  it("reads the dates as Moodle 4.5 draws them, their labels in a strong", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 4, fullName: "Student" } });
+    const body = `<div class="activity-description" id="intro"><p>Write.</p></div>
+<div data-region="activity-dates" class="activity-dates"><div><strong>Opened:</strong> Monday</div><div><strong>Due:</strong> Friday</div></div>
+<table class="submissionstatustable"><tr><th>Submission status</th><td class="submissionstatusnew">No submission</td></tr></table>`;
+    await context.route(`${SITE}mod/assign/view.php**`, (route: Route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 4, body, bodyId: "page-mod-assign-view" }) }));
+    assert.deepEqual((await studentAssignment(context, SITE, 30)).dates, [
+      { label: "Opened", value: "Monday" },
+      { label: "Due", value: "Friday" },
+    ]);
+    await context.close();
+  });
+
   it("asks to accept the site's statement before submitting", async () => {
     const { context, state } = await site(true);
     await saveSubmission(context, SITE, 30, { onlineText: "<p>x</p>" });

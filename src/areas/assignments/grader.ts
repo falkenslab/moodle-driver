@@ -232,7 +232,7 @@ export interface PanelState {
   sesskey?: string;
   /** Where the assignment uses the marking workflow. */
   workflowState?: WorkflowState;
-  /** Where it allocates markers: the ones allocated (Moodle 5.2 allows several per submission). */
+  /** Where it allocates markers: the ones allocated (Moodle 5.2 allows several per submission, 4.5 one). */
   markers?: { id: number; name: string }[];
 }
 
@@ -248,7 +248,8 @@ export function readPanelState(page: Page, html: string): Promise<PanelState> {
     // The feedback files plugin names its file manager after the participant: files_<userid>_filemanager.
     const draft = fields.find((field) => /^files_\d+_filemanager$/.test(field.name));
     const workflow = fields.find((field) => field.name === "workflowstate");
-    const markerFields = fields.filter((field) => /^allocatedmarker\[\d+\]$/.test(field.name));
+    // Moodle 5.2's slots are allocatedmarker[0], allocatedmarker[1]…; 4.5's one select is allocatedmarker.
+    const markerFields = fields.filter((field) => /^allocatedmarker(\[\d+\])?$/.test(field.name));
     const markers = markerFields.filter((field) => Number(field.value) > 0).map((field) => ({ id: Number(field.value), name: (field.selectedOptions?.[0]?.textContent ?? "").trim() }));
     return {
       draftId: draft?.value || undefined,

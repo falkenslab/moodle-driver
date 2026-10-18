@@ -57,7 +57,9 @@ const site = new URL(sandbox.url.endsWith("/") ? sandbox.url : `${sandbox.url}/`
 const project = sandbox.project ?? "moodle-sandbox";
 const sql = "select c.id, cm.id, gi.id from mdl_course c left join mdl_assign a on a.course = c.id and a.name = 'Tarea MCP' left join mdl_course_modules cm on cm.instance = a.id and cm.module = (select id from mdl_modules where name = 'assign') left join mdl_grade_items gi on gi.itemmodule = 'assign' and gi.iteminstance = a.id where c.shortname = 'mcp-content'";
 const found = spawnSync("docker", ["exec", `${project}-db-1`, "sh", "-c", `psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA -F, -c "${sql}"`], { encoding: "utf8" });
-const [contentCourseId, contentAssignmentId, contentAssignmentItemId] = (found.stdout ?? "").trim().split(",").map((id) => Number(id) || 999_999_999);
+// Without a row the three are missing alike (not the harness's defaults, another site's records).
+const columns = (found.stdout ?? "").trim().split(",");
+const [contentCourseId, contentAssignmentId, contentAssignmentItemId] = [0, 1, 2].map((i) => Number(columns[i]) || 999_999_999);
 if (!found.stdout?.trim()) console.error(`This sandbox has no content course (mcp-content): the checks that read it fail.`);
 mkdirSync(profiles, { recursive: true, mode: 0o700 });
 

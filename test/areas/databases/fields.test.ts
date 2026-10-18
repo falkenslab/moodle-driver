@@ -121,6 +121,16 @@ describe("editDatabaseField", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("knows a field's type from Moodle 4.5's fields page, its icon a font icon", async () => {
+    const context = await browser!.newContext();
+    const db = newDatabase({ moodle45: true, fields: [{ id: 11, type: "textarea", name: "Notes", description: "Long", required: true, params: { param2: "60", param3: "35", param4: "1", param5: "0" } }] });
+    await serveDatabase(context, db);
+    const edited = await editDatabaseField(context, SITE, 40, 11, { options: { rows: 5 } });
+    assert.equal(edited.changed, 'Changed the textarea field "Notes" (11) of database 40.');
+    assert.equal(db.posts[0]!.form.get("param3"), "5");
+    await context.close();
+  });
+
   it("refuses a field the database hasn't and an option its type doesn't take", async () => {
     const context = await browser!.newContext();
     const db = newDatabase({ fields: [{ id: 11, type: "number", name: "Age", description: "", required: false, params: {} }] });

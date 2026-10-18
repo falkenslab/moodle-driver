@@ -74,9 +74,9 @@ export function readChoice(page: Page): Promise<Omit<Choice, "id">> {
       messages: Array.from(doc.querySelectorAll("#region-main .alert, #region-main .generalbox"))
         .filter((box) => box.id !== "yourselection" && !box.querySelector("form"))
         .map((box) => {
-          // Without the notification's close button, whose label is in the site's language.
+          // Without the notification's close button, whose label is in the site's language (.sr-only on Moodle 4.5).
           const copy = box.cloneNode(true);
-          for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden"))) extra.remove();
+          for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden, .sr-only"))) extra.remove();
           return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
         })
         .filter(Boolean),

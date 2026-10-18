@@ -242,7 +242,7 @@ export async function submitSurvey(
         const messages = Array.from(doc.querySelectorAll(`${form} [id^="id_error_"], #region-main .alert-danger`)).map((e) => {
           // Without the notification's close button ("Dismiss this notification").
           const copy = e.cloneNode(true);
-          for (const button of Array.from(copy.querySelectorAll("button, .close, .visually-hidden"))) button.remove();
+          for (const button of Array.from(copy.querySelectorAll("button, .close, .visually-hidden, .sr-only"))) button.remove();
           const text = (copy.innerText ?? e.innerText).replace(/\s+/g, " ").trim();
           return text ? `${e.id ? e.id.replace("id_error_", "") + ": " : ""}${text}` : "";
         });

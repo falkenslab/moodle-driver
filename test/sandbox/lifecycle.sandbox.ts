@@ -12,12 +12,14 @@ import { ANONYMOUS, BackupError, CourseError, ReportError, type CourseSection } 
 import { deleteDraftFile, draftFiles, formValue, openForm, openSitePage, submitForm } from "../../src/internals.js";
 import { readBackupInfo } from "../../src/areas/backup/mbz.js";
 import { readTgz, writeTgz } from "../areas/backup/tgz.js";
-import { COURSE, SITE, as, cleanup, deleteCourse, notForbidden, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { COURSE, SERIES, SITE, as, cleanup, deleteCourse, notForbidden, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 const STUDENT_ROLE = 5;
 /** The sandbox's default category, where new courses go. */
 const CATEGORY = 1;
 const SLOW = { timeout: 900_000 };
+/** The site has shared question banks (the qbank module, Moodle 5.0 and later). */
+const SHARED_BANKS = Number(SERIES.split(".")[0]) >= 5;
 const stamp = Date.now().toString(36);
 
 /** A one-pixel PNG, for a page's image. */
@@ -300,7 +302,7 @@ describe("reports and course life cycle", () => {
 
     const contents = await teacher.backupContents(file.path);
     assert.equal(contents.type, "course");
-    assert.equal(contents.moodle.release.split(".")[0], "5");
+    assert.equal(contents.moodle.release.split(".").slice(0, 2).join("."), SERIES);
     assert.equal(contents.original.courseId, scratch.id);
     assert.equal(contents.withUsers, false);
     assert.ok(contents.plugins.includes("mod_page"));
@@ -345,10 +347,15 @@ describe("reports and course life cycle", () => {
     const quiz = await teacher.createActivity({ ...at, type: "quiz", name: `Anonymous quiz ${stamp}` });
     const own = await teacher.createQuestion(quiz.activityId!, { type: "truefalse", name: "Anonymous TF", text: "<p>True?</p>", correct: true });
     // A question from the course's shared bank, which the selection leaves out: Moodle carries the question.
-    await teacher.createActivity({ ...at, type: "qbank", name: `Anonymous bank ${stamp}` });
-    const bank = (await teacher.questionBanks(course.id)).find((b) => b.name === `Anonymous bank ${stamp}`)!;
-    const shared = await teacher.createQuestion(bank.id, { type: "shortanswer", name: "Anonymous SA", text: "<p>Two plus two?</p>", answers: [{ text: "four", fraction: 1 }] });
-    await teacher.addQuestionsToQuiz(quiz.activityId!, { questionIds: [own.questionId!, shared.questionId!] });
+    // Shared banks (the qbank module) came with Moodle 5.0: on 4.5 the quiz has its own question only.
+    const questionIds = [own.questionId!];
+    if (SHARED_BANKS) {
+      await teacher.createActivity({ ...at, type: "qbank", name: `Anonymous bank ${stamp}` });
+      const bank = (await teacher.questionBanks(course.id)).find((b) => b.name === `Anonymous bank ${stamp}`)!;
+      const shared = await teacher.createQuestion(bank.id, { type: "shortanswer", name: "Anonymous SA", text: "<p>Two plus two?</p>", answers: [{ text: "four", fraction: 1 }] });
+      questionIds.push(shared.questionId!);
+    }
+    await teacher.addQuestionsToQuiz(quiz.activityId!, { questionIds });
     const chosen = [page, resource, label, quiz].map((a) => a.activityId!);
 
     const { file, changed } = await teacher.backupCourse(course.id, dir, { activities: chosen, timeoutMs: 600_000 });
@@ -359,7 +366,7 @@ describe("reports and course life cycle", () => {
     assert.deepEqual(contents.identifies, []);
     assert.deepEqual(contents.original, { site: ANONYMOUS.site, courseId: 0, courseFullName: ANONYMOUS.courseFullName, courseShortName: ANONYMOUS.courseShortName, format: "topics" });
     assert.deepEqual(contents.activities.map((a) => a.id).sort(), [...chosen].sort());
-    assert.ok(contents.plugins.includes("qtype_truefalse") && contents.plugins.includes("qtype_shortanswer"));
+    assert.ok(contents.plugins.includes("qtype_truefalse") && (!SHARED_BANKS || contents.plugins.includes("qtype_shortanswer")));
     // Nothing in its XML names the teacher, the site or the course.
     const me = await teacher.whoAmI();
     const xml = readTgz(readFileSync(file.path)).filter(([name]) => name.endsWith(".xml")).map(([, data]) => data.toString("utf8")).join("\n");
@@ -386,7 +393,9 @@ describe("reports and course life cycle", () => {
     assert.deepEqual(restored.warnings!.map((w) => [w.kind, w.url]), [["link", `${ANONYMOUS.site}/mod/page/view.php?id=999999`]]);
     // The questions came with the quiz, the shared one into a bank of the course, and they're the admin's now.
     const newQuiz = named("Anonymous quiz").id;
-    assert.deepEqual((await admin.quizStructure(newQuiz)).slots.map((s) => s.name), ["Anonymous TF", "Anonymous SA"]);
+    assert.deepEqual((await admin.quizStructure(newQuiz)).slots.map((s) => s.name), SHARED_BANKS ? ["Anonymous TF", "Anonymous SA"] : ["Anonymous TF"]);
+    // The banks' list (questionBanks) is Moodle 5.0's too.
+    if (!SHARED_BANKS) return;
     const creators: string[] = [];
     for (const held of await admin.questionBanks(other.id)) {
       const bankPage = await openSitePage(await admin.context(), SITE, `question/edit.php?cmid=${held.id}`);
