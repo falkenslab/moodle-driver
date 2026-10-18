@@ -223,6 +223,25 @@ export {
 } from "./areas/glossaries/entries.js";
 export { glossaryCategories, addGlossaryCategory, type GlossaryCategory, type GlossaryCategoryChange } from "./areas/glossaries/categories.js";
 export { exportGlossaryEntries, importGlossaryEntries, type GlossaryImport } from "./areas/glossaries/transfer.js";
+export {
+  wikiPages,
+  wikiPage,
+  createWikiPage,
+  editWikiPage,
+  NotAWikiError,
+  WikiError,
+  WikiPageLockedError,
+  type WikiLink,
+  type WikiVersion,
+  type WikiPageSummary,
+  type WikiPage,
+  type WikiSubwikiOptions,
+  type WikiPagesOptions,
+  type WikiPageOptions,
+  type WikiPageInput,
+  type WikiPageChanges,
+  type WikiPageChange,
+} from "./areas/wikis/wikis.js";
 
 // Grades, completion, participants, calendar, messages.
 export { myGrades, NoGradeReportError, type GradeRow } from "./areas/grades/user-report.js";

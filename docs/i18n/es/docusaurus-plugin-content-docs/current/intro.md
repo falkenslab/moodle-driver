@@ -35,6 +35,7 @@ moodle-driver inicia sesión como lo hace la persona, en una ventana del navegad
 | Encuestas y consultas | Responder cuestionarios de encuesta, actividades de retroalimentación y consultas; leer las respuestas de todos, y construir las preguntas y plantillas de una retroalimentación, como profesor |
 | Bases de datos | Dar a una actividad de base de datos sus campos, plantillas y preajustes; leer, añadir, editar, aprobar y eliminar sus entradas, exportarlas e importarlas como CSV |
 | Glosarios | Leer, añadir, cambiar y eliminar entradas, aprobarlas, añadir categorías, exportar e importar entradas en el XML de Moodle |
+| Wikis | Leer las páginas de una subwiki, su contenido, enlaces e historial, crear y editar páginas (también una sección), respetando el bloqueo de edición de Moodle |
 | Lecciones, H5P y SCORM | Recorrer una lección página a página; leer el tipo y los intentos de una actividad H5P; listar, subir, renombrar, descargar y borrar el banco de contenido de un curso; leer los intentos y los SCO de un SCORM, abrir su reproductor, crear uno a partir de un paquete |
 | Herramientas externas | Listar las herramientas LTI de un curso, añadir y borrar las del propio curso, mostrarlas en el selector de actividades, crear una actividad a partir de una, dar a la persona su URL de lanzamiento |
 | BigBlueButton | Leer el estado, el horario y las grabaciones de una reunión, dar la URL de la persona para entrar; publicar, despublicar y eliminar grabaciones |

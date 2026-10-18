@@ -101,6 +101,7 @@ Each area has its own class for what's specific to it: the id isn't that kind of
 | `BigBlueButtonError`, `BigBlueButtonServerError` | [BigBlueButton](../areas/bigbluebutton.md): not a BigBlueButton; a missing capability (named) or why the person can't join now; a site whose BigBlueButton server isn't configured or doesn't answer |
 | `NotADatabaseError`, `DatabaseError` | [Databases](../areas/databases.md): not a database; the person can't manage it, or Moodle refused a field, template or preset, or an entry, its approval, its deletion, an export or an import |
 | `NotAGlossaryError`, `GlossaryError` | [Glossaries](../areas/glossaries.md): not a glossary; a missing glossary capability (named), someone else's entry, the editing time over, no such entry |
+| `NotAWikiError`, `WikiError`, `WikiPageLockedError` | [Wikis](../areas/wikis.md): not a wiki; a missing wiki capability (named), a page or section not there, a title already there; someone else editing the page (try again later) |
 | `NoGradeReportError`, `GradebookError` | [Grades and gradebook](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Completion](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Badges](../areas/badges.md): a missing badge capability (named), a criterion Moodle doesn't offer; a site with badges off |

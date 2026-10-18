@@ -129,7 +129,7 @@ Complete programs for real tasks, commented, are in the [examples](https://falke
 | ❓ Quizzes and questions | Attempts, results, statistics, manual grading, quiz layout and overrides, question banks with GIFT and Moodle XML import and export, their categories |
 | 📊 Gradebook and reports | The grader report, grade items and categories, exports, completion, badges and competencies, activity and participation reports, logs |
 | 👥 Participants and groups | Enrolments and their methods, roles, groups and groupings, notes about participants |
-| 💬 Forums and messages | Discussions, replies, ratings and subscriptions, workshops, glossary entries and their approval, notifications and conversations |
+| 💬 Forums and messages | Discussions, replies, ratings and subscriptions, workshops, glossary entries and their approval, wiki pages and their history, notifications and conversations |
 | 📅 Calendar and to-dos | Events, deadlines, what's pending and what changed, BigBlueButton meetings and their recordings |
 | 🔄 Course life cycle | Copies, resets, imports, backups and restores, whole or in part, anonymous for sharing |
 | 🧩 For your program | Typed results and errors, data categories, the session's low-level pieces, a fake Moodle for tests |

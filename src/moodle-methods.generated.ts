@@ -635,6 +635,16 @@ export interface MoodleMethods {
    */
   createQuestion(activityId: number, input: import("./areas/questions/types.js").QuestionInput): Promise<{ changed: string; questionId?: number | undefined; }>;
   /**
+   * Creates a page in a wiki's subwiki as the person, with its content (`embed`'s local files in it),
+   * as following a link to a new page and saving its editor do: the person's subwiki unless `groupId`
+   * or `userId` choose another (as `wikiPages`). A subwiki with no pages yet starts with the wiki's
+   * first page, as Moodle starts it: its title must be the wiki's first page title. The page takes the
+   * wiki's default format. Gives the page's id and the page. Throws `WikiError` when a page of that
+   * title is already there (edit it with `editWikiPage`), the first page's title isn't the wiki's, or
+   * Moodle refuses (mod/wiki:createpage, mod/wiki:editpage, someone else's subwiki).
+   */
+  createWikiPage(activityId: number, input: import("./areas/wikis/wikis.js").WikiPageInput): Promise<import("./areas/wikis/wikis.js").WikiPageChange>;
+  /**
    * A database activity's entries, in its list's order (the person's sort, or the database's), each
    * with its author, when it was added and changed, whether it's approved, and its fields' values for
    * the entries the person can edit (read from their edit forms; files with their URLs). `search` is
@@ -925,6 +935,14 @@ export interface MoodleMethods {
    * (`restrictions`; `{ conditions: [] }` removes them) or moves a section after another one.
    */
   editSection(courseId: number, sectionId: number, options: { name?: string | undefined; visible?: boolean | undefined; summary?: string | undefined; restrictions?: import("./areas/activities/conditions.js").Restrictions | undefined; afterSectionId?: number | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Changes a wiki page's content as its editor does, the whole page or one of its sections (a heading,
+   * as `wikiPage`'s `sections` lists them), with `embed`'s local files in it: a new version, by the
+   * person. Throws `WikiPageLockedError` when someone else has the page open in its editor (the driver
+   * never overrides their lock), `WikiError` when the page isn't in the wiki, the section isn't in the
+   * page, or Moodle refuses (mod/wiki:editpage, someone else's subwiki).
+   */
+  editWikiPage(activityId: number, pageId: number, changes: import("./areas/wikis/wikis.js").WikiPageChanges): Promise<import("./areas/wikis/wikis.js").WikiPageChange>;
   /**
    * Changes an example submission through its form, as "Edit example" does: only what's given
    * changes (`attachments` replace those there). Returns a sentence of what changed and the example
@@ -1870,6 +1888,43 @@ export interface MoodleMethods {
   userById(userId: number): Promise<import("./areas/site/users.js").User | undefined>;
   /** Who the logged-in person is; with `courseId`, also their roles and abilities in that course. */
   whoAmI(courseId?: number): Promise<import("./areas/site/users.js").Me>;
+  /**
+   * A wiki page: its title, content (HTML as Moodle renders it, its text, images and media), sections,
+   * the pages it links to and its latest version; with `history`, every version (number, date, author),
+   * newest first. Throws `NotAWikiError` when the activity isn't a wiki the person can open,
+   * `WikiError` when the page isn't in it or Moodle doesn't show it to the person.
+   */
+  wikiPage(activityId: number, pageId: number, options?: import("./areas/wikis/wikis.js").WikiPageOptions): Promise<import("./areas/wikis/wikis.js").WikiPage>;
+  /**
+   * The pages of a wiki's subwiki, by title: each one's id, title, the pages it links to (those not
+   * created yet without an id), and its latest version (number, date, author). The person's subwiki
+   * (the wiki's own in a collaborative wiki, their group's, or their own in an individual one) unless
+   * `groupId` or `userId` choose another, as the wiki's group or participant menu does (choosing a
+   * group makes it the person's current group in the course, as the menu does). Empty while the
+   * subwiki has no pages. Paged with `limit` and `offset`. Throws `NotAWikiError` when the activity
+   * isn't a wiki the person can open, `WikiError` when Moodle refuses the subwiki.
+   */
+  wikiPages(activityId: number, options: import("./core/paging.js").WithLimit<import("./areas/wikis/wikis.js").WikiPagesOptions>): Promise<import("./core/paging.js").ListPage<import("./areas/wikis/wikis.js").WikiPageSummary>>;
+  /**
+   * The pages of a wiki's subwiki, by title: each one's id, title, the pages it links to (those not
+   * created yet without an id), and its latest version (number, date, author). The person's subwiki
+   * (the wiki's own in a collaborative wiki, their group's, or their own in an individual one) unless
+   * `groupId` or `userId` choose another, as the wiki's group or participant menu does (choosing a
+   * group makes it the person's current group in the course, as the menu does). Empty while the
+   * subwiki has no pages. Paged with `limit` and `offset`. Throws `NotAWikiError` when the activity
+   * isn't a wiki the person can open, `WikiError` when Moodle refuses the subwiki.
+   */
+  wikiPages(activityId: number, options?: import("./core/paging.js").WithoutLimit<import("./areas/wikis/wikis.js").WikiPagesOptions>): Promise<import("./areas/wikis/wikis.js").WikiPageSummary[]>;
+  /**
+   * The pages of a wiki's subwiki, by title: each one's id, title, the pages it links to (those not
+   * created yet without an id), and its latest version (number, date, author). The person's subwiki
+   * (the wiki's own in a collaborative wiki, their group's, or their own in an individual one) unless
+   * `groupId` or `userId` choose another, as the wiki's group or participant menu does (choosing a
+   * group makes it the person's current group in the course, as the menu does). Empty while the
+   * subwiki has no pages. Paged with `limit` and `offset`. Throws `NotAWikiError` when the activity
+   * isn't a wiki the person can open, `WikiError` when Moodle refuses the subwiki.
+   */
+  wikiPages(activityId: number, options?: import("./areas/wikis/wikis.js").WikiPagesOptions): Promise<import("./areas/wikis/wikis.js").WikiPageSummary[] | import("./core/paging.js").ListPage<import("./areas/wikis/wikis.js").WikiPageSummary>>;
   /**
    * A workshop's allocation, as Moodle's manual allocation page shows it to a teacher (every page of
    * it, in the course's current group): each submission with its author and the reviewers allocated
