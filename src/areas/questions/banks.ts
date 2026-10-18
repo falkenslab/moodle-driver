@@ -1,7 +1,7 @@
-// Question banks (Moodle 5: shared banks are qbank activities; quizzes keep private ones), their
-// questions read from the bank page by field names and icons, questions imported from a GIFT or
-// Moodle XML file through the import form and exported through the export form, and single
-// questions made through their edit form. Categories are in categories.ts.
+// Question banks (Moodle 5: shared banks are qbank activities; quizzes keep private ones. Moodle 4.x:
+// each course has its own bank), their questions read from the bank page by field names and icons,
+// questions imported from a GIFT or Moodle XML file through the import form and exported through the
+// export form, and single questions made through their edit form. Categories are in categories.ts.
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -21,17 +21,65 @@ export { QUESTION_TYPES, type QuestionType, type QuestionInput, type DropZone } 
 
 /** A question bank of a course, as `questionBanks` lists it. */
 export interface QuestionBank {
-  /** The bank's course module id: a qbank activity's, or the quiz's whose private bank it is. */
+  /**
+   * The id the other functions take: on Moodle 5, the bank's course module id (a qbank activity's,
+   * or the quiz's whose private bank it is); on Moodle 4.x, the course's id (its course bank).
+   */
   id: number;
   name: string;
-  /** The module: "qbank" for a shared bank, "quiz"… for an activity's own. */
+  /** "qbank" for a shared bank, "quiz"… for an activity's own (Moodle 5); "course" for a course's bank (Moodle 4.x). */
   type: string;
   /** Shared banks' questions can be used anywhere in the course; activities' only there. */
   shared: boolean;
 }
 
-/** A course's question banks: its shared ones and the activities' own, as the banks page lists them. */
+// Whether each site keeps its banks as qbank activities (Moodle 5.0 and later), per browser context.
+const bankActivitySites = new WeakMap<BrowserContext, Map<string, Promise<boolean>>>();
+
+/**
+ * Whether the site keeps question banks as qbank activities (Moodle 5.0 and later) or each course
+ * has its own (Moodle 4.x), told by the qbank module's icon, a static file anyone can fetch: 4.x
+ * has no mod/qbank and answers 404 (confirmed empirically, 4.5). Asked once per site.
+ */
+export function hasBankActivities(context: BrowserContext, siteUrl: string): Promise<boolean> {
+  let sites = bankActivitySites.get(context);
+  if (!sites) bankActivitySites.set(context, (sites = new Map()));
+  let found = sites.get(siteUrl);
+  if (!found) {
+    const asked = siteFetch(context, new URL("mod/qbank/pix/monologo.svg", siteUrl).href).then((response) => response.status !== 404);
+    // A failed request is asked again next time.
+    asked.catch(() => sites.delete(siteUrl));
+    sites.set(siteUrl, asked);
+    found = asked;
+  }
+  return found;
+}
+
+/** How a bank's pages are addressed: `cmid` on Moodle 5, `courseid` on Moodle 4.x. */
+export interface BankRef {
+  /** "cmid=36" or "courseid=12": the bank pages' parameter. */
+  query: string;
+  /** The same as a form's field: { cmid: "36" } or { courseid: "12" }. */
+  field: Record<string, string>;
+  /** Moodle 4.x: the id is a course's, its bank the course's. */
+  course: boolean;
+}
+
+/** The bank pages' parameter for a bank id; on Moodle 5 the module is checked first (see `checkBank`). */
+export async function bankRef(context: BrowserContext, siteUrl: string, bankId: number): Promise<BankRef> {
+  if (await hasBankActivities(context, siteUrl)) {
+    await checkBank(context, siteUrl, bankId);
+    return { query: `cmid=${bankId}`, field: { cmid: String(bankId) }, course: false };
+  }
+  return { query: `courseid=${bankId}`, field: { courseid: String(bankId) }, course: true };
+}
+
+/**
+ * A course's question banks: on Moodle 5 its shared ones and the activities' own, as the banks page
+ * lists them; on Moodle 4.x the course's own bank, whose id is the course's.
+ */
 export async function questionBanks(context: BrowserContext, siteUrl: string, courseId: number): Promise<QuestionBank[]> {
+  if (!(await hasBankActivities(context, siteUrl))) return [await courseBank(context, siteUrl, courseId)];
   const page = await openSitePage(context, siteUrl, `question/banks.php?courseid=${courseId}`);
   try {
     if ((await page.locator("body#page-question-banks").count()) === 0) {
@@ -58,6 +106,23 @@ export async function questionBanks(context: BrowserContext, siteUrl: string, co
   }
 }
 
+/** Moodle 4.x: the course's bank, if the person can see its bank page, named as the course. */
+async function courseBank(context: BrowserContext, siteUrl: string, courseId: number): Promise<QuestionBank> {
+  const page = await openSitePage(context, siteUrl, `question/edit.php?courseid=${courseId}`);
+  try {
+    if ((await page.locator("body#page-question-edit .questionbankwindow").count()) === 0) {
+      throw new QuestionBankError(`You can't see course ${courseId}'s question bank: the course doesn't exist, or you aren't allowed.`);
+    }
+    const name = await page.evaluate(() => {
+      const doc = (globalThis as unknown as { document: { querySelector(s: string): { textContent: string | null } | null } }).document;
+      return (doc.querySelector("#page-header h1, .page-header-headings h1")?.textContent ?? "").replace(/\s+/g, " ").trim();
+    });
+    return { id: courseId, name, type: "course", shared: true };
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
 /** A question in a bank, as `questions` lists it. */
 export interface BankQuestion {
   id: number;
@@ -76,17 +141,33 @@ export interface BankCategory {
   name: string;
 }
 
-/** The bank page's categories (its category filter's options) and its context id. */
+/**
+ * The bank page's categories (its category filter's options) and its context id: the page's own
+ * context, in the body's classes. Moodle 4.x's filter lists the parent contexts' categories too (the
+ * course category's, the system's, for whoever can use them), each context after an option without a
+ * value: the first context's are the bank's own (confirmed empirically, 4.5).
+ */
 async function bankCategories(page: Page): Promise<{ contextId: number; categories: BankCategory[] }> {
   return page.evaluate(() => {
     const doc = (globalThis as unknown as {
-      document: { querySelector(s: string): { getAttribute(n: string): string | null } | null; querySelectorAll(s: string): ArrayLike<{ value: string; textContent: string | null }> };
+      document: {
+        body: { className: string };
+        querySelector(s: string): { getAttribute(n: string): string | null } | null;
+        querySelectorAll(s: string): ArrayLike<{ value: string; textContent: string | null }>;
+      };
     }).document;
-    const categories = Array.from(doc.querySelectorAll('[data-filterregion="filtertypedata"] select[data-field-name="category"] option'))
-      .filter((option) => option.value !== "")
+    const categories: BankCategory[] = [];
+    for (const option of Array.from(doc.querySelectorAll('[data-filterregion="filtertypedata"] select[data-field-name="category"] option'))) {
+      if (option.value === "") {
+        if (categories.length > 0) break;
+        continue;
+      }
       // Names come indented, with their question count: "   Default for X (6)".
-      .map((option) => ({ id: Number(option.value), name: (option.textContent ?? "").replace(/\s+/g, " ").replace(/\s*\(\d+\)$/, "").trim() }));
-    return { contextId: Number(doc.querySelector(".questionbankwindow[data-contextid]")?.getAttribute("data-contextid")), categories };
+      categories.push({ id: Number(option.value), name: (option.textContent ?? "").replace(/\s+/g, " ").replace(/\s*\(\d+\)$/, "").trim() });
+    }
+    // The bank window's context is the category shown's, which on 4.x may be a parent context's.
+    const contextId = Number(/\bcontext-(\d+)\b/.exec(doc.body.className)?.[1]) || Number(doc.querySelector(".questionbankwindow[data-contextid]")?.getAttribute("data-contextid"));
+    return { contextId, categories };
   });
 }
 
@@ -139,6 +220,15 @@ export async function checkBank(context: BrowserContext, siteUrl: string, activi
   }
 }
 
+/** The bank page didn't open: the bank's own words for it on each version. */
+function noBank(bankId: number, bank: BankRef): QuestionBankError {
+  return new QuestionBankError(
+    bank.course
+      ? `Course ${bankId} has no question bank you can see (on Moodle 4.x a bank's id is its course's): the course doesn't exist, or you can't manage its questions.`
+      : `Activity ${bankId} has no question bank you can see. Take a bank's id from the course's question banks.`,
+  );
+}
+
 // A bank page shows this many questions at most; more than that in one category isn't read.
 const PER_PAGE = 1000;
 
@@ -159,17 +249,15 @@ export function questions(context: BrowserContext, siteUrl: string, activityId: 
 export function questions(context: BrowserContext, siteUrl: string, activityId: number, options?: PageOptions): Promise<BankQuestions<BankQuestion[] | ListPage<BankQuestion>>>;
 export async function questions(context: BrowserContext, siteUrl: string, activityId: number, options: PageOptions = {}): Promise<BankQuestions<BankQuestion[] | ListPage<BankQuestion>>> {
   const window = pageWindow(options);
-  await checkBank(context, siteUrl, activityId);
-  const page = await openSitePage(context, siteUrl, `question/edit.php?cmid=${activityId}`);
+  const bank = await bankRef(context, siteUrl, activityId);
+  const page = await openSitePage(context, siteUrl, `question/edit.php?${bank.query}`);
   try {
-    if ((await page.locator("body#page-question-edit .questionbankwindow").count()) === 0) {
-      throw new QuestionBankError(`Activity ${activityId} has no question bank you can see. Take a bank's id from the course's question banks.`);
-    }
+    if ((await page.locator("body#page-question-edit .questionbankwindow").count()) === 0) throw noBank(activityId, bank);
     const { contextId, categories } = await bankCategories(page);
     const found: BankQuestion[] = [];
     for (const category of categories) {
       if (window.count !== undefined && found.length >= window.offset + window.count) break;
-      await page.goto(new URL(`question/edit.php?cmid=${activityId}&cat=${category.id},${contextId}&qperpage=${PER_PAGE}`, siteUrl).href, { waitUntil: "domcontentloaded" });
+      await page.goto(new URL(`question/edit.php?${bank.query}&cat=${category.id},${contextId}&qperpage=${PER_PAGE}`, siteUrl).href, { waitUntil: "domcontentloaded" });
       found.push(...(await readBankQuestions(page, category.id)));
     }
     return { categories, questions: toPage(sliceWindow(found, window), options.limit) };
@@ -227,9 +315,10 @@ export async function importQuestions(
   const dir = text !== undefined ? await mkdtemp(path.join(tmpdir(), "moodle-import-")) : undefined;
   const upload = dir ? path.join(dir, format === "gift" ? "questions.txt" : "questions.xml") : file!;
   if (dir) await writeFile(upload, text!, "utf8");
-  const page = await openForm(context, siteUrl, `question/bank/importquestions/import.php?cmid=${activityId}`).catch((error: unknown) => {
+  const bank = await bankRef(context, siteUrl, activityId);
+  const page = await openForm(context, siteUrl, `question/bank/importquestions/import.php?${bank.query}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
-    throw new QuestionBankError(`Activity ${activityId} has no question bank you can import into.`);
+    throw new QuestionBankError(`${bank.course ? "Course" : "Activity"} ${activityId} has no question bank you can import into.`);
   });
   try {
     await uploadToDraft(page, (await formValue(page, "newfile"))!, [upload]);
@@ -265,8 +354,8 @@ export async function exportQuestions(
 ): Promise<DownloadedFile> {
   if (format !== "gift" && format !== "xml") throw new QuestionBankError(`Questions export as "gift" or "xml", not "${String(format)}".`);
   if (!file || !path.isAbsolute(file)) throw new MoodleError(`Give the file to write as an absolute path: "${file}".`, "invalid-input");
-  await checkBank(context, siteUrl, activityId);
-  const page = await openForm(context, siteUrl, `question/bank/exportquestions/export.php?cmid=${activityId}`).catch((error: unknown) => {
+  const bank = await bankRef(context, siteUrl, activityId);
+  const page = await openForm(context, siteUrl, `question/bank/exportquestions/export.php?${bank.query}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
     throw new QuestionBankError(`You can't export bank ${activityId}'s questions: it takes Moodle's capability moodle/question:viewall (or viewmine, for your own).`);
   });
@@ -323,11 +412,12 @@ export async function createQuestion(context: BrowserContext, siteUrl: string, a
   const category = input.categoryId ?? (categories[1] ?? categories[0])?.id;
   const plugin = PLUGIN_QUESTION_TYPES[input.type];
   const missingPlugin = () => new QuestionBankError(`This site has no ${plugin} question type (the qtype_${input.type} plugin): its administrator would have to install it.`);
-  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${activityId}&category=${category}&qtype=${input.type}`).catch((error: unknown) => {
+  const bank = await bankRef(context, siteUrl, activityId);
+  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?${bank.query}&category=${category}&qtype=${input.type}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
     // The bank and its category were read just now: a plugin's form missing is the plugin missing.
     if (plugin) throw missingPlugin();
-    throw new QuestionBankError(`Activity ${activityId} has no question bank you can add to, or category ${category} isn't in it.`);
+    throw new QuestionBankError(`${bank.course ? "Course" : "Activity"} ${activityId} has no question bank you can add to, or category ${category} isn't in it.`);
   });
   try {
     if ((await formValue(page, "qtype")) !== input.type) {
@@ -359,8 +449,8 @@ export async function updateQuestion(
   input: Partial<Omit<QuestionInput, "type">>,
 ): Promise<{ changed: string; questionId?: number }> {
   if (Object.keys(input).length === 0) throw new QuestionBankError("Give what to change in the question: its name, text, mark, category, its type's inputs or fields.");
-  await checkBank(context, siteUrl, activityId);
-  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?cmid=${activityId}&id=${questionId}`).catch((error: unknown) => {
+  const bank = await bankRef(context, siteUrl, activityId);
+  const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?${bank.query}&id=${questionId}`).catch((error: unknown) => {
     if (error instanceof NotLoggedInError) throw error;
     throw new QuestionBankError(`Bank ${activityId} has no question ${questionId} you can edit. Take its id from the bank's questions.`);
   });
@@ -377,8 +467,8 @@ export async function updateQuestion(
 }
 
 /** Whether a question can still be opened for editing: a deleted one can't, a hidden one can. */
-async function questionExists(context: BrowserContext, siteUrl: string, activityId: number, questionId: number): Promise<boolean> {
-  const page = await openSitePage(context, siteUrl, `question/bank/editquestion/question.php?cmid=${activityId}&id=${questionId}`);
+async function questionExists(context: BrowserContext, siteUrl: string, bank: BankRef, questionId: number): Promise<boolean> {
+  const page = await openSitePage(context, siteUrl, `question/bank/editquestion/question.php?${bank.query}&id=${questionId}`);
   try {
     return (await page.locator('form.mform [name="qtype"]').count()) > 0;
   } finally {
@@ -386,16 +476,20 @@ async function questionExists(context: BrowserContext, siteUrl: string, activity
   }
 }
 
-/** The delete page's answer: its fatal error, if any, and the confirmation it asks for (its own `confirm`). */
-async function postDelete(page: Page, fields: Record<string, string>): Promise<{ error?: string; confirm?: string }> {
-  return page.evaluate(async (fields) => {
+/**
+ * Posts to one of the bank's pages (`path`, from the site's root) from a bank page open in `page`,
+ * with its sesskey; its answer: its fatal error, if any, and the confirmation it asks for (its own
+ * `confirm`).
+ */
+export async function postBankPage(page: Page, path: string, fields: Record<string, string>): Promise<{ error?: string; confirm?: string }> {
+  return page.evaluate(async ({ path, fields }) => {
     const g = globalThis as unknown as {
       M: { cfg: { wwwroot: string; sesskey: string } };
       fetch(url: string, init: object): Promise<{ text(): Promise<string> }>;
       URLSearchParams: new (init: Record<string, string>) => unknown;
       DOMParser: new () => { parseFromString(html: string, type: string): { querySelector(s: string): { textContent: string | null; value?: string } | null } };
     };
-    const response = await g.fetch(`${g.M.cfg.wwwroot}/question/bank/deletequestion/delete.php`, {
+    const response = await g.fetch(`${g.M.cfg.wwwroot}/${path}`, {
       method: "POST",
       credentials: "same-origin",
       body: new g.URLSearchParams({ ...fields, sesskey: g.M.cfg.sesskey }),
@@ -406,8 +500,10 @@ async function postDelete(page: Page, fields: Record<string, string>): Promise<{
     // The confirmation's Delete button: a form with the value as a hidden field, or a link carrying it.
     const confirm = doc.querySelector('form input[name="confirm"]')?.value || /[?&;]confirm=([0-9a-f]{32})/.exec(html)?.[1];
     return { ...(error ? { error } : {}), ...(confirm ? { confirm } : {}) };
-  }, fields);
+  }, { path, fields });
 }
+
+const DELETE_PAGE = "question/bank/deletequestion/delete.php";
 
 /**
  * Deletes questions from a bank, every version of each, as the bank's delete action does: asked,
@@ -420,24 +516,22 @@ export async function deleteQuestions(
   questionIds: number[],
 ): Promise<{ changed: string; deleted: number[]; hidden: number[] }> {
   if (questionIds.length === 0) throw new QuestionBankError("Give the ids of the questions to delete.");
-  await checkBank(context, siteUrl, activityId);
-  const page = await openSitePage(context, siteUrl, `question/edit.php?cmid=${activityId}`);
+  const bank = await bankRef(context, siteUrl, activityId);
+  const page = await openSitePage(context, siteUrl, `question/edit.php?${bank.query}`);
   try {
-    if ((await page.locator("body#page-question-edit .questionbankwindow").count()) === 0) {
-      throw new QuestionBankError(`Activity ${activityId} has no question bank you can see. Take a bank's id from the course's question banks.`);
-    }
+    if ((await page.locator("body#page-question-edit .questionbankwindow").count()) === 0) throw noBank(activityId, bank);
     const list = questionIds.join(",");
-    const common = { deleteselected: list, deleteall: "1", cmid: String(activityId), returnurl: `/question/edit.php?cmid=${activityId}` };
-    const asked = await postDelete(page, { ...common, ...Object.fromEntries(questionIds.map((id) => [`q${id}`, "1"])) });
+    const common = { deleteselected: list, deleteall: "1", ...bank.field, returnurl: `/question/edit.php?${bank.query}` };
+    const asked = await postBankPage(page, DELETE_PAGE, { ...common, ...Object.fromEntries(questionIds.map((id) => [`q${id}`, "1"])) });
     if (asked.error || !asked.confirm) throw new QuestionBankError(`Moodle didn't delete the questions from bank ${activityId}: ${(asked.error ?? "its delete page didn't ask to confirm").replace(/\.$/, "")}.`);
-    const done = await postDelete(page, { ...common, confirm: asked.confirm });
+    const done = await postBankPage(page, DELETE_PAGE, { ...common, confirm: asked.confirm });
     if (done.error) throw new QuestionBankError(`Moodle didn't delete the questions from bank ${activityId}: ${done.error.replace(/\.$/, "")}.`);
   } finally {
     await page.close().catch(() => undefined);
   }
   const deleted: number[] = [];
   const hidden: number[] = [];
-  for (const id of questionIds) ((await questionExists(context, siteUrl, activityId, id)) ? hidden : deleted).push(id);
+  for (const id of questionIds) ((await questionExists(context, siteUrl, bank, id)) ? hidden : deleted).push(id);
   const parts = [deleted.length > 0 && `deleted question${deleted.length === 1 ? "" : "s"} ${deleted.join(", ")}`, hidden.length > 0 && `hid ${hidden.join(", ")}, in use`].filter(Boolean);
   return { changed: `In bank ${activityId}: ${parts.join("; ")}.`, deleted, hidden };
 }

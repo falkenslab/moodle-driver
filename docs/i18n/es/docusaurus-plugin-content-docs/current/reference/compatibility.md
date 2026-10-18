@@ -17,6 +17,8 @@ Todas las funciones que no aparecen aquí funcionan desde Moodle 4.5.
 Otras diferencias dentro de una función, que no son rechazos:
 
 - Los bancos de preguntas como actividades `qbank`, y los bancos propios de los cuestionarios: Moodle 5.0 y posteriores.
+- Los bancos de preguntas como actividades `qbank`, y los bancos propios de los cuestionarios: Moodle 5.0 y posteriores. En 4.x las funciones de los bancos de preguntas trabajan con el banco propio de cada curso, cuyo id es el del curso (consulta [Bancos de preguntas](../areas/question-banks.md#moodle-4x-the-courses-bank)).
+- La vista general de actividades (`activitiesOverview`): Moodle 5.0 y posteriores.
 - Las preguntas aleatorias de cuestionario como referencias a conjuntos de preguntas (mostradas como posiciones `random`): Moodle 4.3 y posteriores.
 
 ### Cómo se averigua la versión {#how-the-version-is-found}

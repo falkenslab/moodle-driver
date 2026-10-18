@@ -6,11 +6,22 @@ A course's question banks as Moodle 5 organizes them: shared banks are activitie
 
 The signatures below are the functions'. Each operation is also a method of the [Moodle object](../concepts/calling-functions.md) without its first two parameters (`fn(context, site, …)` is `moodle.fn(…)`), which is how the examples call them; the lower-level primitives are in `@falkenslab/moodle-driver/internals` (see [Going lower level](../concepts/low-level.md)).
 
-A bank is identified by its activity id (`activityId`, a course module id): a qbank activity's, or the quiz's whose bank it is. Everything is read from Moodle's bank pages by field names, data attributes and icons, so it works in any interface language. Every function throws `NotLoggedInError` when there's no session; the others are `QuestionBankError` and, for forms, `FormError` (see [Errors](../concepts/errors.md)).
+A bank is identified by its activity id (`activityId`, a course module id): a qbank activity's, or the quiz's whose bank it is. On Moodle 4.x see [below](#moodle-4x-the-courses-bank): there the id is the course's. Everything is read from Moodle's bank pages by field names, data attributes and icons, so it works in any interface language. Every function throws `NotLoggedInError` when there's no session; the others are `QuestionBankError` and, for forms, `FormError` (see [Errors](../concepts/errors.md)).
 
 ## The bank's module is checked first
 
-Before opening a bank page, `questions`, `importQuestions`, `exportQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions` and the category functions check that the course module keeps questions (a `qbank` or a `quiz`), reading its module from its settings form, which changes nothing. This matters: Moodle creates a bank's default categories for any activity whose bank page is opened, so opening the bank of a page or a forum by mistake would leave categories behind. A module that keeps no questions throws `QuestionBankError` ("Activity 5 is a page, which has no question bank") without touching it; a module the person can't edit, or that doesn't exist, throws too. The module found is remembered per site and id for the rest of the program.
+On Moodle 5, before opening a bank page, `questions`, `importQuestions`, `exportQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions` and the category functions check that the course module keeps questions (a `qbank` or a `quiz`), reading its module from its settings form, which changes nothing. This matters: Moodle creates a bank's default categories for any activity whose bank page is opened, so opening the bank of a page or a forum by mistake would leave categories behind. A module that keeps no questions throws `QuestionBankError` ("Activity 5 is a page, which has no question bank") without touching it; a module the person can't edit, or that doesn't exist, throws too. The module found is remembered per site and id for the rest of the program.
+
+## Moodle 4.x: the course's bank
+
+Moodle 4.x has no bank activities: each course has its own question bank (its Question bank page, `question/edit.php?courseid=…`), beside the shared banks of the course's category and of the whole site, which only those with rights there (managers, administrators) can use. On 4.x, `questionBanks(courseId)` gives the course's bank alone, whose `id` is the course's id, `type` `"course"` and `shared` true; every other function takes that id where it takes `activityId`, and works through 4.x's bank pages with the same results. A program never needs to know which version it's on: the ids `questionBanks` gives are the ones the other functions take on both.
+
+The course's id was chosen over the bank's context id because Moodle's 4.x pages are addressed by course, so a function needs no other request to find the course a context belongs to, and nothing has to be remembered between calls. What 4.x keeps out of reach this way:
+
+- The category and site banks: their categories don't appear in the course's bank (`questions` and `questionCategories` read the course's only). Work them in Moodle, or import and export through the course.
+- A quiz's own bank (4.x keeps one for every quiz too): its questions are read through the quiz ([`quizStructure`](quizzes.md#quizstructure)); a quiz's activity id given as a bank's is read as a course's id.
+
+The version is told by whether the site has the `qbank` module (its icon, a file anyone can fetch), asked once per site.
 
 ## questionBanks
 
@@ -27,9 +38,9 @@ interface QuestionBank {
 }
 ```
 
-- `id`: the bank's activity id (course module id), which the other functions take as `activityId`.
-- `name`: the activity's name.
-- `type`: the module, `"qbank"` for a shared bank, `"quiz"` for a quiz's own.
+- `id`: the bank's activity id (course module id), which the other functions take as `activityId`; on Moodle 4.x the course's id.
+- `name`: the activity's name; on 4.x the course's.
+- `type`: the module, `"qbank"` for a shared bank, `"quiz"` for a quiz's own; `"course"` for 4.x's course bank.
 - `shared`: a shared bank's questions can be used anywhere in the course; an activity's only in that activity.
 
 Throws `QuestionBankError` when the course doesn't exist or the person can't see its banks.
@@ -156,7 +167,7 @@ Each type's inputs, the required ones checked before the form opens (an empty li
 
 An input another type takes is refused (`A match question doesn't take answers: it takes pairs.`), as are drop zones naming an item that isn't there and wildcards with different numbers of values. The form's blank rows are extended with its "Blanks for more" button when more are needed. A drag and drop onto an image's files go up to the form's file pickers, and its drop zones' menus, which the page's script fills only once it has drawn the image, are given the items' numbers. The calculated types take more than one page: `calculatedsimple` finds its wildcards and generates its sets on its own page; `calculated` and `calculatedmulti` are saved first and then go through Moodle's wizard (the wildcards' datasets, private to the question, then their values: sets added with its "Add" button, by tens and ones), so a question whose values page fails is in the bank already.
 
-The plugin types' forms are read by the field names their plugins publish; the sandbox the driver is checked against has none of them, so a program working with one should check its result. On a site without the plugin, `createQuestion` throws `QuestionBankError` naming it ("This site has no CodeRunner question type (the qtype_coderunner plugin): its administrator would have to install it.").
+The plugin types' forms are read by the field names their plugins publish; each is made, previewed, changed and deleted on the sandboxes the driver is checked against (Moodle 4.5 and 5.2), a CodeRunner question graded through a Jobe server there. On a site without the plugin, `createQuestion` throws `QuestionBankError` naming it ("This site has no CodeRunner question type (the qtype_coderunner plugin): its administrator would have to install it.").
 
 `questionId` is the id Moodle names after saving; it can be missing if Moodle lands elsewhere. Errors: `QuestionBankError` for a type it doesn't create, a plugin the site doesn't have, a required input missing or another type's given, a bank that keeps no questions or can't be added to, or a category not in the bank; `FormError` when the form has no field by a name in `fields` or Moodle refuses the values (a match with too few pairs, a drop zone outside the image…), or a file can't be uploaded.
 

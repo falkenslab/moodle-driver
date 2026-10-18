@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
 import { QuestionBankError, addQuestionCategory, deleteQuestionCategory, editQuestionCategory, moveQuestions, questionCategories } from "../../../src/index.js";
@@ -197,6 +198,47 @@ describe("deleteQuestionCategory and moveQuestions", { skip: !browser && "no sys
     await assert.rejects(moveQuestions(context, SITE, 36, [], 15), /Give the ids/);
     fake.state.denyMove = true;
     await assert.rejects(moveQuestions(context, SITE, 36, [7], 15), (error: Error) => error instanceof QuestionBankError && /moodle\/question:moveall/.test(error.message));
+    await context.close();
+  });
+});
+
+describe("categories on Moodle 4.x", { skip: !browser && "no system browser" }, () => {
+  it("works the course's bank by its id: the form with the course, the move page confirmed with the list's MD5", async () => {
+    const moves: URLSearchParams[] = [];
+    const calls: { methodname: string; args: Record<string, unknown> }[] = [];
+    const tree = `<div id="categoryroot" data-contextid="248"><ul class="qbank_managecategories-categorylist" data-contextid="248" data-categoryid="17">
+<li class="qbank_managecategories-item" id="category-18" data-categoryid="18" data-contextid="248" data-categoryname="Default for dc" data-parent="17"><div class="qbank_managecategories-details"></div></li>
+<li class="qbank_managecategories-item" id="category-19" data-categoryid="19" data-contextid="248" data-categoryname="Loops" data-parent="17"><div class="qbank_managecategories-details"></div></li></ul></div>`;
+    const context = await browser!.newContext();
+    const services = {
+      core_form_dynamic_form: (args: Record<string, unknown>) =>
+        new URLSearchParams(String(args.formdata)).has("_qf__qbank_managecategories_form_question_category_edit_form")
+          ? { submitted: true, html: "", data: JSON.stringify([{ name: "categories", action: "put", fields: { id: "19" } }]) }
+          : { html: `<form class="mform"><input type="hidden" name="_qf__qbank_managecategories_form_question_category_edit_form" value="1"><select name="parent"><option value="17,248">Top</option></select><input name="name"></form>` },
+    };
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services, serviceCalls: calls });
+    await context.route(`${SITE}**`, async (route) => {
+      const url = new URL(route.request().url());
+      const html = (body: string, status = 200) => route.fulfill({ status, contentType: "text/html", body });
+      if (url.pathname === "/mod/qbank/pix/monologo.svg") return html("Not found", 404);
+      if (url.pathname === "/question/bank/managecategories/category.php" && url.searchParams.get("courseid") === "12") return html(moodlePage({ userId: 3, body: tree }));
+      if (url.pathname === "/question/bank/bulkmove/move.php") {
+        moves.push(new URLSearchParams(route.request().postData() ?? ""));
+        return html(moodlePage({ userId: 3, bodyId: "page-question-edit" }));
+      }
+      return route.fallback();
+    });
+    assert.deepEqual((await questionCategories(context, SITE, 12)).map((c) => c.id), [18, 19]);
+    await addQuestionCategory(context, SITE, 12, { name: "Loops" });
+    const rendered = new URLSearchParams(String(calls.find((c) => c.methodname === "core_form_dynamic_form")?.args.formdata));
+    assert.deepEqual([rendered.get("cmid"), rendered.get("courseid"), rendered.get("contextid")], ["0", "12", "248"]);
+    assert.deepEqual(await moveQuestions(context, SITE, 12, [7, 8], 19), { changed: "Moved questions 7, 8 into category 19 of bank 12.", questionIds: [7, 8], categoryId: 19 });
+    const [move] = moves;
+    assert.deepEqual(
+      [move?.get("courseid"), move?.get("movequestionsselected"), move?.get("confirm"), move?.get("category"), move?.get("returnurl"), move?.get("sesskey")],
+      ["12", "7,8", createHash("md5").update("7,8").digest("hex"), "19,248", "/question/edit.php?courseid=12&filter=%7B%7D", "s1"],
+    );
+    assert.equal(calls.filter((c) => c.methodname === "core_question_move_questions").length, 0);
     await context.close();
   });
 });

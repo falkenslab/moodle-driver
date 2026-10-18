@@ -311,3 +311,80 @@ describe("updateQuestion, deleteQuestions and setQuestionStatus", { skip: !brows
     await context.close();
   });
 });
+
+/**
+ * A made-up Moodle 4.5 course 12 (context 248) with its own bank, shaped like 4.5's pages: no
+ * mod/qbank, the bank page by courseid whose category filter lists the system's categories after
+ * the course's (as for an admin, whose bank window shows the system context), and the delete page.
+ * Course 13's bank page refuses (a student's).
+ */
+function fakeCourseBank() {
+  const listed: string[] = [];
+  const posted: URLSearchParams[] = [];
+  const deleted = new Set<number>();
+  const html = (route: Route, body: string, status = 200) => route.fulfill({ status, contentType: "text/html", body });
+  const routes = async (context: BrowserContext) => {
+    await context.route(`${SITE}**`, async (route) => {
+      const url = new URL(route.request().url());
+      const page = (bodyId: string, body: string) => moodlePage({ userId: 3, bodyId, bodyClass: "format-topics course-12 context-248", heading: "Driver course", body });
+      switch (url.pathname) {
+        case "/mod/qbank/pix/monologo.svg":
+          return html(route, "<!DOCTYPE html><title>Not found</title>", 404);
+        case "/question/edit.php": {
+          if (url.searchParams.get("courseid") !== "12") return html(route, moodlePage({ userId: 3, bodyId: "page-question-edit", body: `<div data-rel="fatalerror"><p class="errormessage">Sorry, but you do not currently have permissions to do that.</p></div>` }));
+          if (url.searchParams.has("cat")) listed.push(url.search);
+          const cat = Number((url.searchParams.get("cat") ?? "6,1").split(",")[0]);
+          const filter = `<div data-filterregion="filtertypedata"><select data-field-name="category"><option value="">Course: dc</option><option value="17">Top for Driver course</option><option value="18">&nbsp;&nbsp;&nbsp;Default for dc (1)</option><option value="">System</option><option value="5">Top for System</option><option value="6">CR_PROTOTYPES (19)</option></select></div>`;
+          const rows = cat === 18 && !deleted.has(40) ? `<tr><td><input type="checkbox" name="q40"></td><td data-columnid="qbank_viewquestiontype\\question_type_column-question_type_column"><img src="${SITE}theme/image.php/classic/qtype_truefalse/1/icon"></td><td><span data-itemtype="questionname" data-value="Water"></span></td></tr>` : "";
+          return html(route, page("page-question-edit", `<div class="questionbankwindow" data-contextid="1">${filter}<table id="categoryquestions"><tbody>${rows}</tbody></table></div>`));
+        }
+        case "/question/bank/deletequestion/delete.php": {
+          const form = new URLSearchParams(route.request().postData() ?? "");
+          posted.push(form);
+          if (!form.get("confirm")) return html(route, page("page-question-bank-deletequestion-delete", `<form><input type="hidden" name="confirm" value="0123456789abcdef0123456789abcdef"></form>`));
+          deleted.add(40);
+          return html(route, page("page-question-edit", ""));
+        }
+        case "/question/bank/editquestion/question.php":
+          return html(route, page("page-question-bank-editquestion-question", `<div data-rel="fatalerror"><p class="errormessage">This question does not exist</p></div>`));
+        default:
+          return route.fallback();
+      }
+    });
+  };
+  return { routes, listed, posted };
+}
+
+describe("question banks on Moodle 4.x", { skip: !browser && "no system browser" }, () => {
+  it("lists the course's own bank by the course's id, and reads only its own categories", async () => {
+    const fake = fakeCourseBank();
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+    await fake.routes(context);
+    assert.deepEqual(await questionBanks(context, SITE, 12), [{ id: 12, name: "Driver course", type: "course", shared: true }]);
+    assert.deepEqual(await questions(context, SITE, 12), {
+      categories: [
+        { id: 17, name: "Top for Driver course" },
+        { id: 18, name: "Default for dc" },
+      ],
+      questions: [{ id: 40, name: "Water", type: "truefalse", categoryId: 18 }],
+    });
+    // The course's pages, with the course's context (not the bank window's, the system's here).
+    assert.deepEqual(fake.listed.map(decodeURIComponent), ["?courseid=12&cat=17,248&qperpage=1000", "?courseid=12&cat=18,248&qperpage=1000"]);
+    await assert.rejects(questionBanks(context, SITE, 13), (error: Error) => error instanceof QuestionBankError && /You can't see course 13's question bank/.test(error.message));
+    await assert.rejects(questions(context, SITE, 13), (error: Error) => error instanceof QuestionBankError && /Course 13 has no question bank you can see \(on Moodle 4.x a bank's id is its course's\)/.test(error.message));
+    await context.close();
+  });
+
+  it("deletes through the course's delete page", async () => {
+    const fake = fakeCourseBank();
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+    await fake.routes(context);
+    assert.deepEqual(await deleteQuestions(context, SITE, 12, [40]), { changed: "In bank 12: deleted question 40.", deleted: [40], hidden: [] });
+    const [ask, confirm] = fake.posted;
+    assert.deepEqual([ask?.get("courseid"), ask?.get("cmid"), ask?.get("q40"), ask?.get("returnurl")], ["12", null, "1", "/question/edit.php?courseid=12"]);
+    assert.deepEqual([confirm?.get("courseid"), confirm?.get("confirm")], ["12", "0123456789abcdef0123456789abcdef"]);
+    await context.close();
+  });
+});

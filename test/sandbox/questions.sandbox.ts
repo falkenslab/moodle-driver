@@ -1,5 +1,6 @@
-// Question banks against the sandbox: a shared bank (qbank) made in the scratch course, filled by
-// imports (GIFT and Moodle XML files written here) and the types' forms, then changed and emptied.
+// Question banks against the sandbox: a shared bank (qbank) made in the scratch course (on Moodle
+// 4.x, the scratch course's own bank), filled by imports (GIFT and Moodle XML files written here) and
+// the types' forms, the plugin types' too, then changed and emptied.
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,7 +9,10 @@ import { before, describe, it } from "node:test";
 import { deflateSync } from "node:zlib";
 import { QuestionBankError, type BankQuestion, type Moodle, type QuestionInput } from "../../src/index.js";
 import { formValue, openForm } from "../../src/internals.js";
-import { COURSE, SITE, as, cleanup, scratchCourse, type ScratchCourse } from "./harness.js";
+import { COURSE, SERIES, SITE, as, cleanup, scratchCourse, type ScratchCourse } from "./harness.js";
+
+// Moodle 4.x has no qbank activities: each course has its bank, whose id is the course's.
+const COURSE_BANKS = SERIES.startsWith("4.");
 
 /** A plain grey PNG of that size: a drag and drop question's background. */
 function png(width: number, height: number): Buffer {
@@ -63,6 +67,7 @@ const XML = `<?xml version="1.0" encoding="UTF-8"?>
  * createActivity can't name the activity it made: the course's banks do.
  */
 async function makeBank(teacher: Moodle, course: ScratchCourse, name: string): Promise<number> {
+  if (COURSE_BANKS) return course.id;
   await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "qbank", name });
   const bank = (await teacher.questionBanks(course.id)).find((b) => b.type === "qbank" && b.name === name);
   assert.ok(bank, `The bank "${name}" wasn't created.`);
@@ -79,6 +84,8 @@ describe("question banks", () => {
   let dir: string;
   let defaultCategory: number;
   const byName = async (name: string): Promise<BankQuestion | undefined> => (await teacher.questions(bankId)).questions.find((q) => q.name === name);
+  // The bank pages' parameter.
+  const ref = () => `${COURSE_BANKS ? "courseid" : "cmid"}=${bankId}`;
 
   before(async () => {
     course = await scratchCourse("questions");
@@ -90,6 +97,11 @@ describe("question banks", () => {
 
   it("questionBanks: the scratch course's shared bank, and course 3's banks", SLOW, async () => {
     const banks = await teacher.questionBanks(course.id);
+    if (COURSE_BANKS) {
+      assert.deepEqual(banks.map((b) => [b.id, b.type, b.shared]), [[course.id, "course", true]]);
+      assert.match(banks[0]!.name, /^Driver check questions/);
+      return;
+    }
     const bank = banks.find((b) => b.id === bankId);
     assert.deepEqual(bank, { id: bankId, name: "Sandbox bank", type: "qbank", shared: true });
     const content = await teacher.questionBanks(COURSE);
@@ -107,7 +119,11 @@ describe("question banks", () => {
     defaultCategory = categories[1]!.id;
   });
 
-  it("questions: an activity that keeps no questions is refused", SLOW, async () => {
+  it("questions: an activity that keeps no questions is refused (4.x: a course that isn't there)", SLOW, async () => {
+    if (COURSE_BANKS) {
+      await assert.rejects(teacher.questions(999_999_999), (error: unknown) => error instanceof QuestionBankError && /Course 999999999 has no question bank/.test(error.message));
+      return;
+    }
     const page = await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "page", name: "Not a bank", content: "<p>No questions here.</p>" });
     await assert.rejects(teacher.questions(page.activityId!), (error: unknown) => error instanceof QuestionBankError && /is a page/.test(error.message));
   });
@@ -181,7 +197,7 @@ describe("question banks", () => {
   const preview = async (questionId: number): Promise<string> => {
     const page = await (await teacher.context()).newPage();
     try {
-      await page.goto(`${SITE}question/bank/previewquestion/preview.php?id=${questionId}&cmid=${bankId}`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${SITE}question/bank/previewquestion/preview.php?id=${questionId}&${ref()}`, { waitUntil: "domcontentloaded" });
       assert.equal(await page.locator('[data-rel="fatalerror"], .errorbox').count(), 0, `question ${questionId}'s preview shows an error`);
       return (await page.locator("#responseform .que").first().getAttribute("class")) ?? "";
     } finally {
@@ -220,19 +236,76 @@ describe("question banks", () => {
     }
   });
 
-  it("createQuestion: a plugin type the site doesn't have names the plugin; an input the type doesn't take", SLOW, async () => {
-    await assert.rejects(
-      teacher.createQuestion(bankId, { type: "coderunner", name: "Driver check coderunner", text: "<p>Print 1.</p>", coderunner: { type: "python3", answer: "print(1)", testCases: [{ code: "", expected: "1" }] } }),
-      (error: unknown) => error instanceof QuestionBankError && /CodeRunner question type \(the qtype_coderunner plugin\)/.test(error.message),
-    );
-    await assert.rejects(teacher.createQuestion(bankId, { type: "formulas", name: "x", text: "x", formulas: { parts: [{ answer: "1" }] } }), (error: unknown) => error instanceof QuestionBankError && /Formulas/.test(error.message));
+  // The sandbox has the four plugin types createQuestion makes: each made, previewed, changed and deleted.
+  const plugins = new Map<string, number>();
+
+  it("createQuestion: the plugin types (CodeRunner, Formulas, Gap fill, drag and drop matching), each previewing", SLOW, async () => {
+    const inputs: QuestionInput[] = [
+      {
+        type: "coderunner",
+        name: "Driver check coderunner",
+        text: "<p>Write a function double(n) that returns twice n.</p>",
+        coderunner: { type: "python3", answer: "def double(n):\n    return 2 * n\n", testCases: [{ code: "print(double(2))", expected: "4" }, { code: "print(double(-3))", expected: "-6" }] },
+      },
+      { type: "formulas", name: "Driver check formulas", text: "<p>What is 2 times {a}?</p>", formulas: { randomVariables: "a = {1,2,3,4};", parts: [{ answer: "2*a", mark: 1 }] } },
+      { type: "gapfill", name: "Driver check gapfill", text: "<p>The [cat] sat on the [mat].</p>" },
+      { type: "ddmatch", name: "Driver check ddmatch", text: "<p>Match the capitals.</p>", pairs: [{ question: "France", answer: "Paris" }, { question: "Italy", answer: "Rome" }, { question: "Spain", answer: "Madrid" }] },
+    ];
+    for (const input of inputs) {
+      const { questionId, changed } = await teacher.createQuestion(bankId, input);
+      assert.ok(questionId, changed);
+      plugins.set(input.type, questionId);
+    }
+    const { questions } = await teacher.questions(bankId);
+    for (const input of inputs) {
+      const id = plugins.get(input.type)!;
+      assert.deepEqual([questions.find((q) => q.id === id)?.type, questions.find((q) => q.id === id)?.name], [input.type, input.name]);
+      assert.match(await preview(id), new RegExp(`\\b${input.type}\\b`), input.type);
+    }
+  });
+
+  it("createQuestion: a CodeRunner question graded through the sandbox's Jobe server", SLOW, async () => {
+    // The preview's correct response (the sample answer) submitted: Jobe runs the test cases.
+    const page = await (await teacher.context()).newPage();
+    try {
+      await page.goto(`${SITE}question/bank/previewquestion/preview.php?id=${plugins.get("coderunner")}&${ref()}`, { waitUntil: "domcontentloaded" });
+      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.locator('#responseform [name="fill"]').click()]);
+      await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.locator('#responseform [name="finish"]').click()]);
+      assert.match((await page.locator("#responseform .que").first().getAttribute("class")) ?? "", /\bcorrect\b/);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("updateQuestion: each plugin type, a new version with what's given; deleteQuestions: then gone", SLOW, async () => {
+    const changes: [string, Parameters<Moodle["updateQuestion"]>[2], string[], (string | undefined)[]][] = [
+      ["coderunner", { coderunner: { type: "python3", answer: "def double(n):\n    return n + n\n", testCases: [{ code: "print(double(5))", expected: "10" }] } }, ["testcode[0]", "expected[0]", "testcode[1]"], ["print(double(5))", "10", ""]],
+      ["formulas", { formulas: { randomVariables: "a = {5,6};", parts: [{ answer: "3*a" }] }, text: "<p>What is 3 times {a}?</p>" }, ["varsrandom", "answer[0]"], ["a = {5,6};", "3*a"]],
+      ["gapfill", { name: "Driver check gapfill v2", text: "<p>The [dog] chased the [cat].</p>" }, ["name"], ["Driver check gapfill v2"]],
+      ["ddmatch", { pairs: [{ question: "Portugal", answer: "Lisbon" }, { question: "Greece", answer: "Athens" }] }, ["subquestions[0][text]", "subquestions[2][text]"], ["Portugal", ""]],
+    ];
+    for (const [type, input, names, expected] of changes) {
+      const { questionId, changed } = await teacher.updateQuestion(bankId, plugins.get(type)!, input);
+      assert.ok(questionId && questionId !== plugins.get(type), changed);
+      plugins.set(type, questionId);
+      assert.match(await preview(questionId), new RegExp(`\\b${type}\\b`), type);
+      const values = await formValues(questionId, names);
+      // A row dropped is blank, or gone from the form.
+      assert.deepEqual(values.map((v) => (v ?? "").replace(/<\/?p>/g, "").trim()), expected, type);
+    }
+    const ids = [...plugins.values()];
+    const result = await teacher.deleteQuestions(bankId, ids);
+    assert.deepEqual(result.deleted.sort(), [...ids].sort());
+  });
+
+  it("createQuestion: an input the type doesn't take, a type's inputs missing", SLOW, async () => {
     await assert.rejects(teacher.createQuestion(bankId, { type: "match", name: "x", text: "x", answers: [{ text: "1", fraction: 1 }] }), (error: unknown) => error instanceof QuestionBankError && /doesn't take answers: it takes pairs/.test(error.message));
     await assert.rejects(teacher.createQuestion(bankId, { type: "ddmarker", name: "x", text: "x" }), (error: unknown) => error instanceof QuestionBankError && /needs image, markers, drops/.test(error.message));
   });
 
   /** The edit form's values of a question's latest version. */
   const formValues = async (questionId: number, names: string[]): Promise<(string | undefined)[]> => {
-    const page = await openForm(await teacher.context(), SITE, `question/bank/editquestion/question.php?cmid=${bankId}&id=${questionId}`);
+    const page = await openForm(await teacher.context(), SITE, `question/bank/editquestion/question.php?${ref()}&id=${questionId}`);
     try {
       return await Promise.all(names.map((name) => formValue(page, name)));
     } finally {
@@ -255,7 +328,7 @@ describe("question banks", () => {
     const drops = await update("ddimageortext", { drops: [{ choice: 2, left: 50, top: 20 }, { choice: 1, left: 50, top: 220 }] });
     assert.deepEqual(await formValues(drops, ["drops[0][choice]", "drops[0][xleft]", "drops[1][ytop]"]), ["2", "50", "220"]);
     const calculated = await update("calculated", { wildcards: [{ name: "a", values: [2, 4] }, { name: "b", values: [1.5, 2.5] }] });
-    const page = await openForm(await teacher.context(), SITE, `question/bank/editquestion/question.php?cmid=${bankId}&id=${calculated}&wizardnow=datasetitems`);
+    const page = await openForm(await teacher.context(), SITE, `question/bank/editquestion/question.php?${ref()}&id=${calculated}&wizardnow=datasetitems`);
     try {
       const fields = Object.fromEntries(await page.evaluate(() => Array.from((globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<{ name: string; value: string }> } }).document.querySelectorAll('form.mform input[name^="number["], form.mform input[name^="itemid["]')).map((f) => [f.name, f.value] as [string, string])));
       // The two sets saved (with their item ids), not the "item to add" Moodle draws: set n is items 2n-1 and 2n.
