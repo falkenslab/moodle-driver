@@ -12,6 +12,7 @@ import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldVa
 import { NotLoggedInError, openSitePage } from "../../core/session.js";
 import { callService } from "../../core/ajax.js";
 import { MoodleError } from "../../core/errors.js";
+import { compareBranches, moodleVersion } from "../../core/version.js";
 import { pageWindow, sliceWindow, toPage, type ListPage, type PageOptions, type WithLimit, type WithoutLimit } from "../../core/paging.js";
 import { QuestionBankError } from "./errors.js";
 import { PLUGIN_QUESTION_TYPES, QUESTION_TYPES, checkQuestionInput, fillQuestionForm, saveQuestionForm, type QuestionInput } from "./types.js";
@@ -38,15 +39,18 @@ const bankActivitySites = new WeakMap<BrowserContext, Map<string, Promise<boolea
 
 /**
  * Whether the site keeps question banks as qbank activities (Moodle 5.0 and later) or each course
- * has its own (Moodle 4.x), told by the qbank module's icon, a static file anyone can fetch: 4.x
- * has no mod/qbank and answers 404 (confirmed empirically, 4.5). Asked once per site.
+ * has its own (Moodle 4.x): by the site's branch, or, when it's unknown, by the qbank module's icon,
+ * a static file anyone can fetch, which 4.x answers with a 404 (confirmed empirically, 4.5). Asked
+ * once per site.
  */
 export function hasBankActivities(context: BrowserContext, siteUrl: string): Promise<boolean> {
   let sites = bankActivitySites.get(context);
   if (!sites) bankActivitySites.set(context, (sites = new Map()));
   let found = sites.get(siteUrl);
   if (!found) {
-    const asked = siteFetch(context, new URL("mod/qbank/pix/monologo.svg", siteUrl).href).then((response) => response.status !== 404);
+    const asked = moodleVersion(context, siteUrl).then(async ({ branch }) =>
+      branch !== "unknown" ? compareBranches(branch, "5.0") >= 0 : (await siteFetch(context, new URL("mod/qbank/pix/monologo.svg", siteUrl).href)).status !== 404,
+    );
     // A failed request is asked again next time.
     asked.catch(() => sites.delete(siteUrl));
     sites.set(siteUrl, asked);

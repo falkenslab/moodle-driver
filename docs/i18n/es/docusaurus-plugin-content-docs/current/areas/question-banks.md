@@ -21,7 +21,7 @@ Se eligió el id del curso en lugar del id del contexto del banco porque las pá
 - Los bancos de la categoría y del sitio: sus categorías no aparecen en el banco del curso (`questions` y `questionCategories` leen solo las del curso). Trabájalos en Moodle, o importa y exporta a través del curso.
 - El banco propio de un cuestionario (4.x también guarda uno por cuestionario): sus preguntas se leen a través del cuestionario ([`quizStructure`](quizzes.md#quizstructure)); el id de actividad de un cuestionario dado como el de un banco se lee como id de un curso.
 
-La versión se sabe por si el sitio tiene el módulo `qbank` (su icono, un archivo que cualquiera puede descargar), y se pregunta una vez por sitio.
+La versión es la rama del sitio, tal como la averigua [`moodleVersion`](users-and-site.md#moodleversion); en un sitio cuya rama sigue siendo desconocida, lo dice si tiene el módulo `qbank` (su icono, un archivo que cualquiera puede descargar). Se pregunta una vez por sitio.
 
 ## questionBanks
 

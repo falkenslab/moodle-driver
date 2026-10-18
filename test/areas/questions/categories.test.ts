@@ -113,7 +113,7 @@ function fakeCategories() {
 
 async function open(fake: ReturnType<typeof fakeCategories>): Promise<BrowserContext> {
   const context = await browser!.newContext();
-  await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: fake.services });
+  await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, release: "5.2.4 (Build: 20261006)", services: fake.services });
   await fake.routes(context);
   return context;
 }
@@ -216,7 +216,7 @@ describe("categories on Moodle 4.x", { skip: !browser && "no system browser" }, 
           ? { submitted: true, html: "", data: JSON.stringify([{ name: "categories", action: "put", fields: { id: "19" } }]) }
           : { html: `<form class="mform"><input type="hidden" name="_qf__qbank_managecategories_form_question_category_edit_form" value="1"><select name="parent"><option value="17,248">Top</option></select><input name="name"></form>` },
     };
-    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services, serviceCalls: calls });
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, release: "4.5.15 (Build: 20261005)", services, serviceCalls: calls });
     await context.route(`${SITE}**`, async (route) => {
       const url = new URL(route.request().url());
       const html = (body: string, status = 200) => route.fulfill({ status, contentType: "text/html", body });

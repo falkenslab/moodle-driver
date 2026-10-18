@@ -21,7 +21,7 @@ The course's id was chosen over the bank's context id because Moodle's 4.x pages
 - The category and site banks: their categories don't appear in the course's bank (`questions` and `questionCategories` read the course's only). Work them in Moodle, or import and export through the course.
 - A quiz's own bank (4.x keeps one for every quiz too): its questions are read through the quiz ([`quizStructure`](quizzes.md#quizstructure)); a quiz's activity id given as a bank's is read as a course's id.
 
-The version is told by whether the site has the `qbank` module (its icon, a file anyone can fetch), asked once per site.
+The version is the site's branch, as [`moodleVersion`](users-and-site.md#moodleversion) finds it; on a site whose branch stays unknown, whether it has the `qbank` module (its icon, a file anyone can fetch) tells. It's asked once per site.
 
 ## questionBanks
 
