@@ -48,7 +48,37 @@ async function open(plugins: string[], { frozen = false } = {}): Promise<{ conte
   return { context, posts };
 }
 
+/**
+ * Moodle 4.5's txt export form (Classic theme), reduced: the button in the sticky footer at the
+ * form's end, here covered by a fixed banner as a site's own footer or a cookie bar can.
+ */
+const form45 = `<div style="position:fixed;inset:0;z-index:9999;background:#fff">Banner</div>
+<form autocomplete="off" action="${SITE}grade/export/txt/export.php" method="post" class="mform">
+<input name="id" type="hidden" value="3"><input name="sesskey" type="hidden" value="s1"><input name="_qf__grade_export_form" type="hidden" value="1">
+<input type="hidden" name="itemids[12]" value="0"><input type="checkbox" name="itemids[12]" class="form-check-input checkboxgroup1" value="1" id="id_itemids_12" checked>
+<input type="hidden" name="export_feedback" value="0"><input type="checkbox" name="export_feedback" class="form-check-input" value="1" id="id_export_feedback">
+<input type="hidden" name="display[real]" value="0"><input type="checkbox" name="display[real]" class="form-check-input" id="id_display_real" value="1" checked>
+<input type="radio" name="separator" id="id_separator_tab" value="tab"><input type="radio" name="separator" id="id_separator_comma" value="comma" checked>
+<div id="sticky-footer" class="stickyfooter bg-white border-top"><div class="sticky-footer-content"><div id="fitem_id_submitbutton" class="mb-3 row fitem femptylabel">
+<input type="submit" class="btn btn-primary" name="submitbutton" id="id_submitbutton" value="Download"></div></div></div></form>`;
+
 describe("exportGrades", { skip: !browser && "no system browser" }, () => {
+  it("sends Moodle 4.5's form though its sticky footer's button is covered, and reports a page answered instead of a file", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, bodies: { "/grade/export/txt/index.php": menu(["txt"]) + form45 } });
+    let refuse = false;
+    await context.route(`${SITE}grade/export/txt/export.php`, (route) =>
+      refuse
+        ? route.fulfill({ status: 200, contentType: "text/html", body: `<html><body><div class="errorbox"><p class="errormessage">Sorry, but you do not currently have permissions to do that</p></div></body></html>` })
+        : route.fulfill({ status: 200, headers: { "content-type": "text/csv", "content-disposition": 'attachment; filename="Grades.csv"' }, body: "a,b\n" }),
+    );
+    const file = await exportGrades(context, SITE, 3, { format: "csv", destDir: dir });
+    assert.equal(file.name, "Grades.csv");
+    refuse = true;
+    await assert.rejects(exportGrades(context, SITE, 3, { format: "csv", destDir: dir }), (error: Error) => error instanceof GradebookError && /with a page, not a file/.test(error.message));
+    await context.close();
+  });
+
   it("fills the export form and saves the file Moodle sends, never overwriting", async () => {
     const { context, posts } = await open(["ods", "txt", "xls", "xml"]);
     const file = await exportGrades(context, SITE, 3, { format: "csv", itemIds: [12], display: ["real", "percentage"], feedback: true, destDir: dir });

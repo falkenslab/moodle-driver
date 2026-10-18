@@ -237,7 +237,7 @@ interface GradebookGrade {
 
 At least one option must be given. When the grade already is as asked, nothing is sent and `changed` is "Nothing to change.". `grade` comes as the report shows it ("8.50", the scale item's name).
 
-The report's fields only show in editing mode: when the person's editing mode is off, it's turned on for the change through the page's own switch and back off afterwards. A locked grade, an item or person the course's gradebook doesn't have, and Moodle's warnings when saving (a grade out of range on a site with unlimited grades) throw `GradebookError`. Grading an assignment's submission, with its rubric and feedback files, is [`gradeSubmission`](grading.md); an override here is what Moodle shows in the gradebook over the assignment's own grade.
+The report's fields only show in editing mode: when the person's editing mode is off, it's turned on for the change through the page's own switch (or, in themes without it such as Classic on Moodle 4.5, its "Turn editing on" button) and back off afterwards. A locked grade, an item or person the course's gradebook doesn't have, and Moodle's warnings when saving (a grade out of range on a site with unlimited grades) throw `GradebookError`. Grading an assignment's submission, with its rubric and feedback files, is [`gradeSubmission`](grading.md); an override here is what Moodle shows in the gradebook over the assignment's own grade.
 
 ## exportGrades
 
