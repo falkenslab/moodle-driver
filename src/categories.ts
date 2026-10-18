@@ -66,6 +66,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   readWwwroot: NONE,
   publicSiteInfo: NONE,
   siteName: NONE,
+  moodleVersion: NONE,
   logIn: NONE,
   logOut: NONE,
   readSessionFacts: NONE,

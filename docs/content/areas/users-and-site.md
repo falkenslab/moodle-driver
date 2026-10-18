@@ -86,6 +86,26 @@ function siteName(context: BrowserContext, siteUrl: string): Promise<string | un
 
 It returns `undefined` when the call fails for any reason, such as a site with the mobile app's support turned off. It never throws, not even without a session.
 
+## moodleVersion
+
+The Moodle the site runs: its branch and, when the site tells it, its release. It needs no administrator rights, nor a session.
+
+```ts
+function moodleVersion(context: BrowserContext, siteUrl: string): Promise<MoodleVersion>;
+
+interface MoodleVersion {
+  branch: string; // "4.5", "5.0", "5.1", "5.2"…, or "unknown"
+  release?: string; // "4.5.15 (Build: 20261005)"
+}
+```
+
+How it's found, and why it can be `unknown`, is in [compatibility](../reference/compatibility.md#how-the-version-is-found). It's asked once per browser context: later calls, and the functions that need a newer Moodle, reuse the answer. It never throws; a site that doesn't answer gives `unknown`, asked again next time.
+
+```ts fragment
+const { branch } = await moodle.moodleVersion();
+if (branch === "4.5") console.log("No activities overview here.");
+```
+
 ## publicSiteInfo
 
 What the site tells anyone about itself, through Moodle's entry point for services that need no login (`lib/ajax/service-nologin.php`): no browser, no session.
@@ -150,4 +170,4 @@ console.log(me.course?.roles.map((r) => r.name), me.course?.canEdit ? "can edit"
 
 ## Data categories
 
-`whoAmI` and `courseAbilities` are `own`. `userById` and `courseRoles` are `others-personal` (they read anyone's data, the person's included). `siteName`, `publicSiteInfo`, `findMoodleSite`, `parseSiteUrl` and the lower-level `readWwwroot` are `none`; the lower-level `readPageConfig` and `readOwnProfile` are `own`. See [data categories](../concepts/data-categories.md).
+`whoAmI` and `courseAbilities` are `own`. `userById` and `courseRoles` are `others-personal` (they read anyone's data, the person's included). `siteName`, `moodleVersion`, `publicSiteInfo`, `findMoodleSite`, `parseSiteUrl` and the lower-level `readWwwroot` are `none`; the lower-level `readPageConfig` and `readOwnProfile` are `own`. See [data categories](../concepts/data-categories.md).

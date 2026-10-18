@@ -32,10 +32,15 @@ import type { BrowserContext } from "playwright-core";
 import { openForm, openSitePage, setFields } from "../../src/internals.js";
 import { closeBackgroundBrowser } from "../../src/browser/background.js";
 import { hostBackground } from "../../src/cli/background.js";
-import { COURSE, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { compareBranches } from "../../src/core/version.js";
+import { COURSE, SERIES, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { pngFile } from "./packages.js";
 
 const SLOW = { timeout: 300_000 };
+
+/** Moodle 4.5 has no activities overview: there the function is refused, naming its minimum. */
+const NO_OVERVIEW = compareBranches(SERIES, "5.0") < 0;
+const overviewRefused = (error: unknown) => error instanceof MoodleError && error.code === "not-available" && error.message.includes(`needs Moodle 5.0 or later; this site runs ${SERIES}`);
 
 /** A browser of the file's own waits as long as the harness's do for a busy sandbox. */
 function patient(context: BrowserContext): BrowserContext {
@@ -127,6 +132,7 @@ describe("the content course, read", () => {
 
   it("activitiesOverview: the teacher's assignments overview of the content course", SLOW, async () => {
     const teacher = await as("teacher");
+    if (NO_OVERVIEW) return assert.rejects(teacher.activitiesOverview(COURSE, "assign"), overviewRefused);
     const assignments = await teacher.listAssignments(COURSE);
     const overview = await teacher.activitiesOverview(COURSE, "assign");
     assert.deepEqual(overview.map((a) => a.id).sort(), assignments.map((a) => a.id).sort());
@@ -277,6 +283,7 @@ describe("the scratch course, written", () => {
 
   it("activitiesOverview: a type without an overview (labels) gives none; the scratch course's resources", SLOW, async () => {
     const teacher = await as("teacher");
+    if (NO_OVERVIEW) return assert.rejects(teacher.activitiesOverview(scratch.id), overviewRefused);
     // The course has a label, but labels have no overview page: Moodle answers with no activities.
     assert.deepEqual(await teacher.activitiesOverview(scratch.id, "label"), []);
     // "resource" brings every resource type at once.

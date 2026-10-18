@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { findMoodleSite, parseSiteUrl, publicSiteInfo, siteName } from "../../src/index.js";
 import { readWwwroot } from "../../src/internals.js";
-import { COURSE, SITE, as, userId } from "./harness.js";
+import { COURSE, SERIES, SITE, as, userId } from "./harness.js";
 
 describe("session and site", () => {
   it("publicSiteInfo: the site's name and login page, without the browser", async () => {
@@ -23,6 +23,13 @@ describe("session and site", () => {
   it("siteName: the site's name from a logged-in page", async () => {
     const teacher = await as("teacher");
     assert.ok(await siteName(await teacher.context(), SITE));
+  });
+
+  it("moodleVersion: the sandbox's branch and release, as a student", async () => {
+    const student = await as("student");
+    const version = await student.moodleVersion();
+    assert.equal(version.branch, SERIES);
+    assert.ok(version.release?.startsWith(`${SERIES}.`), version.release);
   });
 
   it("parseSiteUrl: the sandbox's URL normalized", () => {

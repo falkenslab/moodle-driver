@@ -29,6 +29,7 @@ export { checkLocalFiles, downloadFile, type DownloadedFile } from "./core/files
 export type { MediaItem, ImageItem } from "./core/text.js";
 export type { ListPage, PageOptions, WithLimit, WithoutLimit } from "./core/paging.js";
 export { publicSiteInfo, courseActivityTypes } from "./areas/site/info.js";
+export { moodleVersion, type MoodleVersion } from "./core/version.js";
 export { userById, siteName, courseRoles, courseAbilities, whoAmI, type User, type Me } from "./areas/site/users.js";
 
 // Courses.

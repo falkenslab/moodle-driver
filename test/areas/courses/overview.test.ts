@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { BrowserContext } from "playwright-core";
-import { MoodleServiceError, NotLoggedInError, activitiesOverview, courseUpdates, deadlines } from "../../../src/index.js";
+import { MoodleError, MoodleServiceError, NotLoggedInError, activitiesOverview, courseUpdates, deadlines } from "../../../src/index.js";
 import { overviewField } from "../../../src/areas/courses/overview.js";
 import { SITE, ServiceFailure, launchTestBrowser, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 const browser = await launchTestBrowser();
@@ -78,6 +78,15 @@ describe("activitiesOverview, deadlines and courseUpdates", { skip: !browser && 
     assert.deepEqual((await activitiesOverview(context, SITE, 3, "page")).map((a) => a.id), [5]);
     assert.deepEqual(await activitiesOverview(context, SITE, 3, "label"), []);
     await assert.rejects(activitiesOverview(context, SITE, 4, "assign"), (error: unknown) => error instanceof MoodleServiceError && error.errorcode === "invalidrecord");
+    await context.close();
+  });
+
+  it("is refused on Moodle 4.5, which has no activities overview, before any service is called", async () => {
+    const context = await browser!.newContext();
+    const calls: { methodname: string; args: Record<string, unknown> }[] = [];
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "T" }, services, serviceCalls: calls, release: "4.5.15 (Build: 20261005)" });
+    await assert.rejects(activitiesOverview(context, SITE, 3, "assign"), (error: unknown) => error instanceof MoodleError && error.code === "not-available" && /activitiesOverview needs Moodle 5\.0 or later; this site runs 4\.5/.test(error.message));
+    assert.deepEqual(calls, []);
     await context.close();
   });
 
