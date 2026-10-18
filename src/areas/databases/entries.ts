@@ -236,8 +236,9 @@ function readPages(page: Page, requests: Read[]): Promise<(ListView | SingleView
           const label = (c.id ? form.querySelector(`label[for="${c.id}"] .accesshide`) : null) ?? c.closest("fieldset")?.querySelector("legend .accesshide") ?? null;
           let name = clean(label?.textContent);
           if (!name) {
+            // Its heading is .fw-bold, .font-weight-bold on Moodle 4.5 (Bootstrap 4).
             const block = c.closest("#defaulttemplate-addentry .mb-3");
-            name = clean(block?.querySelector(".fw-bold")?.textContent);
+            name = clean(block?.querySelector(".fw-bold, .font-weight-bold")?.textContent);
           }
           if (name) names[id] = name;
         }

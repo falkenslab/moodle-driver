@@ -24,6 +24,8 @@ export interface FakeDatabase {
   posts: { path: string; form: URLSearchParams }[];
   /** Presets applied by their full name. */
   applied: string[];
+  /** The fields page as Moodle 4.5 draws it: each type's icon mod_data's font icon, titled with the type. */
+  moodle45?: boolean;
 }
 
 const escape = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -81,7 +83,8 @@ function fieldList(db: FakeDatabase, message = ""): string {
   const rows = db.fields
     .map((f) => {
       const link = (mode: string) => `<a href="${SITE}mod/data/field.php?d=${db.cmid * 10}&amp;fid=${f.id}&amp;sesskey=s1&amp;mode=${mode}" class="dropdown-item menu-action">${mode}</a>`;
-      const icon = f.type === "unknown" ? "plugin" : `<img class="icon " alt="${f.type}" src="${SITE}theme/image.php/boost/datafield_${f.type}/1791993441/icon">&nbsp;${f.type}`;
+      const image = db.moodle45 ? `<i class="icon fa fa-font fa-fw " title="${f.type}" role="img" aria-label="${f.type}"></i>` : `<img class="icon " alt="${f.type}" src="${SITE}theme/image.php/boost/datafield_${f.type}/1791993441/icon">`;
+      const icon = f.type === "unknown" ? "plugin" : `${image}&nbsp;${f.type}`;
       return `<tr><td class="cell c0">${escape(f.name)}</td><td class="cell c1">${icon}</td><td class="cell c2">${f.required ? "Yes" : "No"}</td><td class="cell c3">${escape(f.description)}</td><td class="cell c4 lastcol"><div class="dropdown-menu">${f.type === "unknown" ? "" : link("display")}${link("delete")}</div></td></tr>`;
     })
     .join("");

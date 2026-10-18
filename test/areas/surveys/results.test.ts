@@ -12,7 +12,7 @@ const page = (body: string, bodyId: string) => moodlePage({ userId: 3, body: `<d
 const errorBox = (message: string) => `<div data-rel="fatalerror" class="box errorbox alert alert-danger"><p class="errormessage">${message}</p></div>`;
 
 // A made-up feedback (cmid 34) shaped like Moodle 5.2's print page: a single choice, a multiple
-// choice, a page break, a rated choice, a text field and a number.
+// choice, a page break, a rated choice, a text field (required, marked as Moodle 4.5 does: .sr-only) and a number.
 const FEEDBACK_PRINT = `<form class="feedback_form"><div data-region="questions-sortable-list">
 <div id="fgroup_id_group_multichoice_1" class="mb-3 row fitem feedback_itemlist feedback-item-multichoice feedback_hasvalue multichoice-r multichoice-vertical">
   <div class="col-md-3 col-form-label"><p>Did you like it<i class="icon fa fa-circle-exclamation text-danger" title="Required field"></i><span class="visually-hidden">(Required field)</span></p></div>
@@ -33,7 +33,7 @@ const FEEDBACK_PRINT = `<form class="feedback_form"><div data-region="questions-
   <label><input type="radio" name="multichoicerated_5" value="2"> <span class="weight">(3) </span>Good</label></div>
 </div>
 <div id="fitem_id_textfield_6" class="mb-3 row fitem feedback_itemlist feedback-item-textfield feedback_hasvalue">
-  <div class="col-md-3 col-form-label"><label for="id_textfield_6">One word</label></div><div class="felement"><input type="text" name="textfield_6"></div>
+  <div class="col-md-3 col-form-label"><label for="id_textfield_6">One word<i class="icon fa fa-exclamation-circle text-danger fa-fw ms-2" title="Required field"></i><span class="sr-only">(Required field)</span></label></div><div class="felement"><input type="text" name="textfield_6"></div>
 </div>
 <div id="fitem_id_numeric_8" class="mb-3 row fitem feedback_itemlist feedback-item-numeric feedback_hasvalue">
   <div class="col-md-3 col-form-label"><label for="id_numeric_8">Mark<span class="boundaries"> (0 - 10)</span></label></div><div class="felement"><input type="text" name="numeric_8"></div>

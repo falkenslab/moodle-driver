@@ -170,7 +170,7 @@ function listedFields(page: Page): Promise<ListedField[]> {
   return page.evaluate(() => {
     interface Row {
       cells: ArrayLike<{ textContent: string | null }>;
-      querySelector(s: string): { href: string; src: string } | null;
+      querySelector(s: string): { href: string; src: string; getAttribute(name: string): string | null } | null;
     }
     const doc = (globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<Row> } }).document;
     const listed: { id: number; name: string; type: string; editable: boolean }[] = [];
@@ -181,7 +181,12 @@ function listedFields(page: Page): Promise<ListedField[]> {
         id: Number(new URL(remove.href).searchParams.get("fid")),
         name: (row.cells[0]?.textContent ?? "").trim(),
         // The type's icon comes from its plugin: theme/image.php/<theme>/datafield_<type>/<rev>/icon.
-        type: /\/datafield_(\w+)\//.exec(row.querySelector("img.icon")?.src ?? "")?.[1] ?? "unknown",
+        // Moodle 4.5 draws mod_data's field/<type> icon instead, a font icon whose title is the type
+        // (its pix_icon's alt, the type's name; confirmed empirically, 4.5).
+        type:
+          /\/datafield_(\w+)\//.exec(row.querySelector("img.icon")?.src ?? "")?.[1] ??
+          /^(\w+)$/.exec(row.querySelector("td:nth-child(2) .icon[title]")?.getAttribute("title") ?? "")?.[1] ??
+          "unknown",
         // A field whose type's plugin is missing has no edit link.
         editable: row.querySelector('a[href*="mode=display"]') !== null,
       });

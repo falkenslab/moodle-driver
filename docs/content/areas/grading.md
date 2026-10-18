@@ -197,7 +197,7 @@ Allocates a marker to several participants' submissions, as the grading table's 
 function allocateMarker(context: BrowserContext, siteUrl: string, activityId: number, userIds: number[], markerId: number | number[]): Promise<{ changed: string }>;
 ```
 
-- `markerId`: the user id of someone in the course who can grade the assignment; an array where the assignment uses several markers per submission (Moodle 5.2's "Number of markers"), one per marker in order. The ones not given are left unallocated.
+- `markerId`: the user id of someone in the course who can grade the assignment; an array where the assignment uses several markers per submission (Moodle 5.2's "Number of markers"), one per marker in order. The ones not given are left unallocated. Moodle 4.5 has one marker per submission: a single id there.
 
 Moodle leaves alone the submissions whose state is past marking (marking completed, in review, ready for release, released). `assignmentSubmissions` gives each submission's `markers`.
 

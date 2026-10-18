@@ -32,6 +32,8 @@ export interface FakeEntries {
   lists: URLSearchParams[];
   /** Files uploaded to draft areas: "<itemid>:<name>". */
   uploads: string[];
+  /** The add entry template's headings as Moodle 4.5 writes them (Bootstrap 4's font-weight-bold). */
+  moodle45?: boolean;
 }
 
 const escape = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -86,7 +88,7 @@ function entryForm(db: FakeEntries, entry: FakeEntry | undefined, message = ""):
   const [year, month, day] = String(values[BORN] ?? "2026-10-17").split("-").map(Number);
   const select = (name: string, options: number[], selected: number) => `<select name="${name}">${options.map((o) => `<option value="${o}"${o === selected ? " selected" : ""}>${o}</option>`).join("")}</select>`;
   const tags = (values[TAGS] as string[] | undefined) ?? [];
-  const block = (name: string, input: string) => `<div class="mb-3 pt-3"><div class="fw-bold">${name}</div><div title="">${input}</div></div>`;
+  const block = (name: string, input: string) => `<div class="mb-3 pt-3"><div class="${db.moodle45 ? "font-weight-bold" : "fw-bold"}">${name}</div><div title="">${input}</div></div>`;
   const draft = entry ? `${entry.id}00` : "900";
   const fields = [
     block("Title", `<label for="field_${TITLE}"><span class="accesshide">Title</span></label><input type="text" name="field_${TITLE}" id="field_${TITLE}" value="${escape(String(values[TITLE] ?? ""))}" />`),

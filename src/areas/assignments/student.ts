@@ -62,8 +62,10 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
       return {
         description: text(doc.querySelector(".activity-description, #intro")),
         descriptionFiles: links('.activity-description a[href*="pluginfile.php"], #intro a[href*="pluginfile.php"]'),
-        dates: Array.from(doc.querySelectorAll('[data-region="activity-dates"] .date-item')).map((item) => {
-          const label = text(item.querySelector(".date-item-label"));
+        // Moodle 5.2's dates are .date-item with a .date-item-label; 4.5's plain divs with the label in
+        // a strong (core_course/activity_date, confirmed empirically, 4.5).
+        dates: Array.from(doc.querySelectorAll('[data-region="activity-dates"] .date-item, [data-region="activity-dates"] > div:not(.date-item)')).map((item) => {
+          const label = text(item.querySelector(".date-item-label, strong"));
           return { label: label.replace(/:$/, ""), value: text(item).slice(label.length).trim() };
         }),
         status: rows(".submissionstatustable tr"),

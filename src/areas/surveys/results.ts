@@ -134,11 +134,12 @@ export function readFeedbackItems(page: Page): Promise<FeedbackItem[]> {
       cloneNode(deep: boolean): El;
     }
     const doc = (globalThis as unknown as { document: El }).document;
-    // An element's text without what only screen readers get, icons, a numeric item's range and a rated option's weight.
+    // An element's text without what only screen readers get (.visually-hidden; .sr-only on Moodle 4.5,
+    // its Bootstrap 4), icons, a numeric item's range and a rated option's weight.
     const text = (el: El | null | undefined) => {
       if (!el) return "";
       const copy = el.cloneNode(true);
-      for (const extra of Array.from(copy.querySelectorAll(".visually-hidden, .accesshide, .icon, .boundaries, .weight, input, select"))) extra.remove();
+      for (const extra of Array.from(copy.querySelectorAll(".visually-hidden, .sr-only, .accesshide, .icon, .boundaries, .weight, input, select"))) extra.remove();
       return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
     };
     const items: FeedbackItem[] = [];
@@ -346,7 +347,7 @@ export function readQuestionnaireResponse(page: Page): Promise<QuestionnaireAnsw
     const text = (el: El | null | undefined) => {
       if (!el) return "";
       const copy = el.cloneNode(true);
-      for (const extra of Array.from(copy.querySelectorAll(".accesshide, .visually-hidden, .response.text, input, select"))) extra.remove();
+      for (const extra of Array.from(copy.querySelectorAll(".accesshide, .visually-hidden, .sr-only, .response.text, input, select"))) extra.remove();
       return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
     };
     const answers: QuestionnaireAnswer[] = [];

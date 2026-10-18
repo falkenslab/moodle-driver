@@ -353,8 +353,12 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
     await context.close();
   });
 
-  /** The batch forms as Moodle 5.2's, reduced and made up; `markers` 0 is its error page for too few markers. */
-  async function batchSite(context: BrowserContext, { markers = 1, multi = false, workflow = true } = {}) {
+  /** Moodle 4.5's grading panel with the workflow and allocation: one marker select, allocatedmarker. */
+  const panel45 = `<form class="gradeform mform"><input type="text" name="grade" value=""><select name="workflowstate"><option value="" selected>Not marked</option><option value="inmarking">In marking</option></select>
+<select name="allocatedmarker"><option value="">Choose...</option><option value="3" selected>Teacher Uno</option></select></form>`;
+
+  /** The batch forms as Moodle 5.2's (4.5's with `moodle45`), reduced and made up; `markers` 0 is its error page for too few markers. */
+  async function batchSite(context: BrowserContext, { markers = 1, multi = false, workflow = true, moodle45 = false } = {}) {
     const posted: URLSearchParams[] = [];
     // The grading panel says whether the assignment uses the workflow and allocation: PANEL has neither.
     const state: FakeMoodleState = {
@@ -363,7 +367,7 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
       services: {
         // Only participant 6 has a submission.
         mod_assign_list_participants: () => [5, 6].map((id) => ({ id, fullname: `User ${id}`, submitted: id === 6, requiregrading: false, grantedextension: false, submissionstatus: id === 6 ? "submitted" : "" })),
-        core_get_fragment: () => ({ html: workflow ? workflowPanel("") : PANEL, javascript: "" }),
+        core_get_fragment: () => ({ html: moodle45 ? panel45 : workflow ? workflowPanel("") : PANEL, javascript: "" }),
       },
     };
     await serveFakeMoodle(context, state);
@@ -385,7 +389,7 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
 <select name="sendstudentnotifications"><option value="0">No</option><option value="1">Yes</option></select><input type="submit" name="submitbutton" value="Save"></form>`, "page-mod-assign-viewbatchsetmarkingworkflowstate"));
       }
       if (markers === 0) return html(page(`<div data-rel="fatalerror"><p class="errormessage">There are not enough markers (1) to meet the required number for this assignment (2).</p></div>`, "page-mod-assign-viewbatchmarkingallocation"));
-      const slots = Array.from({ length: markers }, (_, i) => `<select name="allocatedmarker${i + 1}"><option value="">Choose...</option><option value="3">Teacher Uno</option></select>`).join("");
+      const slots = Array.from({ length: markers }, (_, i) => `<select name="allocatedmarker${moodle45 ? "" : i + 1}"><option value="">Choose...</option><option value="3">Teacher Uno</option></select>`).join("");
       return html(page(`<form class="mform" method="post" action="${SITE}mod/assign/view.php">${hidden}<input type="hidden" name="action" value="setbatchmarkingallocation">${slots}<input type="submit" name="submitbutton" value="Save"></form>`, "page-mod-assign-viewbatchmarkingallocation"));
     });
     return Object.assign(posted, { state });
@@ -429,6 +433,15 @@ describe("group submissions and the marking workflow", { skip: !browser && "no s
     await batchSite(refused, { markers: 0 });
     await assert.rejects(allocateMarker(refused, SITE, 66, [5], 3), (error: unknown) => error instanceof GradingError && /not enough markers \(1\)/.test(error.message));
     await refused.close();
+  });
+
+  it("allocates the one marker of Moodle 4.5's forms", async () => {
+    const context = await browser!.newContext();
+    const posted = await batchSite(context, { moodle45: true });
+    assert.equal((await allocateMarker(context, SITE, 65, [6], 3)).changed, "Allocated marker 3 to user 6 in assignment 65.");
+    assert.equal(posted[0]?.get("allocatedmarker"), "3");
+    await assert.rejects(allocateMarker(context, SITE, 65, [6], [3, 3]), /uses 1 marker per submission/);
+    await context.close();
   });
 });
 
