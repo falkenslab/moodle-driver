@@ -1,5 +1,6 @@
 import type { BrowserContext } from "playwright-core";
-import { callService } from "../../core/ajax.js";
+import { callService, MoodleServiceError } from "../../core/ajax.js";
+import { MoodleError } from "../../core/errors.js";
 import { courseState } from "./state.js";
 import { decodeEntities } from "../../core/text.js";
 import { requireMoodle } from "../../core/version.js";
@@ -65,12 +66,29 @@ export function overviewField(item: OverviewItem): OverviewField {
   return field;
 }
 
+const OVERVIEW = "core_courseformat_get_overview_information";
+
+/**
+ * Whether a failure of the overview service is Moodle lacking it (4.5): an unknown service answers
+ * `invalidrecord` (`invalidrecordunknown` on 5.x), as a course that doesn't exist does, so the
+ * course's state, which 4.5 has, tells which.
+ */
+async function overviewMissing(context: BrowserContext, siteUrl: string, courseId: number, error: unknown): Promise<boolean> {
+  if (!(error instanceof MoodleServiceError && error.errorcode.startsWith("invalidrecord"))) return false;
+  return courseState(context, siteUrl, courseId).then(
+    () => true,
+    () => false,
+  );
+}
+
 /**
  * Moodle 5's activities overview of a course for one type ("resource" for every resource type):
  * per activity, the columns its overview page shows the person (due dates, submissions, what needs
  * grading, their own grade…). Without a type, every type in the course's state: "resource" first,
  * which brings pages, books, files, folders and links at once, then each type still missing.
  * Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`).
+ * which brings pages, books, files, folders and links at once, then each type still missing. Throws
+ * `MoodleError` `not-available` on Moodle 4.5, which has no activities overview.
  */
 export async function activitiesOverview(context: BrowserContext, siteUrl: string, courseId: number, type?: string) {
   await requireMoodle(context, siteUrl, "5.0", "activitiesOverview");
@@ -89,8 +107,9 @@ export async function activitiesOverview(context: BrowserContext, siteUrl: strin
     if (!type && modname !== "resource" && (cmsByType.get(modname) ?? []).every((id) => seen.has(id))) continue;
     let answer: { activities: OverviewActivity[] };
     try {
-      answer = await callService(context, siteUrl, "core_courseformat_get_overview_information", { courseid: courseId, modname });
+      answer = await callService(context, siteUrl, OVERVIEW, { courseid: courseId, modname });
     } catch (error) {
+      if (await overviewMissing(context, siteUrl, courseId, error)) throw new MoodleError("The activities overview needs Moodle 5.0 or later: this site has no service for it.", "not-available");
       // A type without an overview (labels, some plugins) is left out when listing them all.
       if (type) throw error;
       continue;

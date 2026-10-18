@@ -8,7 +8,7 @@ The signatures below are the functions'. Each operation is also a method of the 
 
 ## How blocks work in Moodle
 
-A block sits in a region of the page, and its weight orders it there (lower comes first). Boost, Moodle's default theme, gives course pages one region, `side-pre`, the block drawer; other themes may have more (`side-post`). Blocks are changed in editing mode: "Add a block", and each block's actions menu (configure, move, hide, delete). A block can be hidden from students; only whom can edit the blocks see it then.
+A block sits in a region of the page, and its weight orders it there (lower comes first). Boost, Moodle's default theme, gives course pages one region, `side-pre`, the block drawer; other themes may have more: Classic gives them `side-pre` and `side-post`, the left and right columns (as on Moodle 4.5). Blocks are changed in editing mode: "Add a block", and each block's actions menu (configure, move, hide, delete). A block can be hidden from students; only whom can edit the blocks see it then.
 
 Moodle has no service open to AJAX that lists a course's blocks (`core_block_get_course_blocks` is for the mobile app), so the driver reads them from the course page, and changes them as its editing mode does: the block actions on the course page (`bui_addblock`, `bui_moveid`, `bui_deleteid`) and each block's configure form (`bui_editid`). The block types the page offers come from `core_block_fetch_addable_blocks`, the service the "Add a block" dialog calls. Editing mode is a setting of the person's session: the functions turn it on for the work and back off afterwards, when it was off, so the person's own tab finds the course as they left it.
 

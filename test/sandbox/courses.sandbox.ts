@@ -26,6 +26,7 @@ import {
   logOut,
   moduleCategories,
   siteProfileDir,
+  type CourseBlock,
   type CourseSection,
 } from "../../src/index.js";
 import type { BrowserContext } from "playwright-core";
@@ -33,6 +34,7 @@ import { openForm, openSitePage, setFields } from "../../src/internals.js";
 import { closeBackgroundBrowser } from "../../src/browser/background.js";
 import { hostBackground } from "../../src/cli/background.js";
 import { compareBranches } from "../../src/core/version.js";
+
 import { COURSE, SERIES, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { pngFile } from "./packages.js";
 
@@ -284,6 +286,12 @@ describe("the scratch course, written", () => {
   it("activitiesOverview: a type without an overview (labels) gives none; the scratch course's resources", SLOW, async () => {
     const teacher = await as("teacher");
     if (NO_OVERVIEW) return assert.rejects(teacher.activitiesOverview(scratch.id), overviewRefused);
+    if (SERIES === "4.5") {
+      // Moodle 4.5 has no activities overview.
+      await assert.rejects(teacher.activitiesOverview(scratch.id, "resource"), { code: "not-available" });
+      await assert.rejects(teacher.activitiesOverview(scratch.id), { code: "not-available" });
+      return;
+    }
     // The course has a label, but labels have no overview page: Moodle answers with no activities.
     assert.deepEqual(await teacher.activitiesOverview(scratch.id, "label"), []);
     // "resource" brings every resource type at once.
@@ -339,7 +347,13 @@ describe("the scratch course, written", () => {
 
   it("updateCourse: a short name already taken is FormError; the student is refused", SLOW, async () => {
     const teacher = await as("teacher");
-    const taken = (await teacher.listCourses()).find((c) => c.id === COURSE)!.shortname;
+    // Another course's short name: the content course's (5.2), or another the teacher is in, or a second scratch course (4.5 has no content course).
+    const courses = await teacher.listCourses();
+    let taken = (courses.find((c) => c.id === COURSE) ?? courses.find((c) => c.id !== scratch.id))?.shortname;
+    if (!taken) {
+      const second = await scratchCourse("taken");
+      taken = (await teacher.listCourses()).find((c) => c.id === second.id)!.shortname;
+    }
     await assert.rejects(teacher.updateCourse(scratch.id, { shortName: taken }), (error: unknown) => error instanceof FormError && error.fields.some((f) => f.field === "shortname"));
     await assert.rejects((await as("student")).updateCourse(scratch.id, { fullName: "Not allowed" }), CourseError);
   });
@@ -356,6 +370,11 @@ describe("the scratch course's blocks", () => {
     },
     { timeout: 600_000 },
   );
+
+  /** The blocks the checks added: Classic (4.5) also shows the site's navigation and administration blocks on the course page. */
+  function ours(blocks: CourseBlock[]): CourseBlock[] {
+    return blocks.filter((b) => b.id === textId || b.id === eventsId);
+  }
 
   /** Whether the teacher's course page is in editing mode: the functions put it back as it was. */
   async function editing(): Promise<boolean> {
@@ -383,7 +402,7 @@ describe("the scratch course's blocks", () => {
 
   it("courseBlocks: the teacher gets both blocks with weights; the student the text block, without", SLOW, async () => {
     const teacher = await as("teacher");
-    const blocks = await teacher.courseBlocks(course.id);
+    const blocks = ours(await teacher.courseBlocks(course.id));
     assert.deepEqual(blocks.map((b) => b.type).sort(), ["calendar_upcoming", "html"]);
     assert.ok(blocks.every((b) => typeof b.weight === "number" && b.visible));
     const seen = (await (await as("student")).courseBlocks(course.id)).find((b) => b.id === textId);
@@ -408,15 +427,15 @@ describe("the scratch course's blocks", () => {
 
   it("moveBlock: the text block before and after the other one; a region the page lacks is BlockError", SLOW, async () => {
     const teacher = await as("teacher");
-    // Boost's course page has one region, side-pre: blocks move within it.
+    // Within side-pre, the region Boost's course page has (Classic's has side-post too).
     const first = await teacher.moveBlock(course.id, textId, { region: "side-pre", weight: -5 });
     assert.equal(first.block.weight, -5);
-    assert.deepEqual((await teacher.courseBlocks(course.id)).map((b) => b.id), [textId, eventsId]);
+    assert.deepEqual(ours(await teacher.courseBlocks(course.id)).map((b) => b.id), [textId, eventsId]);
     const last = await teacher.moveBlock(course.id, textId, {});
     const events = (await teacher.courseBlocks(course.id)).find((b) => b.id === eventsId);
     assert.ok((last.block.weight ?? 0) > (events?.weight ?? 0));
-    assert.deepEqual((await teacher.courseBlocks(course.id)).map((b) => b.id), [eventsId, textId]);
-    await assert.rejects(teacher.moveBlock(course.id, textId, { region: "side-post" }), BlockError);
+    assert.deepEqual(ours(await teacher.courseBlocks(course.id)).map((b) => b.id), [eventsId, textId]);
+    await assert.rejects(teacher.moveBlock(course.id, textId, { region: "side-nowhere" }), BlockError);
   });
 
   it("deleteBlock: both blocks removed; editing mode left as it was", SLOW, async () => {
@@ -424,7 +443,7 @@ describe("the scratch course's blocks", () => {
     await assert.rejects((await as("student")).deleteBlock(course.id, textId), BlockError);
     await teacher.deleteBlock(course.id, textId);
     await teacher.deleteBlock(course.id, eventsId);
-    assert.deepEqual(await teacher.courseBlocks(course.id), []);
+    assert.deepEqual(ours(await teacher.courseBlocks(course.id)), []);
     assert.equal(await editing(), false);
   });
 });
@@ -432,11 +451,13 @@ describe("the scratch course's blocks", () => {
 describe("the browser and the session", () => {
   it("siteProfileDir: the command's profile of an account, and the site's default", async () => {
     const home = path.join(work, "home");
-    assert.equal(siteProfileDir(SITE, { as: "ada", home }), path.join(home, "sites", "localhost_8080", "profiles", "ada"));
+    // The site's folder: localhost_8080 (5.2) or localhost_8081 (4.5).
+    const site = new URL(SITE).host.replace(":", "_");
+    assert.equal(siteProfileDir(SITE, { as: "ada", home }), path.join(home, "sites", site, "profiles", "ada"));
     assert.throws(() => siteProfileDir(SITE, { home }), { code: "not-found" });
-    await mkdir(path.join(home, "sites", "localhost_8080"), { recursive: true });
-    await writeFile(path.join(home, "sites", "localhost_8080", "site.json"), JSON.stringify({ url: SITE, default: "lucia" }));
-    assert.equal(siteProfileDir(SITE, { home }), path.join(home, "sites", "localhost_8080", "profiles", "lucia"));
+    await mkdir(path.join(home, "sites", site), { recursive: true });
+    await writeFile(path.join(home, "sites", site, "site.json"), JSON.stringify({ url: SITE, default: "lucia" }));
+    assert.equal(siteProfileDir(SITE, { home }), path.join(home, "sites", site, "profiles", "lucia"));
     assert.throws(() => siteProfileDir(SITE, { as: "../x", home }), { code: "invalid-input" });
   });
 

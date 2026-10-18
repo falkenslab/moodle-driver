@@ -129,7 +129,11 @@ export interface BadgeRow {
 /**
  * The rows of a badges table (the page, or the HTML its table service sends), read by links, classes
  * and the columns' sort keys. The columns are Moodle's (5.2): name, the status (for whom may see
- * disabled badges), the criteria, the recipients (the same people) and "issued to me".
+ * disabled badges), the criteria, the recipients (the same people) and "issued to me". Moodle 4.5
+ * sorts the recipients by `_issued` rather than `_visible`, and writes "no criteria" as bare text
+ * where 5.x puts an empty `.no-criteria-set`: there, a disabled badge whose criteria cell has no
+ * markup and whose row offers neither enabling nor disabling (which Moodle offers only to a badge
+ * with criteria) has none.
  */
 export function readBadgeRows(page: Page, html?: string): Promise<BadgeRow[]> {
   return inPage(
@@ -138,6 +142,7 @@ export function readBadgeRows(page: Page, html?: string): Promise<BadgeRow[]> {
       interface El {
         textContent: string | null;
         className: string;
+        children: ArrayLike<El>;
         innerHTML: string;
         content: El;
         getAttribute(name: string): string | null;
@@ -156,11 +161,15 @@ export function readBadgeRows(page: Page, html?: string): Promise<BadgeRow[]> {
       const headers = Array.from(table.querySelectorAll("thead th"));
       const column = (key: string) => headers.findIndex((th) => (th.querySelector("a[data-sortby]")?.getAttribute("data-sortby") ?? "").endsWith(`_${key}`));
       const status = column("status");
-      const recipients = column("visible");
+      const recipients = column("visible") >= 0 ? column("visible") : column("issued");
       const issued = column("dateissued");
       // The criteria come right after the name, or after the status when it's shown.
       const criteria = status >= 0 ? status + 1 : 1;
       const text = (el: El | undefined) => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
+      const noCriteria = (row: El, cell: El | undefined) =>
+        !cell ||
+        cell.querySelector(".no-criteria-set") !== null ||
+        (cell.children.length === 0 && /\btext-muted\b/.test(row.className) && !row.querySelector('[data-action="enablebadge"], [data-action="disablebadge"]'));
       return Array.from(table.querySelectorAll("tbody tr")).flatMap((row) => {
         if (/\bemptyrow\b/.test(row.className)) return [];
         const link = row.querySelector('a[href*="/badges/overview.php?id="]');
@@ -174,7 +183,7 @@ export function readBadgeRows(page: Page, html?: string): Promise<BadgeRow[]> {
             name: text(link),
             // Moodle mutes the rows of disabled badges; whom may not see them gets enabled ones only.
             enabled: !/\btext-muted\b/.test(row.className),
-            criteria: cells[criteria]?.querySelector(".no-criteria-set") ? "" : text(cells[criteria]),
+            criteria: noCriteria(row, cells[criteria]) ? "" : text(cells[criteria]),
             ...(Number.isNaN(count) ? {} : { recipients: count }),
             // "Issued to me" links to the person's own copy of the badge.
             awarded: Boolean(issued >= 0 && cells[issued]?.querySelector('a[href*="/badges/badge.php"]')),

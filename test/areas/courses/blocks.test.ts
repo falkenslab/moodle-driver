@@ -19,9 +19,11 @@ interface FakeBlock {
 /**
  * A course page with blocks, reduced and made up, as Moodle 5.2's course/view.php renders them: the
  * edit mode switch (editmode.php), the side-pre region, each block's section, and in editing mode the
- * "Add a block" link, the `bui_*` actions and each block's configure form.
+ * "Add a block" link, the `bui_*` actions and each block's configure form. `classic` draws it as Moodle
+ * 4.5's Classic theme does: a "Turn editing on/off" button posting `edit` to the course page instead of
+ * the switch, and an "Add a block" block's select instead of the link.
  */
-async function fakeCourse(context: BrowserContext, { canEdit = true, canManage = true, editing = false, blocks = [] as FakeBlock[] } = {}) {
+async function fakeCourse(context: BrowserContext, { canEdit = true, canManage = true, editing = false, blocks = [] as FakeBlock[], classic = false } = {}) {
   const fake = { editing, blocks, modes: [] as string[], actions: [] as string[], nextId: 100 };
   const state: FakeMoodleState = {
     user: { id: 3, fullName: "Teacher" },
@@ -39,8 +41,10 @@ async function fakeCourse(context: BrowserContext, { canEdit = true, canManage =
   };
   const coursePage = () => {
     const shown = fake.blocks.filter((b) => fake.editing || b.visible).sort((a, b) => a.weight - b.weight);
-    const body = `${canEdit ? `<form action="${SITE}editmode.php" method="post" class="editmode-switch-form"><input type="checkbox" name="setmode"><input type="hidden" name="sesskey" value="s1"><input type="hidden" name="context" value="40"><input type="hidden" name="pageurl" value="${SITE}course/view.php?id=3"></form>` : ""}
-${fake.editing && canManage ? `<a href="${SITE}course/view.php?id=3&amp;bui_addblock&amp;sesskey=s1" data-key="addblock">Add a block</a>` : ""}
+    const button = `<form method="post" action="${SITE}course/view.php"><input type="hidden" name="id" value="3"><input type="hidden" name="sesskey" value="s1"><input type="hidden" name="edit" value="${fake.editing ? "off" : "on"}"><button type="submit">Turn editing</button></form>`;
+    const add = classic ? `<section class="block_adminblock block"><form method="get" action="${SITE}course/view.php"><select name="bui_addblock"><option value="">Add...</option></select></form></section>` : `<a href="${SITE}course/view.php?id=3&amp;bui_addblock&amp;sesskey=s1" data-key="addblock">Add a block</a>`;
+    const body = `${canEdit && classic ? button : ""}${canEdit && !classic ? `<form action="${SITE}editmode.php" method="post" class="editmode-switch-form"><input type="checkbox" name="setmode"><input type="hidden" name="sesskey" value="s1"><input type="hidden" name="context" value="40"><input type="hidden" name="pageurl" value="${SITE}course/view.php?id=3"></form>` : ""}
+${fake.editing && canManage ? add : ""}
 <aside id="block-region-side-pre" class="block-region" data-blockregion="side-pre">${shown.map(section).join("")}</aside>`;
     return moodlePage({ userId: 3, heading: "Course", bodyId: "page-course-view-topics", bodyClass: `pagelayout-course ${fake.editing ? "editing" : ""}`, contextId: 40, body });
   };
@@ -66,6 +70,11 @@ ${b.type === "html" ? `<input name="config_title" value="${b.title}"><textarea n
     const url = new URL(route.request().url());
     const html = (body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
     const p = (name: string) => url.searchParams.get(name);
+    const posted = new URLSearchParams(route.request().postData() ?? "");
+    if (classic && route.request().method() === "POST" && posted.get("sesskey") === "s1" && posted.has("edit")) {
+      fake.modes.push(posted.get("edit")!);
+      fake.editing = posted.get("edit") === "on";
+    }
     if (fake.editing && p("bui_editid")) {
       const block = fake.blocks.find((b) => b.id === Number(p("bui_editid")));
       if (!block) return html(moodlePage({ userId: 3, body: '<div data-rel="fatalerror"><p class="errormessage">The block is not on this page.</p></div>' }));
@@ -131,6 +140,17 @@ describe("courseBlocks", { skip: !browser && "no system browser" }, () => {
     const fake = await fakeCourse(context, { canEdit: false, canManage: false, blocks: [{ ...TEXT }, { ...EVENTS }] });
     assert.deepEqual(await courseBlocks(context, SITE, 3), [{ id: 7, type: "html", title: "Welcome", region: "side-pre", visible: true, content: "<p>Hi <b>all</b></p>" }]);
     assert.deepEqual(fake.modes, []);
+    await context.close();
+  });
+
+  it("turns editing mode on and off with Classic's button, and reads its blocks (Moodle 4.5)", async () => {
+    const context = await browser!.newContext();
+    const fake = await fakeCourse(context, { classic: true, blocks: [{ ...TEXT }, { ...EVENTS }] });
+    assert.deepEqual((await courseBlocks(context, SITE, 3)).map((b) => [b.id, b.weight]), [[8, 1], [7, 2]]);
+    const { block } = await addBlock(context, SITE, 3, { type: "html", title: "Links" });
+    assert.equal(block.title, "Links");
+    assert.deepEqual(fake.modes, ["on", "off", "on", "off"]);
+    assert.equal(fake.editing, false);
     await context.close();
   });
 

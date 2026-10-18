@@ -12,6 +12,8 @@ export interface MoodleMethods {
    * grading, their own grade…). Without a type, every type in the course's state: "resource" first,
    * which brings pages, books, files, folders and links at once, then each type still missing.
    * Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`).
+   * which brings pages, books, files, folders and links at once, then each type still missing. Throws
+   * `MoodleError` `not-available` on Moodle 4.5, which has no activities overview.
    */
   activitiesOverview(courseId: number, type?: string): Promise<{ fields: import("./areas/courses/overview.js").OverviewField[]; available?: boolean | undefined; visible: boolean; url?: string | undefined; id: number; name: string; type: string; }[]>;
   /**

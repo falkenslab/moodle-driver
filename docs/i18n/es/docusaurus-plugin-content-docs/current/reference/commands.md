@@ -12,7 +12,7 @@ La descripción de cada comando sale de los comentarios del código, que están 
 
 ## activitiesOverview
 
-Moodle 5's activities overview of a course for one type ("resource" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: "resource" first, which brings pages, books, files, folders and links at once, then each type still missing. Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`).
+Moodle 5's activities overview of a course for one type ("resource" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: "resource" first, which brings pages, books, files, folders and links at once, then each type still missing. Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`). which brings pages, books, files, folders and links at once, then each type still missing. Throws `MoodleError` `not-available` on Moodle 4.5, which has no activities overview.
 
 ```bash
 moodle activities-overview <courseId> [type]

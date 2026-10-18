@@ -280,7 +280,7 @@ Un estudiante se matricula con la clave en el propio Moodle (el "Matricularme" d
 
 ## Anotaciones sobre los participantes {#notes-about-participants}
 
-Un profesor guarda anotaciones sobre los participantes de un curso en las páginas de anotaciones de Moodle: la página de anotaciones las lista (`notes/index.php`), su formulario las escribe y las edita (`notes/edit.php`) y su confirmación las borra (`notes/delete.php`). De los servicios de anotaciones de Moodle solo `core_notes_create_notes` está abierto a AJAX, y archiva una anotación del sitio bajo la portada del sitio en lugar del curso, a diferencia del formulario (así lo hace `notes/externallib.php` en Moodle 5.2); por eso el driver usa las páginas para todo.
+Un profesor guarda anotaciones sobre los participantes de un curso en las páginas de anotaciones de Moodle: la página de anotaciones las lista (`notes/index.php`), su formulario las escribe y las edita (`notes/edit.php`) y su confirmación las borra (`notes/delete.php`). De los servicios de anotaciones de Moodle solo `core_notes_create_notes` está abierto a AJAX, y archiva una anotación del sitio bajo la portada del sitio en lugar del curso, a diferencia del formulario (así lo hace `notes/externallib.php` en Moodle 5.2); por eso el driver usa las páginas para todo. El formulario de Moodle 4.5 tiene un área de texto simple para el contenido donde 5.x tiene un editor; el driver rellena cualquiera de los dos, y el HTML se conserva en ambos.
 
 ```ts
 function notes(context: BrowserContext, siteUrl: string, courseId: number, options?: { userId?: number; limit?: number; offset?: number }): Promise<ParticipantNote[]>; // ListPage<ParticipantNote> con limit

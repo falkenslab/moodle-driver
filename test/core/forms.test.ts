@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import { FormError } from "../../src/index.js";
-import { dateSelectorDate, dateSelectorValues, setFields } from "../../src/core/forms.js";
+import { dateSelectorDate, dateSelectorValues, setFields, submitForm } from "../../src/core/forms.js";
 import { launchTestBrowser } from "../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -34,6 +34,21 @@ describe("setFields", { skip: !browser && "no system browser" }, () => {
 </script>`);
     await setFields(page, { "message[text]": "<p>Late but set</p>" });
     assert.equal(await page.inputValue('[name="message[text]"]'), "<p>Late but set</p>");
+    await page.close();
+  });
+});
+
+describe("submitForm", { skip: !browser && "no system browser" }, () => {
+  it("saves under a user tour's backdrop, which takes the mouse's clicks (Moodle 4.5's course page tours)", async () => {
+    const page = await browser!.newPage();
+    await page.route("http://fake.test/**", (route) => {
+      const saved = route.request().url().endsWith("/saved");
+      const body = saved ? "<p>Saved</p>" : `<form class="mform" method="post" action="http://fake.test/saved"><input type="text" name="title" value="x"><input type="submit" name="submitbutton" value="Save"></form><div data-flexitour="backdrop" style="position:fixed;inset:0;z-index:10"></div>`;
+      return route.fulfill({ status: 200, contentType: "text/html", body });
+    });
+    await page.goto("http://fake.test/form");
+    await submitForm(page, "submitbutton");
+    assert.equal(page.url(), "http://fake.test/saved");
     await page.close();
   });
 });
