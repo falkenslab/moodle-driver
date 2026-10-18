@@ -74,6 +74,10 @@ export interface FakeMoodleState {
   pagesServed?: string[];
   /** Every service call received. */
   serviceCalls?: { methodname: string; args: Record<string, unknown> }[];
+  /** The release LTI's platform configuration names ("4.5.15 (Build: 20261005)"); none answers it with 404. */
+  release?: string;
+  /** The components whose icon the site serves ("mod/qbank"), which tell its version; any other icon answers 404. */
+  components?: string[];
 }
 
 /**
@@ -122,6 +126,13 @@ export async function serveFakeMoodle(context: BrowserContext, state: FakeMoodle
         throw error;
       }
     }
+    if (url.pathname === "/mod/lti/openid-configuration.php") {
+      if (!state.release) return route.fulfill({ status: 404, contentType: "text/html", body: "Not found" });
+      const config = { issuer: "http://moodle.test", "https://purl.imsglobal.org/spec/lti-platform-configuration": { product_family_code: "moodle", version: state.release } };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(config) });
+    }
+    const icon = /^\/(.+)\/pix\/monologo\.svg$/.exec(url.pathname);
+    if (icon) return route.fulfill(state.components?.includes(icon[1]!) ? { status: 200, contentType: "image/svg+xml", body: "<svg/>" } : { status: 404, body: "Not found" });
     state.pagesServed?.push(url.pathname);
     const html = (body: string) => route.fulfill({ status: 200, contentType: "text/html", body });
     if (!state.user) return html(moodlePage({ userId: 0, heading: "Log in", sesskey }));

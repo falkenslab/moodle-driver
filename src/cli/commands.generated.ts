@@ -5,7 +5,7 @@ import type { CommandSpec } from "./spec.js";
 export const COMMANDS: readonly CommandSpec[] = [
   {
     "name": "activitiesOverview",
-    "description": "Moodle 5's activities overview of a course for one type (\"resource\" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: \"resource\" first, which brings pages, books, files, folders and links at once, then each type still missing.",
+    "description": "Moodle 5's activities overview of a course for one type (\"resource\" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: \"resource\" first, which brings pages, books, files, folders and links at once, then each type still missing. Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`).",
     "params": [
       {
         "name": "courseId",
@@ -2948,6 +2948,71 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "createWikiPage",
+    "description": "Creates a page in a wiki's subwiki as the person, with its content (`embed`'s local files in it), as following a link to a new page and saving its editor do: the person's subwiki unless `groupId` or `userId` choose another (as `wikiPages`). A subwiki with no pages yet starts with the wiki's first page, as Moodle starts it: its title must be the wiki's first page title. The page takes the wiki's default format. Gives the page's id and the page. Throws `WikiError` when a page of that title is already there (edit it with `editWikiPage`), the first page's title isn't the wiki's, or Moodle refuses (mod/wiki:createpage, mod/wiki:editpage, someone else's subwiki).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "input",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "title",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "content",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its content: HTML in a wiki of HTML pages (Moodle's default), the wiki's markup in a Creole or NWiki one. `[[Title]]` links to another page."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to embed in the content, which names each by its file name (`<img src=\"shot.png\">`); HTML pages only."
+        },
+        {
+          "name": "groupId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "A group's subwiki, in a wiki with groups."
+        },
+        {
+          "name": "userId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "A participant's subwiki, in an individual wiki."
+        }
+      ]
+    }
+  },
+  {
     "name": "databaseEntries",
     "description": "A database activity's entries, in its list's order (the person's sort, or the database's), each with its author, when it was added and changed, whether it's approved, and its fields' values for the entries the person can edit (read from their edit forms; files with their URLs). `search` is Moodle's simple search. With `limit`, a page of them (see \"Long lists\" in the docs' concepts), read from the list's pages that hold it. Moodle's services for entries are only for its mobile app: the list and each entry's single view are read through what Moodle's tags write in the database's templates (its default ones and presets have them). Throws `NotADatabaseError` when the id isn't a database, `DatabaseError` when the person can't see its entries or its list template shows no link to them.",
     "params": [
@@ -4535,6 +4600,62 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "editWikiPage",
+    "description": "Changes a wiki page's content as its editor does, the whole page or one of its sections (a heading, as `wikiPage`'s `sections` lists them), with `embed`'s local files in it: a new version, by the person. Throws `WikiPageLockedError` when someone else has the page open in its editor (the driver never overrides their lock), `WikiError` when the page isn't in the wiki, the section isn't in the page, or Moodle refuses (mod/wiki:editpage, someone else's subwiki).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "pageId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "content",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "The new content (of the section, with `section`): replaces what was there."
+        },
+        {
+          "name": "section",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Only this section of the page (a heading of it, as `sections` lists them), the content replacing that section."
+        },
+        {
+          "name": "embed",
+          "optional": true,
+          "type": "string[]",
+          "value": {
+            "kind": "strings"
+          },
+          "description": "Local files (absolute paths) to embed in the content, which names each by its file name (`<img src=\"shot.png\">`); HTML pages only."
+        }
+      ]
+    }
+  },
+  {
     "name": "editWorkshopExample",
     "description": "Changes an example submission through its form, as \"Edit example\" does: only what's given changes (`attachments` replace those there). Returns a sentence of what changed and the example afterwards. Throws `WorkshopError` when the person can't manage examples or the example isn't the workshop's.",
     "params": [
@@ -5950,6 +6071,11 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "moodleVersion",
+    "description": "The Moodle the site runs: its branch, found by what the site offers (LTI's public platform configuration names the release; otherwise which modules exist), and the release when the site tells it. Needs no login, nor administrator rights. Asked once per browser context.",
+    "params": []
   },
   {
     "name": "moveBlock",
@@ -9163,6 +9289,101 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "wikiPage",
+    "description": "A wiki page: its title, content (HTML as Moodle renders it, its text, images and media), sections, the pages it links to and its latest version; with `history`, every version (number, date, author), newest first. Throws `NotAWikiError` when the activity isn't a wiki the person can open, `WikiError` when the page isn't in it or Moodle doesn't show it to the person.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "pageId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "history",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Its versions too (one more page read)."
+        }
+      ]
+    }
+  },
+  {
+    "name": "wikiPages",
+    "description": "The pages of a wiki's subwiki, by title: each one's id, title, the pages it links to (those not created yet without an id), and its latest version (number, date, author). The person's subwiki (the wiki's own in a collaborative wiki, their group's, or their own in an individual one) unless `groupId` or `userId` choose another, as the wiki's group or participant menu does (choosing a group makes it the person's current group in the course, as the menu does). Empty while the subwiki has no pages. Paged with `limit` and `offset`. Throws `NotAWikiError` when the activity isn't a wiki the person can open, `WikiError` when Moodle refuses the subwiki.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "groupId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "A group's subwiki, in a wiki with groups."
+        },
+        {
+          "name": "userId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "A participant's subwiki, in an individual wiki."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list."
+        },
+        {
+          "name": "offset",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "How many items to skip first, in the function's own order: 0 unless given."
+        }
+      ]
+    }
   },
   {
     "name": "workshopAllocation",

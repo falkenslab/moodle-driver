@@ -8,7 +8,7 @@ Besides these, `moodle` has its own commands for the session and the browser: `l
 
 ## activitiesOverview
 
-Moodle 5's activities overview of a course for one type ("resource" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: "resource" first, which brings pages, books, files, folders and links at once, then each type still missing.
+Moodle 5's activities overview of a course for one type ("resource" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: "resource" first, which brings pages, books, files, folders and links at once, then each type still missing. Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`).
 
 ```bash
 moodle activities-overview <courseId> [type]
@@ -1045,6 +1045,23 @@ moodle create-question <activityId> --options
 | `--default-mark` | `number` |  |
 | `--fields` | `Record<string, FieldValue>` | Any other field of the type's form, by name. |
 
+## createWikiPage
+
+Creates a page in a wiki's subwiki as the person, with its content (`embed`'s local files in it), as following a link to a new page and saving its editor do: the person's subwiki unless `groupId` or `userId` choose another (as `wikiPages`). A subwiki with no pages yet starts with the wiki's first page, as Moodle starts it: its title must be the wiki's first page title. The page takes the wiki's default format. Gives the page's id and the page. Throws `WikiError` when a page of that title is already there (edit it with `editWikiPage`), the first page's title isn't the wiki's, or Moodle refuses (mod/wiki:createpage, mod/wiki:editpage, someone else's subwiki).
+
+```bash
+moodle create-wiki-page <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--title` (required) | `string` |  |
+| `--content` (required) | `string` | Its content: HTML in a wiki of HTML pages (Moodle's default), the wiki's markup in a Creole or NWiki one. `[[Title]]` links to another page. |
+| `--embed` | `string[]` | Local files (absolute paths) to embed in the content, which names each by its file name (`<img src="shot.png">`); HTML pages only. |
+| `--group-id` | `number` | A group's subwiki, in a wiki with groups. |
+| `--user-id` | `number` | A participant's subwiki, in an individual wiki. |
+
 ## databaseEntries
 
 A database activity's entries, in its list's order (the person's sort, or the database's), each with its author, when it was added and changed, whether it's approved, and its fields' values for the entries the person can edit (read from their edit forms; files with their URLs). `search` is Moodle's simple search. With `limit`, a page of them (see "Long lists" in the docs' concepts), read from the list's pages that hold it. Moodle's services for entries are only for its mobile app: the list and each entry's single view are read through what Moodle's tags write in the database's templates (its default ones and presets have them). Throws `NotADatabaseError` when the id isn't a database, `DatabaseError` when the person can't see its entries or its list template shows no link to them.
@@ -1685,6 +1702,22 @@ moodle edit-section <courseId> <sectionId> --options
 | `--after-section-id` | `number` |  |
 | `--embed` | `string[]` |  |
 
+## editWikiPage
+
+Changes a wiki page's content as its editor does, the whole page or one of its sections (a heading, as `wikiPage`'s `sections` lists them), with `embed`'s local files in it: a new version, by the person. Throws `WikiPageLockedError` when someone else has the page open in its editor (the driver never overrides their lock), `WikiError` when the page isn't in the wiki, the section isn't in the page, or Moodle refuses (mod/wiki:editpage, someone else's subwiki).
+
+```bash
+moodle edit-wiki-page <activityId> <pageId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `pageId` | `number` |  |
+| `--content` (required) | `string` | The new content (of the section, with `section`): replaces what was there. |
+| `--section` | `string` | Only this section of the page (a heading of it, as `sections` lists them), the content replacing that section. |
+| `--embed` | `string[]` | Local files (absolute paths) to embed in the content, which names each by its file name (`<img src="shot.png">`); HTML pages only. |
+
 ## editWorkshopExample
 
 Changes an example submission through its form, as "Edit example" does: only what's given changes (`attachments` replace those there). Returns a sentence of what changed and the example afterwards. Throws `WorkshopError` when the person can't manage examples or the example isn't the workshop's.
@@ -2267,6 +2300,14 @@ moodle message-participants <courseId> <text> [--options]
 | `courseId` | `number` |  |
 | `text` | `string` |  |
 | `--user-ids` (required) | `number[]` |  |
+
+## moodleVersion
+
+The Moodle the site runs: its branch, found by what the site offers (LTI's public platform configuration names the release; otherwise which modules exist), and the release when the site tells it. Needs no login, nor administrator rights. Asked once per browser context.
+
+```bash
+moodle moodle-version
+```
 
 ## moveBlock
 
@@ -3501,6 +3542,36 @@ moodle who-am-i [courseId]
 | Argument | Type | Description |
 | --- | --- | --- |
 | `courseId` (optional) | `number` |  |
+
+## wikiPage
+
+A wiki page: its title, content (HTML as Moodle renders it, its text, images and media), sections, the pages it links to and its latest version; with `history`, every version (number, date, author), newest first. Throws `NotAWikiError` when the activity isn't a wiki the person can open, `WikiError` when the page isn't in it or Moodle doesn't show it to the person.
+
+```bash
+moodle wiki-page <activityId> <pageId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `pageId` | `number` |  |
+| `--history` | `boolean` | Its versions too (one more page read). |
+
+## wikiPages
+
+The pages of a wiki's subwiki, by title: each one's id, title, the pages it links to (those not created yet without an id), and its latest version (number, date, author). The person's subwiki (the wiki's own in a collaborative wiki, their group's, or their own in an individual one) unless `groupId` or `userId` choose another, as the wiki's group or participant menu does (choosing a group makes it the person's current group in the course, as the menu does). Empty while the subwiki has no pages. Paged with `limit` and `offset`. Throws `NotAWikiError` when the activity isn't a wiki the person can open, `WikiError` when Moodle refuses the subwiki.
+
+```bash
+moodle wiki-pages <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--group-id` | `number` | A group's subwiki, in a wiki with groups. |
+| `--user-id` | `number` | A participant's subwiki, in an individual wiki. |
+| `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
+| `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
 
 ## workshopAllocation
 

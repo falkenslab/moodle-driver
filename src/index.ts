@@ -29,6 +29,7 @@ export { checkLocalFiles, downloadFile, type DownloadedFile } from "./core/files
 export type { MediaItem, ImageItem } from "./core/text.js";
 export type { ListPage, PageOptions, WithLimit, WithoutLimit } from "./core/paging.js";
 export { publicSiteInfo, courseActivityTypes } from "./areas/site/info.js";
+export { moodleVersion, type MoodleVersion } from "./core/version.js";
 export { userById, siteName, courseRoles, courseAbilities, whoAmI, type User, type Me } from "./areas/site/users.js";
 
 // Courses.
@@ -223,6 +224,25 @@ export {
 } from "./areas/glossaries/entries.js";
 export { glossaryCategories, addGlossaryCategory, type GlossaryCategory, type GlossaryCategoryChange } from "./areas/glossaries/categories.js";
 export { exportGlossaryEntries, importGlossaryEntries, type GlossaryImport } from "./areas/glossaries/transfer.js";
+export {
+  wikiPages,
+  wikiPage,
+  createWikiPage,
+  editWikiPage,
+  NotAWikiError,
+  WikiError,
+  WikiPageLockedError,
+  type WikiLink,
+  type WikiVersion,
+  type WikiPageSummary,
+  type WikiPage,
+  type WikiSubwikiOptions,
+  type WikiPagesOptions,
+  type WikiPageOptions,
+  type WikiPageInput,
+  type WikiPageChanges,
+  type WikiPageChange,
+} from "./areas/wikis/wikis.js";
 
 // Grades, completion, participants, calendar, messages.
 export { myGrades, NoGradeReportError, type GradeRow } from "./areas/grades/user-report.js";

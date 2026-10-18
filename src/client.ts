@@ -49,6 +49,7 @@ import { addDatabaseEntry, databaseEntries, deleteDatabaseEntry, editDatabaseEnt
 import { addGlossaryEntry, deleteGlossaryEntry, editGlossaryEntry, glossaryEntries, setGlossaryEntryApproved } from "./areas/glossaries/entries.js";
 import { addGlossaryCategory, glossaryCategories } from "./areas/glossaries/categories.js";
 import { exportGlossaryEntries, importGlossaryEntries } from "./areas/glossaries/transfer.js";
+import { createWikiPage, editWikiPage, wikiPage, wikiPages } from "./areas/wikis/wikis.js";
 import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
@@ -75,6 +76,7 @@ import { getSurvey, submitSurvey } from "./areas/surveys/surveys.js";
 import { surveyResults } from "./areas/surveys/results.js";
 import { addFeedbackItem, deleteFeedbackItem, deleteFeedbackTemplate, editFeedbackItem, feedbackItems, feedbackTemplates, moveFeedbackItem, saveFeedbackTemplate, useFeedbackTemplate } from "./areas/surveys/items.js";
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
+import { moodleVersion } from "./core/version.js";
 import { MoodleError } from "./core/errors.js";
 import type { MoodleMethods } from "./moodle-methods.generated.js";
 
@@ -123,6 +125,10 @@ const SITE_FUNCTIONS = {
   addGlossaryCategory,
   exportGlossaryEntries,
   importGlossaryEntries,
+  wikiPages,
+  wikiPage,
+  createWikiPage,
+  editWikiPage,
   activityReport,
   activitySettings,
   addGradeCategory,
@@ -327,6 +333,7 @@ const SITE_FUNCTIONS = {
   updateQuestion,
   userById,
   whoAmI,
+  moodleVersion,
 };
 
 type SiteFunctions = typeof SITE_FUNCTIONS;

@@ -66,6 +66,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   readWwwroot: NONE,
   publicSiteInfo: NONE,
   siteName: NONE,
+  moodleVersion: NONE,
   logIn: NONE,
   logOut: NONE,
   readSessionFacts: NONE,
@@ -422,6 +423,12 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   addGlossaryCategory: CONTENT,
   exportGlossaryEntries: ["course-content", "others-personal"],
   importGlossaryEntries: CONTENT,
+
+  // Wikis: pages and their versions carry their authors; a page is the wiki's shared content, whoever wrote it.
+  wikiPages: ["course-content", "others-personal"],
+  wikiPage: ["course-content", "others-personal"],
+  createWikiPage: CONTENT,
+  editWikiPage: CONTENT,
 
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],
