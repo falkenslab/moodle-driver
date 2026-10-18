@@ -90,6 +90,9 @@ describe("activitiesOverview, deadlines and courseUpdates", { skip: !browser && 
     await serveFakeMoodle(context, { user: { id: 3, fullName: "T" }, services, serviceCalls: calls, release: "4.5.15 (Build: 20261005)" });
     await assert.rejects(activitiesOverview(context, SITE, 3, "assign"), (error: unknown) => error instanceof MoodleError && error.code === "not-available" && /activitiesOverview needs Moodle 5\.0 or later; this site runs 4\.5/.test(error.message));
     assert.deepEqual(calls, []);
+    await context.close();
+  });
+
   it("says Moodle 4.5 has no overview: its unknown service answers invalidrecord for a course that exists", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, {
