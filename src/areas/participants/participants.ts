@@ -61,7 +61,7 @@ export function readParticipantRows(page: Page): Promise<{ userId: number; fullN
       if (!link || !userId) return [];
       // The link holds the picture or initials before the name.
       const copy = link.cloneNode(true);
-      for (const extra of Array.from(copy.querySelectorAll(".userinitials, img, .visually-hidden"))) extra.remove();
+      for (const extra of Array.from(copy.querySelectorAll(".userinitials, img, .visually-hidden, .sr-only"))) extra.remove();
       return [{ userId, fullName: (copy.textContent ?? "").replace(/\s+/g, " ").trim() }];
     });
   });

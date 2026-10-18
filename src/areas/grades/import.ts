@@ -61,7 +61,7 @@ function notifications(page: Page): Promise<{ success: string[]; danger: string[
       const texts = (kind: string) =>
         Array.from(doc.querySelectorAll(`[role="main"] .alert-${kind}`)).map((alert) => {
           const copy = alert.cloneNode(true) as typeof alert;
-          for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden"))) extra.remove();
+          for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden, .sr-only"))) extra.remove();
           return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
         });
       return { success: texts("success"), danger: texts("danger") };

@@ -58,8 +58,9 @@ export function readActivityDetails(page: Page): Promise<ActivityDetails[]> {
     const doc = (globalThis as unknown as { document: Element }).document;
     // No helper functions in here: see the conventions on page.evaluate.
     return Array.from(doc.querySelectorAll('[data-for="cmitem"][data-id], li.activity[data-id]')).map((item) => {
-      const dates = Array.from(item.querySelectorAll('[data-region="activity-dates"] .date-item')).map((date) => {
-        const label = (date.querySelector(".date-item-label")?.textContent ?? "").replace(/\s+/g, " ").trim();
+      // Moodle 5's dates are .date-item with a .date-item-label; 4.5's plain divs with the label in a strong.
+      const dates = Array.from(item.querySelectorAll('[data-region="activity-dates"] .date-item, [data-region="activity-dates"] > div:not(.date-item)')).map((date) => {
+        const label = (date.querySelector(".date-item-label, strong")?.textContent ?? "").replace(/\s+/g, " ").trim();
         const all = (date.textContent ?? "").replace(/\s+/g, " ").trim();
         return { label: label.replace(/:$/, ""), value: all.slice(label.length).trim() };
       });

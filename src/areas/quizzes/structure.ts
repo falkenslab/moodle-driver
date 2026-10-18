@@ -57,7 +57,7 @@ export function readQuizEditor(page: Page): Promise<{ sections: QuizSection[]; s
         sections.push({
           id: Number(section[1]),
           // An untitled section's heading is a hidden placeholder in the site's language.
-          heading: title && !/\bvisually-hidden\b/.test(title.className) ? (title.textContent ?? "").replace(/\s+/g, " ").trim() : "",
+          heading: title && !/\b(visually-hidden|sr-only)\b/.test(title.className) ? (title.textContent ?? "").replace(/\s+/g, " ").trim() : "",
           firstSlot: slots.length + 1,
           shuffle: item.querySelector(`#shuffle-${section[1]}`)?.checked ?? false,
         });

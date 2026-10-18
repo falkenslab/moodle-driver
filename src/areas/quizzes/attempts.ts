@@ -80,8 +80,8 @@ export function readQuizView(page: Page): Promise<QuizInfo> {
     return {
       intro: text(doc.querySelector("#intro")),
       info: Array.from(doc.querySelectorAll(".quizinfo p")).map((p) => text(p)),
-      dates: Array.from(doc.querySelectorAll('[data-region="activity-dates"] .date-item')).map((item) => {
-        const label = text(item.querySelector(".date-item-label"));
+      dates: Array.from(doc.querySelectorAll('[data-region="activity-dates"] .date-item, [data-region="activity-dates"] > div:not(.date-item)')).map((item) => {
+        const label = text(item.querySelector(".date-item-label, strong"));
         return { label: label.replace(/:$/, ""), value: text(item).slice(label.length).trim() };
       }),
       feedback: text(doc.querySelector("#feedback")) || undefined,

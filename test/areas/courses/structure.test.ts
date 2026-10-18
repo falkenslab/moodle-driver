@@ -164,6 +164,15 @@ describe("pendingActivities", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("reads Moodle 4.5's dates too: plain divs with the label in a strong", async () => {
+    const context = await browser!.newContext();
+    const state = site(tracked(true));
+    state.bodies!["/course/view.php"] = `<ul><li class="activity" data-for="cmitem" data-id="22"><div data-region="activity-dates"><div><strong>Due:</strong> Friday</div></div></li></ul>`;
+    await serveFakeMoodle(context, state);
+    assert.deepEqual((await pendingActivities(context, SITE, 5)).pending[0]?.dates, [{ label: "Due", value: "Friday" }]);
+    await context.close();
+  });
+
   it("lists graded activities without a grade where completion isn't tracked", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, site(tracked(false)));

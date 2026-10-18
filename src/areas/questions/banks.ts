@@ -294,7 +294,7 @@ async function pageProblems(page: Page): Promise<string[]> {
       .map((element) => {
         // Without the close button, the error box's heading and its "more information" link.
         const copy = element.cloneNode(true);
-        for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden, .errorcode, h2, h3, h4"))) extra.remove();
+        for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden, .sr-only, .errorcode, h2, h3, h4"))) extra.remove();
         return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
       })
       .filter(Boolean);

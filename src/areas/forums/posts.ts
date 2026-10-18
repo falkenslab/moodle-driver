@@ -271,7 +271,7 @@ function refusalNotice(page: Page): Promise<string | undefined> {
     const box = doc.querySelector("#user-notifications .alert-danger");
     if (!box) return undefined;
     const copy = box.cloneNode(true);
-    for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden"))) extra.remove();
+    for (const extra of Array.from(copy.querySelectorAll("button, .visually-hidden, .sr-only"))) extra.remove();
     return (copy.textContent ?? "").replace(/\s+/g, " ").trim() || undefined;
   });
 }

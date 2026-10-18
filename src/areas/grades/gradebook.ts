@@ -65,7 +65,7 @@ export function readGraderReport(page: Page): Promise<GraderReport> {
     const columns = Array.from(doc.querySelectorAll("table#user-grades tr.heading th[data-itemid]")).map((th) => {
       const header = th.querySelector(".gradeitemheader");
       const copy = header?.cloneNode(true);
-      for (const extra of Array.from(copy?.querySelectorAll("img, .visually-hidden") ?? [])) extra.remove();
+      for (const extra of Array.from(copy?.querySelectorAll("img, .visually-hidden, .sr-only") ?? [])) extra.remove();
       const match = /\/mod\/([a-z0-9_]+)\/view\.php\?(?:.*&)?id=(\d+)/.exec(header?.getAttribute("href") ?? "");
       const kind = /\bcourseitem\b/.test(th.className) ? "course" : /\bcategoryitem\b/.test(th.className) ? "category" : "item";
       return {
@@ -77,7 +77,7 @@ export function readGraderReport(page: Page): Promise<GraderReport> {
     });
     const rows = Array.from(doc.querySelectorAll("table#user-grades tr.userrow[data-uid]")).map((row) => {
       const link = row.querySelector("a.username")?.cloneNode(true);
-      for (const extra of Array.from(link?.querySelectorAll(".userinitials, img, .visually-hidden") ?? [])) extra.remove();
+      for (const extra of Array.from(link?.querySelectorAll(".userinitials, img, .visually-hidden, .sr-only") ?? [])) extra.remove();
       const grades = Array.from(row.querySelectorAll("td.gradecell[data-itemid]")).map((cell) => {
         const value = (cell.querySelector(".gradevalue")?.textContent ?? "").replace(/\s+/g, " ").trim();
         return { itemId: Number(cell.getAttribute("data-itemid")), ...(value && value !== "-" ? { grade: value } : {}) };

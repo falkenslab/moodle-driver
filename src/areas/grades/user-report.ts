@@ -55,7 +55,7 @@ export function readGradeRows(page: Page): Promise<GradeRow[]> {
         if (!cell) continue;
         // The grade cell also holds an action menu whose text is in the site's language.
         const copy = cell.cloneNode(true);
-        for (const menu of Array.from(copy.querySelectorAll(".action-menu, .dropdown, .visually-hidden"))) menu.remove();
+        for (const menu of Array.from(copy.querySelectorAll(".action-menu, .dropdown, .visually-hidden, .sr-only"))) menu.remove();
         const text = (copy.textContent ?? "").replace(/\s+/g, " ").trim();
         values[column] = text === "" || text === "-" ? undefined : text;
       }
