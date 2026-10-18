@@ -320,7 +320,9 @@ export async function removeFromDraft(page: Page, draftItemId: string, names: st
 export async function submitForm(page: Page, button: string): Promise<void> {
   // The navigation's timeout, not the click's: saving can take Moodle long (regrading after a new
   // maximum grade took over 30 seconds, confirmed empirically on the sandbox, 5.2).
-  await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click(`form.mform [name="${button}"]`, { noWaitAfter: true })]);
+  // A click event rather than the mouse's: a user tour's backdrop over the page (Moodle 4.5's course
+  // page tours, on a block's configure form) takes the mouse's clicks (confirmed empirically, 4.5).
+  await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.locator(`form.mform [name="${button}"]`).first().dispatchEvent("click")]);
   const errors = await page.evaluate(() => {
     const doc = (globalThis as unknown as { document: { querySelectorAll(s: string): ArrayLike<{ id: string; textContent: string | null }> } }).document;
     return Array.from(doc.querySelectorAll('form.mform [id^="id_error_"]'))

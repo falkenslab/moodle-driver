@@ -20,7 +20,7 @@ export interface CourseBlock {
   type: string;
   /** Its title as the page shows it; for a text block, the title it was given ("" for none). */
   title: string;
-  /** The page region it's in (`side-pre`, the only one Boost's course pages have). */
+  /** The page region it's in (`side-pre`, the only one Boost's course pages have; Classic's have `side-post` too). */
   region: string;
   /** Its weight in the region (lower comes first); read from its configure form, so only for whom can edit the blocks. */
   weight?: number;
@@ -55,8 +55,14 @@ interface BlocksPage {
   blocks: { id: number; type: string; title: string; region: string; visible: boolean; content?: string }[];
 }
 
+/**
+ * The editing mode's switch: Boost's (editmode.php), or the "Turn editing on/off" button themes
+ * without the switch show (Classic: `haseditswitch` false), a form posting `edit` to the course page.
+ */
+const SWITCH = 'form.editmode-switch-form, form[action*="/course/view.php"]:has(input[name="edit"]):has(input[name="sesskey"])';
+
 function readBlocksPage(page: Page): Promise<BlocksPage> {
-  return page.evaluate(() => {
+  return page.evaluate((switchSelector) => {
     interface El {
       id: string;
       className: string;
@@ -94,8 +100,9 @@ function readBlocksPage(page: Page): Promise<BlocksPage> {
       });
     return {
       editing: body.classList.contains("editing"),
-      canSwitch: g.document.querySelector("form.editmode-switch-form") !== null,
-      canAdd: g.document.querySelector('[data-key="addblock"], a[href*="bui_addblock"]') !== null,
+      canSwitch: g.document.querySelector(switchSelector) !== null,
+      // Boost's "Add a block" link; Classic's "Add a block" block, a select.
+      canAdd: g.document.querySelector('[data-key="addblock"], a[href*="bui_addblock"], select[name="bui_addblock"]') !== null,
       sesskey: g.M?.cfg?.sesskey ?? "",
       contextId: g.M?.cfg?.contextid ?? 0,
       pageType: body.id.replace(/^page-/, ""),
@@ -103,25 +110,29 @@ function readBlocksPage(page: Page): Promise<BlocksPage> {
       regions,
       blocks,
     };
-  });
+  }, SWITCH);
 }
 
-/** Turns the person's editing mode on or off through the page's own switch (editmode.php), then reloads the page. */
+/** Turns the person's editing mode on or off through the page's own switch (editmode.php) or its editing button, then reloads the page. */
 async function setEditingMode(page: Page, on: boolean): Promise<void> {
-  const ok = await page.evaluate(async (on) => {
-    const g = globalThis as unknown as {
-      document: { querySelector(s: string): unknown };
-      FormData: new (form: unknown) => Iterable<[string, string]>;
-      URLSearchParams: new (init: Iterable<[string, string]>) => { set(name: string, value: string): void };
-      fetch(url: string, init: object): Promise<{ ok: boolean }>;
-    };
-    const form = g.document.querySelector("form.editmode-switch-form") as { action: string } | null;
-    if (!form) return false;
-    // Posted as the form posts itself, urlencoded.
-    const data = new g.URLSearchParams(new g.FormData(form));
-    data.set("setmode", on ? "1" : "0");
-    return (await g.fetch(form.action, { method: "POST", body: data, credentials: "same-origin" })).ok;
-  }, on);
+  const ok = await page.evaluate(
+    async ([on, switchSelector]) => {
+      const g = globalThis as unknown as {
+        document: { querySelector(s: string): unknown };
+        FormData: new (form: unknown) => Iterable<[string, string]>;
+        URLSearchParams: new (init: Iterable<[string, string]>) => { set(name: string, value: string): void };
+        fetch(url: string, init: object): Promise<{ ok: boolean }>;
+      };
+      const form = g.document.querySelector(switchSelector) as { action: string; classList: { contains(c: string): boolean } } | null;
+      if (!form) return false;
+      // Posted as the form posts itself, urlencoded: the switch's `setmode`, or the button's `edit`.
+      const data = new g.URLSearchParams(new g.FormData(form));
+      if (form.classList.contains("editmode-switch-form")) data.set("setmode", on ? "1" : "0");
+      else data.set("edit", on ? "on" : "off");
+      return (await g.fetch(form.action, { method: "POST", body: data, credentials: "same-origin" })).ok;
+    },
+    [on, SWITCH] as const,
+  );
   if (!ok) throw new BlockError(`Moodle didn't turn editing mode ${on ? "on" : "off"}.`);
   await page.reload({ waitUntil: "domcontentloaded" });
 }

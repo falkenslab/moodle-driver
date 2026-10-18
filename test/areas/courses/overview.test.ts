@@ -44,7 +44,10 @@ describe("activitiesOverview, deadlines and courseUpdates", { skip: !browser && 
   };
   const EVENT = { name: "Essay is due", activityname: "Essay", modulename: "assign", eventtype: "due", timesort: 1_797_810_900, overdue: false, url: `${SITE}mod/assign/view.php?id=18`, course: { id: 3, shortname: "PRG" }, action: { name: "Add submission", url: `${SITE}mod/assign/view.php?id=18&action=editsubmission`, itemcount: 1, actionable: true } };
   const services: FakeMoodleState["services"] = {
-    core_courseformat_get_state: () => JSON.stringify(state),
+    core_courseformat_get_state: (args) => {
+      if (args.courseid !== 3) throw new ServiceFailure("invalidrecord");
+      return JSON.stringify(state);
+    },
     core_courseformat_get_overview_information: (args) => {
       // Moodle 5.2 answers a type without an overview (a label) or one the course lacks with no activities.
       if (args.courseid !== 3) throw new ServiceFailure("invalidrecord");
@@ -77,6 +80,23 @@ describe("activitiesOverview, deadlines and courseUpdates", { skip: !browser && 
     const { context } = await site();
     assert.deepEqual((await activitiesOverview(context, SITE, 3, "page")).map((a) => a.id), [5]);
     assert.deepEqual(await activitiesOverview(context, SITE, 3, "label"), []);
+    await assert.rejects(activitiesOverview(context, SITE, 4, "assign"), (error: unknown) => error instanceof MoodleServiceError && error.errorcode === "invalidrecord");
+    await context.close();
+  });
+
+  it("says Moodle 4.5 has no overview: its unknown service answers invalidrecord for a course that exists", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, {
+      user: { id: 3, fullName: "T" },
+      services: {
+        ...services,
+        core_courseformat_get_overview_information: () => {
+          throw new ServiceFailure("invalidrecord");
+        },
+      },
+    });
+    await assert.rejects(activitiesOverview(context, SITE, 3, "assign"), { code: "not-available" });
+    await assert.rejects(activitiesOverview(context, SITE, 3), { code: "not-available" });
     await assert.rejects(activitiesOverview(context, SITE, 4, "assign"), (error: unknown) => error instanceof MoodleServiceError && error.errorcode === "invalidrecord");
     await context.close();
   });

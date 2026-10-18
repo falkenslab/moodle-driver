@@ -280,7 +280,7 @@ A student enrols with the key in Moodle itself (the course's "Enrol me"); the dr
 
 ## Notes about participants
 
-A teacher keeps notes about a course's participants on Moodle's notes pages: the notes page lists them (`notes/index.php`), its form writes and edits them (`notes/edit.php`), and its confirmation deletes them (`notes/delete.php`). Of Moodle's notes services only `core_notes_create_notes` is open to AJAX, and it files a site note under the site's front page instead of the course, unlike the form (as Moodle 5.2's `notes/externallib.php` does it); so the driver uses the pages for everything.
+A teacher keeps notes about a course's participants on Moodle's notes pages: the notes page lists them (`notes/index.php`), its form writes and edits them (`notes/edit.php`), and its confirmation deletes them (`notes/delete.php`). Of Moodle's notes services only `core_notes_create_notes` is open to AJAX, and it files a site note under the site's front page instead of the course, unlike the form (as Moodle 5.2's `notes/externallib.php` does it); so the driver uses the pages for everything. Moodle 4.5's form has a plain text area for the content where 5.x has an editor; the driver fills either, and the HTML is kept in both.
 
 ```ts
 function notes(context: BrowserContext, siteUrl: string, courseId: number, options?: { userId?: number; limit?: number; offset?: number }): Promise<ParticipantNote[]>; // ListPage<ParticipantNote> with limit

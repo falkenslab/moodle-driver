@@ -49,7 +49,7 @@ El `text` de cada campo es lo que muestra la celda, sea cual sea el tipo de celd
 - Cualquier otro valor tiene su texto plano, y `url` cuando es un enlace (una acción "Ver" o "Calificar").
 - `alert`: una insignia con un número, como "Necesita calificación" con 2.
 
-Pedir un tipo que el curso no tiene, o uno sin página de vista general (las áreas de texto y medios), da una lista vacía: Moodle 5.2 responde sin actividades en lugar de con un error (comprobado empíricamente). Un curso que la persona no puede ver deja pasar el `MoodleServiceError` de Moodle. Sin tipo, se omite un tipo cuya vista general falla. La página de vista general es de Moodle 5: en sitios más antiguos el servicio no existe.
+Pedir un tipo que el curso no tiene, o uno sin página de vista general (las áreas de texto y medios), da una lista vacía: Moodle 5.2 responde sin actividades en lugar de con un error (comprobado empíricamente). Un curso que la persona no puede ver deja pasar el `MoodleServiceError` de Moodle. Sin tipo, se omite un tipo cuya vista general falla. La página de vista general es de Moodle 5: Moodle 4.5 no tiene ese servicio, y allí `activitiesOverview` lanza `MoodleError` con el código `not-available`.
 
 ## deadlines
 

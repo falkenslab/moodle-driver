@@ -31,6 +31,8 @@ interface FakeNotes {
   canManage: boolean;
   notes: Note[];
   posts: Record<string, string>[];
+  /** Moodle 4.5's form: a plain textarea, `content`, instead of the editor. */
+  plainContent?: boolean;
 }
 
 function notePost(n: Note, canManage: boolean): string {
@@ -45,10 +47,11 @@ function notesPage(fake: FakeNotes, userId: number): string {
   return group("Site notes", of("site")) + group("Course notes", of("public", 9)) + group("Personal notes", of("draft", 9, 3));
 }
 
-function noteForm(note: Partial<Note> & { courseId: number; userId: number }): string {
+function noteForm(note: Partial<Note> & { courseId: number; userId: number }, plainContent = false): string {
   const option = (value: string, label: string) => `<option value="${value}"${(note.state ?? "public") === value ? " selected" : ""}>${label}</option>`;
+  const content = plainContent ? `<textarea id="id_content" name="content">${note.content ?? ""}</textarea>` : `<textarea id="id_content_editor" name="content_editor[text]">${note.content ?? ""}</textarea>`;
   return `<form class="mform" action="${SITE}notes/edit.php" method="post"><input name="sesskey" type="hidden" value="s1"><input name="_qf__note_edit_form" type="hidden" value="1">
-<textarea id="id_content_editor" name="content_editor[text]">${note.content ?? ""}</textarea><select name="publishstate" id="id_publishstate">${option("draft", "Personal")}${option("public", "Course")}${option("site", "Site")}</select>
+${content}<select name="publishstate" id="id_publishstate">${option("draft", "Personal")}${option("public", "Course")}${option("site", "Site")}</select>
 <input type="submit" name="submitbutton" value="Save changes"><input type="submit" name="cancel" value="Cancel"><input name="courseid" type="hidden" value="${note.courseId}"><input name="userid" type="hidden" value="${note.userId}"><input name="id" type="hidden" value="${note.id ?? ""}"></form>`;
 }
 
@@ -76,17 +79,18 @@ async function serve(context: BrowserContext, fake: FakeNotes): Promise<void> {
       if (request.method() === "POST") {
         const now = "Saturday, 17 October 2026, 11:30 AM";
         const existing = fake.notes.find((n) => n.id === Number(form.id));
-        if (existing) Object.assign(existing, { content: form["content_editor[text]"], state: form.publishstate, modified: now });
-        else fake.notes.push({ id: Math.max(0, ...fake.notes.map((n) => n.id)) + 1, courseId: Number(form.courseid), userId: Number(form.userid), content: form["content_editor[text]"]!, state: form.publishstate as Note["state"], author: 3, created: now, modified: now });
+        const content = fake.plainContent ? form.content : form["content_editor[text]"];
+        if (existing) Object.assign(existing, { content, state: form.publishstate, modified: now });
+        else fake.notes.push({ id: Math.max(0, ...fake.notes.map((n) => n.id)) + 1, courseId: Number(form.courseid), userId: Number(form.userid), content: content!, state: form.publishstate as Note["state"], author: 3, created: now, modified: now });
         return html(notesPage(fake, Number(form.userid)), "page-notes-index");
       }
       const id = Number(url.searchParams.get("id") ?? 0);
       if (id) {
         const note = fake.notes.find((n) => n.id === id);
         if (!note) return html(fatal("Invalid note id", "invalidid"), "page-notes-edit");
-        return html(noteForm(note), "page-notes-edit");
+        return html(noteForm(note, fake.plainContent), "page-notes-edit");
       }
-      return html(noteForm({ courseId: Number(url.searchParams.get("courseid")), userId: Number(url.searchParams.get("userid")) }), "page-notes-edit");
+      return html(noteForm({ courseId: Number(url.searchParams.get("courseid")), userId: Number(url.searchParams.get("userid")) }, fake.plainContent), "page-notes-edit");
     }
     if (page === "delete") {
       const id = Number(url.searchParams.get("id") ?? form.id);
@@ -194,6 +198,16 @@ describe("addNote", { skip: !browser && "no system browser" }, () => {
     assert.equal(fake.posts[0]!.courseid, "9");
     assert.equal(fake.posts[0]!.userid, "6");
     assert.match(result.changed, /Note 15 \(course\)/);
+    await context.close();
+  });
+
+  it("writes Moodle 4.5's form, whose content is a plain textarea, and edits it", async () => {
+    const { context, fake } = await site({ plainContent: true });
+    const result = await addNote(context, SITE, 9, 6, { content: "<p>Good question today</p>" });
+    assert.equal(fake.posts[0]!.content, "<p>Good question today</p>");
+    assert.equal(result.note?.content, "<p>Good question today</p>");
+    await editNote(context, SITE, result.noteId, { content: "<p>Changed</p>" });
+    assert.equal(fake.notes.find((n) => n.id === result.noteId)?.content, "<p>Changed</p>");
     await context.close();
   });
 

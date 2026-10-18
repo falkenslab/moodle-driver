@@ -49,7 +49,7 @@ Each field's `text` is what the cell shows, whatever kind of cell Moodle used:
 - Any other value has its plain text, and `url` when it's a link (a "View" or "Grade" action).
 - `alert`: a badge with a count, such as "Needs grading" with 2.
 
-Asking for a type the course doesn't have, or one without an overview page (labels), gives an empty list: Moodle 5.2 answers with no activities rather than an error (confirmed empirically). A course the person can't see passes Moodle's `MoodleServiceError`. Without a type, a type whose overview fails is skipped. The overview page is Moodle 5's: on older sites the service doesn't exist.
+Asking for a type the course doesn't have, or one without an overview page (labels), gives an empty list: Moodle 5.2 answers with no activities rather than an error (confirmed empirically). A course the person can't see passes Moodle's `MoodleServiceError`. Without a type, a type whose overview fails is skipped. The overview page is Moodle 5's: Moodle 4.5 has no such service, and there `activitiesOverview` throws `MoodleError` with code `not-available`.
 
 ## deadlines
 

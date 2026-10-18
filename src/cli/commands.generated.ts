@@ -5,7 +5,7 @@ import type { CommandSpec } from "./spec.js";
 export const COMMANDS: readonly CommandSpec[] = [
   {
     "name": "activitiesOverview",
-    "description": "Moodle 5's activities overview of a course for one type (\"resource\" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: \"resource\" first, which brings pages, books, files, folders and links at once, then each type still missing.",
+    "description": "Moodle 5's activities overview of a course for one type (\"resource\" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: \"resource\" first, which brings pages, books, files, folders and links at once, then each type still missing. Throws `MoodleError` `not-available` on Moodle 4.5, which has no activities overview.",
     "params": [
       {
         "name": "courseId",

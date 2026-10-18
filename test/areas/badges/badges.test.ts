@@ -32,23 +32,30 @@ interface FakeBadge {
 
 const COURSE = 3;
 
+/** Whether the table is drawn as Moodle 4.5 does: recipients sorted by `_issued`, "no criteria" as bare text, criteria as a list. */
+let moodle45 = false;
+
 /** A row of the badges table as Moodle 5.2's report builder renders it; `teacher` adds the status and recipients columns. */
 function row(b: FakeBadge, teacher: boolean): string {
   const cell = (html: string) => `<td class="cell">${html}</td>`;
+  const noCriteria = moodle45 ? "Criteria for this badge have not been set up yet." : '<span class="no-criteria-set d-none"></span>';
+  const criteria = b.criteria ? (moodle45 ? `<ul><li>${b.criteria}</li></ul>` : b.criteria) : noCriteria;
+  // Enabling or disabling, for a badge with criteria.
+  const toggle = teacher && Object.keys(b.crit).length > 0 ? `<a href="#" data-action="${b.status ? "disablebadge" : "enablebadge"}" data-badgeid="${b.id}"></a>` : "";
   const cells = [
     cell(`<img src="${SITE}pluginfile.php/30/badges/badgeimage/${b.id}/f2" alt=""> <a href="${SITE}badges/overview.php?id=${b.id}">${b.name}</a>`),
     ...(teacher ? [cell(b.status ? "Available to users" : "Not available to users")] : []),
-    cell(b.criteria ? b.criteria : '<span class="no-criteria-set d-none"></span>'),
+    cell(criteria),
     ...(teacher ? [cell(`<a href="${SITE}badges/recipients.php?id=${b.id}">${b.holders.length}</a>`)] : []),
     cell(b.mine ? `<a href="${SITE}badges/badge.php?hash=abc"><i class="icon"></i></a>` : ""),
-    cell(teacher && b.status && b.crit[2] ? `<a href="${SITE}badges/award.php?id=${b.id}">Award</a>` : ""),
+    cell(`${toggle}${teacher && b.status && b.crit[2] ? `<a href="${SITE}badges/award.php?id=${b.id}">Award</a>` : ""}`),
   ];
   return `<tr class="${b.status ? "" : "text-muted"}">${cells.join("")}</tr>`;
 }
 
 function table(badges: FakeBadge[], teacher: boolean, total = badges.length): string {
   const sortable = (key: string) => `<th class="header"><a data-sortable="1" data-sortby="${key}" href="#">${key}</a></th>`;
-  const headers = [sortable("c0_name"), ...(teacher ? [sortable("c1_status")] : []), '<th class="header">Criteria</th>', ...(teacher ? [sortable("c3_visible")] : []), sortable(teacher ? "c4_dateissued" : "c2_dateissued"), '<th class="header"><span class="visually-hidden">Actions</span></th>'];
+  const headers = [sortable("c0_name"), ...(teacher ? [sortable("c1_status")] : []), '<th class="header">Criteria</th>', ...(teacher ? [sortable(moodle45 ? "c3_issued" : "c3_visible")] : []), sortable(teacher ? "c4_dateissued" : "c2_dateissued"), '<th class="header"><span class="visually-hidden">Actions</span></th>'];
   const filters = JSON.stringify({ jointype: 2, filters: { reportid: { name: "reportid", jointype: 1, values: [2] } } }).replaceAll('"', "&quot;");
   return `<div data-region="core_table/dynamic" data-table-handler="system_report_table" data-table-component="core_reportbuilder" data-table-uniqueid="system-report-table-2" data-table-filters="${filters}" data-table-sort-data="[]" data-table-total-rows="${total}"><table data-region="reportbuilder-table"><thead><tr>${headers.join("")}</tr></thead><tbody>${badges.map((b) => row(b, teacher)).join("")}<tr class="emptyrow"><td></td></tr></tbody></table></div>`;
 }
@@ -179,6 +186,26 @@ describe("courseBadges", { skip: !browser && "no system browser" }, () => {
       { id: 8, courseId: COURSE, name: "Draft", description: "Not yet.", imageUrl: `${SITE}pluginfile.php/30/badges/badgeimage/8/f1`, enabled: false, criteria: "", recipients: 0, awarded: false },
     ]);
     await context.close();
+  });
+
+  it("reads Moodle 4.5's table: its recipients column, and criteria as a list or bare text", async () => {
+    moodle45 = true;
+    try {
+      const { context, badges } = await site();
+      // A disabled badge with criteria: its row offers enabling it.
+      badges.push({ id: 10, name: "Ready", description: "Set up.", status: 0, criteria: "Complete Page - Intro", crit: { 1: { id: 72, ids: [41], agg: "1" } }, overall: "1", holders: [], manual: [], mine: false });
+      assert.deepEqual(
+        (await courseBadges(context, SITE, COURSE)).map((b) => [b.id, b.enabled, b.criteria, b.recipients]),
+        [
+          [7, true, "Complete Page - Intro", 1],
+          [8, false, "", 0],
+          [10, false, "Complete Page - Intro", 0],
+        ],
+      );
+      await context.close();
+    } finally {
+      moodle45 = false;
+    }
   });
 
   it("gives a student the enabled badges, without recipients, and whether they have each", async () => {

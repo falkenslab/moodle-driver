@@ -243,6 +243,12 @@ function noteValues({ content, context }: Partial<NoteFields>): Record<string, s
 
 /** Fills and saves the note form, with Moodle's reason when it refuses. */
 async function saveNoteForm(page: Page, values: Record<string, string>, what: string): Promise<void> {
+  const editor = "content_editor[text]";
+  // Moodle 4.5's form has a plain textarea, `content`, where 5.x has an editor (its HTML is kept either way).
+  if (values[editor] !== undefined && (await page.locator(`form.mform [name="${editor}"]`).count()) === 0 && (await page.locator('form.mform textarea[name="content"]').count()) > 0) {
+    const { [editor]: content, ...rest } = values;
+    values = { ...rest, content: content! };
+  }
   try {
     await setFields(page, values);
     await submitForm(page, "submitbutton");
