@@ -189,8 +189,10 @@ describe("quizzes", () => {
     });
 
     it("quizInfo: an activity that isn't a quiz", SLOW, async () => {
-      const bankId = (await teacher.questionBanks(course.id)).find((b) => b.type === "qbank")!.id;
-      await assert.rejects(teacher.quizInfo(bankId), QuizError);
+      // Any activity of the course but a quiz (Moodle 4.x has no question bank activity to use here).
+      const other = (await teacher.courseStructure(course.id)).flatMap((s) => s.activities).find((a) => a.type !== "quiz");
+      assert.ok(other, "the course has an activity that isn't a quiz");
+      await assert.rejects(teacher.quizInfo(other.id), QuizError);
     });
 
     it("startQuizAttempt: an attempt with the quiz's three questions", SLOW, async () => {
