@@ -2,6 +2,7 @@ import type { BrowserContext } from "playwright-core";
 import { callService } from "../../core/ajax.js";
 import { courseState } from "./state.js";
 import { decodeEntities } from "../../core/text.js";
+import { requireMoodle } from "../../core/version.js";
 
 /** One column of Moodle 5's activities overview, as `core_courseformat_get_overview_information` gives it. */
 interface OverviewItem {
@@ -69,8 +70,10 @@ export function overviewField(item: OverviewItem): OverviewField {
  * per activity, the columns its overview page shows the person (due dates, submissions, what needs
  * grading, their own grade…). Without a type, every type in the course's state: "resource" first,
  * which brings pages, books, files, folders and links at once, then each type still missing.
+ * Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`).
  */
 export async function activitiesOverview(context: BrowserContext, siteUrl: string, courseId: number, type?: string) {
+  await requireMoodle(context, siteUrl, "5.0", "activitiesOverview");
   let types = type ? [type] : [];
   let cmsByType = new Map<string, number[]>();
   if (!type) {

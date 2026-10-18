@@ -11,6 +11,7 @@ export interface MoodleMethods {
    * per activity, the columns its overview page shows the person (due dates, submissions, what needs
    * grading, their own grade…). Without a type, every type in the course's state: "resource" first,
    * which brings pages, books, files, folders and links at once, then each type still missing.
+   * Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`).
    */
   activitiesOverview(courseId: number, type?: string): Promise<{ fields: import("./areas/courses/overview.js").OverviewField[]; available?: boolean | undefined; visible: boolean; url?: string | undefined; id: number; name: string; type: string; }[]>;
   /**
@@ -1232,6 +1233,12 @@ export interface MoodleMethods {
    * course's participants.
    */
   messageParticipants(courseId: number, text: string, selection?: import("./areas/messages/messages.js").ParticipantSelection): Promise<{ changed: string; sentTo: number[]; refused: { userId: number; reason: string; }[]; }>;
+  /**
+   * The Moodle the site runs: its branch, found by what the site offers (LTI's public platform
+   * configuration names the release; otherwise which modules exist), and the release when the site
+   * tells it. Needs no login, nor administrator rights. Asked once per browser context.
+   */
+  moodleVersion(): Promise<import("./core/version.js").MoodleVersion>;
   /**
    * Moves a block to a region of the course's page and a weight in it (lower comes first; without one,
    * after the region's blocks), as the block's move action does; Moodle shifts the blocks around it to

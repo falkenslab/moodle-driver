@@ -12,7 +12,7 @@ La descripción de cada comando sale de los comentarios del código, que están 
 
 ## activitiesOverview
 
-Moodle 5's activities overview of a course for one type ("resource" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: "resource" first, which brings pages, books, files, folders and links at once, then each type still missing.
+Moodle 5's activities overview of a course for one type ("resource" for every resource type): per activity, the columns its overview page shows the person (due dates, submissions, what needs grading, their own grade…). Without a type, every type in the course's state: "resource" first, which brings pages, books, files, folders and links at once, then each type still missing. Needs Moodle 5.0 or later: on an older site it throws `MoodleError` (`not-available`).
 
 ```bash
 moodle activities-overview <courseId> [type]
@@ -2304,6 +2304,14 @@ moodle message-participants <courseId> <text> [--options]
 | `courseId` | `number` |  |
 | `text` | `string` |  |
 | `--user-ids` (required) | `number[]` |  |
+
+## moodleVersion
+
+The Moodle the site runs: its branch, found by what the site offers (LTI's public platform configuration names the release; otherwise which modules exist), and the release when the site tells it. Needs no login, nor administrator rights. Asked once per browser context.
+
+```bash
+moodle moodle-version
+```
 
 ## moveBlock
 

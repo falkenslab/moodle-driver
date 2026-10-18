@@ -86,6 +86,26 @@ function siteName(context: BrowserContext, siteUrl: string): Promise<string | un
 
 Devuelve `undefined` cuando la llamada falla por cualquier motivo, como un sitio con el soporte de la app móvil desactivado. Nunca lanza un error, ni siquiera sin sesión.
 
+## moodleVersion
+
+El Moodle que ejecuta el sitio: su rama y, cuando el sitio la dice, su versión completa. No necesita permisos de administrador, ni sesión.
+
+```ts
+function moodleVersion(context: BrowserContext, siteUrl: string): Promise<MoodleVersion>;
+
+interface MoodleVersion {
+  branch: string; // "4.5", "5.0", "5.1", "5.2"…, o "unknown"
+  release?: string; // "4.5.15 (Build: 20261005)"
+}
+```
+
+Cómo se averigua, y por qué puede ser `unknown`, está en [compatibilidad](../reference/compatibility.md#how-the-version-is-found). Se pregunta una vez por contexto del navegador: las llamadas siguientes, y las funciones que necesitan un Moodle más reciente, reutilizan la respuesta. Nunca lanza un error; un sitio que no responde da `unknown`, y se vuelve a preguntar la próxima vez.
+
+```ts fragment
+const { branch } = await moodle.moodleVersion();
+if (branch === "4.5") console.log("Aquí no hay vista general de actividades.");
+```
+
 ## publicSiteInfo
 
 Lo que el sitio cuenta de sí mismo a cualquiera, mediante el punto de entrada de Moodle para los servicios que no requieren inicio de sesión (`lib/ajax/service-nologin.php`): sin navegador ni sesión.
@@ -150,4 +170,4 @@ console.log(me.course?.roles.map((r) => r.name), me.course?.canEdit ? "puede edi
 
 ## Categorías de datos {#data-categories}
 
-`whoAmI` y `courseAbilities` son `own`. `userById` y `courseRoles` son `others-personal` (leen los datos de cualquiera, incluidos los de la persona). `siteName`, `publicSiteInfo`, `findMoodleSite`, `parseSiteUrl` y la función de bajo nivel `readWwwroot` son `none`; las de bajo nivel `readPageConfig` y `readOwnProfile` son `own`. Consulta [categorías de datos](../concepts/data-categories.md).
+`whoAmI` y `courseAbilities` son `own`. `userById` y `courseRoles` son `others-personal` (leen los datos de cualquiera, incluidos los de la persona). `siteName`, `moodleVersion`, `publicSiteInfo`, `findMoodleSite`, `parseSiteUrl` y la función de bajo nivel `readWwwroot` son `none`; las de bajo nivel `readPageConfig` y `readOwnProfile` son `own`. Consulta [categorías de datos](../concepts/data-categories.md).

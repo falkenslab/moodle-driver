@@ -76,6 +76,7 @@ import { getSurvey, submitSurvey } from "./areas/surveys/surveys.js";
 import { surveyResults } from "./areas/surveys/results.js";
 import { addFeedbackItem, deleteFeedbackItem, deleteFeedbackTemplate, editFeedbackItem, feedbackItems, feedbackTemplates, moveFeedbackItem, saveFeedbackTemplate, useFeedbackTemplate } from "./areas/surveys/items.js";
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
+import { moodleVersion } from "./core/version.js";
 import { MoodleError } from "./core/errors.js";
 import type { MoodleMethods } from "./moodle-methods.generated.js";
 
@@ -332,6 +333,7 @@ const SITE_FUNCTIONS = {
   updateQuestion,
   userById,
   whoAmI,
+  moodleVersion,
 };
 
 type SiteFunctions = typeof SITE_FUNCTIONS;
