@@ -17,6 +17,7 @@ export { SESSION_COOKIES_FILE } from "./browser/cookies.js";
 export { connectBrowserManager, backgroundBrowser, BACKGROUND_FILE, type BackgroundBrowser, type ConnectOptions } from "./browser/background.js";
 export { siteProfileDir } from "./home.js";
 export * from "./categories.js";
+export { FOLLOWED_PAGES } from "./followed-pages.js";
 export * from "./core/errors.js";
 
 // The session and the site.

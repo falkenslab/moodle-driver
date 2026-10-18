@@ -37,7 +37,8 @@ export async function assignmentIds(context: BrowserContext, siteUrl: string, ac
   const key = `${siteUrl}|${activityId}`;
   const cached = idCache.get(key);
   if (cached) return cached;
-  const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=grader`);
+  // A lookup, cached, not the page a function shows: each one shows its own (the grader at the participant graded…).
+  const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=grader`, { follow: false });
   try {
     const ids = await readAssignmentIds(page);
     if (!ids) throw new NotAnAssignmentError(`Activity ${activityId} isn't an assignment you can grade (its grader page has no assignment). Take the id of an assignment (module "assign").`);
