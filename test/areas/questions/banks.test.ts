@@ -166,7 +166,7 @@ function fakeBanks(
 async function open(fake: ReturnType<typeof fakeBanks>): Promise<BrowserContext> {
   const context = await browser!.newContext();
   const statuses = (args: Record<string, unknown>) => (args.status === "ready" || args.status === "draft" ? { status: true, statusname: String(args.status) } : { status: false, statusname: "", error: "Unrecognised status" });
-  await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: { qbank_editquestion_set_status: statuses } });
+  await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, release: "5.2.4 (Build: 20261006)", services: { qbank_editquestion_set_status: statuses } });
   await fake.routes(context);
   return context;
 }
@@ -359,6 +359,7 @@ describe("question banks on Moodle 4.x", { skip: !browser && "no system browser"
   it("lists the course's own bank by the course's id, and reads only its own categories", async () => {
     const fake = fakeCourseBank();
     const context = await browser!.newContext();
+    // A site that hides its release: its version unknown, the qbank icon's 404 tells 4.x.
     await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
     await fake.routes(context);
     assert.deepEqual(await questionBanks(context, SITE, 12), [{ id: 12, name: "Driver course", type: "course", shared: true }]);
@@ -379,7 +380,7 @@ describe("question banks on Moodle 4.x", { skip: !browser && "no system browser"
   it("deletes through the course's delete page", async () => {
     const fake = fakeCourseBank();
     const context = await browser!.newContext();
-    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, release: "4.5.15 (Build: 20261005)" });
     await fake.routes(context);
     assert.deepEqual(await deleteQuestions(context, SITE, 12, [40]), { changed: "In bank 12: deleted question 40.", deleted: [40], hidden: [] });
     const [ask, confirm] = fake.posted;

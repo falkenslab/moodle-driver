@@ -153,7 +153,7 @@ ${items.join("")}${toAdd.join("")}<input type="submit" name="addbutton">${select
 
 async function open(fake: ReturnType<typeof fakeForms>): Promise<BrowserContext> {
   const context = await browser!.newContext();
-  await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" } });
+  await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, release: "5.2.4 (Build: 20261006)" });
   await fake.routes(context);
   return context;
 }
