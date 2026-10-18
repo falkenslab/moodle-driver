@@ -15,4 +15,5 @@ Chrome's debugging port (`--remote-debugging-port`) has no authentication: any p
 - The session cookies are saved after every client and when it closes (ADR-003); closing the window ends the process and its file.
 - The window can't be added or removed from a connected browser (ADR-007): `setVisible(true)` on one opened without a window throws `NoDisplayError`; with one, the pages commands open are followed in its first tab.
 - A stale `.browser.json` (its process gone, or its port refusing) is removed by whoever finds it. The token gives the same power as the profile itself: whoever can read the profile's files can read both.
+- Chromium-based browsers only: `hostBrowser` refuses Firefox (ADR-001), which has no such protocol.
 - The proxy speaks the protocol Playwright's `connectOverCDP` uses today; a Playwright upgrade re-checks it (`test/browser/host.test.ts`).

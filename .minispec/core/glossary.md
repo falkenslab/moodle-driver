@@ -10,7 +10,7 @@ The browser's persistent user-data folder: it keeps the person's Moodle session 
 
 ## Channel
 
-Which browser Playwright launches: the system's `msedge` or `chrome`, or `chromium`, downloaded when neither is installed (ADR-001).
+Which browser Playwright launches: the system's `msedge` or `chrome`, or `chromium`, downloaded when neither is installed, or Playwright's `firefox`, only when chosen (ADR-001).
 
 ## Course module id (cmid)
 
