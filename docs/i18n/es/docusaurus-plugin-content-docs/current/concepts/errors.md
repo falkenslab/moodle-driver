@@ -101,6 +101,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `BigBlueButtonError`, `BigBlueButtonServerError` | [BigBlueButton](../areas/bigbluebutton.md): no es un BigBlueButton; falta una capacidad (nombrada) o el motivo por el que la persona no puede entrar ahora; un sitio cuyo servidor BigBlueButton no está configurado o no responde |
 | `NotADatabaseError`, `DatabaseError` | [Bases de datos](../areas/databases.md): no es una base de datos; la persona no puede gestionarla, o Moodle rechazó un campo, una plantilla o un preajuste, o una entrada, su aprobación, su eliminación, una exportación o una importación |
 | `NotAGlossaryError`, `GlossaryError` | [Glosarios](../areas/glossaries.md): no es un glosario; falta una capacidad del glosario (nombrada), la entrada es de otra persona, se acabó el tiempo de edición, no existe esa entrada |
+| `NotAWikiError`, `WikiError`, `WikiPageLockedError` | [Wikis](../areas/wikis.md): no es una wiki; falta una capacidad de la wiki (nombrada), no existe esa página o sección, ya hay una página con ese título; otra persona está editando la página (vuelve a intentarlo más tarde) |
 | `NoGradeReportError`, `GradebookError` | [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Finalización](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Insignias](../areas/badges.md): falta una capacidad de insignias (que se nombra), un criterio que Moodle no ofrece; un sitio con las insignias desactivadas |
