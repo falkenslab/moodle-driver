@@ -607,7 +607,9 @@ export interface MoodleMethods {
    * resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or
    * an H5P activity (`type: "h5pactivity"`) takes the first as its package. An external tool activity
    * (`type: "lti"`) is made from one of the course's tools, `toolId` (`externalTools` lists them):
-   * Moodle 5 no longer configures a tool in the activity itself.
+   * Moodle 5 no longer configures a tool in the activity itself. A shared question bank
+   * (`type: "qbank"`) needs Moodle 5.0 or later (`MoodleError` `not-available` on 4.x, where each
+   * course has its own bank).
    */
   createActivity(input: import("./areas/activities/build.js").ActivityFields & { courseId: number; sectionId: number; type: string; files?: (string | import("./core/forms.js").DraftUpload)[] | undefined; toolId?: number | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
   /**

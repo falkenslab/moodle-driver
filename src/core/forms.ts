@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { BrowserContext, Page } from "playwright-core";
-import { openSitePage } from "./session.js";
+import { moodleErrorMessage, openSitePage } from "./session.js";
 import { MoodleError } from "./errors.js";
 
 /** A form field's value: text, a number, a checkbox, or a multiple select's values. */
@@ -22,7 +22,11 @@ export class FormError extends MoodleError {
 export async function openForm(context: BrowserContext, siteUrl: string, pathAndQuery: string): Promise<Page> {
   const page = await openSitePage(context, siteUrl, pathAndQuery);
   try {
-    if ((await page.locator("form.mform").count()) === 0) throw new FormError("This page has no Moodle form.", [{ field: "page", message: pathAndQuery }]);
+    if ((await page.locator("form.mform").count()) === 0) {
+      // Moodle's own error, when it showed one instead of the form (a module that can't be set up, say).
+      const said = await moodleErrorMessage(page);
+      throw new FormError("This page has no Moodle form.", [{ field: "page", message: pathAndQuery }, ...(said ? [{ field: "moodle", message: said }] : [])]);
+    }
     await page.waitForLoadState("load");
     // TinyMCE starts after load; its content must be set through it, or the save takes the old one.
     await page

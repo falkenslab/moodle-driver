@@ -494,7 +494,8 @@ describe("the browser and the session", () => {
     const moodle = createMoodle({ site: SITE.slice(0, -1), browser: student.browser });
     assert.equal(moodle.site, SITE);
     assert.equal((await moodle.whoAmI()).userId, await userId("student"));
-    assert.ok((await moodle.listCourses()).some((c) => c.id === COURSE));
+    // The student's own courses, whatever the site has (a fresh sandbox has no content course).
+    assert.deepEqual((await moodle.listCourses()).map((c) => c.id), (await student.listCourses()).map((c) => c.id));
   });
 
   it("logIn: the session already there resolves at once", SLOW, async () => {

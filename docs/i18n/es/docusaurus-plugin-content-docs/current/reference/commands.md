@@ -949,7 +949,7 @@ moodle course-updates <courseId> <since>
 
 ## createActivity
 
-Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or an H5P activity (`type: "h5pactivity"`) takes the first as its package. An external tool activity (`type: "lti"`) is made from one of the course's tools, `toolId` (`externalTools` lists them): Moodle 5 no longer configures a tool in the activity itself.
+Creates an activity or resource of any type at the end of a section, through Moodle's own form, hidden from students unless `visibility` says otherwise. `files` are local paths uploaded to a file resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or an H5P activity (`type: "h5pactivity"`) takes the first as its package. An external tool activity (`type: "lti"`) is made from one of the course's tools, `toolId` (`externalTools` lists them): Moodle 5 no longer configures a tool in the activity itself. A shared question bank (`type: "qbank"`) needs Moodle 5.0 or later (`MoodleError` `not-available` on 4.x, where each course has its own bank).
 
 ```bash
 moodle create-activity <input>

@@ -33,7 +33,7 @@ function activityForm(values: { name?: string; error?: string; fileField?: strin
 }
 
 describe("createActivity and updateActivity", { skip: !browser && "no system browser" }, () => {
-  async function site(fileField?: string): Promise<{ context: BrowserContext; posts: URLSearchParams[]; uploads: string[]; course: CourseState; draft: Map<string, number>; mkdirs: string[] }> {
+  async function site(fileField?: string, release?: string): Promise<{ context: BrowserContext; posts: URLSearchParams[]; uploads: string[]; course: CourseState; draft: Map<string, number>; mkdirs: string[] }> {
     const course: CourseState = { section: [{ id: "10", number: 0, title: "General", cmlist: [] }, { id: "11", number: 1, title: "Unit 1", cmlist: [] }], cm: [] };
     const posts: URLSearchParams[] = [];
     const uploads: string[] = [];
@@ -41,7 +41,7 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     const draft = new Map<string, number>();
     const mkdirs: string[] = [];
     const context = await browser!.newContext();
-    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: { core_courseformat_get_state: () => JSON.stringify(course) } });
+    await serveFakeMoodle(context, { user: { id: 3, fullName: "Teacher" }, services: { core_courseformat_get_state: () => JSON.stringify(course) }, ...(release ? { release } : {}) });
     const page = (body: string) => moodlePage({ userId: 3, body });
     await context.route(`${SITE}course/modedit.php**`, (route: Route) => {
       const request = route.request();
@@ -154,7 +154,7 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
 
   it("finds a new shared question bank on the banks page, as it never shows on the course page", async () => {
     // The sandbox showed it: a qbank's form is saved, but the course page's state has no module for it (Moodle 5.2).
-    const { context, posts } = await site();
+    const { context, posts } = await site(undefined, "5.2.4 (Build: 20261010)");
     await context.route(`${SITE}question/banks.php**`, (route: Route) => {
       // Made up after Moodle 5.2's banks page: the shared banks' list links each bank's view.
       const banks = posts.length > 0 ? `<li><a href="${SITE}mod/qbank/view.php?id=55">Unit 1 bank</a></li>` : "";
@@ -163,6 +163,27 @@ describe("createActivity and updateActivity", { skip: !browser && "no system bro
     // The bank is taken from the banks page, whatever the course page shows.
     const result = await createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "qbank", name: "Unit 1 bank" });
     assert.deepEqual([result.activityId, result.url, result.changed], [55, `${SITE}mod/qbank/view.php?id=55`, 'Created qbank 55 "Unit 1 bank" in section 1.']);
+    await context.close();
+  });
+
+  it("refuses a shared question bank on Moodle 4.5, which has no qbank module, before opening anything", async () => {
+    const { context, posts } = await site(undefined, "4.5.15 (Build: 20261005)");
+    const opened: string[] = [];
+    context.on("request", (request) => {
+      if (request.url().includes("/course/modedit.php")) opened.push(request.url());
+    });
+    await assert.rejects(createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "qbank", name: "Unit 1 bank" }), { code: "not-available", message: /needs Moodle 5\.0 or later/ });
+    assert.deepEqual([opened.length, posts.length], [0, 0]);
+    await context.close();
+  });
+
+  it("gives Moodle's error when it shows one instead of the activity's form (Moodle 4.5's BigBlueButton without a server)", async () => {
+    const { context } = await site();
+    // Moodle 4.5's error page, reduced: the form's definition threw.
+    await context.route(`${SITE}course/modedit.php**`, (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, body: `<div data-rel="fatalerror"><p class="errormessage">Unable to connect to the BigBlueButton server.</p></div>` }) }),
+    );
+    await assert.rejects(createActivity(context, SITE, { courseId: 5, sectionId: 11, type: "bigbluebuttonbn", name: "Meeting" }), (error: Error) => error instanceof FormError && /no Moodle form.*moodle: Unable to connect to the BigBlueButton server\./.test(error.message));
     await context.close();
   });
 

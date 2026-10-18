@@ -10,7 +10,7 @@ Every function opens the activity's page first (Moodle logs a view), for the ins
 
 ## A site without a server {#a-site-without-a-server}
 
-A site whose BigBlueButton server isn't configured (no server URL or shared secret in Site administration > Plugins > Activity modules > BigBlueButton) shows a neutral page instead of the meeting, and one whose server doesn't answer sends the person back to the course. Every function then throws `BigBlueButtonServerError` (code `bigbluebutton-server`), never an empty state: there is no meeting state or recording to read without a server. Moodle ships the module disabled: an administrator enables it in Site administration > Plugins > Activity modules > Manage activities before anyone can create one.
+A site whose BigBlueButton server isn't configured (no server URL or shared secret in Site administration > Plugins > Activity modules > BigBlueButton) shows a neutral page instead of the meeting, and one whose server doesn't answer sends the person back to the course. Every function then throws `BigBlueButtonServerError` (code `bigbluebutton-server`), never an empty state: there is no meeting state or recording to read without a server. Moodle ships the module disabled: an administrator enables it in Site administration > Plugins > Activity modules > Manage activities before anyone can create one. On Moodle 4.x the activity's form itself checks the server before it opens, so without a server it can reach no BigBlueButton can be created: `createActivity` throws `FormError` with Moodle's own message ("Unable to connect to the BigBlueButton server…").
 
 ## bigBlueButton
 

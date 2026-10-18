@@ -1,24 +1,29 @@
 // BigBlueButton against the sandbox, which has no BigBlueButton server (its URL and secret are empty,
 // and Moodle's old test server isn't relied on): a BigBlueButton activity made by the teacher on a
 // scratch course, every function refusing it with the missing server's error, and another module
-// refused. Moodle 5.2 ships the module disabled: when it is, the admin enables it for the file
-// (core_admin_set_plugin_state, as Site administration > Plugins > Activity modules does) and
-// disables it again afterwards. What needs a server (the meeting's state, recordings, publishing,
-// deleting, the join URL) is skipped with the reason.
+// (a page on the same course) refused. Moodle 5.2 ships the module disabled: when it is, the admin
+// enables it for the file (core_admin_set_plugin_state, as Site administration > Plugins > Activity
+// modules does) and disables it again afterwards. What needs a server (the meeting's state,
+// recordings, publishing, deleting, the join URL) is skipped with the reason. Moodle 4.x makes no
+// BigBlueButton activity without a server it can reach (its form refuses to open): there the file
+// checks that refusal, and skips what needs the activity.
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
-import { BigBlueButtonError, BigBlueButtonServerError } from "../../src/index.js";
+import { BigBlueButtonError, BigBlueButtonServerError, FormError } from "../../src/index.js";
 import { callService } from "../../src/internals.js";
-import { COURSE, SITE, as, cleanup, scratchCourse, type ScratchCourse } from "./harness.js";
+import { SERIES, SITE, as, cleanup, scratchCourse, type ScratchCourse } from "./harness.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
 const SLOW = { timeout: 900_000 };
 const NO_SERVER = "the sandbox has no BigBlueButton server";
+// Moodle 4.x's activity form checks the server before it opens; 5.x only when one is configured.
+const OLD = SERIES.startsWith("4.");
+const NEEDS_ACTIVITY = { ...SLOW, skip: OLD && "Moodle 4.x makes no BigBlueButton activity without a server" };
 
-/** Whether the module is enabled: the activity chooser offers only enabled modules. */
+/** Whether the module is enabled: the activity chooser offers only enabled modules (asked on the site's home, course 1, which every site has). */
 async function moduleEnabled(): Promise<boolean> {
   const admin = await as("admin");
-  const items = await callService<{ content_items: { name: string }[] }>(await admin.context(), SITE, "core_course_get_course_content_items", { courseid: COURSE });
+  const items = await callService<{ content_items: { name: string }[] }>(await admin.context(), SITE, "core_course_get_course_content_items", { courseid: 1 });
   return items.content_items.some((item) => item.name === "bigbluebuttonbn");
 }
 
@@ -32,6 +37,7 @@ const isServerError = (error: unknown) => error instanceof BigBlueButtonServerEr
 describe("bigbluebutton", () => {
   let course: ScratchCourse;
   let activityId: number;
+  let pageId: number;
 
   before(async () => {
     if (!(await moduleEnabled())) {
@@ -40,31 +46,35 @@ describe("bigbluebutton", () => {
       cleanup(() => setModuleState(0));
     }
     course = await scratchCourse("bigbluebutton");
-    const made = await (await as("teacher")).createActivity({ courseId: course.id, sectionId: course.sectionId, type: "bigbluebuttonbn", name: "Driver check BigBlueButton", visibility: "shown" });
-    activityId = made.activityId!;
+    if (!OLD) {
+      const made = await (await as("teacher")).createActivity({ courseId: course.id, sectionId: course.sectionId, type: "bigbluebuttonbn", name: "Driver check BigBlueButton", visibility: "shown" });
+      activityId = made.activityId!;
+    }
+    pageId = (await (await as("teacher")).createActivity({ courseId: course.id, sectionId: course.sectionId, type: "page", name: "Driver check not BigBlueButton", content: "<p>x</p>", visibility: "shown" })).activityId!;
   }, { timeout: 1_800_000 });
 
-  it("bigBlueButton: without a server, the missing server's error for the teacher and the student, never an empty state", SLOW, async () => {
+  it("createActivity: on Moodle 4.x, a BigBlueButton without a server refused with Moodle's error", { ...SLOW, skip: !OLD && "Moodle 5.x makes one without a server" }, async () => {
+    await assert.rejects((await as("teacher")).createActivity({ courseId: course.id, sectionId: course.sectionId, type: "bigbluebuttonbn", name: "Driver check BigBlueButton" }), (error: unknown) => error instanceof FormError && /moodle: \S/.test(error.message));
+  });
+
+  it("bigBlueButton: without a server, the missing server's error for the teacher and the student, never an empty state", NEEDS_ACTIVITY, async () => {
     await assert.rejects((await as("teacher")).bigBlueButton(activityId), isServerError);
     await assert.rejects((await as("student")).bigBlueButton(activityId), isServerError);
   });
 
   it("bigBlueButton: another module is refused", SLOW, async () => {
-    const structure = await (await as("teacher")).courseStructure(COURSE);
-    const other = structure.flatMap((section) => section.activities).find((activity) => activity.type !== "bigbluebuttonbn");
-    assert.ok(other, "course 3 has an activity");
-    await assert.rejects((await as("teacher")).bigBlueButton(other.id), BigBlueButtonError);
+    await assert.rejects((await as("teacher")).bigBlueButton(pageId), BigBlueButtonError);
   });
 
-  it("bigBlueButtonJoinUrl: without a server, the missing server's error", SLOW, async () => {
+  it("bigBlueButtonJoinUrl: without a server, the missing server's error", NEEDS_ACTIVITY, async () => {
     await assert.rejects((await as("student")).bigBlueButtonJoinUrl(activityId), isServerError);
   });
 
-  it("setRecordingPublished: without a server, the missing server's error", SLOW, async () => {
+  it("setRecordingPublished: without a server, the missing server's error", NEEDS_ACTIVITY, async () => {
     await assert.rejects((await as("teacher")).setRecordingPublished(activityId, 1, false), isServerError);
   });
 
-  it("deleteRecording: without a server, the missing server's error", SLOW, async () => {
+  it("deleteRecording: without a server, the missing server's error", NEEDS_ACTIVITY, async () => {
     await assert.rejects((await as("teacher")).deleteRecording(activityId, 1), isServerError);
   });
 
