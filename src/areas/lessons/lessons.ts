@@ -64,7 +64,9 @@ export function readLessonPage(page: Page): Promise<LessonPage> {
       const doc = (globalThis as unknown as { document: El }).document;
       const main = doc.querySelector('#region-main [role="main"]') ?? doc.querySelector("#region-main");
       const text = (el: El | null | undefined) => (el?.innerText ?? "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-      const title = text(main?.querySelector("h2")) || undefined;
+      // The page's heading is an h2, or an h3 under a theme that shows the activity's name as its own
+      // heading (Classic): Moodle's activity header picks the level.
+      const title = text(main?.querySelector("h2") ?? main?.querySelector("h3")) || undefined;
       const question = main?.querySelector('form.mform[action*="/mod/lesson/continue.php"]');
       const pageIdOf = (form: El | null | undefined) => Number(form?.querySelector('input[name="pageid"]')?.getAttribute("value")) || undefined;
       if (question) {

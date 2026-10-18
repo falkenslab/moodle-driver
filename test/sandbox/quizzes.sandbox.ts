@@ -1,10 +1,10 @@
 // Quizzes against the sandbox: course 3's quizzes read; in the scratch course a shared bank filled
-// from GIFT, one quiz built and rearranged by the teacher, and another the student attempts with the
+// from GIFT (on Moodle 4.x the course's own bank), one quiz built and rearranged by the teacher, and another the student attempts with the
 // driver and the teacher grades (an essay by hand).
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { FormError, QuizError, type BankQuestion, type Moodle, type Question, type QuizStatistics } from "../../src/index.js";
-import { COURSE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { COURSE, SERIES, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 const GIFT = `::Quiz TF:: The sandbox runs Moodle. {T}
 
@@ -31,8 +31,12 @@ describe("quizzes", () => {
     teacher = await as("teacher");
     student = await as("student");
     // A qbank isn't on the course page, so createActivity can't name it: the course's banks do.
-    await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "qbank", name: "Quiz bank" });
-    const bankId = (await teacher.questionBanks(course.id)).find((b) => b.type === "qbank" && b.name === "Quiz bank")!.id;
+    // Moodle 4.x has no qbank activities: the course's own bank, whose id is the course's.
+    let bankId = course.id;
+    if (!SERIES.startsWith("4.")) {
+      await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "qbank", name: "Quiz bank" });
+      bankId = (await teacher.questionBanks(course.id)).find((b) => b.type === "qbank" && b.name === "Quiz bank")!.id;
+    }
     const { categories } = await teacher.questions(bankId);
     categoryId = categories[1]!.id;
     bank = (await teacher.importQuestions(bankId, { format: "gift", text: GIFT, categoryId })).questions;

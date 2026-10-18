@@ -9,7 +9,7 @@ import { before, describe, it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import { ActivitySettingsError, BookError, CompletionError, MoodleError, type CourseActivity, type CourseCompletionStatus, type CourseSection } from "../../src/index.js";
 import { openSitePage } from "../../src/internals.js";
-import { COURSE, SITE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { COURSE, SERIES, SITE, as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { pngFile, scormPackage, textFile } from "./packages.js";
 
 // The sandbox is shared and can be slow: a write takes minutes when it is busy.
@@ -111,8 +111,12 @@ describe("building a course", () => {
     assert.deepEqual(settings.files?.map((f) => f.name), ["driver-check-scorm.zip"]);
   });
 
-  it("createActivity: a shared question bank, found on the banks page", SLOW, async () => {
+  it("createActivity: a shared question bank, found on the banks page; refused on Moodle 4.x, which has none", SLOW, async () => {
     const teacher = await as("teacher");
+    if (SERIES.startsWith("4.")) {
+      await assert.rejects(teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "qbank", name: "Driver bank" }), (error: unknown) => error instanceof MoodleError && error.code === "not-available" && /needs Moodle 5\.0 or later/.test(error.message));
+      return;
+    }
     const made = await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "qbank", name: "Driver bank" });
     assert.ok(made.activityId, made.changed);
     const bank = (await teacher.questionBanks(course.id)).find((b) => b.id === made.activityId);

@@ -11,7 +11,7 @@ import { FormError, deleteDraftFile, draftFiles, formValue, openForm, setFields,
 import { inPage } from "../../core/inPage.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
 import { structureOf, type CourseSection } from "../courses/structure.js";
-import { questionBanks } from "../questions/banks.js";
+import { hasBankActivities, questionBanks } from "../questions/banks.js";
 import { scorm, type ScormActivity } from "../scorm/scorm.js";
 import { MoodleError } from "../../core/errors.js";
 import { completionValues, gradeItemsByActivity, hasGradeCondition, parseRestrictions, readCompletion, restrictionsJson, type Completion, type Restrictions } from "./conditions.js";
@@ -157,7 +157,9 @@ async function changeFiles(page: Page, draft: string, changes: FileChanges): Pro
  * resource or folder (a `DraftUpload` puts one in a folder's subfolder); a SCORM (`type: "scorm"`) or
  * an H5P activity (`type: "h5pactivity"`) takes the first as its package. An external tool activity
  * (`type: "lti"`) is made from one of the course's tools, `toolId` (`externalTools` lists them):
- * Moodle 5 no longer configures a tool in the activity itself.
+ * Moodle 5 no longer configures a tool in the activity itself. A shared question bank
+ * (`type: "qbank"`) needs Moodle 5.0 or later (`MoodleError` `not-available` on 4.x, where each
+ * course has its own bank).
  */
 export async function createActivity(
   context: BrowserContext,
@@ -168,6 +170,10 @@ export async function createActivity(
   if (input.toolId !== undefined && input.type !== "lti") throw new MoodleError(`toolId is for an external tool activity (type "lti"), not a ${input.type}.`, "invalid-input");
   if (input.files) await checkLocalFiles(localPaths(input.files));
   if (input.embed) await checkEmbeds(richTextsOf(input), input.embed);
+  // Moodle 4.x has no qbank module (its modedit page shows no form): each course has its own bank.
+  if (input.type === "qbank" && !(await hasBankActivities(context, siteUrl))) {
+    throw new MoodleError("A shared question bank (qbank) needs Moodle 5.0 or later: on Moodle 4.x each course has its own bank, which questionBanks gives.", "not-available");
+  }
   const before = await courseState(context, siteUrl, input.courseId);
   const target = before.section.find((s) => Number(s.id) === input.sectionId);
   if (!target) throw new MoodleError(`Course ${input.courseId} has no section ${input.sectionId}. Take its id from the course structure.`, "not-found");

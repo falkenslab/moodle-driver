@@ -345,9 +345,10 @@ describe("reports and course life cycle", () => {
       content: `<p><a href="${SITE}mod/page/view.php?id=${page.activityId}">page</a> <a href="${SITE}course/view.php?id=${course.id}">course</a> <a href="${SITE}mod/forum/index.php?id=${course.id}">forums</a> <a href="${SITE}mod/page/view.php?id=999999">gone</a></p>`,
     });
     const quiz = await teacher.createActivity({ ...at, type: "quiz", name: `Anonymous quiz ${stamp}` });
-    const own = await teacher.createQuestion(quiz.activityId!, { type: "truefalse", name: "Anonymous TF", text: "<p>True?</p>", correct: true });
+    // On 4.x a bank's id is its course's (a quiz's id would be read as a course's): the course's bank.
+    const own = await teacher.createQuestion(SHARED_BANKS ? quiz.activityId! : course.id, { type: "truefalse", name: "Anonymous TF", text: "<p>True?</p>", correct: true });
     // A question from the course's shared bank, which the selection leaves out: Moodle carries the question.
-    // Shared banks (the qbank module) came with Moodle 5.0: on 4.5 the quiz has its own question only.
+    // Shared banks (the qbank module) came with Moodle 5.0: on 4.5 the quiz has the course bank's question only.
     const questionIds = [own.questionId!];
     if (SHARED_BANKS) {
       await teacher.createActivity({ ...at, type: "qbank", name: `Anonymous bank ${stamp}` });

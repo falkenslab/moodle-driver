@@ -93,4 +93,18 @@ describe("lessons", { skip: !browser && "no system browser" }, () => {
     await assert.rejects(answerLessonPage(context, SITE, 39, { button: 0 }, { trail: "fast" }), /This page is a question/);
     await context.close();
   });
+
+  it("reads a content page's title as Moodle 4.5's Classic theme draws it, an h3", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 5, fullName: "Ana Student" } });
+    // Classic shows the activity's name as an h2 above the main region: the page's heading drops to h3.
+    const main = `<h3>Welcome</h3><div class="contents"><p>Read this first.</p></div>
+<div class="branchbuttoncontainer"><form method="post" action="${SITE}mod/lesson/continue.php"><input type="hidden" name="pageid" value="7"><input type="hidden" name="jumpto" value="-1"><button type="submit">Start</button></form></div>`;
+    await context.route(`${SITE}mod/lesson/**`, (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 5, bodyId: "page-mod-lesson-view", body: `<h2>Driver lesson</h2><div id="region-main"><div role="main">${main}</div></div>` }) }),
+    );
+    const page = await lessonPage(context, SITE, 39);
+    assert.deepEqual([page.kind, page.title, page.buttons], ["content", "Welcome", [{ label: "Start", jumpTo: -1 }]]);
+    await context.close();
+  });
 });
