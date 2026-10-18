@@ -42,6 +42,8 @@ npm run test:sandbox -- test/sandbox/forums.sandbox.ts    # some
 npm run test:sandbox -- test/sandbox/forums.sandbox.ts --grep "forumGrades"  # only the tests whose name matches
 ```
 
+The suite also runs on GitHub's runners, not on your machine: the **Sandbox suite** workflow (`.github/workflows/sandbox.yml`) starts a 5.2 and a 4.5 sandbox (the 4.5 one with the Classic theme) from the published images and runs the suite against each, keeping its log as an artifact. Run it from the Actions tab (series, files and `--grep` as inputs), or push a branch named `sandbox-run/<anything>` to run everything. The content course exists only on the local 5.2 sandbox, so its reads fail there.
+
 - The accounts are read from the sandbox when the suite starts (`node manage.mjs info --json`; `MOODLE_SANDBOX_DIR` points elsewhere) into a temporary folder only you can read, deleted at the end. No password is printed or stored. The accounts' browser profiles stay in `~/.moodle-driver-sandbox` (one folder per checkout; `MOODLE_SANDBOX_PROFILES` moves it), so later runs don't log in again: they hold the sandbox's session cookies, nothing else.
 - Course 3 is the content course and is only read; the sandbox's own course (2) is never used. Writes happen on a scratch course each file creates ("Driver check …") and deletes, and each test removes what it made.
 - The sandbox runs Moodle's cron in a container of its own, every minute, so copies, backups and restores finish as on a real site.

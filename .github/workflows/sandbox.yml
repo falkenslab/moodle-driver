@@ -1,0 +1,90 @@
+# Runs the regression suite against the Moodle sandbox (falkenslab/moodle-sandbox) on GitHub's
+# runners instead of the developer's machine: one job per Moodle series, each with its own sandbox
+# (Moodle, Postgres, cron, Jobe) pulled from the published images. On demand only, it takes hours:
+# run it from the Actions tab, or push a branch named sandbox-run/<anything> (both series, every file).
+# The 4.5 site runs the Classic theme, as the campus the driver is first used on.
+name: Sandbox suite
+
+on:
+  push:
+    branches: ["sandbox-run/**"]
+  workflow_dispatch:
+    inputs:
+      moodle:
+        description: "Moodle series to run against"
+        type: choice
+        options: [both, "5.2", "4.5"]
+        default: both
+      files:
+        description: "Sandbox files to run (space-separated, empty for all)"
+        type: string
+        default: ""
+      grep:
+        description: "Only the tests whose name matches this pattern (empty for all)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  suite:
+    name: Moodle ${{ matrix.moodle }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        moodle: ["5.2", "4.5"]
+        selected: ["${{ inputs.moodle || 'both' }}"]
+        exclude:
+          - selected: "5.2"
+            moodle: "4.5"
+          - selected: "4.5"
+            moodle: "5.2"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: falkenslab/moodle-sandbox
+          path: moodle-sandbox
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # The sandbox prints its accounts' passwords when it's ready: kept out of the public log.
+      - name: Start the sandbox
+        working-directory: moodle-sandbox
+        env:
+          SERIES: ${{ matrix.moodle }}
+        run: |
+          set -o pipefail
+          flag=""; [ "$SERIES" = "5.2" ] || flag="--moodle $SERIES"
+          hide='Admin:|Profesor:|Alumno:|assword'
+          node manage.mjs setup $flag 2>&1 | grep -vE "$hide"
+          node manage.mjs activity $flag 2>&1 | grep -vE "$hide"
+          if [ "$SERIES" = "4.5" ]; then node manage.mjs theme classic $flag 2>&1 | grep -vE "$hide"; fi
+          node manage.mjs info --json $flag | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const i=JSON.parse(s);console.log(JSON.stringify({url:i.url,moodle:i.moodle,plugins:Object.keys(i.plugins??{}).length}))})'
+
+      - name: Run the suite
+        env:
+          SERIES: ${{ matrix.moodle }}
+          FILES: ${{ inputs.files }}
+          GREP: ${{ inputs.grep }}
+          MOODLE_SANDBOX_DIR: ${{ github.workspace }}/moodle-sandbox
+        run: |
+          set -o pipefail
+          args=($FILES)
+          [ "$SERIES" = "5.2" ] || args+=(--moodle "$SERIES")
+          [ -z "$GREP" ] || args+=(--grep "$GREP")
+          npm run test:sandbox -- "${args[@]}" 2>&1 | tee sandbox-suite.log
+
+      - name: Keep the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sandbox-suite-${{ matrix.moodle }}
+          path: sandbox-suite.log
+          if-no-files-found: ignore
