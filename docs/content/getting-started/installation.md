@@ -44,9 +44,9 @@ The driver uses `playwright-core`, which brings no browser of its own. It looks 
 2. Google Chrome (`chrome`).
 3. Playwright's Chromium (`chromium`), downloaded on first use when `downloadBrowser` is `true`.
 
-You can force one with the `channel` option of `createBrowserManager`. While Chromium downloads, calls fail at once with `BrowserDownloadingError` (the download goes on in the background); try again a minute or two later. `chromiumDownload()` on the browser manager says whether it's downloading or failed. See [The browser](../concepts/browser.md).
+You can force one with the `channel` option of `createBrowserManager`, including `firefox`: Playwright's own Firefox, never tried unless chosen and downloaded on first use the same way. While Chromium downloads, calls fail at once with `BrowserDownloadingError` (the download goes on in the background); try again a minute or two later. `chromiumDownload()` on the browser manager says whether it's downloading or failed. See [The browser](../concepts/browser.md).
 
-Chromium goes where Playwright keeps its browsers: `PLAYWRIGHT_BROWSERS_PATH` when set, else the user's `ms-playwright` cache.
+Chromium and Firefox go where Playwright keeps its browsers: `PLAYWRIGHT_BROWSERS_PATH` when set, else the user's `ms-playwright` cache.
 
 ## Two entry points
 

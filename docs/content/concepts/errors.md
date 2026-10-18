@@ -39,6 +39,7 @@ Errors with no class of their own are `MoodleError` with a generic code:
 | `unexpected-page` | A page doesn't have what the driver reads from it |
 | `logout-failed` | Moodle didn't end the session |
 | `chromium-install-failed` | Playwright's installer failed |
+| `firefox-install-failed` | Playwright's installer failed to download Firefox |
 | `background-browser` | A background browser (`moodle open`) didn't start, doesn't answer, or closed while in use |
 | `browser-busy` | Another command is working on the background browser of the profile: try again when it ends |
 
@@ -63,8 +64,8 @@ Each class's code is its name in kebab case without `Error` (`NotLoggedInError` 
 | `LoginTimeoutError` | `logIn()` waited `timeoutMs` and nobody logged in; the window was closed. |
 | `LoginWindowClosedError` | The person closed the login window before logging in. |
 | `NoDisplayError` | A window was needed (logging in, `setVisible(true)`) where there's no screen. |
-| `BrowserNotFoundError` | No installed browser could be launched, and downloading Chromium isn't allowed. |
-| `BrowserDownloadingError` | Chromium is downloading in the background: try again in a minute or two. |
+| `BrowserNotFoundError` | No installed browser could be launched, and downloading Chromium (or the chosen Firefox) isn't allowed. |
+| `BrowserDownloadingError` | Chromium (or the chosen Firefox) is downloading in the background: try again in a minute or two. |
 | `MoodleUrlError` | A site URL isn't a URL, isn't http(s), or isn't a Moodle site. |
 
 ## Generic Moodle errors

@@ -206,16 +206,16 @@ describe("createBrowserManager", () => {
   });
 
   describe("with no system browser", () => {
-    /** An installer that "downloads" Chromium when `finish` is called, or fails. */
+    /** An installer that "downloads" the browser it's asked for when `finish` is called, or fails. */
     function fakeInstall(installed: string[]) {
       let calls = 0;
       let finish!: (ok?: boolean) => void;
-      const install = () => {
+      const install = (browser: string) => {
         calls++;
         return new Promise<void>((resolve, reject) => {
           finish = (ok = true) => {
             if (!ok) return reject(new Error("network down"));
-            installed.push("chromium");
+            installed.push(browser);
             resolve();
           };
         });
@@ -268,6 +268,28 @@ describe("createBrowserManager", () => {
       const browser = createBrowserManager(config({ channel: "chromium" }), launch, fakeInstall(installed).install);
       await browser.context();
       assert.deepEqual(calls.map((c) => c.channel), ["chromium"]);
+    });
+
+    it("downloads Firefox when that channel is chosen, and launches only it", async () => {
+      const installed = ["msedge", "chrome", "chromium"];
+      const { calls, launch } = fakeLaunch(installed);
+      const installer = fakeInstall(installed);
+      const browser = createBrowserManager(config({ channel: "firefox" }), launch, installer.install);
+      await assert.rejects(browser.context(), /Firefox isn't downloaded yet, so it's being downloaded/);
+      assert.equal(browser.chromiumDownload(), "downloading");
+      installer.finish();
+      await settle();
+      await browser.context();
+      assert.equal(browser.openChannel(), "firefox");
+      assert.equal(installed.at(-1), "firefox");
+      assert.deepEqual(calls.map((c) => c.channel), ["firefox", "firefox"]);
+    });
+
+    it("explains a missing Firefox it may not download", async () => {
+      const installer = fakeInstall([]);
+      const browser = createBrowserManager(config({ channel: "firefox", downloadBrowser: false }), fakeLaunch(["msedge"]).launch, installer.install);
+      await assert.rejects(browser.context(), (error: unknown) => error instanceof BrowserNotFoundError && /Firefox isn't downloaded. Allow downloading it/.test(error.message));
+      assert.equal(installer.calls(), 0);
     });
   });
 

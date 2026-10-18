@@ -1,12 +1,19 @@
 import { mkdir } from "node:fs/promises";
-import { chromium, type BrowserContext, type Page } from "playwright-core";
-import { installChromium, type InstallChromium } from "./chromium.js";
-import { SYSTEM_CHANNELS, type BrowserOptions, type Channel } from "../options.js";
+import { chromium, firefox, type BrowserContext, type Page } from "playwright-core";
+import { installBrowser, type InstallBrowser } from "./chromium.js";
+import { SYSTEM_CHANNELS, type BrowserOptions, type Channel, type DownloadedChannel } from "../options.js";
 import { followPages } from "../core/session.js";
 import { restoreSessionCookies, saveSessionCookies } from "./cookies.js";
 import { MoodleError } from "../core/errors.js";
 
 type LaunchPersistentContext = typeof chromium.launchPersistentContext;
+
+/** Playwright's launcher for the channel: Firefox is a browser type of its own, not a Chromium channel. */
+const launchPersistentContext: LaunchPersistentContext = (userDataDir, options) =>
+  options?.channel === "firefox" ? firefox.launchPersistentContext(userDataDir, { ...options, channel: undefined }) : chromium.launchPersistentContext(userDataDir, options);
+
+const DOWNLOADED: Record<DownloadedChannel, string> = { chromium: "Chromium", firefox: "Firefox" };
+const isDownloaded = (channel: Channel): channel is DownloadedChannel => channel in DOWNLOADED;
 
 /** What `BrowserManager.context()` is asked for. */
 export interface ContextOptions {
@@ -23,7 +30,7 @@ export interface BrowserManager {
   context(options?: ContextOptions): Promise<BrowserContext>;
   /** The channel of the open context, or `undefined` while none is open. */
   openChannel(): Channel | undefined;
-  /** Whether Chromium is being downloaded, or the last download failed (ADR-001). */
+  /** Whether Chromium (or Firefox, when chosen) is being downloaded, or the last download failed (ADR-001). */
   chromiumDownload(): "downloading" | "failed" | undefined;
   /** Whether the browser shows a window now: what `setVisible` asked for, else the options. */
   visible(): boolean;
@@ -41,7 +48,7 @@ export interface BrowserManager {
   close(): Promise<void>;
 }
 
-/** No installed browser could be launched, and Chromium can't be downloaded (ADR-001). */
+/** No installed browser could be launched, and Chromium (or Firefox) can't be downloaded (ADR-001). */
 export class BrowserNotFoundError extends MoodleError {
   override name = "BrowserNotFoundError";
   constructor(message: string) {
@@ -49,7 +56,7 @@ export class BrowserNotFoundError extends MoodleError {
   }
 }
 
-/** No browser yet: Chromium is downloading in the background, and the call should be retried later. */
+/** No browser yet: Chromium (or Firefox) is downloading in the background, and the call should be retried later. */
 export class BrowserDownloadingError extends MoodleError {
   override name = "BrowserDownloadingError";
   constructor(message: string) {
@@ -89,15 +96,15 @@ interface Open {
 /**
  * A browser manager that launches the browser itself, in the persistent profile of `config`
  * (ADR-002), on first use: nothing opens until a function needs the browser. It tries the
- * installed browsers and, if allowed, downloads Chromium in the background (ADR-001). Its
- * `context()` throws `BrowserNotFoundError` when no browser can be launched,
- * `BrowserDownloadingError` while Chromium downloads, and `NoDisplayError` for a window without a
+ * installed browsers and, if allowed, downloads Chromium (or Firefox, when chosen) in the background
+ * (ADR-001). Its `context()` throws `BrowserNotFoundError` when no browser can be launched,
+ * `BrowserDownloadingError` while the browser downloads, and `NoDisplayError` for a window without a
  * screen. The other parameters are for tests.
  */
 export function createBrowserManager(
   config: BrowserOptions,
-  launch: LaunchPersistentContext = chromium.launchPersistentContext.bind(chromium),
-  install: InstallChromium = installChromium,
+  launch: LaunchPersistentContext = launchPersistentContext,
+  install: InstallBrowser = installBrowser,
   windowsPossible: () => boolean = canShowWindow,
 ): BrowserManager {
   let open: Open | undefined;
@@ -109,10 +116,10 @@ export function createBrowserManager(
   let download: Promise<void> | undefined;
   let downloadFailure: string | undefined;
 
-  function startDownload(): BrowserDownloadingError {
+  function startDownload(browser: DownloadedChannel): BrowserDownloadingError {
     const retry = downloadFailure ? ` The previous download failed (${downloadFailure}); trying again.` : "";
     downloadFailure = undefined;
-    download ??= install().then(
+    download ??= install(browser).then(
       () => {
         download = undefined;
       },
@@ -121,12 +128,14 @@ export function createBrowserManager(
         downloadFailure = (error as Error).message ?? String(error);
       },
     );
-    return downloading(retry);
+    return downloading(browser, retry);
   }
 
-  function downloading(extra = ""): BrowserDownloadingError {
+  function downloading(browser: DownloadedChannel, extra = ""): BrowserDownloadingError {
+    const missing = config.channel === browser ? `${DOWNLOADED[browser]} isn't downloaded yet` : "Neither Microsoft Edge nor Google Chrome is available";
+    const size = browser === "chromium" ? "about 180 MB, " : "";
     return new BrowserDownloadingError(
-      `${config.channel === "chromium" ? "Chromium isn't downloaded yet" : "Neither Microsoft Edge nor Google Chrome is available"}, so it's being downloaded (about 180 MB, into PLAYWRIGHT_BROWSERS_PATH or the user's ms-playwright cache).${extra} Try again in a minute or two.`,
+      `${missing}, so it's being downloaded (${size}into PLAYWRIGHT_BROWSERS_PATH or the user's ms-playwright cache).${extra} Try again in a minute or two.`,
     );
   }
   // One operation at a time: two launches on the same profile would fail.
@@ -142,7 +151,7 @@ export function createBrowserManager(
     const channels: Channel[] = config.channel ? [config.channel] : [...SYSTEM_CHANNELS, ...(config.downloadBrowser ? (["chromium"] as const) : [])];
     const missing: string[] = [];
     for (const channel of channels) {
-      if (channel === "chromium" && download) throw downloading();
+      if (isDownloaded(channel) && download) throw downloading(channel);
       let context: BrowserContext;
       try {
         // A window keeps its own size; a fixed viewport would leave it half empty.
@@ -150,7 +159,7 @@ export function createBrowserManager(
       } catch (error) {
         const message = (error as Error).message ?? String(error);
         if (!NOT_INSTALLED.test(message)) throw error;
-        if (channel === "chromium" && config.downloadBrowser) throw startDownload();
+        if (isDownloaded(channel) && config.downloadBrowser) throw startDownload(channel);
         missing.push(channel);
         continue;
       }
@@ -168,7 +177,9 @@ export function createBrowserManager(
       return opened;
     }
     throw new BrowserNotFoundError(
-      `No browser found (tried ${missing.join(", ")}). Install Microsoft Edge or Google Chrome${config.downloadBrowser ? "" : ", or allow downloading Chromium (downloadBrowser)"}, or choose another channel.`,
+      config.channel === "firefox"
+        ? "Playwright's Firefox isn't downloaded. Allow downloading it (downloadBrowser), or choose another channel."
+        : `No browser found (tried ${missing.join(", ")}). Install Microsoft Edge or Google Chrome${config.downloadBrowser ? "" : ", or allow downloading Chromium (downloadBrowser)"}, or choose another channel.`,
     );
   }
 

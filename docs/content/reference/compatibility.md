@@ -39,6 +39,8 @@ Moodle's themes change the look but rarely the structure the driver reads; it's 
 
 Microsoft Edge, Google Chrome, or Playwright's Chromium, through `playwright-core` 1.64 or later (a peer dependency). The browser runs on Windows, macOS and Linux; on Linux without a display only headless.
 
+Playwright's Firefox (`channel: "firefox"`) works too, chosen explicitly and never as a background browser. The regression suite against real Moodle sites runs on Chromium; Firefox is checked against the fake Moodle (launching, services, the session kept across launches), so a page that behaves differently in Firefox may still surface there first.
+
 ## Node.js
 
 Node.js 20 or later, ESM only.

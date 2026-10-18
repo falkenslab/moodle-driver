@@ -12,6 +12,7 @@ export type MoodleErrorCode =
   | "unexpected-page"
   | "logout-failed"
   | "chromium-install-failed"
+  | "firefox-install-failed"
   | "background-browser"
   | "browser-busy"
   // One per error class.

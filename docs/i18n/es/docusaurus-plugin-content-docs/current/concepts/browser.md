@@ -11,10 +11,10 @@ interface BrowserOptions {
   /** La carpeta del perfil persistente donde la persona inicia sesión. */
   profileDir: string;
   /** Un canal, o undefined para Edge, después Chrome, después (con downloadBrowser) Chromium. */
-  channel?: "msedge" | "chrome" | "chromium";
+  channel?: "msedge" | "chrome" | "chromium" | "firefox";
   /** Sin ventana, salvo que se pida una (al iniciar sesión) o se muestre bajo demanda. */
   headless: boolean;
-  /** Descarga el Chromium de Playwright cuando no funciona ningún navegador instalado. */
+  /** Descarga el Chromium de Playwright (o Firefox, si se elige) cuando no funciona ningún navegador instalado. */
   downloadBrowser: boolean;
 }
 ```
@@ -40,6 +40,8 @@ Las llamadas al gestor se ejecutan una a una: un lanzamiento y un relanzamiento 
 ## Elegir un navegador {#choosing-a-browser}
 
 Sin `channel`, el gestor prueba Edge, después Chrome y después (solo con `downloadBrowser: true`) el Chromium de Playwright. Cuando no hay ninguno instalado y no se permite descargar, lanza `BrowserNotFoundError`. Si se permite descargar, la primera llamada inicia la descarga en segundo plano y lanza `BrowserDownloadingError` al momento; las llamadas siguientes también lo lanzan hasta que termina la descarga (unos minutos), y entonces lanzan Chromium. Una descarga fallida se reintenta en la siguiente llamada, y mientras tanto `chromiumDownload()` informa de `"failed"`.
+
+`channel: "firefox"` lanza en su lugar la versión de Firefox propia de Playwright, nunca el Firefox del sistema (Playwright no puede manejarlo); solo se lanza cuando se elige. Se descarga la primera vez que hace falta de la misma forma cuando `downloadBrowser` es `true` (`chromiumDownload()` también informa de esa descarga), y sin ella un Firefox que falta lanza `BrowserNotFoundError`. Firefox guarda su propio tipo de perfil, así que dale un `profileDir` propio en lugar de uno que haya usado un navegador basado en Chromium. Un navegador en segundo plano (más abajo) no puede ser Firefox: se ofrece con el protocolo de depuración de Chromium, y `hostBrowser` lo rechaza.
 
 ## Mostrar el navegador {#showing-the-browser}
 

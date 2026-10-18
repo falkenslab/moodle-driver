@@ -11,10 +11,10 @@ interface BrowserOptions {
   /** The persistent profile folder where the person logs in. */
   profileDir: string;
   /** One channel, or undefined for Edge, then Chrome, then (with downloadBrowser) Chromium. */
-  channel?: "msedge" | "chrome" | "chromium";
+  channel?: "msedge" | "chrome" | "chromium" | "firefox";
   /** Without a window, unless one is asked for (logging in) or shown on demand. */
   headless: boolean;
-  /** Download Playwright's Chromium when no installed browser works. */
+  /** Download Playwright's Chromium (or Firefox, when chosen) when no installed browser works. */
   downloadBrowser: boolean;
 }
 ```
@@ -40,6 +40,8 @@ Calls on the manager run one at a time: a launch and a relaunch never overlap on
 ## Choosing a browser
 
 Without a `channel`, the manager tries Edge, then Chrome, then (only with `downloadBrowser: true`) Playwright's Chromium. When none is installed and downloading isn't allowed, it throws `BrowserNotFoundError`. With downloading allowed, the first call starts the download in the background and throws `BrowserDownloadingError` at once; later calls throw it too until the download finishes (a few minutes), then launch Chromium. A failed download is retried on the next call, and `chromiumDownload()` reports `"failed"` meanwhile.
+
+`channel: "firefox"` launches Playwright's own build of Firefox instead, never the system's Firefox (Playwright can't drive that one); it's only launched when chosen. It's downloaded on first use the same way when `downloadBrowser` is `true` (`chromiumDownload()` reports it too), and without it a missing Firefox throws `BrowserNotFoundError`. Firefox keeps its own kind of profile, so give it a `profileDir` of its own rather than one a Chromium-based browser used. A browser left open in the background (below) can't be Firefox: it's offered over Chromium's debugging protocol, and `hostBrowser` refuses it.
 
 ## Showing the browser
 

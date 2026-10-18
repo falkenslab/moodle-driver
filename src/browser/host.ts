@@ -12,7 +12,7 @@ import type { Readable, Writable } from "node:stream";
 import { chromium, type Cookie } from "playwright-core";
 import { MoodleError } from "../core/errors.js";
 import { SYSTEM_CHANNELS, type Channel } from "../options.js";
-import { installChromium } from "./chromium.js";
+import { installBrowser } from "./chromium.js";
 import { SESSION_COOKIES_FILE } from "./cookies.js";
 import { BrowserNotFoundError, NoDisplayError, canShowWindow } from "./manager.js";
 
@@ -21,7 +21,10 @@ export interface HostOptions {
   profileDir: string;
   /** A window, or headless. */
   headed?: boolean;
-  /** One browser only; else Edge, Chrome, then Chromium (downloaded if missing) as `createBrowserManager` tries them. */
+  /**
+   * One browser only; else Edge, Chrome, then Chromium (downloaded if missing) as `createBrowserManager` tries them.
+   * Not Firefox: the browser is offered over Chromium's debugging protocol.
+   */
   channel?: Channel;
 }
 
@@ -72,7 +75,7 @@ async function findBrowser(options: HostOptions, headed: boolean): Promise<{ cha
       if (!NOT_INSTALLED.test((error as Error).message ?? "")) throw error;
       if (channel !== "chromium") continue;
       // Opening a browser to keep is worth waiting for the download (ADR-001).
-      await installChromium();
+      await installBrowser("chromium");
       return { channel, ...(await launchCommand(channel, headed)) };
     }
   }
@@ -217,6 +220,7 @@ interface CdpCookie {
  */
 export async function hostBrowser(options: HostOptions): Promise<BrowserHost> {
   const headed = options.headed ?? false;
+  if (options.channel === "firefox") throw new MoodleError("A background browser is Edge, Chrome or Chromium: it's offered over Chromium's debugging protocol, which Firefox doesn't speak.", "invalid-input");
   if (headed && !canShowWindow()) throw new NoDisplayError("There's no screen to show a browser window here (no DISPLAY or WAYLAND_DISPLAY).");
   const { channel, executable, args } = await findBrowser(options, headed);
   // Chrome reads commands from fd 3 and writes to fd 4 (--remote-debugging-pipe); its own output is of no use here.

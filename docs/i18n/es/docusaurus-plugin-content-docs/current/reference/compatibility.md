@@ -39,6 +39,8 @@ Los temas de Moodle cambian el aspecto pero rara vez la estructura que lee el dr
 
 Microsoft Edge, Google Chrome o el Chromium de Playwright, mediante `playwright-core` 1.64 o posterior (una dependencia peer). El navegador funciona en Windows, macOS y Linux; en Linux sin pantalla, solo sin ventana.
 
+El Firefox de Playwright (`channel: "firefox"`) también funciona, elegido de forma explícita y nunca como navegador en segundo plano. La suite de regresión contra sitios Moodle reales se ejecuta con Chromium; Firefox se comprueba contra el Moodle simulado (el lanzamiento, los servicios, la sesión conservada entre lanzamientos), así que una página que se comporte de otra forma en Firefox aún podría aparecer ahí primero.
+
 ## Node.js
 
 Node.js 20 o posterior, solo ESM.
