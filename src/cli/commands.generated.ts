@@ -6099,7 +6099,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "moveQuestions",
-    "description": "Moves questions into a category of a bank, several at once, as the bank's bulk \"Move to\" does (Moodle's core_question_move_questions service). A question keeps its id and versions.",
+    "description": "Moves questions into a category of a bank, several at once, as the bank's bulk \"Move to\" does (Moodle 5's core_question_move_questions service; 4.x's move page, confirmed with the list's MD5 as its own link does). A question keeps its id and versions.",
     "params": [
       {
         "name": "activityId",
@@ -6501,7 +6501,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "questionBanks",
-    "description": "A course's question banks: its shared ones and the activities' own, as the banks page lists them.",
+    "description": "A course's question banks: on Moodle 5 its shared ones and the activities' own, as the banks page lists them; on Moodle 4.x the course's own bank, whose id is the course's.",
     "params": [
       {
         "name": "courseId",

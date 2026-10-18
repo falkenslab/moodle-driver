@@ -2,11 +2,12 @@
 // read by its data attributes, categories added and edited through the page's own dynamic form,
 // deleted through its delete link (and the form asking where their questions go), and questions
 // moved between them through the bank's bulk "Move to" service.
+import { createHash } from "node:crypto";
 import type { BrowserContext, Page } from "playwright-core";
 import { callService, MoodleServiceError } from "../../core/ajax.js";
 import { setFields, submitForm, type FieldValue } from "../../core/forms.js";
 import { moodleErrorMessage, openSitePage } from "../../core/session.js";
-import { checkBank, QuestionBankError } from "./banks.js";
+import { bankRef, postBankPage, QuestionBankError, type BankRef } from "./banks.js";
 
 /** A category of a bank, as `questionCategories` reads it from the bank's categories page. */
 export interface QuestionCategory {
@@ -62,24 +63,32 @@ export function readCategoryTree(page: Page): Promise<CategoryTree> {
 }
 
 /** Opens a bank's categories page, checked: the module keeps questions, and the person can manage its categories. */
-async function openCategories(context: BrowserContext, siteUrl: string, activityId: number): Promise<Page> {
-  await checkBank(context, siteUrl, activityId);
-  const page = await openSitePage(context, siteUrl, `question/bank/managecategories/category.php?cmid=${activityId}`);
+async function openCategories(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ page: Page; bank: BankRef }> {
+  const bank = await bankRef(context, siteUrl, activityId);
+  const page = await openSitePage(context, siteUrl, `question/bank/managecategories/category.php?${bank.query}`);
   if ((await page.locator("#categoryroot[data-contextid]").count()) === 0) {
     const refused = await moodleErrorMessage(page);
     await page.close().catch(() => undefined);
     throw new QuestionBankError(`You can't manage bank ${activityId}'s categories: it takes Moodle's capability ${MANAGE}, which editing teachers have in their courses.${refused ? ` Moodle said: ${refused}` : ""}`);
   }
-  return page;
+  return { page, bank };
 }
 
-async function categoryTree(context: BrowserContext, siteUrl: string, activityId: number): Promise<CategoryTree> {
-  const page = await openCategories(context, siteUrl, activityId);
+/** The tree, and how the bank's pages and forms are addressed. */
+type BankTree = CategoryTree & { bank: BankRef };
+
+async function categoryTree(context: BrowserContext, siteUrl: string, activityId: number): Promise<BankTree> {
+  const { page, bank } = await openCategories(context, siteUrl, activityId);
   try {
-    return await readCategoryTree(page);
+    return { ...(await readCategoryTree(page)), bank };
   } finally {
     await page.close().catch(() => undefined);
   }
+}
+
+/** The categories form's bank fields: Moodle 5 takes the bank's cmid, 4.x the course's id. */
+function formBank(bank: BankRef): { cmid: string; courseid: string } {
+  return { cmid: bank.field.cmid ?? "0", courseid: bank.field.courseid ?? "0" };
 }
 
 /** The bank's category by id, or `QuestionBankError` naming the bank's own. */
@@ -180,7 +189,7 @@ export async function addQuestionCategory(
   const tree = await categoryTree(context, siteUrl, activityId);
   const parent = parentId ?? tree.topId;
   if (parent !== tree.topId) inBank(tree, activityId, parent, "parent category");
-  const id = await saveCategoryForm(context, siteUrl, { cmid: activityId, courseid: 0, contextid: tree.contextId }, { name, description, parent: `${parent},${tree.contextId}` }, activityId);
+  const id = await saveCategoryForm(context, siteUrl, { ...formBank(tree.bank), contextid: tree.contextId }, { name, description, parent: `${parent},${tree.contextId}` }, activityId);
   const category = await savedCategory(context, siteUrl, activityId, id);
   return { changed: `Added category ${id} "${category.name}" to bank ${activityId}${parent === tree.topId ? "" : ` inside category ${parent}`}.`, category };
 }
@@ -207,7 +216,7 @@ export async function editQuestionCategory(
     context,
     siteUrl,
     // What the page's edit action passes: the form loads the category's values from them.
-    { cmid: activityId, courseid: 0, contextid: tree.contextId, categoryid: categoryId, parent: `${current.parentId},${tree.contextId}`, questioncount: current.questionCount },
+    { ...formBank(tree.bank), contextid: tree.contextId, categoryid: categoryId, parent: `${current.parentId},${tree.contextId}`, questioncount: current.questionCount },
     { name, description, parent: parentId === undefined || parentId === current.parentId ? undefined : `${parentId},${tree.contextId}` },
     activityId,
   );
@@ -229,7 +238,7 @@ export async function deleteQuestionCategory(
   categoryId: number,
   { moveTo }: { moveTo?: number } = {},
 ): Promise<{ changed: string }> {
-  const page = await openCategories(context, siteUrl, activityId);
+  const { page } = await openCategories(context, siteUrl, activityId);
   try {
     const tree = await readCategoryTree(page);
     const category = inBank(tree, activityId, categoryId);
@@ -243,7 +252,7 @@ export async function deleteQuestionCategory(
       throw new QuestionBankError(`Category ${categoryId} has ${category.questionCount} question${category.questionCount === 1 ? "" : "s"}: give moveTo, the category they go to, and it's deleted after moving them.`);
     }
     // The page's own delete link, with its sesskey.
-    const link = await page.locator(`#categoryroot a[href*="delete=${categoryId}&"]`).first().getAttribute("href");
+    const link = await page.locator(`#categoryroot a[href*="delete=${categoryId}&"], #categoryroot a[href$="delete=${categoryId}"]`).first().getAttribute("href");
     if (!link) throw new QuestionBankError(`Bank ${activityId}'s categories page doesn't offer to delete category ${categoryId}.`);
     await page.goto(new URL(link, siteUrl).href, { waitUntil: "domcontentloaded" });
     // With questions left (hidden ones the count leaves out too), Moodle asks where they go.
@@ -267,7 +276,8 @@ export async function deleteQuestionCategory(
 
 /**
  * Moves questions into a category of a bank, several at once, as the bank's bulk "Move to" does
- * (Moodle's core_question_move_questions service). A question keeps its id and versions.
+ * (Moodle 5's core_question_move_questions service; 4.x's move page, confirmed with the list's MD5
+ * as its own link does). A question keeps its id and versions.
  */
 export async function moveQuestions(
   context: BrowserContext,
@@ -279,13 +289,33 @@ export async function moveQuestions(
   if (questionIds.length === 0) throw new QuestionBankError("Give the ids of the questions to move.");
   const tree = await categoryTree(context, siteUrl, activityId);
   inBank(tree, activityId, categoryId);
+  const done = { changed: `Moved question${questionIds.length === 1 ? "" : "s"} ${questionIds.join(", ")} into category ${categoryId} of bank ${activityId}.`, questionIds, categoryId };
+  if (tree.bank.course) {
+    const page = await openSitePage(context, siteUrl, `question/edit.php?${tree.bank.query}`);
+    try {
+      const list = questionIds.join(",");
+      const answer = await postBankPage(page, "question/bank/bulkmove/move.php", {
+        ...tree.bank.field,
+        movequestionsselected: list,
+        confirm: createHash("md5").update(list).digest("hex"),
+        category: `${categoryId},${tree.contextId}`,
+        // After moving, the page sets the return URL's filter to the category, failing when the
+        // URL has none (confirmed empirically, 4.5): an empty one, which it fills in.
+        returnurl: `/question/edit.php?${tree.bank.query}&filter=%7B%7D`,
+      });
+      if (answer.error) throw new QuestionBankError(`Moodle didn't move the questions into bank ${activityId}: ${answer.error.replace(/\.$/, "")}. Moving takes Moodle's capability moodle/question:moveall (movemine for your own questions).`);
+    } finally {
+      await page.close().catch(() => undefined);
+    }
+    return done;
+  }
   try {
     // Without a return URL Moodle refuses the call (invalidparameter), confirmed empirically, 5.2.
     await callService(context, siteUrl, "core_question_move_questions", {
       newcontextid: tree.contextId,
       newcategoryid: categoryId,
       questionids: questionIds.join(","),
-      returnurl: `/question/edit.php?cmid=${activityId}`,
+      returnurl: `/question/edit.php?${tree.bank.query}`,
     });
   } catch (error) {
     if (error instanceof MoodleServiceError && /^nopermission|^required_capability/.test(error.errorcode)) {
@@ -295,5 +325,5 @@ export async function moveQuestions(
     }
     throw error;
   }
-  return { changed: `Moved question${questionIds.length === 1 ? "" : "s"} ${questionIds.join(", ")} into category ${categoryId} of bank ${activityId}.`, questionIds, categoryId };
+  return done;
 }

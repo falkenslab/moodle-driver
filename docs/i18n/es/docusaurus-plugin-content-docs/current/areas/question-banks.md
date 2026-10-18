@@ -6,11 +6,22 @@ Los bancos de preguntas de un curso tal como los organiza Moodle 5: los bancos c
 
 Las firmas de abajo son las de las funciones. Cada operación es también un método del [objeto Moodle](../concepts/calling-functions.md) sin sus dos primeros parámetros (`fn(context, site, …)` es `moodle.fn(…)`), que es como las llaman los ejemplos; las primitivas de más bajo nivel están en `@falkenslab/moodle-driver/internals` (consulta [Bajar de nivel](../concepts/low-level.md)).
 
-Un banco se identifica por el id de su actividad (`activityId`, un id del módulo del curso): el de una actividad qbank, o el del cuestionario al que pertenece el banco. Todo se lee de las páginas de los bancos de Moodle por nombres de campo, atributos data e iconos, así que funciona en cualquier idioma de la interfaz. Todas las funciones lanzan `NotLoggedInError` cuando no hay sesión; los demás errores son `QuestionBankError` y, en los formularios, `FormError` (consulta [Errores](../concepts/errors.md)).
+Un banco se identifica por el id de su actividad (`activityId`, un id del módulo del curso): el de una actividad qbank, o el del cuestionario al que pertenece el banco. En Moodle 4.x consulta [más abajo](#moodle-4x-the-courses-bank): allí el id es el del curso. Todo se lee de las páginas de los bancos de Moodle por nombres de campo, atributos data e iconos, así que funciona en cualquier idioma de la interfaz. Todas las funciones lanzan `NotLoggedInError` cuando no hay sesión; los demás errores son `QuestionBankError` y, en los formularios, `FormError` (consulta [Errores](../concepts/errors.md)).
 
 ## Primero se comprueba el módulo del banco {#the-banks-module-is-checked-first}
 
-Antes de abrir una página de un banco, `questions`, `importQuestions`, `exportQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions` y las funciones de categorías comprueban que el módulo del curso guarda preguntas (un `qbank` o un `quiz`), leyendo su módulo del formulario de ajustes, lo que no cambia nada. Esto importa: Moodle crea las categorías por defecto de un banco para cualquier actividad cuya página de banco se abra, así que abrir por error el banco de una página o de un foro dejaría categorías creadas. Un módulo que no guarda preguntas lanza `QuestionBankError` ("Activity 5 is a page, which has no question bank") sin tocarlo; un módulo que la persona no puede editar, o que no existe, también lanza un error. El módulo encontrado se recuerda por sitio e id durante el resto del programa.
+En Moodle 5, antes de abrir una página de un banco, `questions`, `importQuestions`, `exportQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions` y las funciones de categorías comprueban que el módulo del curso guarda preguntas (un `qbank` o un `quiz`), leyendo su módulo del formulario de ajustes, lo que no cambia nada. Esto importa: Moodle crea las categorías por defecto de un banco para cualquier actividad cuya página de banco se abra, así que abrir por error el banco de una página o de un foro dejaría categorías creadas. Un módulo que no guarda preguntas lanza `QuestionBankError` ("Activity 5 is a page, which has no question bank") sin tocarlo; un módulo que la persona no puede editar, o que no existe, también lanza un error. El módulo encontrado se recuerda por sitio e id durante el resto del programa.
+
+## Moodle 4.x: el banco del curso {#moodle-4x-the-courses-bank}
+
+Moodle 4.x no tiene actividades de banco: cada curso tiene su propio banco de preguntas (su página Banco de preguntas, `question/edit.php?courseid=…`), junto a los bancos compartidos de la categoría del curso y de todo el sitio, que solo pueden usar quienes tienen permisos allí (gestores, administradores). En 4.x, `questionBanks(courseId)` da solo el banco del curso, cuyo `id` es el id del curso, su `type` `"course"` y `shared` verdadero; las demás funciones toman ese id donde toman `activityId`, y trabajan con las páginas de banco de 4.x con los mismos resultados. Un programa no necesita saber en qué versión está: los ids que da `questionBanks` son los que toman las demás funciones en las dos.
+
+Se eligió el id del curso en lugar del id del contexto del banco porque las páginas de 4.x se dirigen por curso, así que una función no necesita otra petición para averiguar a qué curso pertenece un contexto, y no hay que recordar nada entre llamadas. Lo que 4.x deja fuera de alcance así:
+
+- Los bancos de la categoría y del sitio: sus categorías no aparecen en el banco del curso (`questions` y `questionCategories` leen solo las del curso). Trabájalos en Moodle, o importa y exporta a través del curso.
+- El banco propio de un cuestionario (4.x también guarda uno por cuestionario): sus preguntas se leen a través del cuestionario ([`quizStructure`](quizzes.md#quizstructure)); el id de actividad de un cuestionario dado como el de un banco se lee como id de un curso.
+
+La versión se sabe por si el sitio tiene el módulo `qbank` (su icono, un archivo que cualquiera puede descargar), y se pregunta una vez por sitio.
 
 ## questionBanks
 
@@ -27,9 +38,9 @@ interface QuestionBank {
 }
 ```
 
-- `id`: el id de la actividad del banco (id del módulo del curso), que las demás funciones reciben como `activityId`.
-- `name`: el nombre de la actividad.
-- `type`: el módulo, `"qbank"` en un banco compartido, `"quiz"` en el propio de un cuestionario.
+- `id`: el id de la actividad del banco (id del módulo del curso), que las demás funciones reciben como `activityId`; en Moodle 4.x el id del curso.
+- `name`: el nombre de la actividad; en 4.x el del curso.
+- `type`: el módulo, `"qbank"` en un banco compartido, `"quiz"` en el propio de un cuestionario; `"course"` en el banco del curso de 4.x.
 - `shared`: las preguntas de un banco compartido se pueden usar en cualquier parte del curso; las de una actividad, solo en esa actividad.
 
 Lanza `QuestionBankError` cuando el curso no existe o la persona no puede ver sus bancos.
@@ -156,7 +167,7 @@ Las entradas de cada tipo; las obligatorias se comprueban antes de abrir el form
 
 Una entrada de otro tipo se rechaza (`A match question doesn't take answers: it takes pairs.`), igual que las zonas de destino que nombran un elemento que no existe y los comodines con distinto número de valores. Las filas en blanco del formulario se amplían con su botón "Espacios en blanco para más" cuando hacen falta más. Los archivos de un arrastrar y soltar sobre una imagen se suben a los selectores de archivos del formulario, y a los menús de sus zonas de destino, que el script de la página solo rellena cuando ha dibujado la imagen, se les dan los números de los elementos. Los tipos calculados ocupan más de una página: `calculatedsimple` encuentra sus comodines y genera sus conjuntos en su propia página; `calculated` y `calculatedmulti` se guardan primero y luego pasan por el asistente de Moodle (los conjuntos de datos de los comodines, privados de la pregunta, y después sus valores: los conjuntos se añaden con su botón "Añadir", de diez en diez y de uno en uno), así que una pregunta cuya página de valores falla ya está en el banco.
 
-Los formularios de los tipos de plugins se leen por los nombres de campo que publican sus plugins; el sandbox con el que se comprueba el driver no tiene ninguno, así que un programa que trabaje con uno debería comprobar su resultado. En un sitio sin el plugin, `createQuestion` lanza `QuestionBankError` nombrándolo ("This site has no CodeRunner question type (the qtype_coderunner plugin): its administrator would have to install it.").
+Los formularios de los tipos de plugins se leen por los nombres de campo que publican sus plugins; cada uno se crea, se previsualiza, se cambia y se borra en los sandboxes con los que se comprueba el driver (Moodle 4.5 y 5.2), y allí una pregunta CodeRunner se califica mediante un servidor Jobe. En un sitio sin el plugin, `createQuestion` lanza `QuestionBankError` nombrándolo ("This site has no CodeRunner question type (the qtype_coderunner plugin): its administrator would have to install it.").
 
 `questionId` es el id que Moodle indica tras guardar; puede faltar si Moodle acaba en otra página. Errores: `QuestionBankError` para un tipo que no crea, un plugin que el sitio no tiene, una entrada obligatoria que falta o una de otro tipo, un banco que no guarda preguntas o al que no se puede añadir, o una categoría que no es del banco; `FormError` cuando el formulario no tiene ningún campo con un nombre de `fields` o Moodle rechaza los valores (un emparejamiento con muy pocas parejas, una zona de destino fuera de la imagen…), o no se puede subir un archivo.
 

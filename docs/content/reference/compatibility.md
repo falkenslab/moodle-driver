@@ -6,7 +6,7 @@ The driver is developed and checked against **Moodle 5.2** (a real site in Docke
 
 What depends on newer versions:
 
-- Question banks as `qbank` activities, and quizzes' own banks: Moodle 5.0 and later.
+- Question banks as `qbank` activities, and quizzes' own banks: Moodle 5.0 and later. On 4.x the question bank functions work on each course's own bank, whose id is the course's (see [Question banks](../areas/question-banks.md#moodle-4x-the-courses-bank)).
 - The activities overview (`activitiesOverview`): Moodle 5.0 and later.
 - Random quiz questions as question set references (shown as `random` slots): Moodle 4.3 and later.
 
