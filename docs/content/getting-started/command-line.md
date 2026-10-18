@@ -114,7 +114,7 @@ moodle campus.example.org a.martin> exit
 ```
 
 - It takes the global options (`--site`, `--as`, `--profile`, `--show`, `--allow`, `--json`), which hold for every line; a line can still add its own, as `list-courses --json`.
-- With `--show` the window opens at once and stays open; every page a command opens comes to the front of its tab (see [The browser](../concepts/browser.md)). Commands that only call Moodle's services, as `list-courses` and `course-structure`, open no page. `show` and `hide` open and close the window during the session.
+- With `--show` the window opens at once and stays open; every page a command opens comes to the front of its tab (see [The browser](../concepts/browser.md)). Commands that only call Moodle's services, as `list-courses` and `course-structure`, show the page where their work can be seen once they're done (your courses, the course page). `show` and `hide` open and close the window during the session.
 - A failing command prints its error and the session goes on. `exit`, `quit` or Ctrl+D leave, closing the browser and saving the session; Ctrl+C clears the line being typed. The exit status is 0.
 - `help` lists the commands, and `help <command>` explains one. Tab completes command names and a command's options; the lines typed are kept in `~/.moodle-driver/history` for the arrow keys.
 - `sites`, `forget` and `login` work inside. `login --as <name>` goes on with the profile logged in with, and `use <site>` (or `use --as <name>`) works on another site or profile; either closes the browser and opens it on the new profile.

@@ -67,7 +67,8 @@ import { quizResults } from "./areas/quizzes/results.js";
 import { quizStatistics } from "./areas/quizzes/statistics.js";
 import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
 import { addQuestionsToQuiz, addQuizSection, editQuizSlot, quizStructure, removeQuizSlot, setQuizPages } from "./areas/quizzes/structure.js";
-import { logOut, openSitePage } from "./core/session.js";
+import { followPage, logOut, openSitePage, pagesFollowed } from "./core/session.js";
+import { FOLLOWED_PAGES } from "./followed-pages.js";
 import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
 import { courseStructure, listAssignments, pendingActivities } from "./areas/courses/structure.js";
 import { addBlock, configureBlock, courseBlocks, deleteBlock, moveBlock } from "./areas/courses/blocks.js";
@@ -448,7 +449,24 @@ export function createMoodle(options: MoodleOptions): Moodle {
   const bound: Record<string, (...args: unknown[]) => Promise<unknown>> = {};
   for (const [name, fn] of Object.entries(SITE_FUNCTIONS)) {
     const call = fn as (context: BrowserContext, siteUrl: string, ...rest: unknown[]) => Promise<unknown>;
-    bound[name] = async (...args: unknown[]) => call(await browser.context(), site, ...args);
+    const pageOf = (FOLLOWED_PAGES as Record<string, ((args: unknown[], result: unknown) => string | undefined) | undefined>)[name];
+    bound[name] = async (...args: unknown[]) => {
+      const context = await browser.context();
+      if (!pageOf || !browser.visible()) return call(context, site, ...args);
+      // While the person watches, the page that shows the call's work, unless the call showed its own (ADR-007).
+      const before = pagesFollowed(context);
+      const result = await call(context, site, ...args);
+      if (pagesFollowed(context) === before) {
+        let path: string | undefined;
+        try {
+          path = pageOf(args, result);
+        } catch {
+          // An argument or a result not as expected: nothing to show, the call's result stands.
+        }
+        if (path) await followPage(context, site, path);
+      }
+      return result;
+    };
   }
   // Only what's set: an undefined option would hide the function's own default.
   const pace = <P>(given: PaceOptions<P> = {}, progress?: P) => ({

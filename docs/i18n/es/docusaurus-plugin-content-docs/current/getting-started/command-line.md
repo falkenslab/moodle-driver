@@ -114,7 +114,7 @@ moodle campus.example.org a.martin> exit
 ```
 
 - Acepta las opciones globales (`--site`, `--as`, `--profile`, `--show`, `--allow`, `--json`), que valen para todas las líneas; una línea puede añadir aún las suyas, como `list-courses --json`.
-- Con `--show` la ventana se abre al momento y sigue abierta; cada página que abre un comando pasa al frente de su pestaña (consulta [El navegador](../concepts/browser.md)). Los comandos que solo llaman a los servicios de Moodle, como `list-courses` y `course-structure`, no abren ninguna página. `show` y `hide` abren y cierran la ventana durante la sesión.
+- Con `--show` la ventana se abre al momento y sigue abierta; cada página que abre un comando pasa al frente de su pestaña (consulta [El navegador](../concepts/browser.md)). Los comandos que solo llaman a los servicios de Moodle, como `list-courses` y `course-structure`, muestran al terminar la página donde se ve su trabajo (tus cursos, la página del curso). `show` y `hide` abren y cierran la ventana durante la sesión.
 - Un comando que falla imprime su error y la sesión continúa. `exit`, `quit` o Ctrl+D salen, cerrando el navegador y guardando la sesión; Ctrl+C borra la línea que se está escribiendo. El estado de salida es 0.
 - `help` lista los comandos, y `help <command>` explica uno. El tabulador completa los nombres de los comandos y las opciones de un comando; las líneas escritas se guardan en `~/.moodle-driver/history` para las flechas del teclado.
 - `sites`, `forget` y `login` funcionan dentro. `login --as <name>` continúa con el perfil con el que se ha iniciado sesión, y `use <site>` (o `use --as <name>`) pasa a trabajar en otro sitio o perfil; cualquiera de los dos cierra el navegador y lo abre con el nuevo perfil.

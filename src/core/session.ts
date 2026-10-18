@@ -73,6 +73,28 @@ export function followPages(context: BrowserContext, show: (url: string) => Prom
   followers.set(context, show);
 }
 
+// How many pages each context's functions have followed: a call that changes it showed its own page.
+const followCounts = new WeakMap<BrowserContext, number>();
+
+function toFollower(context: BrowserContext, url: string): Promise<void> | undefined {
+  followCounts.set(context, (followCounts.get(context) ?? 0) + 1);
+  return followers.get(context)?.(url);
+}
+
+/** How many pages the functions working in `context` have followed so far. */
+export function pagesFollowed(context: BrowserContext): number {
+  return followCounts.get(context) ?? 0;
+}
+
+/** Has the context's follower show `path` (relative to the site), as the page a function worked on; best effort, never throws. */
+export async function followPage(context: BrowserContext, siteUrl: string, path: string): Promise<void> {
+  try {
+    await toFollower(context, new URL(path, siteUrl).href);
+  } catch {
+    // Following is a courtesy: a page that can't be shown never changes a function's result.
+  }
+}
+
 /**
  * A page the web server doesn't have (its own 404, not a Moodle page): a Moodle version or a plugin
  * without it, rather than a lost session.
@@ -92,7 +114,7 @@ export async function openSitePage(context: BrowserContext, siteUrl: string, pat
     if (!(await pageIsLoggedIn(page, siteUrl))) throw response?.status() === 404 ? noSuchPage(path) : new NotLoggedInError();
     // The page as it was opened (a form's URL, not where posting it led), once it's closed.
     const opened = page.url();
-    if (follow) page.once("close", () => void followers.get(context)?.(opened));
+    if (follow) page.once("close", () => void toFollower(context, opened));
     return page;
   } catch (error) {
     await page.close().catch(() => undefined);
@@ -146,7 +168,7 @@ export function htmlSessionFacts(html: string): SessionFacts {
 export async function fetchSitePage(context: BrowserContext, siteUrl: string, path: string, { follow = true } = {}): Promise<{ url: string; html: string }> {
   const response = await siteFetch(context, new URL(path, siteUrl).href);
   if (!isLoggedIn(response.url, siteUrl, htmlSessionFacts(response.body))) throw response.status === 404 ? noSuchPage(path) : new NotLoggedInError();
-  if (follow) void followers.get(context)?.(response.url);
+  if (follow) void toFollower(context, response.url);
   return { url: response.url, html: response.body };
 }
 
