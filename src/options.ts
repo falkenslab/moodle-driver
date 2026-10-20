@@ -4,10 +4,16 @@ import { MoodleError } from "./core/errors.js";
 
 /** Installed browsers tried in this order when no channel is chosen (ADR-001). */
 export const SYSTEM_CHANNELS = ["msedge", "chrome"] as const;
-/** Every channel: the system browsers, and Playwright's Chromium (downloaded when missing). */
-export const CHANNELS = [...SYSTEM_CHANNELS, "chromium"] as const;
-/** A browser the driver can launch: Microsoft Edge, Google Chrome or Playwright's Chromium. */
+/**
+ * Every channel: the system browsers, and Playwright's own builds of Chromium and Firefox (downloaded
+ * when missing). Firefox is only launched when chosen: Playwright drives its own build, never the
+ * system's Firefox.
+ */
+export const CHANNELS = [...SYSTEM_CHANNELS, "chromium", "firefox"] as const;
+/** A browser the driver can launch: Microsoft Edge, Google Chrome, or Playwright's Chromium or Firefox. */
 export type Channel = (typeof CHANNELS)[number];
+/** The channels Playwright downloads itself, rather than finding them installed (ADR-001). */
+export type DownloadedChannel = Exclude<Channel, (typeof SYSTEM_CHANNELS)[number]>;
 
 /** How student actions view and do things: through the real pages at a person's pace, or fast (ADR-005). */
 export const TRAILS = ["realistic", "fast"] as const;
@@ -21,11 +27,14 @@ export type Trail = (typeof TRAILS)[number];
 export interface BrowserOptions {
   /** The persistent profile folder where the person logs in (ADR-002). */
   profileDir: string;
-  /** One channel, or undefined for Edge, then Chrome, then (with `downloadBrowser`) Chromium. */
+  /**
+   * One channel, or undefined for Edge, then Chrome, then (with `downloadBrowser`) Chromium. Firefox
+   * keeps its own kind of profile: give it a profile folder of its own.
+   */
   channel?: Channel;
   /** Without a window, unless a window is asked for (logging in) or shown on demand. */
   headless: boolean;
-  /** Download Playwright's Chromium when no installed browser works. */
+  /** Download Playwright's Chromium (or Firefox, when chosen) when no installed browser works. */
   downloadBrowser: boolean;
 }
 

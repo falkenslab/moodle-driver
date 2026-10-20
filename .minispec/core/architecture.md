@@ -4,7 +4,7 @@
 
 ```
 program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts, ADR-009) or the functions; internals.ts: the primitives (ADR-010)
-  createBrowserManager(options) --> browser/manager.ts (persistent context on the profile, system channel or Chromium)
+  createBrowserManager(options) --> browser/manager.ts (persistent context on the profile, system channel, Chromium or Firefox)
   area functions (context, siteUrl, ids, options) --> core/ajax.ts (AJAX over HTTP) | core/session.ts (openSitePage) | core/forms.ts --> Moodle
 ```
 
@@ -21,9 +21,9 @@ program (moodle-mcp, a CLI) --> index.ts (public API): createMoodle() (client.ts
 
 ### `browser/`
 
-- `manager.ts` — `createBrowserManager()`: the persistent context opened on first use and reused, one operation at a time; a headed request relaunches it with a window; Chromium downloaded in the background when no browser is installed (ADR-001); shown or hidden on demand (`setVisible`), following pages in one working tab (`show`, `tab`, ADR-007); refuses a window where there's no screen.
+- `manager.ts` — `createBrowserManager()`: the persistent context opened on first use and reused, one operation at a time; a headed request relaunches it with a window; Chromium (or a chosen Firefox) downloaded in the background when no browser is installed (ADR-001); shown or hidden on demand (`setVisible`), following pages in one working tab (`show`, `tab`, ADR-007); refuses a window where there's no screen.
 - `host.ts` — `hostBrowser()`: a browser launched on a pipe only its process holds, offered to one client at a time as a token-checked WebSocket on 127.0.0.1 (ADR-014); `background.ts` — `backgroundBrowser()` (the profile's `.browser.json`, a stale one removed) and `connectBrowserManager()`, a manager over `connectOverCDP` whose `close()` only disconnects.
-- `cookies.ts` — session cookies saved in the profile and restored on launch (ADR-003). `chromium.ts` — Playwright's CLI as a process tree that ends with the program.
+- `cookies.ts` — session cookies saved in the profile and restored on launch (ADR-003). `chromium.ts` — Playwright's CLI (installing Chromium or Firefox) as a process tree that ends with the program.
 
 ### `core/`: what every area is built on
 

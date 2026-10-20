@@ -44,9 +44,9 @@ El driver usa `playwright-core`, que no trae ningún navegador propio. Busca uno
 2. Google Chrome (`chrome`).
 3. El Chromium de Playwright (`chromium`), que se descarga la primera vez que hace falta cuando `downloadBrowser` es `true`.
 
-Puedes forzar uno con la opción `channel` de `createBrowserManager`. Mientras Chromium se descarga, las llamadas fallan al momento con `BrowserDownloadingError` (la descarga sigue en segundo plano); vuelve a intentarlo un minuto o dos después. `chromiumDownload()` del gestor del navegador indica si se está descargando o si ha fallado. Consulta [El navegador](../concepts/browser.md).
+Puedes forzar uno con la opción `channel` de `createBrowserManager`, incluido `firefox`: el Firefox propio de Playwright, que nunca se prueba salvo que se elija y que se descarga la primera vez que hace falta de la misma forma. Mientras Chromium se descarga, las llamadas fallan al momento con `BrowserDownloadingError` (la descarga sigue en segundo plano); vuelve a intentarlo un minuto o dos después. `chromiumDownload()` del gestor del navegador indica si se está descargando o si ha fallado. Consulta [El navegador](../concepts/browser.md).
 
-Chromium se guarda donde Playwright guarda sus navegadores: `PLAYWRIGHT_BROWSERS_PATH` si está definida y, si no, la caché `ms-playwright` del usuario.
+Chromium y Firefox se guardan donde Playwright guarda sus navegadores: `PLAYWRIGHT_BROWSERS_PATH` si está definida y, si no, la caché `ms-playwright` del usuario.
 
 ## Dos puntos de entrada {#two-entry-points}
 

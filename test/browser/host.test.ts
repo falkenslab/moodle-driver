@@ -102,3 +102,9 @@ describe("a browser hosted for other processes", { skip: !available && "no brows
     assert.deepEqual(saved.map((c) => c.name), ["MoodleSession"]);
   });
 });
+
+describe("hostBrowser", () => {
+  it("refuses Firefox, which doesn't speak Chromium's debugging protocol", async () => {
+    await assert.rejects(hostBrowser({ profileDir: tmpdir(), channel: "firefox" }), { code: "invalid-input" });
+  });
+});
