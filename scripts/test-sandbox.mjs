@@ -22,7 +22,8 @@ const mainCheckout = commonDir ? path.dirname(commonDir) : root;
 const sandboxDir = path.resolve(mainCheckout, process.env.MOODLE_SANDBOX_DIR ?? "../moodle-sandbox");
 
 // `--moodle <series>` picks one of the sandbox's sites (its 5.2 one without it), `--grep <pattern>`
-// runs only the tests whose name matches (node's --test-name-pattern), to check a new block alone.
+// runs only the tests whose name matches (node's --test-name-pattern), to check a new block alone,
+// and `--browser firefox` runs it in Playwright's Firefox instead of its Chromium.
 const args = process.argv.slice(2);
 const option = (name) => {
   const at = args.indexOf(name);
@@ -30,6 +31,11 @@ const option = (name) => {
 };
 const moodle = option("--moodle");
 const grep = option("--grep");
+const browser = option("--browser") ?? "chromium";
+if (!["chromium", "firefox"].includes(browser)) {
+  console.error(`--browser is chromium or firefox, not ${browser}.`);
+  process.exit(2);
+}
 const files = args;
 
 const info = spawnSync(process.execPath, ["manage.mjs", "info", "--json", ...(moodle ? ["--moodle", moodle] : [])], { cwd: sandboxDir, encoding: "utf8" });
@@ -49,7 +55,7 @@ if (!student) {
 // sandbox): one folder per checkout, since a profile opens in one browser at a time and agents run
 // from worktrees in parallel. They hold the sandbox's session cookies, never a password.
 // One site's sessions aren't another's: the 5.2 site keeps its folder name, another series gets its own.
-const profiles = path.join(process.env.MOODLE_SANDBOX_PROFILES ?? path.join(homedir(), ".moodle-driver-sandbox"), createHash("sha256").update(root + (moodle && moodle !== "5.2" ? `#${moodle}` : "")).digest("hex").slice(0, 12));
+const profiles = path.join(process.env.MOODLE_SANDBOX_PROFILES ?? path.join(homedir(), ".moodle-driver-sandbox"), createHash("sha256").update(root + (moodle && moodle !== "5.2" ? `#${moodle}` : "") + (browser === "chromium" ? "" : `#${browser}`)).digest("hex").slice(0, 12));
 
 // The content course every read uses ("mcp-content") was filled by hand on the 5.2 site; its ids
 // are found by name, so another site without it gets ids no record has rather than someone else's.
@@ -67,7 +73,7 @@ const work = mkdtempSync(path.join(tmpdir(), "moodle-driver-sandbox-"));
 let status;
 try {
   chmodSync(work, 0o700);
-  const accounts = { admin: sandbox.admin, teacher: sandbox.teacher, student, sandboxCourseId: sandbox.course.id, site: site.href, series: sandbox.moodle?.series, contentCourseId, contentAssignmentId, contentAssignmentItemId };
+  const accounts = { admin: sandbox.admin, teacher: sandbox.teacher, student, sandboxCourseId: sandbox.course.id, site: site.href, series: sandbox.moodle?.series, contentCourseId, contentAssignmentId, contentAssignmentItemId, channel: browser };
   writeFileSync(path.join(work, "accounts.json"), JSON.stringify(accounts), { mode: 0o600 });
 
   const pattern = grep ? ` --test-name-pattern='${grep.replaceAll("'", "'\\''")}'` : "";

@@ -1,7 +1,8 @@
 # Runs the regression suite against the Moodle sandbox (falkenslab/moodle-sandbox) on GitHub's
 # runners instead of the developer's machine: one job per Moodle series, each with its own sandbox
 # (Moodle, Postgres, cron, Jobe) pulled from the published images. On demand only, it takes hours:
-# run it from the Actions tab, or push a branch named sandbox-run/<anything> (both series, every file).
+# run it from the Actions tab, or push a branch named sandbox-run/<anything> (both series, every file;
+# a branch named sandbox-run/firefox-<anything> runs it in Playwright's Firefox).
 # The 4.5 site runs the Classic theme, as the campus the driver is first used on.
 name: Sandbox suite
 
@@ -23,13 +24,18 @@ on:
         description: "Only the tests whose name matches this pattern (empty for all)"
         type: string
         default: ""
+      browser:
+        description: "Browser the suite runs in"
+        type: choice
+        options: [chromium, firefox]
+        default: chromium
 
 permissions:
   contents: read
 
 jobs:
   suite:
-    name: Moodle ${{ matrix.moodle }}
+    name: Moodle ${{ matrix.moodle }} (${{ inputs.browser || (startsWith(github.ref_name, 'sandbox-run/firefox') && 'firefox') || 'chromium' }})
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy:
@@ -73,18 +79,20 @@ jobs:
           SERIES: ${{ matrix.moodle }}
           FILES: ${{ inputs.files }}
           GREP: ${{ inputs.grep }}
+          BROWSER: ${{ inputs.browser || (startsWith(github.ref_name, 'sandbox-run/firefox') && 'firefox') || 'chromium' }}
           MOODLE_SANDBOX_DIR: ${{ github.workspace }}/moodle-sandbox
         run: |
           set -o pipefail
           args=($FILES)
           [ "$SERIES" = "5.2" ] || args+=(--moodle "$SERIES")
           [ -z "$GREP" ] || args+=(--grep "$GREP")
+          args+=(--browser "$BROWSER")
           npm run test:sandbox -- "${args[@]}" 2>&1 | tee sandbox-suite.log
 
       - name: Keep the log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sandbox-suite-${{ matrix.moodle }}
+          name: sandbox-suite-${{ matrix.moodle }}-${{ inputs.browser || (startsWith(github.ref_name, 'sandbox-run/firefox') && 'firefox') || 'chromium' }}
           path: sandbox-suite.log
           if-no-files-found: ignore

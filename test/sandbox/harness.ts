@@ -22,6 +22,7 @@ interface Accounts extends Record<Role, { username: string; password: string }> 
   contentCourseId?: number;
   contentAssignmentId?: number;
   contentAssignmentItemId?: number;
+  channel?: "chromium" | "firefox";
 }
 const accounts = JSON.parse(readFileSync("/sandbox/accounts.json", "utf8")) as Accounts;
 /** The sandbox's own course: no test may use it. */
@@ -34,6 +35,8 @@ export const COURSE = accounts.contentCourseId ?? 3;
 /** Its seeded assignment ("Tarea MCP") and that assignment's grade item. */
 export const CONTENT_ASSIGNMENT = accounts.contentAssignmentId ?? 35;
 export const CONTENT_ASSIGNMENT_ITEM = accounts.contentAssignmentItemId ?? 17;
+/** The browser the suite runs in: Playwright's Chromium, or its Firefox (`--browser firefox`). */
+export const CHANNEL = accounts.channel ?? "chromium";
 
 const open = new Map<Role, Promise<Moodle>>();
 
@@ -54,7 +57,7 @@ export function as(role: Role): Promise<Moodle> {
 }
 
 async function logIn(role: Role): Promise<Moodle> {
-  const moodle = createMoodle({ site: SITE, profileDir: `/sandbox/profiles/${role}`, channel: "chromium", headless: true, downloadBrowser: false, trail: "fast" });
+  const moodle = createMoodle({ site: SITE, profileDir: `/sandbox/profiles/${role}`, channel: CHANNEL, headless: true, downloadBrowser: false, trail: "fast" });
   const context = await moodle.context();
   // A sandbox busy with other runs can take minutes to answer: Playwright's 30 s defaults would fail
   // checks that are only slow. The driver's own waits follow these defaults too.

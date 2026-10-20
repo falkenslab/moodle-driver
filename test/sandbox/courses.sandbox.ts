@@ -35,7 +35,7 @@ import { closeBackgroundBrowser } from "../../src/browser/background.js";
 import { hostBackground } from "../../src/cli/background.js";
 import { compareBranches } from "../../src/core/version.js";
 
-import { COURSE, SERIES, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
+import { CHANNEL, COURSE, SERIES, SITE, as, cleanup, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 import { pngFile } from "./packages.js";
 
 const SLOW = { timeout: 300_000 };
@@ -468,11 +468,11 @@ describe("the browser and the session", () => {
   });
 
   it("createBrowserManager: a browser on a profile of its own, without a session or a window", SLOW, async () => {
-    const browser = createBrowserManager({ profileDir: path.join(work, "manager"), channel: "chromium", headless: true, downloadBrowser: false });
+    const browser = createBrowserManager({ profileDir: path.join(work, "manager"), channel: CHANNEL, headless: true, downloadBrowser: false });
     try {
       assert.equal(browser.openChannel(), undefined);
       const context = patient(await browser.context());
-      assert.equal(browser.openChannel(), "chromium");
+      assert.equal(browser.openChannel(), CHANNEL);
       assert.equal(browser.visible(), false);
       // A new profile has no session on the sandbox.
       const moodle = createMoodle({ site: SITE, browser });
@@ -508,7 +508,7 @@ describe("the browser and the session", () => {
   });
 
   it("logIn: without a session, it needs a window the container hasn't", SLOW, async () => {
-    const moodle = createMoodle({ site: SITE, profileDir: path.join(work, "nologin"), channel: "chromium", headless: true, downloadBrowser: false });
+    const moodle = createMoodle({ site: SITE, profileDir: path.join(work, "nologin"), channel: CHANNEL, headless: true, downloadBrowser: false });
     try {
       await assert.rejects(moodle.logIn({ timeoutMs: 5000 }), NoDisplayError);
     } finally {
@@ -535,7 +535,7 @@ describe("the browser and the session", () => {
     const id = await accountId(username);
     assert.ok(id, "the throwaway account was created");
 
-    const moodle = createMoodle({ site: SITE, profileDir: path.join(work, "throwaway"), channel: "chromium", headless: true, downloadBrowser: false });
+    const moodle = createMoodle({ site: SITE, profileDir: path.join(work, "throwaway"), channel: CHANNEL, headless: true, downloadBrowser: false });
     try {
       const page = await patient(await moodle.context()).newPage();
       await page.goto(`${SITE}login/index.php`, { waitUntil: "domcontentloaded" });
