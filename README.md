@@ -34,7 +34,7 @@ moodle-driver is a Node.js library, and a `moodle` command, that works a Moodle 
 
 ## 🚀 Quick start
 
-You need Node.js 20+, a Moodle 4.x or 5.x site, and Edge or Chrome (or let it download Chromium). Add it to your project:
+You need Node.js 20+, a Moodle 4.x or 5.x site, and Edge or Chrome (or let it download Chromium, or Playwright's Firefox if you choose it). Add it to your project:
 
 ```bash
 npm install @falkenslab/moodle-driver playwright-core
