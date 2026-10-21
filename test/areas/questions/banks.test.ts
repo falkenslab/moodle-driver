@@ -4,11 +4,26 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { QuestionBankError, createQuestion, deleteQuestions, exportQuestions, importQuestions, questionBanks, questions, setQuestionStatus, updateQuestion } from "../../../src/index.js";
+import { QuestionBankError, createQuestion, deleteQuestions, exportQuestions, importQuestions, questionBanks, questionTypes, questions, setQuestionStatus, updateQuestion } from "../../../src/index.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
 after(() => browser?.close());
+
+/** The "Create a new question" chooser a bank page carries, shaped like Moodle 4.5's and 5.2's: one fieldset per group, the types that ask something first. */
+function chooser(groups: { legend: string; types: [type: string, name: string, summary: string][] }[]): string {
+  const option = ([type, name, summary]: [string, string, string]) => `<div class="option">
+  <label for="item_qtype_${type}"><input type="radio" name="qtype" id="item_qtype_${type}" value="${type}">
+    <span class="modicon"><img class="icon" alt="${name}" src="${SITE}theme/image.php/boost/qtype_${type}/1/icon"></span>
+    <span class="typename">${name}</span></label>
+  <div class="typesummary">
+    <p>${summary}</p>
+  </div></div>`;
+  return `<div class="chooserdialoguebody"><div class="choosercontainer"><div id="chooseform"><form action="${SITE}question/bank/editquestion/question.php" id="chooserform" method="get">
+<div class="options"><div class="instruction">Select a question type to see its description.</div><div class="alloptions">
+${groups.map((g) => `<fieldset><legend class="moduletypetitle">${g.legend}</legend>${g.types.map(option).join("")}</fieldset>`).join("")}
+</div></div></form></div></div></div>`;
+}
 
 /**
  * A made-up course 3 with a shared bank (cmid 36: categories 13 and 14, context 70) and a quiz's own
@@ -61,7 +76,11 @@ function fakeBanks(
           if (url.searchParams.has("cat")) listed.push(cat);
           const filter = `<div data-filterregion="filtertypedata"><select data-field-name="category"><option value="" disabled>Bank</option><option value="13">Top for Course bank</option><option value="14">&nbsp;&nbsp;&nbsp;Default for Course bank (${bank.get(14)!.length})</option></select></div>`;
           const table = `<table id="categoryquestions"><tbody>${(bank.get(cat) ?? []).map(row).join("")}</tbody></table>`;
-          return html(route, page("page-question-edit", `<div class="questionbankwindow" data-contextid="70">${filter}${table}</div>`));
+          const types = chooser([
+            { legend: "Questions", types: [["multichoice", "Multiple choice", "Allows the selection of a single or multiple responses."], ["coderunner", "CodeRunner", "Runs the student's code."]] },
+            { legend: "Other", types: [["description", "Description", "This is not actually a question."]] },
+          ]);
+          return html(route, page("page-question-edit", `<div class="questionbankwindow" data-contextid="70">${filter}${table}</div>${types}`));
         }
         case "/question/bank/importquestions/import.php": {
           if (route.request().method() === "POST") {
@@ -205,6 +224,17 @@ describe("questionBanks and questions", { skip: !browser && "no system browser" 
     await context.close();
   });
 
+  it("questionTypes: the chooser's types in its order, plugins marked, the other group apart", async () => {
+    const context = await open(fakeBanks());
+    assert.deepEqual(await questionTypes(context, SITE, 36), [
+      { type: "multichoice", name: "Multiple choice", summary: "Allows the selection of a single or multiple responses.", plugin: false, group: "question" },
+      { type: "coderunner", name: "CodeRunner", summary: "Runs the student's code.", plugin: true, group: "question" },
+      { type: "description", name: "Description", summary: "This is not actually a question.", plugin: false, group: "other" },
+    ]);
+    await assert.rejects(questionTypes(context, SITE, 5), QuestionBankError);
+    await context.close();
+  });
+
   it("refuses an activity that keeps no questions, before opening its bank", async () => {
     const context = await open(fakeBanks());
     await assert.rejects(questions(context, SITE, 5), (error: Error) => error instanceof QuestionBankError && /is a page, which has no question bank/.test(error.message));
@@ -322,7 +352,7 @@ function fakeCourseBank() {
   const listed: string[] = [];
   const posted: URLSearchParams[] = [];
   const deleted = new Set<number>();
-  const html = (route: Route, body: string, status = 200) => route.fulfill({ status, contentType: "text/html", body });
+  const html = (route: Route, body: string, status = 200) => route.fulfill({ status, contentType: "text/html; charset=utf-8", body });
   const routes = async (context: BrowserContext) => {
     await context.route(`${SITE}**`, async (route) => {
       const url = new URL(route.request().url());
@@ -336,7 +366,11 @@ function fakeCourseBank() {
           const cat = Number((url.searchParams.get("cat") ?? "6,1").split(",")[0]);
           const filter = `<div data-filterregion="filtertypedata"><select data-field-name="category"><option value="">Course: dc</option><option value="17">Top for Driver course</option><option value="18">&nbsp;&nbsp;&nbsp;Default for dc (1)</option><option value="">System</option><option value="5">Top for System</option><option value="6">CR_PROTOTYPES (19)</option></select></div>`;
           const rows = cat === 18 && !deleted.has(40) ? `<tr><td><input type="checkbox" name="q40"></td><td data-columnid="qbank_viewquestiontype\\question_type_column-question_type_column"><img src="${SITE}theme/image.php/classic/qtype_truefalse/1/icon"></td><td><span data-itemtype="questionname" data-value="Water"></span></td></tr>` : "";
-          return html(route, page("page-question-edit", `<div class="questionbankwindow" data-contextid="1">${filter}<table id="categoryquestions"><tbody>${rows}</tbody></table></div>`));
+          const types = chooser([
+            { legend: "Preguntas", types: [["truefalse", "Verdadero/Falso", "Una pregunta de dos opciones."], ["gapfill", "Gapfill", "Fill in the gaps."]] },
+            { legend: "Otro", types: [["description", "Descripción", "No es una pregunta."]] },
+          ]);
+          return html(route, page("page-question-edit", `<div class="questionbankwindow" data-contextid="1">${filter}<table id="categoryquestions"><tbody>${rows}</tbody></table></div>${types}`));
         }
         case "/question/bank/deletequestion/delete.php": {
           const form = new URLSearchParams(route.request().postData() ?? "");
@@ -374,6 +408,16 @@ describe("question banks on Moodle 4.x", { skip: !browser && "no system browser"
     assert.deepEqual(fake.listed.map(decodeURIComponent), ["?courseid=12&cat=17,248&qperpage=1000", "?courseid=12&cat=18,248&qperpage=1000"]);
     await assert.rejects(questionBanks(context, SITE, 13), (error: Error) => error instanceof QuestionBankError && /You can't see course 13's question bank/.test(error.message));
     await assert.rejects(questions(context, SITE, 13), (error: Error) => error instanceof QuestionBankError && /Course 13 has no question bank you can see \(on Moodle 4.x a bank's id is its course's\)/.test(error.message));
+    // The chooser of the course's bank, by the course's id, in the site's language: the groups by their order.
+    assert.deepEqual(
+      (await questionTypes(context, SITE, 12)).map((t) => [t.type, t.name, t.plugin, t.group]),
+      [
+        ["truefalse", "Verdadero/Falso", false, "question"],
+        ["gapfill", "Gapfill", true, "question"],
+        ["description", "Descripción", false, "other"],
+      ],
+    );
+    await assert.rejects(questionTypes(context, SITE, 13), QuestionBankError);
     await context.close();
   });
 

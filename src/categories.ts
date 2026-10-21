@@ -327,6 +327,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Question banks: what teachers write.
   questionBanks: CONTENT,
   questions: CONTENT,
+  questionTypes: CONTENT,
   importQuestions: CONTENT,
   exportQuestions: CONTENT,
   questionCategories: CONTENT,

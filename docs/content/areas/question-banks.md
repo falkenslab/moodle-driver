@@ -1,6 +1,6 @@
 # Question banks
 
-A course's question banks as Moodle 5 organizes them: shared banks are activities of their own (module `qbank`), and every quiz keeps a private bank. A teacher (anyone who can manage the course's questions) lists the banks, reads a bank's categories and questions, imports questions from GIFT or Moodle XML (a file or text) and exports them to a file, creates single questions of any type through their type's form, edits them, sets them ready or draft, and deletes them; organizes the bank's categories (adding, renaming, moving and deleting them) and moves questions between them. Students have no access to banks. Questions in a bank are what [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) puts in a quiz.
+A course's question banks as Moodle 5 organizes them: shared banks are activities of their own (module `qbank`), and every quiz keeps a private bank. A teacher (anyone who can manage the course's questions) lists the banks, reads a bank's categories and questions and the question types the site offers, imports questions from GIFT or Moodle XML (a file or text) and exports them to a file, creates single questions of any type through their type's form, edits them, sets them ready or draft, and deletes them; organizes the bank's categories (adding, renaming, moving and deleting them) and moves questions between them. Students have no access to banks. Questions in a bank are what [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) puts in a quiz.
 
 **Terms:** [question bank](../reference/glossary.md#question-bank), [question category](../reference/glossary.md#question-category), [slot](../reference/glossary.md#slot).
 
@@ -75,6 +75,29 @@ interface BankQuestion {
 
 With `limit` and `offset`, `questions` is a page of them, category by category, and `categories` all of them (see [Long lists](../concepts/calling-functions.md#long-lists)): the categories are read in order until the page is full, each one whole and cut (the counts the category filter shows aren't reliable enough to skip by). Up to 1000 questions are read per category. Throws `QuestionBankError` when the module keeps no questions (see above) or the person can't see its bank. The categories here are a flat list, ids and names only: [`questionCategories`](#questioncategories) gives the tree, with each category's parent, description and question count.
 
+## questionTypes
+
+The question types a bank's "Create a new question" chooser offers the person, in its order: what the site has enabled, plugins included.
+
+```ts
+function questionTypes(context: BrowserContext, siteUrl: string, activityId: number): Promise<SiteQuestionType[]>;
+
+interface SiteQuestionType {
+  type: string; // "multichoice", "coderunner"...
+  name: string;
+  summary: string;
+  plugin: boolean;
+  group: "question" | "other";
+}
+```
+
+- `type`: Moodle's internal name. `createQuestion` makes it when it's in `QUESTION_TYPES`; a type of the site the driver can't make is still listed, and one the driver can make but the site lacks (a plugin not installed, a type disabled) isn't.
+- `name` and `summary`: what the chooser shows, in the site's language.
+- `plugin`: an installed plugin rather than one of Moodle's own types.
+- `group`: `"question"` for the types that ask something, `"other"` for the ones the chooser keeps apart (a description).
+
+Read before choosing a type, it tells what [`createQuestion`](#createquestion) can make on this site, even in a course with no questions yet. A type the administrator disabled isn't offered. Empty when the person can see the bank but not add questions to it; throws `QuestionBankError` when they can't see the bank.
+
 ## importQuestions
 
 Imports questions into a bank from a GIFT or Moodle XML file, or from text, through the bank's import form, and returns the questions created.
@@ -144,7 +167,7 @@ interface QuestionInput {
 }
 ```
 
-- `type`: one of `QUESTION_TYPES`: Moodle's own (`multichoice`, `truefalse`, `shortanswer`, `numerical`, `essay`, `calculated`, `calculatedsimple`, `calculatedmulti`, `match`, `randomsamatch`, `ddwtos`, `ddimageortext`, `ddmarker`, `gapselect`, `multianswer`, `ordering`, `description`) and the plugins' (`coderunner`, `formulas`, `gapfill`, `ddmatch`), made when the site has them. Other types are imported as GIFT or Moodle XML instead.
+- `type`: one of `QUESTION_TYPES`: Moodle's own (`multichoice`, `truefalse`, `shortanswer`, `numerical`, `essay`, `calculated`, `calculatedsimple`, `calculatedmulti`, `match`, `randomsamatch`, `ddwtos`, `ddimageortext`, `ddmarker`, `gapselect`, `multianswer`, `ordering`, `description`) and the plugins' (`coderunner`, `formulas`, `gapfill`, `ddmatch`), made when the site has them ([`questionTypes`](#questiontypes) tells which it has). Other types are imported as GIFT or Moodle XML instead.
 - `name`: the question's name in the bank; `text`: the question's text, as HTML, with its type's places in it: `[[1]]`, `[[2]]`… for the choices of `ddwtos` and `gapselect`, the answers of a Cloze question (`multianswer`: `{1:SHORTANSWER:=Paris}`), the `[gaps]` of a gap fill, the `{wildcards}` of a calculated question.
 - `categoryId`: the category; without it, the one after the bank's "Top" (its default category).
 - `defaultMark`: the question's default mark; Moodle's default otherwise (a Cloze question's is the sum of its answers', and a description has none).
@@ -348,6 +371,6 @@ for (const c of await moodle.questionCategories(bank.id)) console.log(c.id, c.na
 
 ## Data categories
 
-- `questionBanks`, `questions`, `importQuestions`, `exportQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions`, `setQuestionStatus`, `questionCategories`, `addQuestionCategory`, `editQuestionCategory`, `deleteQuestionCategory`, `moveQuestions`: `course-content` (what teachers write).
+- `questionBanks`, `questions`, `questionTypes`, `importQuestions`, `exportQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions`, `setQuestionStatus`, `questionCategories`, `addQuestionCategory`, `editQuestionCategory`, `deleteQuestionCategory`, `moveQuestions`: `course-content` (what teachers write).
 
 See [Data categories](../concepts/data-categories.md).

@@ -1399,6 +1399,16 @@ export interface MoodleMethods {
    */
   questionCategories(activityId: number): Promise<import("./areas/questions/categories.js").QuestionCategory[]>;
   /**
+   * The question types a bank's "Create a new question" chooser offers the person, in its order: the
+   * types the site has enabled, plugins included, which may be more or fewer than `QUESTION_TYPES`
+   * (what the driver can make). A type disabled in the site's question type settings isn't there
+   * (confirmed empirically on Moodle 4.5 and 5.2). Read from the chooser the bank page carries
+   * (`#chooserform`), the same on Boost and Classic; its groups have no marker but their order, the
+   * types that ask something first. Empty when the person may see the bank but not add questions to it.
+   * Throws `QuestionBankError` when the person can't open the bank.
+   */
+  questionTypes(bankId: number): Promise<import("./areas/questions/banks.js").SiteQuestionType[]>;
+  /**
    * A bank's categories and every question in them, category by category. With `limit`, `questions` is
    * a page of them in that order (see "Long lists" in the docs' concepts), the categories all: the bank
    * is read category by category until the page is full, each category whole and cut (its page counts

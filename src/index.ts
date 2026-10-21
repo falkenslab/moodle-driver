@@ -124,6 +124,7 @@ export { quizStructure, addQuestionsToQuiz, editQuizSlot, removeQuizSlot, setQui
 export {
   questionBanks,
   questions,
+  questionTypes,
   importQuestions,
   exportQuestions,
   createQuestion,
@@ -133,6 +134,7 @@ export {
   QUESTION_TYPES,
   QuestionBankError,
   type QuestionBank,
+  type SiteQuestionType,
   type BankQuestion,
   type BankCategory,
   type BankQuestions,

@@ -112,6 +112,31 @@ describe("question banks", () => {
     await assert.rejects((await as("student")).questionBanks(course.id), QuestionBankError);
   });
 
+  it("questionTypes: the sandbox's types, its four plugins marked, a description apart; one disabled isn't there", SLOW, async () => {
+    const types = await teacher.questionTypes(bankId);
+    const plugins = types.filter((t) => t.plugin).map((t) => t.type);
+    assert.deepEqual(plugins.sort(), ["coderunner", "ddmatch", "formulas", "gapfill"]);
+    assert.deepEqual(types.filter((t) => t.group === "other").map((t) => t.type), ["description"]);
+    for (const type of ["multichoice", "truefalse", "match", "shortanswer", "essay", "multianswer", "ordering", "ddwtos", "ddimageortext", "ddmarker", "gapselect", "calculated", "calculatedsimple"]) {
+      assert.ok(types.some((t) => t.type === type && !t.plugin && t.group === "question" && t.name && t.summary), type);
+    }
+    // The admin disables a type for the site a moment: the chooser leaves it out.
+    const admin = await (await as("admin")).context();
+    const page = await admin.newPage();
+    const toggle = async (action: "disable" | "enable") => {
+      await page.goto(`${SITE}admin/qtypes.php`, { waitUntil: "domcontentloaded" });
+      await Promise.all([page.waitForLoadState("domcontentloaded"), page.locator(`a[href*="${action}=calculatedsimple"]`).first().click()]);
+    };
+    try {
+      await toggle("disable");
+      assert.ok(!(await teacher.questionTypes(bankId)).some((t) => t.type === "calculatedsimple"));
+    } finally {
+      await toggle("enable").finally(() => page.close());
+    }
+    assert.ok((await teacher.questionTypes(bankId)).some((t) => t.type === "calculatedsimple"));
+    await assert.rejects((await as("student")).questionTypes(bankId), QuestionBankError);
+  });
+
   it("questions: an empty bank's Top and default categories", SLOW, async () => {
     const { categories, questions } = await teacher.questions(bankId);
     assert.ok(categories.length >= 2, JSON.stringify(categories));

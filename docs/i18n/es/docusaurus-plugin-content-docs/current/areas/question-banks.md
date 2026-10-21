@@ -1,6 +1,6 @@
 # Bancos de preguntas
 
-Los bancos de preguntas de un curso tal como los organiza Moodle 5: los bancos compartidos son actividades en sí mismos (módulo `qbank`), y cada cuestionario tiene un banco privado. Un profesor (cualquiera que pueda gestionar las preguntas del curso) lista los bancos, lee las categorías y las preguntas de un banco, importa preguntas en GIFT o Moodle XML (un archivo o texto) y las exporta a un archivo, crea preguntas sueltas de cualquier tipo mediante el formulario de su tipo, las edita, las marca como listas o como borrador, y las borra; organiza las categorías del banco (añadiéndolas, renombrándolas, moviéndolas y borrándolas) y mueve preguntas entre ellas. Los estudiantes no tienen acceso a los bancos. Las preguntas de un banco son lo que [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) pone en un cuestionario.
+Los bancos de preguntas de un curso tal como los organiza Moodle 5: los bancos compartidos son actividades en sí mismos (módulo `qbank`), y cada cuestionario tiene un banco privado. Un profesor (cualquiera que pueda gestionar las preguntas del curso) lista los bancos, lee las categorías y las preguntas de un banco y los tipos de pregunta que ofrece el sitio, importa preguntas en GIFT o Moodle XML (un archivo o texto) y las exporta a un archivo, crea preguntas sueltas de cualquier tipo mediante el formulario de su tipo, las edita, las marca como listas o como borrador, y las borra; organiza las categorías del banco (añadiéndolas, renombrándolas, moviéndolas y borrándolas) y mueve preguntas entre ellas. Los estudiantes no tienen acceso a los bancos. Las preguntas de un banco son lo que [`addQuestionsToQuiz`](quizzes.md#addquestionstoquiz) pone en un cuestionario.
 
 **Términos:** [banco de preguntas](../reference/glossary.md#question-bank), [categoría de preguntas](../reference/glossary.md#question-category), [slot](../reference/glossary.md#slot).
 
@@ -75,6 +75,29 @@ interface BankQuestion {
 
 Con `limit` y `offset`, `questions` es una página de ellas, categoría a categoría, y `categories` todas (consulta [Listas largas](../concepts/calling-functions.md#long-lists)): las categorías se leen en orden hasta llenar la página, cada una entera y luego recortada (los recuentos que muestra el filtro de categorías no son lo bastante fiables para saltarlas por ellos). Se leen hasta 1000 preguntas por categoría. Lanza `QuestionBankError` cuando el módulo no guarda preguntas (ver arriba) o la persona no puede ver su banco. Las categorías de aquí son una lista plana, solo ids y nombres: [`questionCategories`](#questioncategories) da el árbol, con el padre, la descripción y el número de preguntas de cada categoría.
 
+## questionTypes
+
+Los tipos de pregunta que ofrece el selector "Crear una nueva pregunta" de un banco a la persona, en su orden: los que el sitio tiene activados, con los plugins.
+
+```ts
+function questionTypes(context: BrowserContext, siteUrl: string, activityId: number): Promise<SiteQuestionType[]>;
+
+interface SiteQuestionType {
+  type: string; // "multichoice", "coderunner"...
+  name: string;
+  summary: string;
+  plugin: boolean;
+  group: "question" | "other";
+}
+```
+
+- `type`: el nombre interno de Moodle. `createQuestion` lo crea cuando está en `QUESTION_TYPES`; un tipo del sitio que el driver no sabe crear aparece igualmente, y uno que el driver sabe crear pero el sitio no tiene (un plugin sin instalar, un tipo desactivado) no aparece.
+- `name` y `summary`: lo que muestra el selector, en el idioma del sitio.
+- `plugin`: un plugin instalado, no uno de los tipos propios de Moodle.
+- `group`: `"question"` para los tipos que preguntan algo, `"other"` para los que el selector pone aparte (una descripción).
+
+Se lee antes de elegir un tipo: dice qué puede crear [`createQuestion`](#createquestion) en este sitio, aunque el curso aún no tenga preguntas. Un tipo que el administrador desactivó no se ofrece. Vacía cuando la persona ve el banco pero no puede añadirle preguntas; lanza `QuestionBankError` cuando no puede ver el banco.
+
 ## importQuestions
 
 Importa preguntas a un banco desde un archivo GIFT o Moodle XML, o desde texto, mediante el formulario de importación del banco, y devuelve las preguntas creadas.
@@ -144,7 +167,7 @@ interface QuestionInput {
 }
 ```
 
-- `type`: uno de `QUESTION_TYPES`: los propios de Moodle (`multichoice`, `truefalse`, `shortanswer`, `numerical`, `essay`, `calculated`, `calculatedsimple`, `calculatedmulti`, `match`, `randomsamatch`, `ddwtos`, `ddimageortext`, `ddmarker`, `gapselect`, `multianswer`, `ordering`, `description`) y los de plugins (`coderunner`, `formulas`, `gapfill`, `ddmatch`), que se crean cuando el sitio los tiene. Los demás tipos se importan como GIFT o Moodle XML.
+- `type`: uno de `QUESTION_TYPES`: los propios de Moodle (`multichoice`, `truefalse`, `shortanswer`, `numerical`, `essay`, `calculated`, `calculatedsimple`, `calculatedmulti`, `match`, `randomsamatch`, `ddwtos`, `ddimageortext`, `ddmarker`, `gapselect`, `multianswer`, `ordering`, `description`) y los de plugins (`coderunner`, `formulas`, `gapfill`, `ddmatch`), que se crean cuando el sitio los tiene ([`questionTypes`](#questiontypes) dice cuáles tiene). Los demás tipos se importan como GIFT o Moodle XML.
 - `name`: el nombre de la pregunta en el banco; `text`: el enunciado de la pregunta, en HTML, con los huecos de su tipo: `[[1]]`, `[[2]]`… para las opciones de `ddwtos` y `gapselect`, las respuestas de una pregunta Cloze (`multianswer`: `{1:SHORTANSWER:=París}`), los `[huecos]` de un gap fill, los `{comodines}` de una pregunta calculada.
 - `categoryId`: la categoría; sin ella, la que sigue a la "Superior" del banco (su categoría por defecto).
 - `defaultMark`: la puntuación por defecto de la pregunta; si no, la de Moodle por defecto (la de una pregunta Cloze es la suma de las de sus respuestas, y una descripción no tiene).
@@ -348,6 +371,6 @@ for (const c of await moodle.questionCategories(bank.id)) console.log(c.id, c.na
 
 ## Categorías de datos {#data-categories}
 
-- `questionBanks`, `questions`, `importQuestions`, `exportQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions`, `setQuestionStatus`, `questionCategories`, `addQuestionCategory`, `editQuestionCategory`, `deleteQuestionCategory`, `moveQuestions`: `course-content` (lo que escriben los profesores).
+- `questionBanks`, `questions`, `questionTypes`, `importQuestions`, `exportQuestions`, `createQuestion`, `updateQuestion`, `deleteQuestions`, `setQuestionStatus`, `questionCategories`, `addQuestionCategory`, `editQuestionCategory`, `deleteQuestionCategory`, `moveQuestions`: `course-content` (lo que escriben los profesores).
 
 Consulta [Categorías de datos](../concepts/data-categories.md).

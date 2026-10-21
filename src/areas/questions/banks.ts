@@ -281,6 +281,57 @@ async function categoryOption(page: Page, categoryId: number | undefined): Promi
   return value;
 }
 
+/** A question type a bank's "Create a new question" chooser offers, as `questionTypes` reads it. */
+export interface SiteQuestionType {
+  /** Moodle's internal name (`multichoice`, `coderunner`…): `createQuestion` makes it when it's in `QUESTION_TYPES`. */
+  type: string;
+  /** The name the chooser shows, in the site's language. */
+  name: string;
+  /** The chooser's description of the type, as plain text. */
+  summary: string;
+  /** An installed plugin, not one of Moodle's own types. */
+  plugin: boolean;
+  /** `question` for the types that ask something; `other` for the ones the chooser keeps apart (a description). */
+  group: "question" | "other";
+}
+
+// Moodle's own question types a person can create, on 4.5 and 5.x (random and missingtype never are):
+// any other type in the chooser is a plugin.
+const CORE_QUESTION_TYPES = new Set(["calculated", "calculatedmulti", "calculatedsimple", "ddimageortext", "ddmarker", "ddwtos", "description", "essay", "gapselect", "match", "multianswer", "multichoice", "numerical", "ordering", "randomsamatch", "shortanswer", "truefalse"]);
+
+/**
+ * The question types a bank's "Create a new question" chooser offers the person, in its order: the
+ * types the site has enabled, plugins included, which may be more or fewer than `QUESTION_TYPES`
+ * (what the driver can make). A type disabled in the site's question type settings isn't there
+ * (confirmed empirically on Moodle 4.5 and 5.2). Read from the chooser the bank page carries
+ * (`#chooserform`), the same on Boost and Classic; its groups have no marker but their order, the
+ * types that ask something first. Empty when the person may see the bank but not add questions to it.
+ * Throws `QuestionBankError` when the person can't open the bank.
+ */
+export async function questionTypes(context: BrowserContext, siteUrl: string, bankId: number): Promise<SiteQuestionType[]> {
+  const bank = await bankRef(context, siteUrl, bankId);
+  const page = await openSitePage(context, siteUrl, `question/edit.php?${bank.query}`);
+  try {
+    if ((await page.locator("body#page-question-edit .questionbankwindow").count()) === 0) throw noBank(bankId, bank);
+    const groups = await page.locator("#chooserform fieldset").evaluateAll((fieldsets) =>
+      fieldsets.map((fieldset) =>
+        [...fieldset.querySelectorAll(".option")].map((option) => ({
+          type: option.querySelector('input[name="qtype"]')?.getAttribute("value") ?? "",
+          name: (option.querySelector(".typename")?.textContent ?? "").replace(/\s+/g, " ").trim(),
+          summary: (option.querySelector(".typesummary")?.textContent ?? "").replace(/\s+/g, " ").trim(),
+        })),
+      ),
+    );
+    return groups.flatMap((options, index) =>
+      options
+        .filter((option) => option.type !== "")
+        .map((option) => ({ ...option, plugin: !CORE_QUESTION_TYPES.has(option.type), group: index > 0 && index === groups.length - 1 ? ("other" as const) : ("question" as const) })),
+    );
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
 /** Moodle's messages on the page after a form or an import (problems first). */
 async function pageProblems(page: Page): Promise<string[]> {
   return page.evaluate(() => {
