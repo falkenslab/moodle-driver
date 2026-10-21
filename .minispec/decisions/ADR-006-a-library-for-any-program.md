@@ -13,3 +13,4 @@ What moodle-mcp did with Moodle is useful without agents: a CLI that imports and
 - A consumer explains the driver's errors in its own terms (moodle-mcp names its `login` tool and its settings) and adds what it needs: schemas, progress notifications, pseudonymization.
 - Test helpers ship as `@falkenslab/moodle-driver/testing`, so consumers test against the same fake Moodle.
 - Until it's published, consumers depend on the sibling folder (`file:../moodle-driver`); its API can still change freely, with consumers updated in the same change.
+  - Update (October 2026): it's published on npm, and consumers depend on a version of it; `scripts/check-consumer.mjs` typechecks one against an unreleased `dist/`.

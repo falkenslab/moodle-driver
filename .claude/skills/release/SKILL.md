@@ -65,4 +65,4 @@ Tags are lightweight (`git tag vX.Y.Z`). Never move or delete an existing tag, a
 - The documentation workflow ran for the release commit (`gh run list --workflow docs.yml --limit 1`) and https://falkenslab.github.io/moodle-driver/ is up.
 - Optionally prove the install path in the session scratchpad (not the repo): `npm install @falkenslab/moodle-driver@X.Y.Z playwright-core` and check `node_modules/@falkenslab/moodle-driver/dist/index.js` exists.
 
-Report the version, the tag, the release URL, the npm package page and the notes you published. Mention that moodle-mcp still uses `file:../moodle-driver` until someone switches it to `^X.Y.Z` (offer to, not here: it's another repository).
+Report the version, the tag, the release URL, the npm package page and the notes you published. moodle-mcp depends on the published version (`^X.Y.Z`): a new minor (`0.x`) isn't in its range until someone raises it there, which belongs to moodle-mcp's own session (another repository).

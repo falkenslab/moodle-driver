@@ -21,6 +21,6 @@ feature or ADR). Keep features small and don't write redundant documentation.
 ## Things easy to get wrong
 
 - Nothing of moodle-mcp or MCP here: no tool names, no `MOODLE_MCP_*` settings in code or messages (ADR-006). moodle-mcp explains the driver's errors in its own terms.
-- moodle-mcp uses this repository from `file:../moodle-driver` and bundles `dist/`: after changing `src/`, run `npm run build` before testing moodle-mcp.
+- moodle-mcp depends on the version published on npm (`^X.Y.Z`), not on this folder: a change here reaches it only with a release. `node scripts/check-consumer.mjs ../moodle-mcp` typechecks it against this checkout's `dist/` (after `npm run build`) without touching it.
 - Page code with helper functions goes through `inPage()`; tsx's keepNames breaks named functions inside `page.evaluate`.
 - Every guide in `docs/content/` has a Spanish twin in `docs/i18n/es/docusaurus-plugin-content-docs/current/` (ADR-015): change both in the same commit (`update-docs` says how).
