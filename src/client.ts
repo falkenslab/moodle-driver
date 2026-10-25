@@ -38,7 +38,7 @@ import { myGrades } from "./areas/grades/user-report.js";
 import { allocateMarker, assignmentSubmissions, gradeSubmission, grantExtension, rubric, setWorkflowState } from "./areas/assignments/grading.js";
 import { setGradingDefinition } from "./areas/assignments/definitions.js";
 import { h5pActivity } from "./areas/h5p/h5p.js";
-import { contentBank, deleteContent, downloadContent, renameContent, uploadToContentBank } from "./areas/h5p/contentbank.js";
+import { contentBank, deleteContent, downloadContent, h5pContentTypes, renameContent, uploadToContentBank } from "./areas/h5p/contentbank.js";
 import { openScorm, scorm, type OpenedScorm } from "./areas/scorm/scorm.js";
 import { bigBlueButton, bigBlueButtonJoinUrl, deleteRecording, setRecordingPublished } from "./areas/bigbluebutton/bigbluebutton.js";
 import { answerLessonPage, lessonPage, type LessonPage } from "./areas/lessons/lessons.js";
@@ -190,6 +190,7 @@ const SITE_FUNCTIONS = {
   groups,
   h5pActivity,
   contentBank,
+  h5pContentTypes,
   uploadToContentBank,
   renameContent,
   downloadContent,

@@ -677,6 +677,19 @@ describe("doing activities", () => {
         }
       });
 
+      it("h5pContentTypes: the site's types with Multiple Choice among them, installable only by the admin, refused to a student", SLOW, async (t) => {
+        if (missing) return t.skip(missing);
+        const teacher = await (await as("teacher")).h5pContentTypes(course.id);
+        assert.ok(teacher.types.length > 0);
+        for (const type of teacher.types) assert.ok(/^H5P\.\w+$/.test(type.library) && /^\d+\.\d+$/.test(type.version) && type.title, JSON.stringify(type));
+        assert.ok(teacher.types.some((type) => type.library === "H5P.MultiChoice"), JSON.stringify(teacher.types));
+        assert.equal(new Set(teacher.types.map((type) => type.library)).size, teacher.types.length, "one entry per type");
+        assert.equal(teacher.canInstall, false);
+        const admin = await (await as("admin")).h5pContentTypes(course.id);
+        assert.deepEqual([admin.types, admin.canInstall], [teacher.types, true]);
+        await assert.rejects((await as("student")).h5pContentTypes(course.id), ContentBankError);
+      });
+
       it("contentBank: refused to a student, and a file the bank doesn't take refused", SLOW, async (t) => {
         if (!contentId) return t.skip("nothing was uploaded");
         await assert.rejects((await as("student")).contentBank(course.id), (error: unknown) => error instanceof ContentBankError && /moodle\/contentbank:access/.test(error.message));

@@ -1142,6 +1142,18 @@ export interface MoodleMethods {
   /** An H5P activity: its content type, whether attempts are tracked, and the person's attempts with their scores. */
   h5pActivity(activityId: number): Promise<import("./areas/h5p/h5p.js").H5PActivity>;
   /**
+   * The H5P content types a site can run, as a course's content bank offers them to create (its "Add"
+   * menu, one entry per type at its newest version), and whether the person may install new ones.
+   * A package that ships only its content plays where its main library is one of these. Read from what
+   * a teacher sees: the menu, and whether the site's "Manage H5P content types" page opens for them
+   * (it takes moodle/h5p:updatelibraries; nothing changes by opening it). The editor's own list says
+   * nothing here: Moodle doesn't use the H5P hub, so it marks every type as not installable, even for
+   * the admin (confirmed empirically on Moodle 4.5 and 5.2). Empty when the site has no H5P libraries,
+   * or the person may see the bank but not create content in it. Throws `ContentBankError` when the
+   * person can't open the course or its content bank (moodle/contentbank:access).
+   */
+  h5pContentTypes(courseId: number): Promise<import("./areas/h5p/contentbank.js").H5PContentTypes>;
+  /**
    * Imports activities from another course into a course, as Moodle's "Import" does: every activity
    * of `fromCourseId`, or only `activityIds`, added to `toCourseId`'s content (with their sections),
    * without users' data. Needs `moodle/restore:restoretargetimport` in the course imported into and

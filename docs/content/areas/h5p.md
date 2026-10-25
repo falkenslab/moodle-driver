@@ -107,6 +107,30 @@ try {
 }
 ```
 
+## The content types a site can run
+
+An H5P package that ships only its content, without its libraries, plays only where its main library is installed: Moodle fetches the usual ones from h5p.org, or an administrator installs them. `h5pContentTypes` tells which a site has, before such a package is built.
+
+```ts
+function h5pContentTypes(context: BrowserContext, siteUrl: string, courseId: number): Promise<H5PContentTypes>;
+
+interface H5PContentTypes {
+  types: H5PContentType[];
+  canInstall: boolean;
+}
+
+interface H5PContentType {
+  library: string; // "H5P.MultiChoice", as a package's h5p.json names it
+  version: string; // "1.16": the newest the site has
+  title: string;
+}
+```
+
+- `types`: the content types the course's content bank offers to create (its "Add" menu), one per type at its newest version, the one new content uses. A package whose main library is among them plays here. Empty when the site has no H5P libraries, or the person can see the bank but not create content in it.
+- `canInstall`: whether the person may install H5P libraries (`moodle/h5p:updatelibraries`, the admin's), told by whether the site's "Manage H5P content types" page opens for them; nothing changes by opening it. Only then does a package with libraries the site lacks deploy.
+
+It reads what a teacher sees, never the administrator's libraries page. The H5P editor's own list isn't used: Moodle doesn't use the H5P hub, so that list marks every type as not installable, even for the admin. Throws `ContentBankError` when the person can't open the course or its bank.
+
 ## Example
 
 ```ts
@@ -139,7 +163,7 @@ The selectors inside the player depend on the content type and its version: read
 ## Data categories
 
 - `h5pActivity`: `course-content` and `own` (the content and the person's attempts).
-- `contentBank`, `uploadToContentBank`, `renameContent`, `downloadContent`, `deleteContent`: `course-content` (what teachers keep in the bank, with its author's name).
+- `contentBank`, `h5pContentTypes`, `uploadToContentBank`, `renameContent`, `downloadContent`, `deleteContent`: `course-content` (what teachers keep in the bank, with its author's name).
 - `BrowserManager.tab`: `any`, since a program can open anything in it.
 
 See [Data categories](../concepts/data-categories.md).

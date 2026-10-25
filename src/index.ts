@@ -193,7 +193,7 @@ export {
   type LessonPageInput,
 } from "./areas/lessons/pages.js";
 export { h5pActivity, NotAnH5PActivityError, type H5PAttempt, type H5PActivity } from "./areas/h5p/h5p.js";
-export { contentBank, uploadToContentBank, renameContent, downloadContent, deleteContent, ContentBankError, type BankContent, type BankContentUpload } from "./areas/h5p/contentbank.js";
+export { contentBank, h5pContentTypes, uploadToContentBank, renameContent, downloadContent, deleteContent, ContentBankError, type BankContent, type BankContentUpload, type H5PContentType, type H5PContentTypes } from "./areas/h5p/contentbank.js";
 export {
   bigBlueButton,
   bigBlueButtonJoinUrl,

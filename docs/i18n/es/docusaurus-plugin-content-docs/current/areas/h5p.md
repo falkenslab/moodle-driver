@@ -107,6 +107,30 @@ try {
 }
 ```
 
+## Los tipos de contenido que puede ejecutar un sitio {#the-content-types-a-site-can-run}
+
+Un paquete H5P que solo trae su contenido, sin sus librerías, solo se reproduce donde está instalada su librería principal: Moodle descarga las habituales de h5p.org, o las instala un administrador. `h5pContentTypes` dice cuáles tiene un sitio, antes de construir un paquete así.
+
+```ts
+function h5pContentTypes(context: BrowserContext, siteUrl: string, courseId: number): Promise<H5PContentTypes>;
+
+interface H5PContentTypes {
+  types: H5PContentType[];
+  canInstall: boolean;
+}
+
+interface H5PContentType {
+  library: string; // "H5P.MultiChoice", como lo nombra el h5p.json de un paquete
+  version: string; // "1.16": la más nueva que tiene el sitio
+  title: string;
+}
+```
+
+- `types`: los tipos de contenido que el banco de contenido del curso ofrece para crear (su menú "Añadir"), uno por tipo en su versión más nueva, la que usa el contenido nuevo. Un paquete cuya librería principal está entre ellos se reproduce aquí. Vacía cuando el sitio no tiene librerías H5P, o la persona ve el banco pero no puede crear contenido en él.
+- `canInstall`: si la persona puede instalar librerías H5P (`moodle/h5p:updatelibraries`, la del administrador), según se le abra o no la página "Gestionar tipos de contenido H5P" del sitio; abrirla no cambia nada. Solo así se despliega un paquete con librerías que el sitio no tiene.
+
+Lee lo que ve un profesor, nunca la página de librerías del administrador. No usa la lista del propio editor H5P: Moodle no usa el hub de H5P, así que esa lista marca todos los tipos como no instalables, incluso para el administrador. Lanza `ContentBankError` cuando la persona no puede abrir el curso o su banco.
+
 ## Ejemplo {#example}
 
 ```ts
@@ -139,7 +163,7 @@ Los selectores dentro del reproductor dependen del tipo de contenido y de su ver
 ## Categorías de datos {#data-categories}
 
 - `h5pActivity`: `course-content` y `own` (el contenido y los intentos de la persona).
-- `contentBank`, `uploadToContentBank`, `renameContent`, `downloadContent`, `deleteContent`: `course-content` (lo que los profesores guardan en el banco, con el nombre de su autor).
+- `contentBank`, `h5pContentTypes`, `uploadToContentBank`, `renameContent`, `downloadContent`, `deleteContent`: `course-content` (lo que los profesores guardan en el banco, con el nombre de su autor).
 - `BrowserManager.tab`: `any`, ya que un programa puede abrir cualquier cosa en ella.
 
 Consulta [Categorías de datos](../concepts/data-categories.md).

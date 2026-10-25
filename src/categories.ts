@@ -373,6 +373,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   h5pActivity: ["course-content", "own"],
   // The content bank: what teachers keep there to use in activities.
   contentBank: CONTENT,
+  h5pContentTypes: CONTENT,
   uploadToContentBank: CONTENT,
   renameContent: CONTENT,
   downloadContent: CONTENT,

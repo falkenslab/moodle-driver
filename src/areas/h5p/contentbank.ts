@@ -161,6 +161,59 @@ export async function contentBank(context: BrowserContext, siteUrl: string, cour
   return contents;
 }
 
+/** An H5P content type the site can run, as a course's content bank offers it (`h5pContentTypes`). */
+export interface H5PContentType {
+  /** The main library's machine name, as an H5P package's `h5p.json` names it: `H5P.MultiChoice`. */
+  library: string;
+  /** Its version, major and minor (`1.16`): the newest the site has, the one new content uses. */
+  version: string;
+  /** Its title, as the library gives it (H5P doesn't translate it). */
+  title: string;
+}
+
+/** The H5P content types a person can use in a course, and whether they may add new ones. */
+export interface H5PContentTypes {
+  types: H5PContentType[];
+  /**
+   * Whether the person may install H5P libraries (moodle/h5p:updatelibraries, the admin's): only then
+   * does a package whose libraries the site lacks deploy, by uploading it.
+   */
+  canInstall: boolean;
+}
+
+/**
+ * The H5P content types a site can run, as a course's content bank offers them to create (its "Add"
+ * menu, one entry per type at its newest version), and whether the person may install new ones.
+ * A package that ships only its content plays where its main library is one of these. Read from what
+ * a teacher sees: the menu, and whether the site's "Manage H5P content types" page opens for them
+ * (it takes moodle/h5p:updatelibraries; nothing changes by opening it). The editor's own list says
+ * nothing here: Moodle doesn't use the H5P hub, so it marks every type as not installable, even for
+ * the admin (confirmed empirically on Moodle 4.5 and 5.2). Empty when the site has no H5P libraries,
+ * or the person may see the bank but not create content in it. Throws `ContentBankError` when the
+ * person can't open the course or its content bank (moodle/contentbank:access).
+ */
+export async function h5pContentTypes(context: BrowserContext, siteUrl: string, courseId: number): Promise<H5PContentTypes> {
+  const contextId = await courseContextId(context, siteUrl, courseId);
+  const page = await openBank(context, siteUrl, courseId, contextId);
+  let entries: { href: string; title: string }[];
+  try {
+    entries = await page.locator('a.dropdown-item[href*="contentbank/edit.php"]').evaluateAll((links) =>
+      links.map((link) => ({ href: link.getAttribute("href") ?? "", title: (link.textContent ?? "").replace(/\s+/g, " ").trim() })),
+    );
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+  const types: H5PContentType[] = [];
+  for (const { href, title } of entries) {
+    const params = new URL(href, siteUrl).searchParams;
+    // "H5P.MultiChoice 1.16": the library and its version, as the editor is asked for them.
+    const [, library, version] = /^(\S+) (\d+\.\d+)$/.exec(params.get("library") ?? "") ?? [];
+    if (params.get("plugin") === "h5p" && library && version) types.push({ library, version, title });
+  }
+  const { html } = await fetchSitePage(context, siteUrl, "h5p/libraries.php", { follow: false });
+  return { types, canInstall: /<body\b[^>]*\bid="page-h5p-libraries"/.test(html) };
+}
+
 /** Moodle's refusal of the upload form's service: what it takes, in the error. */
 function uploadRefused(courseId: number) {
   return (error: unknown): never => {

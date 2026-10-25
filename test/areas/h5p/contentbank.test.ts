@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { ContentBankError, MoodleError, contentBank, deleteContent, downloadContent, renameContent, uploadToContentBank } from "../../../src/index.js";
+import { ContentBankError, MoodleError, contentBank, deleteContent, downloadContent, h5pContentTypes, renameContent, uploadToContentBank } from "../../../src/index.js";
 import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle, type FakeMoodleState } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -71,6 +71,50 @@ describe("contentBank", { skip: !browser && "no system browser" }, () => {
     const context = await site({}, { bank: denied });
     await assert.rejects(contentBank(context, SITE, COURSE), (error: unknown) => error instanceof ContentBankError && /moodle\/contentbank:access/.test(error.message));
     await context.close();
+  });
+});
+
+/**
+ * The bank's "Add" menu as Moodle 4.5 and 5.2 render it: an entry per H5P content type at its newest
+ * version, the library and version in the link, its title beside the icon.
+ */
+const ADD = (types: [library: string, version: string, title: string][]) => `<div class="cb-toolbar-container mb-2 d-flex"><div class="btn-group me-1" role="group">
+<button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" data-action="Add-content">Add</button>
+<div class="dropdown-menu dropdown-scrollable dropdown-menu-end"><h6 class="dropdown-header">H5P interactive content</h6>
+${types.map(([library, version, title]) => `<a class="dropdown-item icon-size-4" href="${SITE}contentbank/edit.php?contextid=${CONTEXT}&amp;plugin=h5p&amp;library=${library} ${version}">
+  <img alt="" class="icon" src="${SITE}pluginfile.php/1/core_h5p/libraries/15/${library}-${version}/icon.svg">
+ ${title}
+</a>`).join("")}</div></div></div>`;
+
+describe("h5pContentTypes", { skip: !browser && "no system browser" }, () => {
+  const TYPES: [string, string, string][] = [
+    ["H5P.MultiChoice", "1.16", "Multiple Choice"],
+    ["H5P.TrueFalse", "1.8", "True/False Question"],
+  ];
+
+  it("lists the types the bank's Add menu offers, and tells an admin may install new ones", async () => {
+    const context = await site({}, { bank: ADD(TYPES) + BANK("") });
+    assert.deepEqual(await h5pContentTypes(context, SITE, COURSE), {
+      types: [
+        { library: "H5P.MultiChoice", version: "1.16", title: "Multiple Choice" },
+        { library: "H5P.TrueFalse", version: "1.8", title: "True/False Question" },
+      ],
+      canInstall: true,
+    });
+    await context.close();
+  });
+
+  it("says a teacher may not install types, gives none on a site without libraries, and refuses who can't open the bank", async () => {
+    const context = await site({}, { bank: BANK("") });
+    // Moodle sends a person without moodle/h5p:updatelibraries to its error page.
+    await context.route(`${SITE}h5p/libraries.php`, (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-site-index", body: `<div data-rel="fatalerror"><p class="errormessage">Sorry, but you do not currently have permissions to do that (Manage H5P content types).</p></div>` }) }),
+    );
+    assert.deepEqual(await h5pContentTypes(context, SITE, COURSE), { types: [], canInstall: false });
+    await context.close();
+    const denied = await site({}, { bank: `<div data-rel="fatalerror"><p class="errormessage">Sorry, but you do not currently have permissions to do that (Access the content bank).</p></div>` });
+    await assert.rejects(h5pContentTypes(denied, SITE, COURSE), ContentBankError);
+    await denied.close();
   });
 });
 
