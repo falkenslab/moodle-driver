@@ -47,6 +47,9 @@ try {
         noEmit: true,
         typeRoots: [posix(path.join(consumer, "node_modules", "@types"))],
         paths: {
+          // A peer dependency: the driver's types use the program's own copy, as an install does,
+          // not this checkout's: the classes of two copies don't match (1.64.0 and 1.64.1, say).
+          "playwright-core": [posix(path.join(consumer, "node_modules", "playwright-core", "index.d.ts"))],
           "@falkenslab/moodle-driver": dist("index.d.ts"),
           "@falkenslab/moodle-driver/internals": dist("internals.d.ts"),
           "@falkenslab/moodle-driver/testing": dist("testing/index.d.ts"),
