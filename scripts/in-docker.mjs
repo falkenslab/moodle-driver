@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-const IMAGE = "mcr.microsoft.com/playwright:v1.64.0-noble";
+const IMAGE = "mcr.microsoft.com/playwright:v1.64.1-noble";
 const NETWORK = process.env.MOODLE_DRIVER_DOCKER_NETWORK ?? "moodle-sandbox_default";
 const SANDBOX = process.env.MOODLE_DRIVER_DOCKER_SANDBOX ?? "webserver:80";
 const PORT = process.env.MOODLE_SANDBOX_PORT ?? "8080";
