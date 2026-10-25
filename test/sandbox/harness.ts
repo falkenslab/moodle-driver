@@ -70,8 +70,14 @@ async function logIn(role: Role): Promise<Moodle> {
       // Moodle sends a logged-in person on from the login page; the form is there only without a session.
       if ((await page.locator("#username").count()) > 0) {
         const { username, password } = accounts[role];
-        await page.fill("#username", username);
-        await page.fill("#password", password);
+        // Moodle 5.2's login page renders its form again once its modules load, emptying what was
+        // typed before (seen on a busy sandbox: "Your login info may be incorrect"): typed until it stays.
+        for (let tries = 0; tries < 10; tries++) {
+          await page.fill("#username", username);
+          await page.fill("#password", password);
+          await page.waitForTimeout(1000);
+          if ((await page.inputValue("#username")) === username && (await page.inputValue("#password")) === password) break;
+        }
         await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }), page.click("#loginbtn", { noWaitAfter: true })]);
         if ((await page.locator("#username").count()) > 0) throw new Error(`The sandbox's ${role} account couldn't log in.`);
       }
