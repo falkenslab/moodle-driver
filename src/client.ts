@@ -67,7 +67,7 @@ import { quizResults } from "./areas/quizzes/results.js";
 import { quizStatistics } from "./areas/quizzes/statistics.js";
 import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
 import { addQuestionsToQuiz, addQuizSection, editQuizSlot, quizStructure, removeQuizSlot, setQuizPages } from "./areas/quizzes/structure.js";
-import { followPage, logOut, openSitePage, pagesFollowed } from "./core/session.js";
+import { followPage, lastPageFollowed, logOut, openSitePage } from "./core/session.js";
 import { FOLLOWED_PAGES } from "./followed-pages.js";
 import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
 import { courseStructure, listAssignments, pendingActivities } from "./areas/courses/structure.js";
@@ -358,6 +358,8 @@ void methodsMatch;
 
 // Functions bound by hand, with the object's defaults: methods of the same name all the same.
 const DEFAULTED = ["activityContent", "answerQuizQuestions", "answerLessonPage", "downloadFile", "exportGrades"] as const;
+/** The methods bound by hand, with the object's defaults: their signatures are the `Moodle` interface's. */
+export type DefaultedMethod = (typeof DEFAULTED)[number];
 
 /** The names of the methods a `Moodle` has from the driver's functions, one per function of that name. */
 export const MOODLE_METHODS: readonly string[] = [...Object.keys(SITE_FUNCTIONS), ...DEFAULTED];
@@ -448,27 +450,32 @@ export function createMoodle(options: MoodleOptions): Moodle {
   const site = parseSiteUrl(options.site);
   const browser = "browser" in options ? options.browser : createBrowserManager(options);
   const defaults: MoodleDefaults = { trail: options.trail, onProgress: options.onProgress, loginTimeoutMs: options.loginTimeoutMs, downloadDir: options.downloadDir };
+  // While the person watches, the page that shows a call's result, after the pages the call worked
+  // in (a form, a list) and unless it's the one shown already (ADR-007).
+  const pages = FOLLOWED_PAGES as Record<string, ((args: unknown[], result: unknown) => string | undefined) | undefined>;
+  const showResult = async (name: string, args: unknown[], result: unknown): Promise<void> => {
+    const pageOf = pages[name];
+    if (!pageOf || !browser.visible()) return;
+    let path: string | undefined;
+    try {
+      path = pageOf(args, result);
+    } catch {
+      // An argument or a result not as expected: nothing to show, the call's result stands.
+    }
+    const context = await browser.context();
+    if (path && new URL(path, site).href !== lastPageFollowed(context)) await followPage(context, site, path);
+  };
+  const withResultPage =
+    <A extends unknown[], R>(name: string, method: (...args: A) => Promise<R>) =>
+    async (...args: A): Promise<R> => {
+      const result = await method(...args);
+      await showResult(name, args, result);
+      return result;
+    };
   const bound: Record<string, (...args: unknown[]) => Promise<unknown>> = {};
   for (const [name, fn] of Object.entries(SITE_FUNCTIONS)) {
     const call = fn as (context: BrowserContext, siteUrl: string, ...rest: unknown[]) => Promise<unknown>;
-    const pageOf = (FOLLOWED_PAGES as Record<string, ((args: unknown[], result: unknown) => string | undefined) | undefined>)[name];
-    bound[name] = async (...args: unknown[]) => {
-      const context = await browser.context();
-      if (!pageOf || !browser.visible()) return call(context, site, ...args);
-      // While the person watches, the page that shows the call's work, unless the call showed its own (ADR-007).
-      const before = pagesFollowed(context);
-      const result = await call(context, site, ...args);
-      if (pagesFollowed(context) === before) {
-        let path: string | undefined;
-        try {
-          path = pageOf(args, result);
-        } catch {
-          // An argument or a result not as expected: nothing to show, the call's result stands.
-        }
-        if (path) await followPage(context, site, path);
-      }
-      return result;
-    };
+    bound[name] = withResultPage(name, async (...args: unknown[]) => call(await browser.context(), site, ...args));
   }
   // Only what's set: an undefined option would hide the function's own default.
   const pace = <P>(given: PaceOptions<P> = {}, progress?: P) => ({
@@ -487,18 +494,21 @@ export function createMoodle(options: MoodleOptions): Moodle {
     backupContents: (file) => backupContents(file),
     anonymizeBackup: (file, destFile) => anonymizeBackup(file, destFile),
     callService: async <T>(methodname: string, args: Record<string, unknown>) => callService<T>(await browser.context(), site, methodname, args),
-    activityContent: async (
-      activityOrId: { id: number; type: string } | number,
-      typeOrOptions?: ContentType | PaceOptions<(secondsRead: number) => void>,
-      given?: PaceOptions<(secondsRead: number) => void>,
-    ) => {
-      const context = await browser.context();
-      const progress = onProgress && ((read: number) => onProgress(read));
-      if (typeof activityOrId === "number") return activityContent(context, site, activityOrId, typeOrOptions as ContentType, pace(given, progress));
-      return activityContent(context, site, activityOrId, pace(typeOrOptions as PaceOptions<(secondsRead: number) => void> | undefined, progress));
-    },
-    answerQuizQuestions: async (attemptId, answers, given) => answerQuizQuestions(await browser.context(), site, attemptId, answers, pace(given, onProgress)),
-    answerLessonPage: async (activityId, answer, given) => answerLessonPage(await browser.context(), site, activityId, answer, pace(given, onProgress)),
+    activityContent: withResultPage(
+      "activityContent",
+      async (activityOrId: { id: number; type: string } | number, typeOrOptions?: ContentType | PaceOptions<(secondsRead: number) => void>, given?: PaceOptions<(secondsRead: number) => void>) => {
+        const context = await browser.context();
+        const progress = onProgress && ((read: number) => onProgress(read));
+        if (typeof activityOrId === "number") return activityContent(context, site, activityOrId, typeOrOptions as ContentType, pace(given, progress));
+        return activityContent(context, site, activityOrId, pace(typeOrOptions as PaceOptions<(secondsRead: number) => void> | undefined, progress));
+      },
+    ) as Moodle["activityContent"],
+    answerQuizQuestions: withResultPage("answerQuizQuestions", async (attemptId: number, answers: Parameters<Moodle["answerQuizQuestions"]>[1], given?: Parameters<Moodle["answerQuizQuestions"]>[2]) =>
+      answerQuizQuestions(await browser.context(), site, attemptId, answers, pace(given, onProgress)),
+    ),
+    answerLessonPage: withResultPage("answerLessonPage", async (activityId: number, answer: Parameters<Moodle["answerLessonPage"]>[1], given?: Parameters<Moodle["answerLessonPage"]>[2]) =>
+      answerLessonPage(await browser.context(), site, activityId, answer, pace(given, onProgress)),
+    ),
     downloadFile: async (url, destDir) => {
       const folder = destDir ?? defaults.downloadDir;
       if (!folder) throw new MoodleError("Give downloadFile a folder, or createMoodle a downloadDir.", "invalid-input");

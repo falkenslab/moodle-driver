@@ -73,17 +73,17 @@ export function followPages(context: BrowserContext, show: (url: string) => Prom
   followers.set(context, show);
 }
 
-// How many pages each context's functions have followed: a call that changes it showed its own page.
-const followCounts = new WeakMap<BrowserContext, number>();
+// The last page each context's functions followed: a method that would show the same one again doesn't.
+const lastFollowed = new WeakMap<BrowserContext, string>();
 
 function toFollower(context: BrowserContext, url: string): Promise<void> | undefined {
-  followCounts.set(context, (followCounts.get(context) ?? 0) + 1);
+  lastFollowed.set(context, url);
   return followers.get(context)?.(url);
 }
 
-/** How many pages the functions working in `context` have followed so far. */
-export function pagesFollowed(context: BrowserContext): number {
-  return followCounts.get(context) ?? 0;
+/** The last page (a full URL) the functions working in `context` followed, if any. */
+export function lastPageFollowed(context: BrowserContext): string | undefined {
+  return lastFollowed.get(context);
 }
 
 /** Has the context's follower show `path` (relative to the site), as the page a function worked on; best effort, never throws. */

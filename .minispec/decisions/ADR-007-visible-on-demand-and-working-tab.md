@@ -14,3 +14,4 @@ Most functions work through AJAX from a hidden tab (ADR-004), so a visible brows
 - Open tabs don't survive a switch; what was saved in Moodle does.
 - Without a screen, `setVisible(true)` throws `NoDisplayError` and the browser stays headless.
 - Which page an AJAX-only step shows is Moodle knowledge, so the driver's (#88, 18 October 2026): `FOLLOWED_PAGES` maps each such method to its page, and the `Moodle` object's methods show it after a successful call, unless the call showed a page of its own; until then moodle-mcp mapped each of its tools to one.
+- Since #95 (November 2026) the map covers every method, with the page of the result rather than the form a function worked in, and it's shown even after a function's own pages: a program can also link the person to it without a window.
