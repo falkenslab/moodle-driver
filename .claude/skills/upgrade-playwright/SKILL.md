@@ -15,8 +15,8 @@ npm install -D playwright-core@<version>
 ```
 
 Then, to the same version:
-- `peerDependencies` in `package.json`: `^<version>` (a program brings its own `playwright-core`; a narrower range is a breaking change for consumers).
-- The image in `scripts/in-docker.mjs` (`mcr.microsoft.com/playwright:v<version>-noble`) and in `.minispec/core/stack.md`. The image's browsers must match `playwright-core`'s, or Chromium won't launch in the container.
+- `peerDependencies` in `package.json`: raised to `^<version>` only when the driver needs something the new version brings (a program brings its own `playwright-core`; a narrower range is a breaking change for consumers). Otherwise it stays, and consumers on the old version keep working: `scripts/check-consumer.mjs` typechecks them against their own copy.
+- The image in `scripts/in-docker.mjs` (`mcr.microsoft.com/playwright:v<version>-noble`) and in `.minispec/core/stack.md`. The image's browsers must match `playwright-core`'s, or Chromium and Firefox won't launch in the container.
 - moodle-mcp's `playwright-core` and its own Docker image, if it has one: tell the user; change them only if asked.
 
 Read Playwright's release notes for the versions skipped, looking for changes to `launchPersistentContext`, `channel`, cookies, `page.evaluate`, downloads and file choosers, and the browsers' minimum versions.
@@ -34,6 +34,9 @@ Check each against the new version and, where possible, by running it (in Docker
 - Relaunching headed from headless on the same profile, and showing or hiding the window on demand (ADR-007).
 - Under tsx, named functions inside `page.evaluate` still get wrapped in `__name`, so `inPage()` is still needed (`src/core/inPage.ts`). If that changed, keep `inPage()` anyway and note the version in its comment.
 - Draft-area uploads and downloads with the session (`src/core/forms.ts`, `src/core/files.ts`).
+- Playwright's Firefox, launched through its own browser type when `channel` is `firefox` (`src/browser/manager.ts`; `test/browser/firefox.test.ts` runs it in the image).
+
+Then run the sandbox suite on the new version in both browsers, on GitHub rather than the desktop: push the commit to `sandbox-run/<name>` and to `sandbox-run/firefox-<name>`, and compare each job's failures with the last run's, one by one (the content course's reads fail on a fresh sandbox until moodle-sandbox seeds it).
 
 If a behavior changed, adapt the code and its comment (update the "confirmed empirically" note with the version it was re-confirmed on, or remove it if no longer true), and add a test when the fake Moodle can reproduce it.
 

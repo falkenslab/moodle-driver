@@ -41,4 +41,4 @@ Run the `update-docs` skill: the doc comment on every export (the API reference 
 
 ## 6. Finish
 
-Run the `verify` skill (it rebuilds `dist/` and typechecks moodle-mcp against it). If the change breaks existing callers, mark the commit as breaking (`!`) and see the `commit` and `release` skills. Remind the user that moodle-mcp needs `npm run build` here before it sees the change.
+Run the `verify` skill with the gate in `CLAUDE.md` (it rebuilds `dist/` and typechecks moodle-mcp against it with `scripts/check-consumer.mjs`). If the change breaks existing callers, mark the commit as breaking (`!`) and see the `commit` and `release` skills. moodle-mcp depends on the version published on npm: it sees the change only after a release, and after raising its range when the release is a new minor.
