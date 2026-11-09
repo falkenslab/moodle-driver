@@ -12,7 +12,7 @@
 // The Moodle object, the browser and what a program chooses.
 export * from "./client.js";
 export * from "./options.js";
-export { createBrowserManager, canShowWindow, BrowserNotFoundError, BrowserDownloadingError, NoDisplayError, type BrowserManager, type ContextOptions } from "./browser/manager.js";
+export { createBrowserManager, canShowWindow, BrowserNotFoundError, BrowserDownloadingError, ProfilePathTooLongError, NoDisplayError, type BrowserManager, type ContextOptions } from "./browser/manager.js";
 export { SESSION_COOKIES_FILE } from "./browser/cookies.js";
 export { connectBrowserManager, backgroundBrowser, BACKGROUND_FILE, type BackgroundBrowser, type ConnectOptions } from "./browser/background.js";
 export { siteProfileDir } from "./home.js";

@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import path from "node:path";
 import { chromium, firefox, type BrowserContext, type Page } from "playwright-core";
 import { installBrowser, type InstallBrowser } from "./chromium.js";
 import { SYSTEM_CHANNELS, type BrowserOptions, type Channel, type DownloadedChannel } from "../options.js";
@@ -64,6 +65,20 @@ export class BrowserDownloadingError extends MoodleError {
   }
 }
 
+/**
+ * A browser didn't start on Windows and its profile folder's path is long, which may be why: the
+ * browser's own files inside the profile go past Windows' limit on paths. Move the profile somewhere
+ * with a shorter path. `length` is that path's length, in characters.
+ */
+export class ProfilePathTooLongError extends MoodleError {
+  override name = "ProfilePathTooLongError";
+  readonly length: number;
+  constructor(length: number) {
+    super(`The browser didn't start, and its profile folder's path may be too long for Windows (${length} characters): use a profile folder with a shorter path.`, "profile-path-too-long");
+    this.length = length;
+  }
+}
+
 /** A window was asked for where there's no screen to show it (a container, a server). */
 export class NoDisplayError extends MoodleError {
   override name = "NoDisplayError";
@@ -82,6 +97,12 @@ export function canShowWindow(env: NodeJS.ProcessEnv = process.env, platform: No
 
 // Playwright's message when a channel isn't installed: "Chromium distribution 'msedge' is not found",
 // with " at <path>" only when it knows where to look (playwright-core 1.64).
+// An estimate, not a measurement (measuring means opening browsers on a developer's desktop): Windows'
+// 260 characters less the room the browser's deepest files take inside the profile, about 140. It
+// only decides what a launch that already failed is called, so the error says "may".
+const LONG_PROFILE_PATH = 120;
+const CLOSED_WHILE_STARTING = /has been closed/;
+
 const NOT_INSTALLED = /distribution '[^']+' is not (found|supported)|Executable doesn't exist/i;
 
 // Moodle pages can take long, above all the first ones after the site starts.
@@ -98,14 +119,15 @@ interface Open {
  * (ADR-002), on first use: nothing opens until a function needs the browser. It tries the
  * installed browsers and, if allowed, downloads Chromium (or Firefox, when chosen) in the background
  * (ADR-001). Its `context()` throws `BrowserNotFoundError` when no browser can be launched,
- * `BrowserDownloadingError` while the browser downloads, and `NoDisplayError` for a window without a
- * screen. The other parameters are for tests.
+ * `BrowserDownloadingError` while the browser downloads, `ProfilePathTooLongError` when a long profile
+ * path may be why it didn't start on Windows, and `NoDisplayError` for a window without a screen. The other parameters are for tests.
  */
 export function createBrowserManager(
   config: BrowserOptions,
   launch: LaunchPersistentContext = launchPersistentContext,
   install: InstallBrowser = installBrowser,
   windowsPossible: () => boolean = canShowWindow,
+  platform: NodeJS.Platform = process.platform,
 ): BrowserManager {
   let open: Open | undefined;
   // What `setVisible` asked for, over the options; following goes with it.
@@ -158,7 +180,11 @@ export function createBrowserManager(
         context = await launch(config.profileDir, { channel, headless: !headed, ...(headed ? { viewport: null } : {}) });
       } catch (error) {
         const message = (error as Error).message ?? String(error);
-        if (!NOT_INSTALLED.test(message)) throw error;
+        if (!NOT_INSTALLED.test(message)) {
+          const length = path.resolve(config.profileDir).length;
+          if (platform === "win32" && length > LONG_PROFILE_PATH && CLOSED_WHILE_STARTING.test(message)) throw new ProfilePathTooLongError(length);
+          throw error;
+        }
         if (isDownloaded(channel) && config.downloadBrowser) throw startDownload(channel);
         missing.push(channel);
         continue;

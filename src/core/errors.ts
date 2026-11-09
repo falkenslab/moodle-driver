@@ -20,6 +20,7 @@ export type MoodleErrorCode =
   | "browser-not-found"
   | "browser-downloading"
   | "browser-lost"
+  | "profile-path-too-long"
   | "no-display"
   | "not-logged-in"
   | "login-timeout"

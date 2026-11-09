@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import type { BrowserContext, Cookie } from "playwright-core";
-import { BrowserDownloadingError, BrowserNotFoundError, NoDisplayError, canShowWindow, createBrowserManager } from "../../src/browser/manager.js";
+import { BrowserDownloadingError, BrowserNotFoundError, NoDisplayError, ProfilePathTooLongError, canShowWindow, createBrowserManager } from "../../src/browser/manager.js";
 import type { BrowserOptions } from "../../src/options.js";
 import { SESSION_COOKIES_FILE } from "../../src/browser/cookies.js";
 
@@ -298,6 +298,31 @@ describe("createBrowserManager", () => {
     const browser = createBrowserManager(config({ channel: "chrome" }), launch);
     await assert.rejects(browser.context(), BrowserNotFoundError);
     assert.deepEqual(calls.map((c) => c.channel), ["chrome"]);
+  });
+
+  describe("a browser that closes while it starts", () => {
+    const CLOSED = "browserType.launchPersistentContext: Target page, context or browser has been closed";
+    const failing = (message: string) => (async () => { throw new Error(message); }) as never;
+    const longPath = path.join(tmpdir(), "x".repeat(200));
+    const never = async () => undefined as never;
+
+    it("says the profile's long path may be why, on Windows, with its length", async () => {
+      const browser = createBrowserManager(config({ profileDir: longPath }), failing(CLOSED), never, () => true, "win32");
+      await assert.rejects(browser.context(), (error: unknown) => error instanceof ProfilePathTooLongError && error.code === "profile-path-too-long" && error.length === path.resolve(longPath).length && error.message.includes(String(error.length)) && !error.message.includes(longPath));
+    });
+
+    it("keeps the original error on a short path, on another system, and for another failure", async () => {
+      const shortPath = path.join(tmpdir(), "p");
+      await assert.rejects(createBrowserManager(config({ profileDir: shortPath }), failing(CLOSED), never, () => true, "win32").context(), /has been closed/);
+      await assert.rejects(createBrowserManager(config({ profileDir: longPath }), failing(CLOSED), never, () => true, "linux").context(), /has been closed/);
+      await assert.rejects(createBrowserManager(config({ profileDir: longPath }), failing("profile locked"), never, () => true, "win32").context(), /profile locked/);
+    });
+
+    it("still moves on to the next browser when one isn't installed", async () => {
+      const { calls, launch } = fakeLaunch(["chrome"]);
+      await createBrowserManager(config({ profileDir: longPath }), launch, never, () => true, "win32").context();
+      assert.deepEqual(calls.map((c) => c.channel), ["msedge", "chrome"]);
+    });
   });
 
   it("passes other launch errors through and retries on the next call", async () => {
