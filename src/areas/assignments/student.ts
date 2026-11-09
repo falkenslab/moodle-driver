@@ -2,7 +2,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { checkLocalFiles } from "../../core/files.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
-import { NotLoggedInError, openSitePage } from "../../core/session.js";
+import { openSitePage, isSessionOrBrowserFailure } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
 import { callService } from "../../core/ajax.js";
 import { participantFilters } from "../participants/participants.js";
@@ -117,7 +117,7 @@ async function submissionGroup(context: BrowserContext, siteUrl: string, page: P
   const courseId = await page.evaluate(() => Number(/\bcourse-(\d+)\b/.exec((globalThis as unknown as { document: { body: { className: string } } }).document.body.className)?.[1]));
   // The participants page may be closed to the person: the group's name is what the assignment says.
   const filters = await participantFilters(context, siteUrl, courseId).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     return undefined;
   });
   const group = filters?.groups.find((g) => g.name === first.value);
@@ -135,7 +135,7 @@ export async function saveSubmission(
   if (input.onlineText === undefined && (!input.files || input.files.length === 0)) throw new SubmissionError("Give online text, files or both.");
   if (input.files) await checkLocalFiles(input.files);
   const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=editsubmission`).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     throw new SubmissionError(`You can't edit a submission to assignment ${activityId} now (submitted already, past its cut-off date, or not yours to submit).`);
   });
   try {
@@ -175,7 +175,7 @@ export async function submitForGrading(
   // 5.2): the assignment's own "Submit assignment" button says whether there's a draft to submit.
   if (!(await studentAssignment(context, siteUrl, activityId)).canSubmit) throw nothing();
   const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=submit`).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     throw nothing();
   });
   try {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import * as api from "../../src/index.js";
 import { FormError, MoodleError, MoodleServiceError, NotLoggedInError, SurveyError } from "../../src/index.js";
+import { BrowserLostError, isBrowserLost } from "../../src/core/errors.js";
 
 describe("MoodleError", () => {
   it("is the base of every exported error class", () => {
@@ -22,5 +23,26 @@ describe("MoodleError", () => {
       ],
     );
     assert.equal(new MoodleError("No file.", "not-found").code, "not-found");
+  });
+});
+
+describe("isBrowserLost", () => {
+  it("knows Playwright's words for a browser or a tab that's gone", () => {
+    for (const message of [
+      "page.goto: Target page, context or browser has been closed",
+      "browserContext.newPage: Target page, context or browser has been closed",
+      "apiRequestContext.fetch: Request context disposed.",
+      "locator.click: Target crashed ",
+      "page.goto: Page crashed",
+    ]) {
+      assert.ok(isBrowserLost(new Error(message)), message);
+    }
+    assert.ok(isBrowserLost(new BrowserLostError()));
+  });
+
+  it("leaves everything else, and a browser that couldn't start", () => {
+    for (const error of [new Error("page.goto: net::ERR_ABORTED at https://x/"), new Error("locator.click: Timeout 15000ms exceeded."), new Error("browserType.launchPersistentContext: Target page, context or browser has been closed"), new MoodleError("x", "not-found"), "a string", undefined]) {
+      assert.ok(!isBrowserLost(error), String(error));
+    }
   });
 });

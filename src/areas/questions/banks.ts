@@ -9,7 +9,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { checkLocalFiles, type DownloadedFile } from "../../core/files.js";
 import { siteFetch } from "../../core/http.js";
 import { formValue, openForm, setFields, submitForm, uploadToDraft, type FieldValue } from "../../core/forms.js";
-import { NotLoggedInError, openSitePage } from "../../core/session.js";
+import { openSitePage, isSessionOrBrowserFailure } from "../../core/session.js";
 import { callService } from "../../core/ajax.js";
 import { MoodleError } from "../../core/errors.js";
 import { compareBranches, moodleVersion } from "../../core/version.js";
@@ -372,7 +372,7 @@ export async function importQuestions(
   if (dir) await writeFile(upload, text!, "utf8");
   const bank = await bankRef(context, siteUrl, activityId);
   const page = await openForm(context, siteUrl, `question/bank/importquestions/import.php?${bank.query}`).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     throw new QuestionBankError(`${bank.course ? "Course" : "Activity"} ${activityId} has no question bank you can import into.`);
   });
   try {
@@ -411,7 +411,7 @@ export async function exportQuestions(
   if (!file || !path.isAbsolute(file)) throw new MoodleError(`Give the file to write as an absolute path: "${file}".`, "invalid-input");
   const bank = await bankRef(context, siteUrl, activityId);
   const page = await openForm(context, siteUrl, `question/bank/exportquestions/export.php?${bank.query}`).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     throw new QuestionBankError(`You can't export bank ${activityId}'s questions: it takes Moodle's capability moodle/question:viewall (or viewmine, for your own).`);
   });
   let link: string | null;
@@ -469,7 +469,7 @@ export async function createQuestion(context: BrowserContext, siteUrl: string, a
   const missingPlugin = () => new QuestionBankError(`This site has no ${plugin} question type (the qtype_${input.type} plugin): its administrator would have to install it.`);
   const bank = await bankRef(context, siteUrl, activityId);
   const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?${bank.query}&category=${category}&qtype=${input.type}`).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     // The bank and its category were read just now: a plugin's form missing is the plugin missing.
     if (plugin) throw missingPlugin();
     throw new QuestionBankError(`${bank.course ? "Course" : "Activity"} ${activityId} has no question bank you can add to, or category ${category} isn't in it.`);
@@ -506,7 +506,7 @@ export async function updateQuestion(
   if (Object.keys(input).length === 0) throw new QuestionBankError("Give what to change in the question: its name, text, mark, category, its type's inputs or fields.");
   const bank = await bankRef(context, siteUrl, activityId);
   const page = await openForm(context, siteUrl, `question/bank/editquestion/question.php?${bank.query}&id=${questionId}`).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     throw new QuestionBankError(`Bank ${activityId} has no question ${questionId} you can edit. Take its id from the bank's questions.`);
   });
   try {

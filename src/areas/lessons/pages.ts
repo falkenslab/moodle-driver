@@ -6,7 +6,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { checkEmbeds, embedFiles } from "../../core/embed.js";
 import { FormError, openForm, setFields, type FieldValue } from "../../core/forms.js";
 import { inPage } from "../../core/inPage.js";
-import { NotLoggedInError, openSitePage } from "../../core/session.js";
+import { openSitePage, isSessionOrBrowserFailure } from "../../core/session.js";
 import { LessonError } from "./lessons.js";
 
 /** The kinds of lesson page: a content page (Moodle's "branch table"), each question type, and the structural pages. */
@@ -415,7 +415,7 @@ async function savePageForm(page: Page): Promise<void> {
 /** Fills and saves a page form opened at `path`; returns the jumps it couldn't set yet (to pages the form didn't offer). */
 async function fillAndSave(context: BrowserContext, siteUrl: string, activityId: number, path: string, input: Partial<LessonPageInput>, editing: boolean): Promise<Record<string, FieldValue>> {
   const page = await openForm(context, siteUrl, path).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError || error instanceof LessonError) throw error;
+    if (isSessionOrBrowserFailure(error) || error instanceof LessonError) throw error;
     throw new LessonError(`Lesson ${activityId}'s page form didn't open (${path}).`);
   });
   try {

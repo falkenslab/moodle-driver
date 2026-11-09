@@ -19,6 +19,7 @@ export type MoodleErrorCode =
   | "moodle-url"
   | "browser-not-found"
   | "browser-downloading"
+  | "browser-lost"
   | "no-display"
   | "not-logged-in"
   | "login-timeout"
@@ -78,4 +79,30 @@ export class MoodleError extends Error {
     super(message);
     this.code = code;
   }
+}
+
+/**
+ * The browser closed or crashed during a call, or one of its tabs crashed: the person closed the window,
+ * or the browser died. The call didn't finish, and what it was sending may or may not have reached
+ * Moodle, so a change has to be checked before it's repeated. The next call opens the browser again.
+ */
+export class BrowserLostError extends MoodleError {
+  override name = "BrowserLostError";
+  constructor() {
+    super("The browser closed or crashed during this call, so it didn't finish. Moodle may or may not have received a change it was making: check before repeating it.", "browser-lost");
+  }
+}
+
+// Playwright's words for it, the only stable mark: its classes aren't exported, and the errors' `name`
+// is plain "Error" (confirmed empirically, playwright-core 1.65, Chromium and Firefox, the process
+// killed and the context closed, during a call and after it).
+const LOST_BROWSER = /Target page, context or browser has been closed|Request context disposed|Target crashed|Page crashed/;
+
+/**
+ * Whether `error` says the browser, or the tab a call worked in, is gone. A browser that couldn't
+ * start isn't one: Playwright says the same of a launch, which never had a call to lose.
+ */
+export function isBrowserLost(error: unknown): boolean {
+  if (error instanceof BrowserLostError) return true;
+  return error instanceof Error && LOST_BROWSER.test(error.message) && !error.message.startsWith("browserType.");
 }

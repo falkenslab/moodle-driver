@@ -66,6 +66,7 @@ El código de cada clase es su nombre en kebab-case sin `Error` (`NotLoggedInErr
 | `NoDisplayError` | Hacía falta una ventana (para iniciar sesión, `setVisible(true)`) donde no hay pantalla. |
 | `BrowserNotFoundError` | No se pudo lanzar ningún navegador instalado, y no se permite descargar Chromium (ni el Firefox elegido). |
 | `BrowserDownloadingError` | Chromium (o el Firefox elegido) se está descargando en segundo plano: vuelve a intentarlo en un minuto o dos. |
+| `BrowserLostError` | El navegador se cerró o falló durante una llamada, o falló la pestaña en la que trabajaba. La llamada no terminó, y un cambio que estuviera haciendo puede haber llegado o no a Moodle: compruébalo antes de repetirlo. La siguiente llamada vuelve a abrir el navegador. Lo lanzan los métodos del objeto `Moodle`; un programa que llama a las funciones por su cuenta reconoce el error de Playwright con `isBrowserLost(error)`. |
 | `MoodleUrlError` | Una URL de sitio no es una URL, no es http(s) o no es un sitio Moodle. |
 
 ## Errores genéricos de Moodle {#generic-moodle-errors}

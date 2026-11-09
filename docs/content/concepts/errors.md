@@ -66,6 +66,7 @@ Each class's code is its name in kebab case without `Error` (`NotLoggedInError` 
 | `NoDisplayError` | A window was needed (logging in, `setVisible(true)`) where there's no screen. |
 | `BrowserNotFoundError` | No installed browser could be launched, and downloading Chromium (or the chosen Firefox) isn't allowed. |
 | `BrowserDownloadingError` | Chromium (or the chosen Firefox) is downloading in the background: try again in a minute or two. |
+| `BrowserLostError` | The browser closed or crashed during a call, or the tab it worked in crashed. The call didn't finish, and a change it was making may or may not have reached Moodle: check before repeating it. The next call opens the browser again. Methods of the `Moodle` object throw it; a program that calls the functions on their own recognizes Playwright's error with `isBrowserLost(error)`. |
 | `MoodleUrlError` | A site URL isn't a URL, isn't http(s), or isn't a Moodle site. |
 
 ## Generic Moodle errors

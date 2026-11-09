@@ -4,8 +4,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import type { BrowserContext, Route } from "playwright-core";
-import { QuestionBankError, createQuestion, deleteQuestions, exportQuestions, importQuestions, questionBanks, questionTypes, questions, setQuestionStatus, updateQuestion } from "../../../src/index.js";
-import { SITE, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
+import { BrowserLostError, QuestionBankError, createMoodle, createQuestion, deleteQuestions, exportQuestions, importQuestions, questionBanks, questionTypes, questions, setQuestionStatus, updateQuestion } from "../../../src/index.js";
+import { isBrowserLost } from "../../../src/core/errors.js";
+import { SITE, fakeBrowserManager, launchTestBrowser, moodlePage, serveFakeMoodle } from "../../../src/testing/index.js";
 
 const browser = await launchTestBrowser();
 after(() => browser?.close());
@@ -263,6 +264,32 @@ describe("importQuestions", { skip: !browser && "no system browser" }, () => {
     await writeFile(path.join(dir, "q.xml"), "<quiz></quiz>");
     await assert.rejects(importQuestions(context, SITE, 36, { format: "xml", file: path.join(dir, "missing.xml") }), /There's no file at/);
     await assert.rejects(importQuestions(context, SITE, 36, { format: "xml" }), /as a file or as text/);
+    await context.close();
+  });
+});
+
+describe("A failure to open a bank's form", { skip: !browser && "no system browser" }, () => {
+  const IMPORT = "**/question/bank/importquestions/import.php*";
+
+  it("is a lost browser, not a missing bank, when the browser goes while it opens", async () => {
+    const context = await open(fakeBanks());
+    await context.route(IMPORT, () => void context.close());
+    const failure = await importQuestions(context, SITE, 36, { format: "gift", text: "::Q:: Yes. {T}" }).catch((error: unknown) => error);
+    assert.ok(!(failure instanceof QuestionBankError), String(failure));
+    assert.ok(isBrowserLost(failure), String(failure));
+  });
+
+  it("has the driver's own code through the Moodle object", async () => {
+    const context = await open(fakeBanks());
+    await context.route(IMPORT, () => void context.close());
+    const moodle = createMoodle({ site: SITE, browser: fakeBrowserManager({ context: async () => context }) });
+    await assert.rejects(moodle.importQuestions(36, { format: "gift", text: "::Q:: Yes. {T}" }), (error: BrowserLostError) => error instanceof BrowserLostError && error.code === "browser-lost");
+  });
+
+  it("is still a bank error when Moodle shows no form", async () => {
+    const context = await open(fakeBanks());
+    await context.route(IMPORT, (route) => route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 3, bodyId: "page-error", body: "<p>No.</p>" }) }));
+    await assert.rejects(importQuestions(context, SITE, 36, { format: "gift", text: "::Q:: Yes. {T}" }), QuestionBankError);
     await context.close();
   });
 });

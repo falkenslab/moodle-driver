@@ -2,7 +2,7 @@ import type { BrowserContext } from "playwright-core";
 import { callService } from "../../core/ajax.js";
 import { checkEmbeds, editorTexts, embedFiles } from "../../core/embed.js";
 import { openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
-import { NotLoggedInError } from "../../core/session.js";
+import { isSessionOrBrowserFailure } from "../../core/session.js";
 import { decodeEntities } from "../../core/text.js";
 import { MoodleError } from "../../core/errors.js";
 
@@ -103,7 +103,7 @@ export async function updateCourse(
   if (embed) await checkEmbeds(editorTexts(values), embed);
   if (Object.keys(values).length === 0) return { changed: "Nothing to change.", course: (await listCourses(context, siteUrl)).find((c) => c.id === courseId) };
   const page = await openForm(context, siteUrl, `course/edit.php?id=${courseId}`).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     throw new CourseError(`You can't change course ${courseId}'s settings: it doesn't exist, or you aren't allowed.`);
   });
   try {

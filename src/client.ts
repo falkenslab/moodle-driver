@@ -78,7 +78,7 @@ import { surveyResults } from "./areas/surveys/results.js";
 import { addFeedbackItem, deleteFeedbackItem, deleteFeedbackTemplate, editFeedbackItem, feedbackItems, feedbackTemplates, moveFeedbackItem, saveFeedbackTemplate, useFeedbackTemplate } from "./areas/surveys/items.js";
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
 import { moodleVersion } from "./core/version.js";
-import { MoodleError } from "./core/errors.js";
+import { BrowserLostError, MoodleError, isBrowserLost } from "./core/errors.js";
 import type { MoodleMethods } from "./moodle-methods.generated.js";
 
 /**
@@ -435,6 +435,17 @@ export interface Moodle extends MoodleMethods {
 export type MoodleOptions = MoodleDefaults & (({ site: string } & BrowserOptions) | { site: string; browser: BrowserManager });
 
 
+/** Gives a browser lost during a call the driver's own error, whatever the function was doing when it went. */
+function namingLostBrowser<A extends unknown[], R>(method: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
+  return async (...args: A) => {
+    try {
+      return await method(...args);
+    } catch (error) {
+      throw isBrowserLost(error) ? new BrowserLostError() : error;
+    }
+  };
+}
+
 /**
  * Works one Moodle site through a browser: give the site and the browser's options (or a browser
  * manager), and optionally the defaults its calls use; then call the driver's operations as methods.
@@ -468,7 +479,7 @@ export function createMoodle(options: MoodleOptions): Moodle {
   const withResultPage =
     <A extends unknown[], R>(name: string, method: (...args: A) => Promise<R>) =>
     async (...args: A): Promise<R> => {
-      const result = await method(...args);
+      const result = await namingLostBrowser(method)(...args);
       await showResult(name, args, result);
       return result;
     };
@@ -493,7 +504,7 @@ export function createMoodle(options: MoodleOptions): Moodle {
     publicSiteInfo: () => publicSiteInfo(site),
     backupContents: (file) => backupContents(file),
     anonymizeBackup: (file, destFile) => anonymizeBackup(file, destFile),
-    callService: async <T>(methodname: string, args: Record<string, unknown>) => callService<T>(await browser.context(), site, methodname, args),
+    callService: namingLostBrowser(async <T>(methodname: string, args: Record<string, unknown>) => callService<T>(await browser.context(), site, methodname, args)) as Moodle["callService"],
     activityContent: withResultPage(
       "activityContent",
       async (activityOrId: { id: number; type: string } | number, typeOrOptions?: ContentType | PaceOptions<(secondsRead: number) => void>, given?: PaceOptions<(secondsRead: number) => void>) => {
@@ -509,18 +520,18 @@ export function createMoodle(options: MoodleOptions): Moodle {
     answerLessonPage: withResultPage("answerLessonPage", async (activityId: number, answer: Parameters<Moodle["answerLessonPage"]>[1], given?: Parameters<Moodle["answerLessonPage"]>[2]) =>
       answerLessonPage(await browser.context(), site, activityId, answer, pace(given, onProgress)),
     ),
-    downloadFile: async (url, destDir) => {
+    downloadFile: namingLostBrowser(async (url: string, destDir?: string) => {
       const folder = destDir ?? defaults.downloadDir;
       if (!folder) throw new MoodleError("Give downloadFile a folder, or createMoodle a downloadDir.", "invalid-input");
       return downloadFile(await browser.context(), site, url, folder);
-    },
-    exportGrades: async (courseId, exportOptions) => {
+    }),
+    exportGrades: namingLostBrowser(async (courseId: number, exportOptions: Parameters<Moodle["exportGrades"]>[1]) => {
       const folder = exportOptions.destDir ?? defaults.downloadDir;
       if (!folder) throw new MoodleError("Give exportGrades a destDir, or createMoodle a downloadDir.", "invalid-input");
       return exportGrades(await browser.context(), site, courseId, { ...exportOptions, destDir: folder });
-    },
+    }),
     tab: () => browser.tab(),
-    openScorm: (activityId, scormOptions) => openScorm(browser, site, activityId, scormOptions),
+    openScorm: namingLostBrowser((activityId: number, scormOptions?: Parameters<Moodle["openScorm"]>[1]) => openScorm(browser, site, activityId, scormOptions)),
     visible: () => browser.visible(),
     setVisible: (visible) => browser.setVisible(visible),
     saveSession: () => browser.saveSession(),

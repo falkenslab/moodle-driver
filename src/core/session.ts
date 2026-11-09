@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from "playwright-core";
-import { MoodleError } from "./errors.js";
+import { BrowserLostError, MoodleError, isBrowserLost } from "./errors.js";
 import { siteFetch } from "./http.js";
 
 /** No live Moodle session: the person has to log in again (ADR-002). */
@@ -8,6 +8,14 @@ export class NotLoggedInError extends MoodleError {
   constructor() {
     super("There is no Moodle session, or it expired: the person has to log in again.", "not-logged-in");
   }
+}
+
+/**
+ * For a `.catch` that reads a failure to open a page as "you can't do that here": whether the failure
+ * has nothing to do with that page (no session, no browser), so it has to reach the caller as it is.
+ */
+export function isSessionOrBrowserFailure(error: unknown): boolean {
+  return error instanceof NotLoggedInError || isBrowserLost(error);
 }
 
 /** What a Moodle page says about its session, read without depending on the interface's language. */
@@ -117,6 +125,9 @@ export async function openSitePage(context: BrowserContext, siteUrl: string, pat
     if (follow) page.once("close", () => void toFollower(context, opened));
     return page;
   } catch (error) {
+    // A window closed in the middle of a navigation reads as net::ERR_ABORTED, and the page doesn't
+    // say it's closed yet (confirmed empirically, playwright-core 1.65, Chromium): asking it does.
+    if (error instanceof Error && error.message.includes("net::ERR_ABORTED") && (await page.evaluate(() => 1).then(() => false, isBrowserLost))) throw new BrowserLostError();
     await page.close().catch(() => undefined);
     throw error;
   }

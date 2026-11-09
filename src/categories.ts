@@ -73,6 +73,7 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   htmlSessionFacts: NONE,
   readMoodleConfig: NONE,
   isLoggedIn: NONE,
+  isBrowserLost: NONE,
   pageIsLoggedIn: NONE,
   dateSelectorValues: NONE,
   dateSelectorDate: NONE,

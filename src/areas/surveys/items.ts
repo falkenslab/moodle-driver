@@ -8,7 +8,7 @@ import { callService, MoodleServiceError } from "../../core/ajax.js";
 import { FormError, openForm, setFields, submitForm, type FieldValue } from "../../core/forms.js";
 import { siteFetch } from "../../core/http.js";
 import { inPage } from "../../core/inPage.js";
-import { NotLoggedInError, moodleErrorMessage, openSitePage } from "../../core/session.js";
+import { moodleErrorMessage, openSitePage, isSessionOrBrowserFailure } from "../../core/session.js";
 import { SurveyError } from "./surveys.js";
 
 /** The kinds of feedback item, by Moodle's own names: choices, rated choices, short and long text, a number, information, a label, a CAPTCHA and a page break. */
@@ -356,7 +356,7 @@ export function itemValues(type: FeedbackItemType, input: Partial<FeedbackItemIn
 /** Opens an item's form (new or existing), or `SurveyError` with Moodle's reason. */
 async function openItemForm(context: BrowserContext, siteUrl: string, activityId: number, path: string): Promise<{ page: Page; form: ItemForm }> {
   const page = await openForm(context, siteUrl, path).catch(async (error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     const shown = await openSitePage(context, siteUrl, path).catch(() => undefined);
     const message = shown ? await moodleErrorMessage(shown) : undefined;
     await shown?.close().catch(() => undefined);

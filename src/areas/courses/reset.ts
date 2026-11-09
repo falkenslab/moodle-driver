@@ -2,7 +2,7 @@
 // everything else unticked first, since the form opens with Moodle's own defaults ticked.
 import type { BrowserContext, Page } from "playwright-core";
 import { dateSelectorValues, openForm, setFields, type FieldValue } from "../../core/forms.js";
-import { NotLoggedInError, moodleErrorMessage } from "../../core/session.js";
+import { moodleErrorMessage, isSessionOrBrowserFailure } from "../../core/session.js";
 import { MoodleError } from "../../core/errors.js";
 import { CourseError } from "./list.js";
 
@@ -116,7 +116,7 @@ export async function resetCourse(
     throw new MoodleError("Say what to reset: nothing is deleted unless named (delete, unenrolRoles, start or fields).", "invalid-input");
   }
   const page = await openForm(context, siteUrl, `course/reset.php?id=${courseId}`).catch((error: unknown) => {
-    if (error instanceof NotLoggedInError) throw error;
+    if (isSessionOrBrowserFailure(error)) throw error;
     throw new CourseError(`You can't reset course ${courseId}: it doesn't exist, or you aren't allowed (moodle/course:reset).`);
   });
   try {
