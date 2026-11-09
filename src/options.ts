@@ -36,6 +36,13 @@ export interface BrowserOptions {
   headless: boolean;
   /** Download Playwright's Chromium (or Firefox, when chosen) when no installed browser works. */
   downloadBrowser: boolean;
+  /**
+   * How many times a browser may crash in this run before the next launch prefers another installed
+   * one; undefined, the default, never changes browser. Only without a `channel` (one chosen stays).
+   * The same profile serves both: Edge and Chrome kept each other's session (confirmed empirically on
+   * Windows 11, November 2026), which a program that needs certainty should check for its own setup.
+   */
+  switchAfterCrashes?: number;
 }
 
 /** A site URL that isn't one. */

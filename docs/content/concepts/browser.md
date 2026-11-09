@@ -16,6 +16,8 @@ interface BrowserOptions {
   headless: boolean;
   /** Download Playwright's Chromium (or Firefox, when chosen) when no installed browser works. */
   downloadBrowser: boolean;
+  /** How many crashes of a browser in this run before preferring another installed one; undefined: never. */
+  switchAfterCrashes?: number;
 }
 ```
 
@@ -47,7 +49,7 @@ Without a `channel`, the manager tries Edge, then Chrome, then (only with `downl
 
 A person may want to watch what a program does, or step in (a page asks something only they can answer). `setVisible(true)` relaunches the browser with a window, keeping the session, and from then on the pages functions open are shown, one after another, in a single working tab of that window ("following"). Once a `Moodle` object's method succeeds, it leaves in that tab the page that shows its result, after the pages it worked in. A creation shows what it made, not the form that made it: `createActivity` shows the new activity. An edit shows the item, or the page that lists it, and a read the page it reads. A method that works through Moodle's AJAX services (`listCourses`, `courseStructure`, `gradeSubmission`…) shows that page too, though it opened none. Showing it is a courtesy: it never fails or changes the call, and nothing is loaded for it while the browser is hidden. `FOLLOWED_PAGES` gives each method's page, a path relative to the site built from the call's arguments and result, headed or headless: a program can link the person to it with `new URL(FOLLOWED_PAGES.createActivity(args, result), site)`. `UNFOLLOWED_METHODS` lists the methods with no page to show (a file download, a value with no page of its own). `setVisible(false)` closes the window; the next call runs headless again. If the person closes the window themselves, the manager notices: the next call opens the browser again, headless.
 
-A browser can also crash during a call. A `Moodle` method that only reads opens a new one and runs again, once. Anything that may have changed Moodle isn't repeated: it fails with `BrowserLostError`, because what it was sending may have arrived, and sending a form twice makes two of what it creates. The driver doesn't move to another installed browser after a crash: the profile holds one browser's data, and another may not be able to read its session.
+A browser can also crash during a call. A `Moodle` method that only reads opens a new one and runs again, once. Anything that may have changed Moodle isn't repeated: it fails with `BrowserLostError`, because what it was sending may have arrived, and sending a form twice makes two of what it creates. By default the driver stays with the same browser after a crash. With `switchAfterCrashes: n` in the options, and no `channel`, a browser that has crashed `n` times in this run goes after the other installed ones for the next launches, on the same profile. Edge and Chrome kept each other's session in the one setup it was tried on (Windows 11, November 2026), so check it for yours. A window the person closes doesn't count as a crash.
 
 On Linux a window needs `DISPLAY` or `WAYLAND_DISPLAY`; without them (a server, a container) asking for one throws `NoDisplayError` instead of trying. `canShowWindow()` tells in advance.
 

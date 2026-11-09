@@ -134,6 +134,8 @@ export function createBrowserManager(
   // What `setVisible` asked for, over the options; following goes with it.
   let shown: boolean | undefined;
   let followTab: Page | undefined;
+  // How many times each browser has gone by itself in this run.
+  const crashes = new Map<Channel, number>();
   // The download runs in the background, outside the queue: it takes minutes, longer than some
   // callers wait, so calls meanwhile answer at once that it's downloading.
   let download: Promise<void> | undefined;
@@ -171,7 +173,10 @@ export function createBrowserManager(
 
   async function launchFirstAvailable(headed: boolean): Promise<Open> {
     await mkdir(config.profileDir, { recursive: true });
-    const channels: Channel[] = config.channel ? [config.channel] : [...SYSTEM_CHANNELS, ...(config.downloadBrowser ? (["chromium"] as const) : [])];
+    // A browser that crashed too often goes after the other installed ones, and before a download: it's still there.
+    const crashedOut = (channel: Channel) => config.switchAfterCrashes !== undefined && (crashes.get(channel) ?? 0) >= config.switchAfterCrashes;
+    const system = [...SYSTEM_CHANNELS.filter((c) => !crashedOut(c)), ...SYSTEM_CHANNELS.filter(crashedOut)];
+    const channels: Channel[] = config.channel ? [config.channel] : [...system, ...(config.downloadBrowser ? (["chromium"] as const) : [])];
     const missing: string[] = [];
     for (const channel of channels) {
       if (isDownloaded(channel) && download) throw downloading(channel);
@@ -199,6 +204,8 @@ export function createBrowserManager(
       context.on("close", () => {
         if (open !== opened) return;
         open = undefined;
+        // With a window it may be the person closing it; without one, nobody but a crash closes it.
+        if (!opened.headed) crashes.set(channel, (crashes.get(channel) ?? 0) + 1);
         if (opened.headed && shown) shown = false;
       });
       return opened;

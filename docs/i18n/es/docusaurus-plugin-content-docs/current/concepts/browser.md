@@ -16,6 +16,8 @@ interface BrowserOptions {
   headless: boolean;
   /** Descarga el Chromium de Playwright (o Firefox, si se elige) cuando no funciona ningún navegador instalado. */
   downloadBrowser: boolean;
+  /** Cuántos fallos de un navegador se toleran en esta ejecución antes de preferir otro instalado; undefined: nunca. */
+  switchAfterCrashes?: number;
 }
 ```
 
@@ -47,7 +49,7 @@ Sin `channel`, el gestor prueba Edge, después Chrome y después (solo con `down
 
 Puede que una persona quiera ver lo que hace un programa, o intervenir (una página pregunta algo que solo ella puede responder). `setVisible(true)` relanza el navegador con ventana, conservando la sesión, y desde ese momento las páginas que abren las funciones se muestran, una tras otra, en una única pestaña de trabajo de esa ventana ("seguimiento"). Cuando un método del objeto `Moodle` termina bien, deja en esa pestaña la página que muestra su resultado, después de las páginas en las que ha trabajado. Una creación muestra lo que ha creado, no el formulario con el que lo creó: `createActivity` muestra la actividad nueva. Una edición muestra el elemento, o la página que lo lista, y una lectura la página que lee. Un método que trabaja con los servicios AJAX de Moodle (`listCourses`, `courseStructure`, `gradeSubmission`…) también muestra esa página, aunque no haya abierto ninguna. Mostrarla es una cortesía: nunca hace fallar ni cambia la llamada, y mientras el navegador está oculto no se carga nada para ello. `FOLLOWED_PAGES` da la página de cada método, una ruta relativa al sitio construida a partir de los argumentos y el resultado de la llamada, con ventana o sin ella: un programa puede enlazar a la persona con ella con `new URL(FOLLOWED_PAGES.createActivity(args, result), site)`. `UNFOLLOWED_METHODS` lista los métodos sin página que mostrar (una descarga de un archivo, un valor sin página propia). `setVisible(false)` cierra la ventana; la siguiente llamada vuelve a ejecutarse sin ventana. Si la persona cierra la ventana ella misma, el gestor lo nota: la siguiente llamada vuelve a abrir el navegador, sin ventana.
 
-Un navegador también puede fallar durante una llamada. Un método de `Moodle` que solo lee abre otro y se ejecuta de nuevo, una vez. Lo que haya podido cambiar Moodle no se repite: falla con `BrowserLostError`, porque lo que estaba enviando puede haber llegado, y enviar un formulario dos veces crea dos veces lo mismo. El driver no pasa a otro navegador instalado tras un fallo: el perfil guarda los datos de un navegador, y otro puede no ser capaz de leer su sesión.
+Un navegador también puede fallar durante una llamada. Un método de `Moodle` que solo lee abre otro y se ejecuta de nuevo, una vez. Lo que haya podido cambiar Moodle no se repite: falla con `BrowserLostError`, porque lo que estaba enviando puede haber llegado, y enviar un formulario dos veces crea dos veces lo mismo. Por defecto, el driver sigue con el mismo navegador tras un fallo. Con `switchAfterCrashes: n` en las opciones, y sin `channel`, un navegador que ha fallado `n` veces en esta ejecución pasa detrás de los demás instalados en los siguientes arranques, con el mismo perfil. Edge y Chrome conservaron la sesión del otro en la única configuración en que se probó (Windows 11, noviembre de 2026), así que compruébalo en la tuya. Una ventana que cierra la persona no cuenta como fallo.
 
 En Linux una ventana necesita `DISPLAY` o `WAYLAND_DISPLAY`; sin ellas (un servidor, un contenedor), pedir una lanza `NoDisplayError` en lugar de intentarlo. `canShowWindow()` lo dice de antemano.
 

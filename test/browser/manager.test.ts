@@ -300,6 +300,39 @@ describe("createBrowserManager", () => {
     assert.deepEqual(calls.map((c) => c.channel), ["chrome"]);
   });
 
+  describe("switchAfterCrashes", () => {
+    /** Opens and crashes the browser `times` times, opens it once more, and gives the browsers that started. */
+    async function crashing(installed: string[], times: number, overrides: Partial<BrowserOptions>) {
+      const { calls, launch } = fakeLaunch(installed);
+      const browser = createBrowserManager(config(overrides), launch);
+      for (let i = 0; i < times; i++) await (await browser.context()).close();
+      await browser.context();
+      return calls.filter((c) => installed.includes(c.channel)).map((c) => c.channel);
+    }
+
+    it("moves to the next installed browser after that many crashes", async () => {
+      assert.deepEqual(await crashing(["msedge", "chrome"], 2, { switchAfterCrashes: 2 }), ["msedge", "msedge", "chrome"]);
+    });
+
+    it("never changes browser by default", async () => {
+      assert.deepEqual(await crashing(["msedge", "chrome"], 3, {}), ["msedge", "msedge", "msedge", "msedge"]);
+    });
+
+    it("keeps a browser that was chosen, and the only one there is", async () => {
+      assert.deepEqual(await crashing(["msedge", "chrome"], 2, { switchAfterCrashes: 1, channel: "msedge" }), ["msedge", "msedge", "msedge"]);
+      assert.deepEqual(await crashing(["msedge"], 2, { switchAfterCrashes: 1 }), ["msedge", "msedge", "msedge"]);
+    });
+
+    it("doesn't count the program closing it", async () => {
+      const { calls, launch } = fakeLaunch(["msedge", "chrome"]);
+      const browser = createBrowserManager(config({ switchAfterCrashes: 1 }), launch);
+      await browser.context();
+      await browser.close();
+      await browser.context();
+      assert.deepEqual(calls.map((c) => c.channel), ["msedge", "msedge"]);
+    });
+  });
+
   describe("a browser that closes while it starts", () => {
     const CLOSED = "browserType.launchPersistentContext: Target page, context or browser has been closed";
     const failing = (message: string) => (async () => { throw new Error(message); }) as never;
