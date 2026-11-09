@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import { MOODLE_METHODS, MoodleUrlError, NotLoggedInError, createMoodle, type MoodleMethods } from "../src/index.js";
+import { REPEATABLE_METHODS } from "../src/repeatable-methods.js";
 import { SITE, fakeBrowserManager, launchTestBrowser, serveFakeMoodle } from "../src/testing/index.js";
 
 const browser = await launchTestBrowser();
@@ -9,6 +10,15 @@ after(() => browser?.close());
 // Every bound method keeps a real signature: a function whose first parameters aren't (context, site) would bind as never.
 type NeverMethods = { [K in keyof MoodleMethods]: MoodleMethods[K] extends never ? K : never }[keyof MoodleMethods];
 const noneAreNever: [NeverMethods] extends [never] ? true : false = true;
+
+describe("REPEATABLE_METHODS", () => {
+  it("names only methods of the Moodle object, and none that sounds like a write", () => {
+    for (const name of REPEATABLE_METHODS) {
+      assert.ok(MOODLE_METHODS.includes(name), name);
+      assert.doesNotMatch(name, /^(add|allocate|answer|apply|assess|auto|award|backup|calculate|configure|copy|create|delete|download|duplicate|edit|enrol[A-Z]|export|finish|grade(Quiz|Forum|Submission)|grant|import|log|mark|message|move|open|override|rate|remove|rename|replyTo|reset|restore|save|schedule|send|set|start|submit|unenrol|update|upload|use[A-Z])/, name);
+    }
+  });
+});
 
 describe("createMoodle", () => {
   it("normalizes the site, binds every site function, and refuses something that isn't a URL", () => {

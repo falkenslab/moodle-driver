@@ -79,6 +79,7 @@ import { addFeedbackItem, deleteFeedbackItem, deleteFeedbackTemplate, editFeedba
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
 import { moodleVersion } from "./core/version.js";
 import { BrowserLostError, MoodleError, isBrowserLost } from "./core/errors.js";
+import { REPEATABLE_METHODS } from "./repeatable-methods.js";
 import type { MoodleMethods } from "./moodle-methods.generated.js";
 
 /**
@@ -435,6 +436,9 @@ export interface Moodle extends MoodleMethods {
 export type MoodleOptions = MoodleDefaults & (({ site: string } & BrowserOptions) | { site: string; browser: BrowserManager });
 
 
+// How long a browser that's gone may take to be reported closed; it takes milliseconds.
+const GONE_BROWSER_CLOSES_MS = 5_000;
+
 /** Gives a browser lost during a call the driver's own error, whatever the function was doing when it went. */
 function namingLostBrowser<A extends unknown[], R>(method: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
   return async (...args: A) => {
@@ -476,10 +480,25 @@ export function createMoodle(options: MoodleOptions): Moodle {
     const context = await browser.context();
     if (path && new URL(path, site).href !== lastPageFollowed(context)) await followPage(context, site, path);
   };
+  // A browser lost during a read: once the old one is really gone, the read again on a new one. The
+  // manager learns of it from the context's `close` event, which may come after the call has failed.
+  const repeatingReads =
+    <A extends unknown[], R>(name: string, method: (...args: A) => Promise<R>) =>
+    async (...args: A): Promise<R> => {
+      try {
+        return await method(...args);
+      } catch (error) {
+        if (!REPEATABLE_METHODS.has(name) || !isBrowserLost(error)) throw error;
+        const context = await browser.context();
+        const gone = await context.cookies().then(() => false, isBrowserLost);
+        if (gone) await context.waitForEvent("close", { timeout: GONE_BROWSER_CLOSES_MS }).catch(() => undefined);
+        return method(...args);
+      }
+    };
   const withResultPage =
     <A extends unknown[], R>(name: string, method: (...args: A) => Promise<R>) =>
     async (...args: A): Promise<R> => {
-      const result = await namingLostBrowser(method)(...args);
+      const result = await namingLostBrowser(repeatingReads(name, method))(...args);
       await showResult(name, args, result);
       return result;
     };
