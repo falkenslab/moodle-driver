@@ -303,12 +303,18 @@ describe("createBrowserManager", () => {
   describe("a browser that closes while it starts", () => {
     const CLOSED = "browserType.launchPersistentContext: Target page, context or browser has been closed";
     const failing = (message: string) => (async () => { throw new Error(message); }) as never;
-    const longPath = path.join(tmpdir(), "x".repeat(200));
+    const longPath = path.join(tmpdir(), "x".repeat(240));
     const never = async () => undefined as never;
 
     it("says the profile's long path may be why, on Windows, with its length", async () => {
       const browser = createBrowserManager(config({ profileDir: longPath }), failing(CLOSED), never, () => true, "win32");
       await assert.rejects(browser.context(), (error: unknown) => error instanceof ProfilePathTooLongError && error.code === "profile-path-too-long" && error.length === path.resolve(longPath).length && error.message.includes(String(error.length)) && !error.message.includes(longPath));
+    });
+
+    it("recognizes the other ways a launch fails on a long path", async () => {
+      for (const message of ["browserType.launchPersistentContext: Failed to create a ProcessSingleton for your profile directory.", "browserType.launchPersistentContext: Timeout 30000ms exceeded."]) {
+        await assert.rejects(createBrowserManager(config({ profileDir: longPath }), failing(message), never, () => true, "win32").context(), ProfilePathTooLongError, message);
+      }
     });
 
     it("keeps the original error on a short path, on another system, and for another failure", async () => {

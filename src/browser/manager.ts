@@ -97,11 +97,12 @@ export function canShowWindow(env: NodeJS.ProcessEnv = process.env, platform: No
 
 // Playwright's message when a channel isn't installed: "Chromium distribution 'msedge' is not found",
 // with " at <path>" only when it knows where to look (playwright-core 1.64).
-// An estimate, not a measurement (measuring means opening browsers on a developer's desktop): Windows'
-// 260 characters less the room the browser's deepest files take inside the profile, about 140. It
-// only decides what a launch that already failed is called, so the error says "may".
-const LONG_PROFILE_PATH = 120;
-const CLOSED_WHILE_STARTING = /has been closed/;
+// Edge and Chrome started on a profile path of 230 characters and not on one of 240, in Windows 11
+// with long paths enabled (measured November 2026, playwright-core 1.65). It may differ elsewhere,
+// and it only decides what a launch that already failed is called, so the error says "may".
+const LONG_PROFILE_PATH = 230;
+// What those launches failed with, depending on the length: closed, a profile lock, or no answer.
+const FAILED_ON_LONG_PATH = /has been closed|ProcessSingleton|Timeout \d+ms exceeded/;
 
 const NOT_INSTALLED = /distribution '[^']+' is not (found|supported)|Executable doesn't exist/i;
 
@@ -182,7 +183,7 @@ export function createBrowserManager(
         const message = (error as Error).message ?? String(error);
         if (!NOT_INSTALLED.test(message)) {
           const length = path.resolve(config.profileDir).length;
-          if (platform === "win32" && length > LONG_PROFILE_PATH && CLOSED_WHILE_STARTING.test(message)) throw new ProfilePathTooLongError(length);
+          if (platform === "win32" && length > LONG_PROFILE_PATH && FAILED_ON_LONG_PATH.test(message)) throw new ProfilePathTooLongError(length);
           throw error;
         }
         if (isDownloaded(channel) && config.downloadBrowser) throw startDownload(channel);
