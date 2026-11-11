@@ -18,8 +18,8 @@ All in `src/areas/quizzes/attempts.ts`:
 
 Open only the pages a call needs. Read the navigation from the first page the call needs anyway; don't load a page twice in one call. After saving answers, give the questions of the pages answered, read where the call already is; whether `answerQuizQuestions` keeps giving every question (and how, without reading every page) is decided when implementing, as it changes what the call returns.
 
-Spacing page changes out to look like a person reading is not part of this fix.
+With the `realistic` trail (ADR-005), the default, the page changes a call can't avoid are spaced out like a person reading the page before moving on (`pace.ts`); with `fast`, they aren't.
 
 ## Verification
 
-Tests in Docker against the fake Moodle that count the attempt pages served per call. On the sandbox, the course log of one start, one answer and one finish shows no page viewed that the call didn't need.
+Tests in Docker against the fake Moodle that count the attempt pages served per call. On the sandbox, the course log of one start, one answer and one finish shows no page viewed that the call didn't need, and with the realistic trail no two attempt pages viewed within a second.
