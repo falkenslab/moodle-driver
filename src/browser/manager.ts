@@ -136,6 +136,8 @@ export function createBrowserManager(
   let followTab: Page | undefined;
   // How many times each browser has gone by itself in this run.
   const crashes = new Map<Channel, number>();
+  // The user agent each channel sends with a window, for `userAgent: "browser"` (and whether headless differs).
+  const headedAgents = new Map<Channel, { userAgent: string; relaunch: boolean }>();
   // The download runs in the background, outside the queue: it takes minutes, longer than some
   // callers wait, so calls meanwhile answer at once that it's downloading.
   let download: Promise<void> | undefined;
@@ -171,6 +173,31 @@ export function createBrowserManager(
     return result;
   }
 
+  /**
+   * Launches one channel with the user agent the options ask for. `"browser"` headless needs the
+   * headed one, worked out from the headless one: the first launch of a channel reads it and, when it
+   * says `HeadlessChrome`, relaunches with `Chrome` in its place (a persistent context's user agent is
+   * fixed at launch). The result is kept per channel, so later launches start with it at once.
+   */
+  async function launchChannel(channel: Channel, headed: boolean): Promise<BrowserContext> {
+    const wanted = config.userAgent;
+    if (wanted !== undefined && wanted.trim() === "") throw new MoodleError("The user agent can't be an empty text: leave it out to keep the browser's own.", "invalid-input");
+    // A window keeps its own size; a fixed viewport would leave it half empty.
+    const options = { channel, headless: !headed, ...(headed ? { viewport: null } : {}) };
+    if (wanted === undefined || (wanted === "browser" && (headed || channel === "firefox"))) return launch(config.profileDir, options);
+    if (wanted !== "browser") return launch(config.profileDir, { ...options, userAgent: wanted });
+    const known = headedAgents.get(channel);
+    if (known) return launch(config.profileDir, { ...options, ...(known.relaunch ? { userAgent: known.userAgent } : {}) });
+    const context = await launch(config.profileDir, options);
+    const page = context.pages()[0] ?? (await context.newPage());
+    const own = await page.evaluate(() => (globalThis as unknown as { navigator: { userAgent: string } }).navigator.userAgent);
+    const userAgent = own.replace(/\bHeadlessChrome\//, "Chrome/");
+    headedAgents.set(channel, { userAgent, relaunch: userAgent !== own });
+    if (userAgent === own) return context;
+    await context.close();
+    return launch(config.profileDir, { ...options, userAgent });
+  }
+
   async function launchFirstAvailable(headed: boolean): Promise<Open> {
     await mkdir(config.profileDir, { recursive: true });
     // A browser that crashed too often goes after the other installed ones, and before a download: it's still there.
@@ -182,8 +209,7 @@ export function createBrowserManager(
       if (isDownloaded(channel) && download) throw downloading(channel);
       let context: BrowserContext;
       try {
-        // A window keeps its own size; a fixed viewport would leave it half empty.
-        context = await launch(config.profileDir, { channel, headless: !headed, ...(headed ? { viewport: null } : {}) });
+        context = await launchChannel(channel, headed);
       } catch (error) {
         const message = (error as Error).message ?? String(error);
         if (!NOT_INSTALLED.test(message)) {

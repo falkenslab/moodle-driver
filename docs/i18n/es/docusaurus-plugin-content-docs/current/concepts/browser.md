@@ -18,6 +18,8 @@ interface BrowserOptions {
   downloadBrowser: boolean;
   /** Cuántos fallos de un navegador se toleran en esta ejecución antes de preferir otro instalado; undefined: nunca. */
   switchAfterCrashes?: number;
+  /** El agente de usuario que envían las peticiones: "browser" para el de con ventana, también sin ella, o un texto; undefined: el del navegador. */
+  userAgent?: "browser" | string;
 }
 ```
 
@@ -52,6 +54,20 @@ Puede que una persona quiera ver lo que hace un programa, o intervenir (una pág
 Un navegador también puede fallar durante una llamada. Un método de `Moodle` que solo lee abre otro y se ejecuta de nuevo, una vez. Lo que haya podido cambiar Moodle no se repite: falla con `BrowserLostError`, porque lo que estaba enviando puede haber llegado, y enviar un formulario dos veces crea dos veces lo mismo. Por defecto, el driver sigue con el mismo navegador tras un fallo. Con `switchAfterCrashes: n` en las opciones, y sin `channel`, un navegador que ha fallado `n` veces en esta ejecución pasa detrás de los demás instalados en los siguientes arranques, con el mismo perfil. Edge y Chrome conservaron la sesión del otro en la única configuración en que se probó (Windows 11, noviembre de 2026), así que compruébalo en la tuya. Una ventana que cierra la persona no cuenta como fallo.
 
 En Linux una ventana necesita `DISPLAY` o `WAYLAND_DISPLAY`; sin ellas (un servidor, un contenedor), pedir una lanza `NoDisplayError` en lugar de intentarlo. `canShowWindow()` lo dice de antemano.
+
+## El agente de usuario {#the-user-agent}
+
+Sin ventana, Edge y Chrome lo dicen en cada petición: su agente de usuario lleva `HeadlessChrome/<versión>` donde con ventana lleva `Chrome/<versión>`, así que el registro de accesos de un sitio distingue a un programa que trabaja sin ventana de una persona. `userAgent` elige lo que envían las peticiones, tanto las cargas de páginas como las llamadas AJAX y las peticiones de `context.request`:
+
+- Sin la opción, el del propio navegador, como siempre.
+- `"browser"`: lo que envía el navegador instalado con ventana, también sin ella. El primer arranque sin ventana de cada canal lee su agente de usuario y relanza el navegador con `Chrome/` en lugar de `HeadlessChrome/` (el agente de usuario de un contexto persistente se fija al arrancar), así que cuesta un arranque más, una vez por gestor y canal. Con ventana, y en Firefox (cuyo agente de usuario sin ventana ya es el de con ventana), no cambia nada.
+- Cualquier otro texto: se envía tal cual, con ventana o sin ella, para comparar cómo ve un sitio a distintos navegadores.
+
+```ts
+const moodle = createMoodle({ site: "https://campus.example.org/", profileDir: "/home/ada/.moodle-profile", headless: true, downloadBrowser: true, userAgent: "browser" });
+```
+
+Solo cambia el agente de usuario. Las client hints que Chromium envía con él (`sec-ch-ua`, `sec-ch-ua-mobile`, `sec-ch-ua-platform`) conservan las marcas del navegador, y Playwright deduce su plataforma del texto; sin ventana, el Chromium de Playwright envió las mismas marcas con la opción y sin ella, ninguna de ellas headless (comprobado en el contenedor de pruebas, noviembre de 2026), y las de Edge y Chrome no se han comprobado. Lo que pueden leer los scripts de una página (`navigator.webdriver`, por ejemplo) no se cubre. Un navegador abierto en segundo plano (más abajo) conserva su propio agente de usuario.
 
 ## La pestaña de trabajo {#the-working-tab}
 

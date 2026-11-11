@@ -8,6 +8,7 @@ import type { BrowserContext, Cookie } from "playwright-core";
 import { BrowserDownloadingError, BrowserNotFoundError, NoDisplayError, ProfilePathTooLongError, canShowWindow, createBrowserManager } from "../../src/browser/manager.js";
 import type { BrowserOptions } from "../../src/options.js";
 import { SESSION_COOKIES_FILE } from "../../src/browser/cookies.js";
+import { MoodleError } from "../../src/core/errors.js";
 
 let profileDir: string;
 before(async () => {
@@ -43,6 +44,7 @@ function fakeContext(initialCookies: Cookie[] = []): BrowserContext & { jar: Coo
       url: () => tab.visits.at(-1) ?? "about:blank",
       isClosed: () => false,
       goto: async (url: string) => void tab.visits.push(url),
+      evaluate: async () => HEADLESS_EDGE,
       bringToFront: async () => void tab.fronted++,
     };
   };
@@ -58,17 +60,21 @@ function fakeContext(initialCookies: Cookie[] = []): BrowserContext & { jar: Coo
   }) as unknown as BrowserContext & { jar: Cookie[]; tabs: FakeTab[] };
 }
 
+// What headless Edge says it is; with a window, Chrome/ in place of HeadlessChrome/.
+const HEADLESS_EDGE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0";
+
 interface LaunchCall {
   channel: string;
   headless: boolean;
+  userAgent?: string;
 }
 
 /** A launcher where the channels in `installed` work and the rest fail as Playwright does. */
 function fakeLaunch(installed: string[], makeContext = () => fakeContext()) {
   const calls: LaunchCall[] = [];
-  const launch = async (_dir: string, options?: { channel?: string; headless?: boolean }) => {
+  const launch = async (_dir: string, options?: { channel?: string; headless?: boolean; userAgent?: string }) => {
     const channel = options?.channel ?? "";
-    calls.push({ channel, headless: options?.headless ?? true });
+    calls.push({ channel, headless: options?.headless ?? true, ...(options?.userAgent ? { userAgent: options.userAgent } : {}) });
     if (!installed.includes(channel)) throw new Error(`Chromium distribution '${channel}' is not found at C:\\nowhere`);
     return makeContext();
   };
@@ -330,6 +336,43 @@ describe("createBrowserManager", () => {
       await browser.close();
       await browser.context();
       assert.deepEqual(calls.map((c) => c.channel), ["msedge", "msedge"]);
+    });
+  });
+
+  describe("userAgent", () => {
+    const HEADED_EDGE = HEADLESS_EDGE.replace("HeadlessChrome/", "Chrome/");
+
+    it("relaunches headless Edge once with the user agent it sends with a window, and starts with it afterwards", async () => {
+      const { calls, launch } = fakeLaunch(["msedge"]);
+      const browser = createBrowserManager(config({ userAgent: "browser" }), launch);
+      await (await browser.context()).close();
+      await browser.context();
+      assert.deepEqual(calls, [{ channel: "msedge", headless: true }, { channel: "msedge", headless: true, userAgent: HEADED_EDGE }, { channel: "msedge", headless: true, userAgent: HEADED_EDGE }]);
+    });
+
+    it("leaves a window and Firefox with their own", async () => {
+      const headed = fakeLaunch(["msedge"]);
+      await createBrowserManager(config({ userAgent: "browser", headless: false }), headed.launch, undefined, () => true).context();
+      assert.deepEqual(headed.calls, [{ channel: "msedge", headless: false }]);
+      const firefox = fakeLaunch(["firefox"]);
+      await createBrowserManager(config({ userAgent: "browser", channel: "firefox" }), firefox.launch).context();
+      assert.deepEqual(firefox.calls, [{ channel: "firefox", headless: true }]);
+    });
+
+    it("sends a text as it is, with or without a window, and nothing without the option", async () => {
+      const text = "Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0";
+      const { calls, launch } = fakeLaunch(["msedge"]);
+      const browser = createBrowserManager(config({ userAgent: text }), launch, undefined, () => true);
+      await browser.context();
+      await browser.context({ headed: true });
+      assert.deepEqual(calls.map((c) => c.userAgent), [text, text]);
+      const plain = fakeLaunch(["msedge"]);
+      await createBrowserManager(config(), plain.launch).context();
+      assert.deepEqual(plain.calls, [{ channel: "msedge", headless: true }]);
+    });
+
+    it("refuses an empty text", async () => {
+      await assert.rejects(createBrowserManager(config({ userAgent: " " }), fakeLaunch(["msedge"]).launch).context(), (error: unknown) => error instanceof MoodleError && error.code === "invalid-input");
     });
   });
 

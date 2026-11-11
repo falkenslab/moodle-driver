@@ -18,6 +18,8 @@ interface BrowserOptions {
   downloadBrowser: boolean;
   /** How many crashes of a browser in this run before preferring another installed one; undefined: never. */
   switchAfterCrashes?: number;
+  /** The user agent requests send: "browser" for the headed one, headless too, or a text; undefined: the browser's own. */
+  userAgent?: "browser" | string;
 }
 ```
 
@@ -52,6 +54,20 @@ A person may want to watch what a program does, or step in (a page asks somethin
 A browser can also crash during a call. A `Moodle` method that only reads opens a new one and runs again, once. Anything that may have changed Moodle isn't repeated: it fails with `BrowserLostError`, because what it was sending may have arrived, and sending a form twice makes two of what it creates. By default the driver stays with the same browser after a crash. With `switchAfterCrashes: n` in the options, and no `channel`, a browser that has crashed `n` times in this run goes after the other installed ones for the next launches, on the same profile. Edge and Chrome kept each other's session in the one setup it was tried on (Windows 11, November 2026), so check it for yours. A window the person closes doesn't count as a crash.
 
 On Linux a window needs `DISPLAY` or `WAYLAND_DISPLAY`; without them (a server, a container) asking for one throws `NoDisplayError` instead of trying. `canShowWindow()` tells in advance.
+
+## The user agent
+
+Headless, Edge and Chrome say so in every request: their user agent has `HeadlessChrome/<version>` where a window has `Chrome/<version>`, so a site's access log tells a program working headless from a person. `userAgent` chooses what requests send, page loads, AJAX calls and `context.request` fetches alike:
+
+- Left out, the browser's own, as always.
+- `"browser"`: what the installed browser sends with a window, headless too. The first headless launch of each channel reads its user agent and relaunches with `Chrome/` in place of `HeadlessChrome/` (a persistent context's user agent is fixed at launch), so it takes one launch more, once per manager and channel. With a window, and in Firefox (whose headless user agent is already its headed one), nothing changes.
+- Any other text: sent as it is, with or without a window, to compare how a site sees different browsers.
+
+```ts
+const moodle = createMoodle({ site: "https://campus.example.org/", profileDir: "/home/ada/.moodle-profile", headless: true, downloadBrowser: true, userAgent: "browser" });
+```
+
+Only the user agent changes. The client hints Chromium sends with it (`sec-ch-ua`, `sec-ch-ua-mobile`, `sec-ch-ua-platform`) keep the browser's brands, and Playwright works out their platform from the text; headless, Playwright's Chromium sent the same brands with and without the option, none of them headless (checked in the test container, November 2026), and Edge's and Chrome's haven't been checked. What a page's scripts can read (`navigator.webdriver`, for one) isn't covered. A browser left open in the background (below) keeps its own user agent.
 
 ## The working tab
 

@@ -43,6 +43,16 @@ export interface BrowserOptions {
    * Windows 11, November 2026), which a program that needs certainty should check for its own setup.
    */
   switchAfterCrashes?: number;
+  /**
+   * The user agent every request sends: page loads, AJAX calls and `context.request` fetches alike.
+   * Undefined, the default, keeps the browser's own, which headless Edge and Chrome mark as
+   * `HeadlessChrome/<version>` in the web server's access log. `"browser"` sends, headless too, what
+   * the installed browser sends with a window: the driver reads the headless one at the first launch
+   * of each channel and relaunches it with `Chrome/<version>` in its place (Firefox's is already the
+   * same, and is left alone). Any other text is sent as it is, with or without a window. The client
+   * hints (`sec-ch-ua`…) keep the browser's brands; Playwright derives their platform from the text.
+   */
+  userAgent?: "browser" | (string & {});
 }
 
 /** A site URL that isn't one. */
