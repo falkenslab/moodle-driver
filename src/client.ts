@@ -478,7 +478,9 @@ export function createMoodle(options: MoodleOptions): Moodle {
       // An argument or a result not as expected: nothing to show, the call's result stands.
     }
     const context = await browser.context();
-    if (path && new URL(path, site).href !== lastPageFollowed(context)) await followPage(context, site, path);
+    // The page the call left in sight is shown already: loading it again would be another view (#101).
+    const sameAs = (url: string | undefined) => url !== undefined && new URL(url).href.split("#")[0] === new URL(path!, site).href.split("#")[0];
+    if (path && !sameAs(lastPageFollowed(context))) await followPage(context, site, path);
   };
   // A browser lost during a read: once the old one is really gone, the read again on a new one. The
   // manager learns of it from the context's `close` event, which may come after the call has failed.

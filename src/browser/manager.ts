@@ -134,6 +134,8 @@ export function createBrowserManager(
   // What `setVisible` asked for, over the options; following goes with it.
   let shown: boolean | undefined;
   let followTab: Page | undefined;
+  // The working tab last given to a program (`tab()`), never closed under it.
+  let handedOut: Page | undefined;
   // How many times each browser has gone by itself in this run.
   const crashes = new Map<Channel, number>();
   // The user agent each channel sends with a window, for `userAgent: "browser"` (and whether headless differs).
@@ -222,7 +224,12 @@ export function createBrowserManager(
         continue;
       }
       context.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
-      followPages(context, (url) => manager.show(url));
+      followPages(context, {
+        watching: () => Boolean(shown && open?.context === context && open.headed),
+        show: (url) => manager.show(url),
+        adopt: async (page) => adopt(context, page),
+        tab: () => workTab(context),
+      });
       await restoreSessionCookies(context, config.profileDir);
       const opened: Open = { context, channel, headed };
       // The person may close the window: the next call opens the browser again, headless if they had
@@ -247,6 +254,19 @@ export function createBrowserManager(
   async function workTab(context: BrowserContext): Promise<Page> {
     if (!followTab || followTab.isClosed()) followTab = context.pages().find((p) => p.url() === "about:blank") ?? (await context.newPage());
     return followTab;
+  }
+
+  /**
+   * A function's tab it's done with becomes the working tab, as it is (#101): the one before closes,
+   * unless a program was given it with `tab()` and may still drive it.
+   */
+  async function adopt(context: BrowserContext, page: Page): Promise<boolean> {
+    if (!shown || open?.context !== context || !open.headed || page.isClosed()) return false;
+    const previous = followTab;
+    followTab = page;
+    await page.bringToFront().catch(() => undefined);
+    if (previous && previous !== page && previous !== handedOut && !previous.isClosed()) await previous.close().catch(() => undefined);
+    return true;
   }
 
   async function closeOpen(): Promise<void> {
@@ -298,7 +318,7 @@ export function createBrowserManager(
         // Following is a courtesy: a page that doesn't load never changes a function's result.
       }
     },
-    tab: async () => workTab(await manager.context()),
+    tab: async () => (handedOut = await workTab(await manager.context())),
     openChannel: () => open?.channel,
     chromiumDownload: () => (download ? "downloading" : downloadFailure ? "failed" : undefined),
     saveSession: () =>

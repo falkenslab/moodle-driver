@@ -129,7 +129,20 @@ export function connectBrowserManager(options: ConnectOptions): BrowserManager {
       const opened = browser.contexts()[0];
       if (!opened) throw new MoodleError("The browser connected to has no context to work in.", "background-browser");
       opened.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
-      followPages(opened, (url) => manager.show(url));
+      followPages(opened, {
+        watching: () => following && headed && context === opened,
+        show: (url) => manager.show(url),
+        adopt: async (page) => {
+          if (!following || !headed || page.isClosed()) return false;
+          // The browser's first tab stays: it may be the person's, and the window's first tab is where pages are followed without one.
+          const previous = adopted;
+          adopted = page;
+          await page.bringToFront().catch(() => undefined);
+          if (previous && previous !== page && previous !== handedOut && !previous.isClosed()) await previous.close().catch(() => undefined);
+          return true;
+        },
+        tab: () => workTab(opened),
+      });
       browser.on("disconnected", () => {
         browser = undefined;
         context = undefined;
@@ -140,8 +153,14 @@ export function connectBrowserManager(options: ConnectOptions): BrowserManager {
     return connecting;
   }
 
-  /** The window's tab: the first one the browser has, else a new one. */
+  // The tab a function was done with while following (#101), which then is the working tab.
+  let adopted: Page | undefined;
+  // The working tab last given to a program (`tab()`), never closed under it.
+  let handedOut: Page | undefined;
+
+  /** The window's tab: the one adopted last, else the first one the browser has, else a new one. */
   async function workTab(current: BrowserContext): Promise<Page> {
+    if (adopted && !adopted.isClosed() && adopted.context() === current) return adopted;
     return current.pages().find((p) => !p.isClosed()) ?? (await current.newPage());
   }
 
@@ -167,7 +186,7 @@ export function connectBrowserManager(options: ConnectOptions): BrowserManager {
         // Following is a courtesy: a page that doesn't load never changes a function's result.
       }
     },
-    tab: async () => workTab(await connect()),
+    tab: async () => (handedOut = await workTab(await connect())),
     async saveSession() {
       if (context && options.profileDir) await saveSessionCookies(context, options.profileDir);
     },

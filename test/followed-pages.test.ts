@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
+import type { BrowserContext, Page } from "playwright-core";
 import { FOLLOWED_PAGES, MOODLE_METHODS, createMoodle } from "../src/index.js";
 import { UNFOLLOWED_METHODS } from "../src/followed-pages.js";
 import { followPages } from "../src/core/session.js";
@@ -98,6 +99,66 @@ describe("The Moodle object's methods", { skip: !browser && "no system browser" 
       throw new Error("the window was closed");
     });
     assert.deepEqual((await moodle.listCourses()).map((c) => c.id), [3]);
+    await context.close();
+  });
+});
+
+describe("Following while the person watches (#101)", { skip: !browser && "no system browser" }, () => {
+  /** A follower as a manager with a window has: a working tab, a function's tab handed over to it. */
+  function watching(context: BrowserContext) {
+    let work: Page | undefined;
+    const follower = {
+      watching: () => true,
+      show: async (url: string) => {
+        const tab = await follower.tab();
+        if (tab.url() !== url) await tab.goto(url, { waitUntil: "domcontentloaded" });
+      },
+      adopt: async (page: Page) => {
+        const previous = work;
+        work = page;
+        if (previous && previous !== page) await previous.close();
+        return true;
+      },
+      tab: async () => (work && !work.isClosed() ? work : (work = await context.newPage())),
+    };
+    return follower;
+  }
+
+  async function setUp() {
+    const context = await browser!.newContext();
+    const state: FakeMoodleState = {
+      user: { id: 4, fullName: "Ada Lovelace" },
+      pagesServed: [],
+      bodies: {
+        "/course/view.php": `<ul><li class="activity" data-for="cmitem" data-id="20"></li></ul>`,
+        "/mod/forum/discuss.php": `<a href="#" data-type="subscription-toggle" data-discussionid="9" data-targetstate="0">Unsubscribe</a>`,
+      },
+      services: {
+        core_courseformat_get_state: () => JSON.stringify(STATE),
+        mod_forum_get_discussion_posts: () => ({ posts: [], forumid: 5, courseid: 3 }),
+      },
+    };
+    await serveFakeMoodle(context, state);
+    const follower = watching(context);
+    followPages(context, follower);
+    const moodle = createMoodle({ site: SITE, browser: fakeBrowserManager({ context: async () => context, visible: () => true }) });
+    return { context, moodle, state, follower };
+  }
+
+  it("hands a function's tab over as the working tab: the page loads once, and stays in sight", async () => {
+    const { context, moodle, state, follower } = await setUp();
+    await moodle.courseStructure(3, { details: true });
+    assert.deepEqual(state.pagesServed!.filter((p) => p === "/course/view.php"), ["/course/view.php"]);
+    assert.equal((await follower.tab()).url(), `${SITE}course/view.php?id=3`);
+    await context.close();
+  });
+
+  it("loads a page read over HTTP in the working tab instead, once, and reads it from there", async () => {
+    const { context, moodle, state, follower } = await setUp();
+    const read = await moodle.discussion(9);
+    assert.equal(read.discussion.subscribed, true, "read from the HTML the working tab loaded");
+    assert.deepEqual(state.pagesServed!.filter((p) => p === "/mod/forum/discuss.php"), ["/mod/forum/discuss.php"], "the result page is that same load");
+    assert.equal((await follower.tab()).url(), `${SITE}mod/forum/discuss.php?d=9`);
     await context.close();
   });
 });

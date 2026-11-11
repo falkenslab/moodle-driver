@@ -160,9 +160,13 @@ export function readDiscussionSubscription(html: string, discussionId: number): 
   return undefined;
 }
 
-/** The person's subscription to a discussion, read from its page over HTTP (no service gives it). */
+/**
+ * The person's subscription to a discussion, read from its page over HTTP (no service gives it). It's
+ * the page `discussion` shows, so it's followed: while the person watches, the working tab loads it
+ * once, and the call's result page is that same load (#101).
+ */
 export async function discussionSubscription(context: BrowserContext, siteUrl: string, discussionId: number): Promise<boolean | undefined> {
-  const { html } = await fetchSitePage(context, siteUrl, `mod/forum/discuss.php?d=${discussionId}`, { follow: false });
+  const { html } = await fetchSitePage(context, siteUrl, `mod/forum/discuss.php?d=${discussionId}`);
   return readDiscussionSubscription(html, discussionId);
 }
 

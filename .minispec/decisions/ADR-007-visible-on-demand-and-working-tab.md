@@ -10,7 +10,7 @@ Most functions work through AJAX from a hidden tab (ADR-004), so a visible brows
 
 ## Consequences
 
-- Following is best effort: a page that doesn't load never changes a function's result. It costs one more page load per step while shown, nothing while hidden.
+- Following is best effort: a page that doesn't load never changes a function's result. It loads nothing more (#101, November 2026): a function's tab becomes the working tab when the function is done with it, a page read over HTTP is loaded in the working tab instead, and a result page already in sight isn't loaded again, so Moodle logs each view once, shown or hidden. A tab the driver closes is never one a program was given with `tab()`.
 - Open tabs don't survive a switch; what was saved in Moodle does.
 - Without a screen, `setVisible(true)` throws `NoDisplayError` and the browser stays headless.
 - Which page an AJAX-only step shows is Moodle knowledge, so the driver's (#88, 18 October 2026): `FOLLOWED_PAGES` maps each such method to its page, and the `Moodle` object's methods show it after a successful call, unless the call showed a page of its own; until then moodle-mcp mapped each of its tools to one.
