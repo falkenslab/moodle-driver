@@ -1018,7 +1018,10 @@ export interface MoodleMethods {
   feedbackItems(activityId: number): Promise<import("./areas/surveys/items.js").FeedbackItemDefinition[]>;
   /** The templates a feedback can use: the course's own and the site's public ones (`manage_templates.php`, which takes `mod/feedback:edititems`). */
   feedbackTemplates(activityId: number): Promise<import("./areas/surveys/items.js").FeedbackTemplate[]>;
-  /** Submits an attempt for grading, and gives its review when the quiz shows it. */
+  /**
+   * Submits an attempt for grading from its summary (where its tab is, or opened), and gives its review
+   * when the quiz shows it: the page Moodle leads to, all its questions at once when there are several pages.
+   */
   finishQuizAttempt(attemptId: number): Promise<{ changed: string; attemptId: number; finished: true; review: { summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; } | undefined; }>;
   /**
    * A forum's discussions, as its page lists them: who started each, replies, last post, the person's
@@ -1505,8 +1508,11 @@ export interface MoodleMethods {
    * course), `CompetenciesDisabledError` on a site with competencies off.
    */
   rateCompetency(courseId: number, userId: number, competencyId: number, input: import("./areas/competencies/competencies.js").CompetencyRatingInput): Promise<import("./areas/competencies/competencies.js").CompetencyRatingChange>;
-  /** Every question of an attempt, page by page, with the page each is on. */
-  readAttempt(attemptId: number): Promise<import("./areas/quizzes/attempts.js").Question[]>;
+  /**
+   * One page of an attempt in progress: `page` (from 0), or without it the page the attempt is on in
+   * its tab (page 0 when no tab is open). Loads nothing when the attempt's tab already shows it.
+   */
+  readAttempt(attemptId: number, options?: { page?: number | undefined; }): Promise<import("./areas/quizzes/attempts.js").AttemptPage>;
   /** A finished attempt's review, as far as the quiz's review options let the person see it. */
   readReview(attemptId: number): Promise<{ summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; }>;
   /**
@@ -1810,8 +1816,11 @@ export interface MoodleMethods {
    * to it, as the forum lists it afterwards, so one call confirms what `subscribe` and `fields` set.
    */
   startDiscussion(activityId: number, input: import("./areas/forums/posts.js").PostInput & { subject: string; }): Promise<{ changed: string; discussionId: number | undefined; pinned: boolean | undefined; subscribed: boolean | undefined; }>;
-  /** Starts an attempt, or continues the one in progress, and gives its questions. */
-  startQuizAttempt(activityId: number): Promise<{ changed: string; attemptId: number; questions: import("./areas/quizzes/attempts.js").Question[]; }>;
+  /**
+   * Starts an attempt, or continues the one in progress, and gives the page it opens on with its
+   * questions; the attempt's tab stays open for the next calls.
+   */
+  startQuizAttempt(activityId: number): Promise<{ changed: string; } & import("./areas/quizzes/attempts.js").AttemptPage>;
   /** An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, and whether it can be edited or submitted now. */
   studentAssignment(activityId: number): Promise<import("./areas/assignments/student.js").StudentAssignment>;
   /**

@@ -67,7 +67,9 @@ const quizEdit = (activityId: number) => `mod/quiz/edit.php?cmid=${activityId}`;
 const quizReport = (activityId: number, mode: string) => `mod/quiz/report.php?id=${activityId}&mode=${mode}`;
 // An attempt's review; when the quiz doesn't let the person review it yet, Moodle sends them back to the quiz's page with why.
 const attemptReview = (attemptId: number) => `mod/quiz/review.php?attempt=${attemptId}&showall=1`;
-const attemptPage = (attemptId: number) => `mod/quiz/attempt.php?attempt=${attemptId}`;
+// Where an attempt call left it: the page shown, or its summary once past the last page.
+const attemptPage = ({ attemptId, page }: { attemptId: number; page?: number }) =>
+  page === undefined ? `mod/quiz/summary.php?attempt=${attemptId}` : `mod/quiz/attempt.php?attempt=${attemptId}&page=${page}`;
 /**
  * The page that shows each method's result, a path relative to the site built from the call's
  * arguments and what it returned: what a creation made (`createActivity`: the new activity, not the
@@ -337,10 +339,10 @@ export const FOLLOWED_PAGES: { readonly [K in Method]?: PageOf<K> } = {
   importQuestions: (_, { questions }) => (questions[0] ? questionPreview(questions[0].id) : undefined),
   // Quizzes.
   quizInfo: ([activityId]) => quiz(activityId),
-  startQuizAttempt: (_, { attemptId }) => attemptPage(attemptId),
-  readAttempt: ([attemptId]) => attemptPage(attemptId),
+  startQuizAttempt: (_, result) => attemptPage(result),
+  readAttempt: (_, result) => attemptPage(result),
   // Needs MoodleMethods to include the hand-bound methods (DEFAULTED in src/client.ts): it isn't in moodle-methods.generated.ts.
-  answerQuizQuestions: ([attemptId]) => `mod/quiz/summary.php?attempt=${attemptId}`,
+  answerQuizQuestions: (_, result) => attemptPage(result),
   finishQuizAttempt: ([attemptId]) => attemptReview(attemptId),
   readReview: ([attemptId]) => attemptReview(attemptId),
   gradeQuizQuestion: ([attemptId]) => attemptReview(attemptId),

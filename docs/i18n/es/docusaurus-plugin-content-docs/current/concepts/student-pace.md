@@ -23,6 +23,12 @@ type Trail = "realistic" | "fast";
 | `answerQuizQuestions()` | Cada página de preguntas leída antes de guardarla | Guardada al momento |
 | `answerLessonPage()` | La página leída antes de responder | Respondida al momento |
 
+## Las páginas de un intento de cuestionario {#a-quiz-attempts-pages}
+
+Cada vez que se carga una página de un intento de cuestionario, Moodle registra un evento `attempt_viewed` que un profesor ve en los registros del curso, sea cual sea el rastro: una ráfaga de visitas en un par de segundos delata a un programa. Por eso las funciones del intento lo recorren como lo hace una persona, una página cada vez: `startQuizAttempt` da la página en la que se abre el intento, `answerQuizQuestions` guarda con "Página siguiente" y da la página a la que lleva, y `readAttempt` lee una página. La pestaña del intento queda abierta entre llamadas del mismo programa, así que cada página se visita una sola vez, y una llamada que lee la página que la pestaña ya muestra no carga nada (consulta [La pestaña del intento](../areas/quizzes.md#the-attempts-tab)).
+
+En Moodle 5.2, la primera página de un intento nuevo muestra dos entradas `attempt_viewed` en los registros para una sola petición: es cosa del propio Moodle, no del driver (confirmado empíricamente en el sandbox).
+
 ## Elegirlo una vez {#choosing-it-once}
 
 Un programa suele querer un mismo ritmo en todas partes: dáselo al objeto, `createMoodle({ …, trail: "fast" })`, y todas las acciones de estudiante lo usan salvo que una llamada diga otra cosa (consulta [Valores predeterminados](calling-functions.md#defaults)). Un `onProgress` dado al objeto informa de las esperas de todas las llamadas.

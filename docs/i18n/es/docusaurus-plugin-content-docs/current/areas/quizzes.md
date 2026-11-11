@@ -43,13 +43,15 @@ Lanza `QuizError` cuando el id no es un cuestionario que la persona pueda abrir.
 
 ## startQuizAttempt
 
-Empieza un intento, o continúa el que está en curso, exactamente como lo hace el botón de la página del cuestionario, y da sus preguntas.
+Empieza un intento, o continúa el que está en curso, exactamente como lo hace el botón de la página del cuestionario, y da la página en la que se abre con las preguntas de esa página.
 
 ```ts
-function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string; attemptId: number; questions: Question[] }>;
+function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string } & AttemptPage>;
 ```
 
-Un cuestionario con límite de tiempo pide primero confirmación: Moodle muestra su formulario en un diálogo en la página del cuestionario (o como una página propia cuando se pulsa el botón antes de que el script de la página esté listo); el driver lo confirma en ambos casos, lo que pone en marcha el reloj. Un cuestionario pensado para una ventana emergente segura abre el intento en una ventana nueva, que el driver cierra en cuanto tiene el id del intento. Un cuestionario con contraseña no se empieza: el driver nunca escribe una contraseña, así que `QuizError` dice que la pide y la persona empieza ese intento en Moodle. `QuizError` también llega cuando la página no tiene botón para empezar (la persona agotó los intentos, el cuestionario está cerrado), con los mensajes de la página, cuando Moodle rechaza el intento (con su mensaje), y cuando el id no es un cuestionario.
+Un intento nuevo se abre en la página 0; uno en curso se abre donde Moodle lo continúa (la página en la que la persona estuvo por última vez). El resultado dice qué página es y cuántas páginas tiene el intento (consulta [Dónde está un intento](#where-an-attempt-is)); las demás páginas no se leen: un programa llega a ellas como lo hace una persona, con `answerQuizQuestions` (su "Página siguiente") o con `readAttempt`. La pestaña del intento queda abierta para las siguientes llamadas (consulta [La pestaña del intento](#the-attempts-tab)).
+
+Un cuestionario con límite de tiempo pide primero confirmación: Moodle muestra su formulario en un diálogo en la página del cuestionario (o como una página propia cuando se pulsa el botón antes de que el script de la página esté listo); el driver lo confirma en ambos casos, lo que pone en marcha el reloj. Un cuestionario pensado para una ventana emergente segura abre el intento en una ventana nueva, que pasa a ser la pestaña del intento. Un cuestionario con contraseña no se empieza: el driver nunca escribe una contraseña, así que `QuizError` dice que la pide y la persona empieza ese intento en Moodle. `QuizError` también llega cuando la página no tiene botón para empezar (la persona agotó los intentos, el cuestionario está cerrado), con los mensajes de la página, cuando Moodle rechaza el intento (con su mensaje), y cuando el id no es un cuestionario.
 
 ## Las preguntas y sus campos {#questions-and-their-fields}
 
@@ -81,7 +83,7 @@ interface QuestionField {
 ```
 
 - `slot`: el lugar de la pregunta en el cuestionario; las respuestas se dan por slot.
-- `page`: la página del intento en la que está (desde 0); se rellena al leer un intento, no una revisión.
+- `page`: la página del intento en la que está (desde 0), la misma que el `page` de su [`AttemptPage`](#where-an-attempt-is); se rellena en un intento, no en una revisión.
 - `number`: el número que se muestra ("1", "i" para una descripción).
 - `type`: el tipo de pregunta de Moodle ("truefalse", "multichoice", "match", "shortanswer"...).
 - `state`: la clase de estado de Moodle ("notyetanswered", "answersaved", y en una revisión "correct", "incorrect", "partiallycorrect"...).
@@ -99,19 +101,55 @@ Cada entrada de la pregunta es un campo con su nombre en el formulario, como `q9
 
 `value` es la respuesta actual, para que un programa pueda ver lo que ya está guardado.
 
-## readAttempt
+## Dónde está un intento {#where-an-attempt-is}
 
-Todas las preguntas de un intento en curso, recorriendo todas sus páginas, cada una con la página en la que está.
+`startQuizAttempt`, `readAttempt` y `answerQuizQuestions` dan una página del intento, la que una persona tendría delante, como un `AttemptPage`:
 
 ```ts
-function readAttempt(context: BrowserContext, siteUrl: string, attemptId: number): Promise<Question[]>;
+interface AttemptPage {
+  attemptId: number;
+  page?: number;
+  pages: number;
+  questions: Question[];
+  summary?: SummaryRow[];
+}
+
+interface SummaryRow {
+  slot: number;
+  number: string;
+  state: string;
+  status: string;
+}
 ```
 
-Lanza `QuizError` cuando el intento no está abierto: está terminado (lee su revisión en su lugar) o no es de la persona.
+- `page`: la página del intento que se muestra, desde 0. Falta una vez pasada la última página: el intento está entonces en su resumen ("Resumen del intento"), listo para terminarlo.
+- `pages`: cuántas páginas tiene el intento.
+- `questions`: las preguntas de esa página (consulta [Las preguntas y sus campos](#questions-and-their-fields)); vacío en el resumen.
+- `summary`: en el resumen, la fila de cada pregunta: su `slot`, el `number` que se muestra, la clase de estado de Moodle como `state` ("answersaved", "notyetanswered"...) y el estado tal como lo dice la página, en el idioma del sitio, como `status` ("Respuesta guardada").
+
+Un programa recorre un intento como lo hace una persona: responde las preguntas de la página, `answerQuizQuestions` las guarda con "Página siguiente" y da la página siguiente, y así hasta que `page` es undefined; entonces puede revisar `summary` y terminar (consulta [El intento de un estudiante de principio a fin](#a-students-attempt-from-start-to-finish)).
+
+### La pestaña del intento {#the-attempts-tab}
+
+Cada vez que se carga una página de un intento, Moodle registra un evento `attempt_viewed` que un profesor ve en los registros del curso, así que el driver carga cada página una sola vez. La pestaña del intento queda abierta entre llamadas del mismo programa, como la de una persona, y la siguiente llamada trabaja donde está: leer la página en la que `answerQuizQuestions` dejó el intento no carga nada. Otro programa en un [navegador en segundo plano](../concepts/browser.md#a-browser-left-open-in-the-background) (`moodle open`) encuentra esa pestaña por su dirección. Donde no hay ninguna pestaña del intento abierta (un programa nuevo, un navegador nuevo), la llamada abre su página 0, o la página que se le pide. `finishQuizAttempt` cierra la pestaña. Consulta [Trabajar al ritmo de un estudiante](../concepts/student-pace.md).
+
+## readAttempt
+
+Una página de un intento en curso, con sus preguntas: la que se pide, o la página en la que está el intento.
+
+```ts
+function readAttempt(context: BrowserContext, siteUrl: string, attemptId: number, options?: { page?: number }): Promise<AttemptPage>;
+```
+
+- `page`: la página que leer, desde 0; la pestaña del intento va a ella como lo hace la navegación del intento. Sin ella, la página en la que está la pestaña del intento, o la página 0 cuando no hay ninguna abierta (consulta [La pestaña del intento](#the-attempts-tab)).
+
+No carga nada cuando la pestaña del intento ya muestra esa página. El resultado es un [`AttemptPage`](#where-an-attempt-is): en el resumen (la pestaña está ahí después de guardar la última página), `questions` está vacío y `summary` da el estado de cada pregunta.
+
+Lanza `QuizError` cuando el intento no está abierto: está terminado (lee su revisión en su lugar) o no es de la persona; y cuando la página pedida no está abierta para la persona (la navegación del cuestionario es secuencial y esa página ya quedó atrás).
 
 ## answerQuizQuestions
 
-Guarda respuestas en un intento en curso sin terminarlo, y da sus preguntas después.
+Guarda respuestas en un intento en curso sin terminarlo, y da dónde deja eso el intento.
 
 ```ts
 function answerQuizQuestions(
@@ -120,14 +158,16 @@ function answerQuizQuestions(
   attemptId: number,
   answers: { slot: number; responses: Record<string, string> }[],
   options?: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void },
-): Promise<{ changed: string; attemptId: number; questions: Question[] }>;
+): Promise<{ changed: string } & AttemptPage>;
 ```
 
 - `answers`: por slot, los valores por nombre de campo (consulta [Las preguntas y sus campos](#questions-and-their-fields)).
 - `trail` (por defecto `"realistic"`): con `"realistic"`, en cada página el driver espera primero el tiempo que necesita una persona para leer las preguntas y las opciones de esa página (unas 240 palabras por minuto, entre 3 y 90 segundos por página), y luego guarda; con `"fast"` guarda en el acto. Consulta [El ritmo de un estudiante](../concepts/student-pace.md).
 - `onProgress`: se llama cada pocos segundos durante la espera, con los segundos transcurridos y el total de la página, para que un programa pueda decirle a quien lo llama que sigue trabajando.
 
-Las respuestas se agrupan por la página en la que está su slot, y cada página se rellena y se guarda en orden con su botón "Siguiente página", como avanza una persona por el intento; las páginas sin respuestas no se visitan. Moodle conserva todo lo guardado, así que las respuestas se pueden dar en varias llamadas y cambiar después mientras el intento esté abierto.
+Las respuestas se agrupan por la página en la que está su slot, y cada página se rellena y se guarda en orden con su botón "Página siguiente", como avanza una persona por el intento, empezando por la página en la que está la pestaña del intento (la página 0 cuando no hay ninguna abierta, consulta [La pestaña del intento](#the-attempts-tab)); las páginas sin respuestas no se visitan. Moodle conserva todo lo guardado, así que las respuestas se pueden dar en varias llamadas y cambiar después mientras el intento esté abierto.
+
+El resultado es donde el guardado dejó el intento, un [`AttemptPage`](#where-an-attempt-is): la página siguiente a la última guardada, con sus preguntas, o el resumen después de la última página (`page` ausente, `summary` con el estado de cada pregunta). El resto del intento no se vuelve a leer: `readAttempt` lee otra página cuando un programa la necesita.
 
 Errores: `QuizError` cuando el intento no está abierto, o cuando un slot no está en él (se comprueba antes de guardar nada); `FormError` cuando una página no tiene ningún campo con un nombre indicado, en cuyo caso esa página y las siguientes no se guardan (las anteriores ya lo están).
 
@@ -144,6 +184,8 @@ function finishQuizAttempt(context: BrowserContext, siteUrl: string, attemptId: 
 }>;
 ```
 
+Lo envía desde el resumen del intento, como lo hace una persona: donde está la pestaña del intento cuando está ahí; si no, va a él (o lo abre cuando no hay ninguna pestaña del intento abierta). La revisión se lee de la página a la que lleva Moodle; cuando la revisión está en páginas, el driver la sigue hasta la versión con todas las preguntas en una página, como haría una persona, así que `review.questions` las contiene todas. Después, la pestaña del intento se cierra.
+
 `review` falta cuando las opciones de revisión del cuestionario no la muestran justo después del intento. Lanza `QuizError` cuando el intento no se puede terminar: ya está terminado, o no es de la persona. Las preguntas sin responder se envían tal como están, como hace Moodle.
 
 ## readReview
@@ -159,7 +201,7 @@ Un profesor también puede leer así el intento de un estudiante. Lanza `QuizErr
 ## El intento de un estudiante de principio a fin {#a-students-attempt-from-start-to-finish}
 
 ```ts
-import { QuizError } from "@falkenslab/moodle-driver";
+import { QuizError, type AttemptPage, type Question } from "@falkenslab/moodle-driver";
 
 // `moodle` es el objeto de createMoodle(), como en las páginas de primeros pasos.
 const quizId = 26;
@@ -167,26 +209,35 @@ const quizId = 26;
 const info = await moodle.quizInfo(quizId);
 if (!info.canStart) throw new Error(`No se puede hacer un intento: ${info.messages.join(" ")}`);
 
-const { attemptId, questions } = await moodle.startQuizAttempt(quizId);
-
 // Elige una respuesta para cada pregunta: aquí, la primera opción de cada campo choice y select,
 // saltándose "borrar mi elección" (-1) y el "Elegir..." de un desplegable (0); el "0" de un radio verdadero/falso es "Falso", una respuesta real.
-const answers = questions.map((question) => {
-  const responses: Record<string, string> = {};
-  for (const field of question.fields) {
-    if ((field.kind === "choice" || field.kind === "select") && field.options) {
-      const option = field.options.find((o) => o.value !== "-1" && !(field.kind === "select" && o.value === "0")) ?? field.options[0];
-      if (option) responses[field.name] = option.value;
+const chooseAnswers = (questions: Question[]) =>
+  questions.map((question) => {
+    const responses: Record<string, string> = {};
+    for (const field of question.fields) {
+      if ((field.kind === "choice" || field.kind === "select") && field.options) {
+        const option = field.options.find((o) => o.value !== "-1" && !(field.kind === "select" && o.value === "0")) ?? field.options[0];
+        if (option) responses[field.name] = option.value;
+      }
     }
-  }
-  return { slot: question.slot, responses };
-});
+    return { slot: question.slot, responses };
+  });
 
 try {
-  const answered = await moodle.answerQuizQuestions(attemptId, answers, {
-    onProgress: (elapsed, total) => console.log(`Leyendo... ${elapsed}/${total} s`),
-  });
-  console.log(answered.questions.map((q) => `${q.number}: ${q.state}`).join(", "));
+  // La página en la que se abre el intento: la 0 para uno nuevo, donde se dejó para uno en curso.
+  let at: AttemptPage = await moodle.startQuizAttempt(quizId);
+  const attemptId = at.attemptId;
+
+  // Página a página, como avanza una persona: responde las preguntas de esta página; "Página siguiente" lleva a la siguiente.
+  while (at.page !== undefined) {
+    console.log(`Página ${at.page + 1} de ${at.pages}`);
+    at = await moodle.answerQuizQuestions(attemptId, chooseAnswers(at.questions), {
+      onProgress: (elapsed, total) => console.log(`Leyendo... ${elapsed}/${total} s`),
+    });
+  }
+
+  // Pasada la última página, el intento está en su resumen: el estado de cada pregunta.
+  for (const row of at.summary ?? []) console.log(`${row.number}: ${row.status}`);
 
   const done = await moodle.finishQuizAttempt(attemptId);
   for (const row of done.review?.summary ?? []) console.log(`${row.label}: ${row.value}`);

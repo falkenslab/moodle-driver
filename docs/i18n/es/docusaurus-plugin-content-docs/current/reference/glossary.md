@@ -19,7 +19,7 @@ La actividad en la que los estudiantes entregan un trabajo para que un profesor 
 
 ### Intento (attempt) {#attempt}
 
-Una vez que se hace un cuestionario, desde que se empieza hasta que se envía, con sus respuestas, puntos y calificación; Moodle numera los intentos por persona e identifica cada uno con un id de intento (`mod/quiz/attempt.php?attempt=9`). El driver empieza o continúa uno con `startQuizAttempt` (que devuelve `attemptId`), lo lee y lo responde con `readAttempt` y `answerQuizQuestions`, lo termina con `finishQuizAttempt`, y lista los de todos con `quizResults` (`QuizAttemptResult`, con `id` y `userId`); `quizInfo` da los de la propia persona como `attempts`. Las actividades H5P también tienen intentos (`h5pActivity`, `H5PAttempt`). Consulta [Cuestionarios](../areas/quizzes.md) y [H5P](../areas/h5p.md).
+Una vez que se hace un cuestionario, desde que se empieza hasta que se envía, con sus respuestas, puntos y calificación; Moodle numera los intentos por persona e identifica cada uno con un id de intento (`mod/quiz/attempt.php?attempt=9`). El driver empieza o continúa uno con `startQuizAttempt` (que devuelve `attemptId`), lo lee y lo responde página a página con `readAttempt` y `answerQuizQuestions` (`AttemptPage`, la página que se muestra o el resumen del intento), lo termina con `finishQuizAttempt`, y lista los de todos con `quizResults` (`QuizAttemptResult`, con `id` y `userId`); `quizInfo` da los de la propia persona como `attempts`. Las actividades H5P también tienen intentos (`h5pActivity`, `H5PAttempt`). Consulta [Cuestionarios](../areas/quizzes.md) y [H5P](../areas/h5p.md).
 
 ### Copia de seguridad (backup) {#backup}
 

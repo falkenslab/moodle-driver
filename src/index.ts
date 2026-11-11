@@ -107,6 +107,8 @@ export {
   type QuizInfo,
   type QuestionField,
   type Question,
+  type AttemptPage,
+  type SummaryRow,
 } from "./areas/quizzes/attempts.js";
 export { quizResults, type QuizAttemptResult, type QuizResults, type QuizResultsOptions } from "./areas/quizzes/results.js";
 export {

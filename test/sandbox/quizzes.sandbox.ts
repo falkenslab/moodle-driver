@@ -195,24 +195,30 @@ describe("quizzes", () => {
       await assert.rejects(teacher.quizInfo(other.id), QuizError);
     });
 
-    it("startQuizAttempt: an attempt with the quiz's three questions", SLOW, async () => {
+    it("startQuizAttempt: an attempt open on its first page", SLOW, async () => {
       const started = await student.startQuizAttempt(quizId);
       attemptId = started.attemptId;
-      questions = started.questions;
       assert.ok(attemptId > 0);
+      assert.equal(started.page, 0);
+      assert.ok(started.pages >= 1);
+      assert.ok(started.questions.length > 0 && started.questions.every((q) => q.page === 0 && q.state === "notyetanswered"), JSON.stringify(started.questions.map((q) => [q.page, q.state])));
+      questions = started.questions;
+    });
+
+    it("readAttempt: the open attempt's questions, one page at a time", SLOW, async () => {
+      const first = await student.readAttempt(attemptId);
+      assert.equal(first.page, 0, "the page the attempt is on");
+      for (let page = 1; page < first.pages; page++) {
+        const read = await student.readAttempt(attemptId, { page });
+        assert.equal(read.page, page);
+        questions.push(...read.questions);
+      }
       assert.deepEqual(questions.map((q) => [q.slot, q.type]), [
         [1, "truefalse"],
         [2, "multichoice"],
         [3, "essay"],
       ]);
-      assert.ok(questions.every((q) => q.state === "notyetanswered"), JSON.stringify(questions.map((q) => q.state)));
-    });
-
-    it("readAttempt: the open attempt's questions, page by page", SLOW, async () => {
-      const read = await student.readAttempt(attemptId);
-      assert.deepEqual(read.map((q) => q.slot), [1, 2, 3]);
-      assert.ok(read.every((q) => q.page !== undefined));
-      assert.ok(read[0]!.text.includes("The sandbox runs Moodle."));
+      assert.ok(questions[0]!.text.includes("The sandbox runs Moodle."));
       assert.ok(field(2, "choice").options!.some((o) => o.label === "4"), JSON.stringify(field(2, "choice")));
     });
 
@@ -220,7 +226,7 @@ describe("quizzes", () => {
       await assert.rejects(teacher.readAttempt(attemptId), QuizError);
     });
 
-    it("answerQuizQuestions: the three answers saved", SLOW, async () => {
+    it("answerQuizQuestions: the three answers saved, the attempt at its summary", SLOW, async () => {
       const tf = field(1, "choice");
       const mc = field(2, "choice");
       const essay = questions.find((q) => q.slot === 3)!.fields.find((f) => f.kind === "text" && /_answer$/.test(f.name))!;
@@ -234,10 +240,12 @@ describe("quizzes", () => {
         ],
         { trail: "fast" },
       );
-      assert.ok(answered.questions.every((q) => q.state === "answersaved"), JSON.stringify(answered.questions.map((q) => q.state)));
-      const read = await student.readAttempt(attemptId);
-      assert.equal(read[0]!.fields[0]!.value, tf.options!.find((o) => o.label === "True")!.value);
-      assert.match(read[2]!.fields.find((f) => f.name === essay.name)?.value ?? "", /A loop repeats a block/);
+      assert.equal(answered.page, undefined, "past the last page: the summary");
+      assert.deepEqual(answered.summary?.map((row) => [row.slot, row.state]), [[1, "answersaved"], [2, "answersaved"], [3, "answersaved"]], JSON.stringify(answered.summary));
+      const first = await student.readAttempt(attemptId, { page: 0 });
+      assert.equal(first.questions[0]!.fields[0]!.value, tf.options!.find((o) => o.label === "True")!.value);
+      const essayPage = await student.readAttempt(attemptId, { page: questions[2]!.page! });
+      assert.match(essayPage.questions.find((q) => q.slot === 3)!.fields.find((f) => f.name === essay.name)?.value ?? "", /A loop repeats a block/);
     });
 
     it("answerQuizQuestions: a slot the attempt doesn't have", SLOW, async () => {

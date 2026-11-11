@@ -19,7 +19,7 @@ The activity where students hand in work for a teacher to grade: module `assign`
 
 ### Attempt
 
-One go at a quiz, from starting it to submitting it, with its answers, marks and grade; Moodle numbers attempts per person and identifies each by an attempt id (`mod/quiz/attempt.php?attempt=9`). The driver starts or continues one with `startQuizAttempt` (which returns `attemptId`), reads and answers it with `readAttempt` and `answerQuizQuestions`, finishes it with `finishQuizAttempt`, and lists everyone's with `quizResults` (`QuizAttemptResult`, with `id` and `userId`); `quizInfo` gives the person's own as `attempts`. H5P activities have attempts too (`h5pActivity`, `H5PAttempt`). See [Quizzes](../areas/quizzes.md) and [H5P](../areas/h5p.md).
+One go at a quiz, from starting it to submitting it, with its answers, marks and grade; Moodle numbers attempts per person and identifies each by an attempt id (`mod/quiz/attempt.php?attempt=9`). The driver starts or continues one with `startQuizAttempt` (which returns `attemptId`), reads and answers it a page at a time with `readAttempt` and `answerQuizQuestions` (`AttemptPage`, the page shown or the attempt's summary), finishes it with `finishQuizAttempt`, and lists everyone's with `quizResults` (`QuizAttemptResult`, with `id` and `userId`); `quizInfo` gives the person's own as `attempts`. H5P activities have attempts too (`h5pActivity`, `H5PAttempt`). See [Quizzes](../areas/quizzes.md) and [H5P](../areas/h5p.md).
 
 ### Backup
 

@@ -43,13 +43,15 @@ Throws `QuizError` when the id isn't a quiz the person can open. Leaves no more 
 
 ## startQuizAttempt
 
-Starts an attempt, or continues the one in progress, exactly as the quiz page's button does, and gives its questions.
+Starts an attempt, or continues the one in progress, exactly as the quiz page's button does, and gives the page it opens on with that page's questions.
 
 ```ts
-function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string; attemptId: number; questions: Question[] }>;
+function startQuizAttempt(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string } & AttemptPage>;
 ```
 
-A quiz with a time limit first asks for confirmation: Moodle shows its form in a dialog on the quiz's page (or as a page of its own when the button is pressed before the page's script is ready); the driver confirms it either way, which starts the clock. A quiz meant for a secure pop-up window opens the attempt in a new window, which the driver closes once it has the attempt's id. A quiz with a password isn't started: the driver never types a password, so `QuizError` says it asks for one and the person starts that attempt in Moodle. `QuizError` also comes when the page has no start button (the person used all attempts, the quiz is closed), carrying the page's messages, when Moodle refuses the attempt (its message), and when the id isn't a quiz.
+A new attempt opens on page 0; one in progress opens where Moodle continues it (the page the person was last on). The result says which page that is and how many pages the attempt has (see [Where an attempt is](#where-an-attempt-is)); the other pages aren't read: a program reaches them as a person does, with `answerQuizQuestions` (its "Next page") or `readAttempt`. The attempt's tab stays open for the next calls (see [The attempt's tab](#the-attempts-tab)).
+
+A quiz with a time limit first asks for confirmation: Moodle shows its form in a dialog on the quiz's page (or as a page of its own when the button is pressed before the page's script is ready); the driver confirms it either way, which starts the clock. A quiz meant for a secure pop-up window opens the attempt in a new window, which becomes the attempt's tab. A quiz with a password isn't started: the driver never types a password, so `QuizError` says it asks for one and the person starts that attempt in Moodle. `QuizError` also comes when the page has no start button (the person used all attempts, the quiz is closed), carrying the page's messages, when Moodle refuses the attempt (its message), and when the id isn't a quiz.
 
 ## Questions and their fields
 
@@ -81,7 +83,7 @@ interface QuestionField {
 ```
 
 - `slot`: the question's place in the quiz; answers are given by slot.
-- `page`: the attempt page it's on (from 0); set when reading an attempt, not a review.
+- `page`: the attempt page it's on (from 0), the same as its [`AttemptPage`](#where-an-attempt-is)'s `page`; set in an attempt, not in a review.
 - `number`: the number shown ("1", "i" for a description).
 - `type`: Moodle's question type ("truefalse", "multichoice", "match", "shortanswer"...).
 - `state`: Moodle's state class ("notyetanswered", "answersaved", and in a review "correct", "incorrect", "partiallycorrect"...).
@@ -99,19 +101,55 @@ Each input of the question is a field with its form name, such as `q9:1_answer` 
 
 `value` is the current answer, so a program can see what's already saved.
 
-## readAttempt
+## Where an attempt is
 
-Every question of an attempt in progress, going through all its pages, each with the page it's on.
+`startQuizAttempt`, `readAttempt` and `answerQuizQuestions` give one page of the attempt, the one a person would have in front of them, as an `AttemptPage`:
 
 ```ts
-function readAttempt(context: BrowserContext, siteUrl: string, attemptId: number): Promise<Question[]>;
+interface AttemptPage {
+  attemptId: number;
+  page?: number;
+  pages: number;
+  questions: Question[];
+  summary?: SummaryRow[];
+}
+
+interface SummaryRow {
+  slot: number;
+  number: string;
+  state: string;
+  status: string;
+}
 ```
 
-Throws `QuizError` when the attempt isn't open: it's finished (read its review instead) or it isn't the person's.
+- `page`: the attempt page shown, from 0. It's absent once past the last page: the attempt is then at its summary ("Summary of attempt"), ready to finish.
+- `pages`: how many pages the attempt has.
+- `questions`: that page's questions (see [Questions and their fields](#questions-and-their-fields)); empty at the summary.
+- `summary`: at the summary, each question's row: its `slot`, the `number` shown, Moodle's state class as `state` ("answersaved", "notyetanswered"...) and the status as the page says it, in the site's language, as `status` ("Answer saved").
+
+A program goes through an attempt as a person does: it answers the page's questions, `answerQuizQuestions` saves them with "Next page" and gives the next page, and so on until `page` is undefined; then it can check `summary` and finish (see [A student's attempt from start to finish](#a-students-attempt-from-start-to-finish)).
+
+### The attempt's tab
+
+Each time an attempt's page loads, Moodle logs an `attempt_viewed` event a teacher sees in the course's logs, so the driver loads each page once. The attempt's tab stays open between calls in the same program, as a person's does, and the next call works where it is: reading the page `answerQuizQuestions` left the attempt on loads nothing. Another program on a [browser left open in the background](../concepts/browser.md#a-browser-left-open-in-the-background) (`moodle open`) finds that tab by its address. Where no tab of the attempt is open (a new program, a new browser), the call opens its page 0, or the page it's asked for. `finishQuizAttempt` closes the tab. See [Working at a student's pace](../concepts/student-pace.md).
+
+## readAttempt
+
+One page of an attempt in progress, with its questions: the one asked for, or the page the attempt is on.
+
+```ts
+function readAttempt(context: BrowserContext, siteUrl: string, attemptId: number, options?: { page?: number }): Promise<AttemptPage>;
+```
+
+- `page`: the page to read, from 0; the attempt's tab goes there as the attempt's navigation does. Without it, the page the attempt's tab is on, or page 0 when none is open (see [The attempt's tab](#the-attempts-tab)).
+
+It loads nothing when the attempt's tab already shows that page. The result is an [`AttemptPage`](#where-an-attempt-is): at the summary (the tab is there after the last page was saved), `questions` is empty and `summary` gives each question's status.
+
+Throws `QuizError` when the attempt isn't open: it's finished (read its review instead) or it isn't the person's; and when the page asked for isn't open to the person (the quiz's navigation is sequential and that page is behind).
 
 ## answerQuizQuestions
 
-Saves answers in an attempt in progress without finishing it, and gives its questions afterwards.
+Saves answers in an attempt in progress without finishing it, and gives where that leaves the attempt.
 
 ```ts
 function answerQuizQuestions(
@@ -120,14 +158,16 @@ function answerQuizQuestions(
   attemptId: number,
   answers: { slot: number; responses: Record<string, string> }[],
   options?: { trail?: Trail; onProgress?: (elapsed: number, total: number) => void },
-): Promise<{ changed: string; attemptId: number; questions: Question[] }>;
+): Promise<{ changed: string } & AttemptPage>;
 ```
 
 - `answers`: per slot, the values by field name (see [Questions and their fields](#questions-and-their-fields)).
 - `trail` (default `"realistic"`): with `"realistic"`, on each page the driver first waits the time a person needs to read that page's questions and options (about 240 words a minute, between 3 and 90 seconds a page), then saves; with `"fast"` it saves at once. See [Student pace](../concepts/student-pace.md).
 - `onProgress`: called every few seconds while waiting, with the seconds elapsed and the page's total, so a program can tell its caller it's still working.
 
-The answers are grouped by the page their slot is on, and each page is filled and saved in order with its "Next page" button, as a person moves through the attempt; pages without answers aren't visited. Moodle keeps everything saved, so answers can be given in several calls and changed later while the attempt is open.
+The answers are grouped by the page their slot is on, and each page is filled and saved in order with its "Next page" button, as a person moves through the attempt, starting from the page the attempt's tab is on (page 0 when none is open, see [The attempt's tab](#the-attempts-tab)); pages without answers aren't visited. Moodle keeps everything saved, so answers can be given in several calls and changed later while the attempt is open.
+
+The result is where saving left the attempt, an [`AttemptPage`](#where-an-attempt-is): the page after the last one saved, with its questions, or the summary after the last page (`page` absent, `summary` with each question's status). The rest of the attempt isn't read again: `readAttempt` reads another page when a program needs it.
 
 Errors: `QuizError` when the attempt isn't open, or when a slot isn't in it (checked before anything is saved); `FormError` when a page has no field by a given name, in which case that page and the ones after it aren't saved (the pages before it already are).
 
@@ -144,6 +184,8 @@ function finishQuizAttempt(context: BrowserContext, siteUrl: string, attemptId: 
 }>;
 ```
 
+It submits from the attempt's summary, as a person does: where the attempt's tab is when it's there, otherwise it goes there (or opens it when no tab of the attempt is open). The review is read from the page Moodle leads to; when the review is in pages, the driver follows it to the version with every question on one page, as a person would, so `review.questions` holds them all. The attempt's tab closes afterwards.
+
 `review` is missing when the quiz's review options don't show it right after the attempt. Throws `QuizError` when the attempt can't be finished: it's already finished, or it isn't the person's. Unanswered questions are submitted as they are, as Moodle does.
 
 ## readReview
@@ -159,7 +201,7 @@ A teacher can read a student's attempt this way too. Throws `QuizError` when the
 ## A student's attempt from start to finish
 
 ```ts
-import { QuizError } from "@falkenslab/moodle-driver";
+import { QuizError, type AttemptPage, type Question } from "@falkenslab/moodle-driver";
 
 // `moodle` is the object from createMoodle(), as in the getting-started pages.
 const quizId = 26;
@@ -167,26 +209,35 @@ const quizId = 26;
 const info = await moodle.quizInfo(quizId);
 if (!info.canStart) throw new Error(`Can't attempt: ${info.messages.join(" ")}`);
 
-const { attemptId, questions } = await moodle.startQuizAttempt(quizId);
-
 // Choose an answer for each question: here, the first option of every choice and select field,
 // skipping "clear my choice" (-1) and a drop-down's "Choose..." (0); a true/false radio's "0" is "False", a real answer.
-const answers = questions.map((question) => {
-  const responses: Record<string, string> = {};
-  for (const field of question.fields) {
-    if ((field.kind === "choice" || field.kind === "select") && field.options) {
-      const option = field.options.find((o) => o.value !== "-1" && !(field.kind === "select" && o.value === "0")) ?? field.options[0];
-      if (option) responses[field.name] = option.value;
+const chooseAnswers = (questions: Question[]) =>
+  questions.map((question) => {
+    const responses: Record<string, string> = {};
+    for (const field of question.fields) {
+      if ((field.kind === "choice" || field.kind === "select") && field.options) {
+        const option = field.options.find((o) => o.value !== "-1" && !(field.kind === "select" && o.value === "0")) ?? field.options[0];
+        if (option) responses[field.name] = option.value;
+      }
     }
-  }
-  return { slot: question.slot, responses };
-});
+    return { slot: question.slot, responses };
+  });
 
 try {
-  const answered = await moodle.answerQuizQuestions(attemptId, answers, {
-    onProgress: (elapsed, total) => console.log(`Reading... ${elapsed}/${total} s`),
-  });
-  console.log(answered.questions.map((q) => `${q.number}: ${q.state}`).join(", "));
+  // The page the attempt opens on: page 0 for a new one, where it was left for one in progress.
+  let at: AttemptPage = await moodle.startQuizAttempt(quizId);
+  const attemptId = at.attemptId;
+
+  // Page by page, as a person goes: answer this page's questions; "Next page" leads to the next one.
+  while (at.page !== undefined) {
+    console.log(`Page ${at.page + 1} of ${at.pages}`);
+    at = await moodle.answerQuizQuestions(attemptId, chooseAnswers(at.questions), {
+      onProgress: (elapsed, total) => console.log(`Reading... ${elapsed}/${total} s`),
+    });
+  }
+
+  // Past the last page, the attempt is at its summary: each question's status.
+  for (const row of at.summary ?? []) console.log(`${row.number}: ${row.status}`);
 
   const done = await moodle.finishQuizAttempt(attemptId);
   for (const row of done.review?.summary ?? []) console.log(`${row.label}: ${row.value}`);

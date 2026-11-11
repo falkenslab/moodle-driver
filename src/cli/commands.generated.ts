@@ -1266,7 +1266,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "answerQuizQuestions",
-    "description": "Saves answers in an attempt in progress without finishing it, and gives its questions afterwards. With the realistic trail, it first takes the time a reader needs for the questions and their options (ADR-005), calling `onProgress` with the seconds elapsed and the total.",
+    "description": "Saves answers in an attempt in progress without finishing it, page by page as \"next\" does, and gives where that leaves the attempt: the page after the last one saved, or its summary after the last page. With the realistic trail, it first takes the time a reader needs for each page's questions and their options (ADR-005), calling `onProgress` with the seconds elapsed and the total.",
     "params": [
       {
         "name": "attemptId",
@@ -5059,7 +5059,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "finishQuizAttempt",
-    "description": "Submits an attempt for grading, and gives its review when the quiz shows it.",
+    "description": "Submits an attempt for grading from its summary (where its tab is, or opened), and gives its review when the quiz shows it: the page Moodle leads to, all its questions at once when there are several pages.",
     "params": [
       {
         "name": "attemptId",
@@ -6941,7 +6941,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "readAttempt",
-    "description": "Every question of an attempt, page by page, with the page each is on.",
+    "description": "One page of an attempt in progress: `page` (from 0), or without it the page the attempt is on in its tab (page 0 when no tab is open). Loads nothing when the attempt's tab already shows it.",
     "params": [
       {
         "name": "attemptId",
@@ -6951,7 +6951,22 @@ export const COMMANDS: readonly CommandSpec[] = [
           "kind": "number"
         }
       }
-    ]
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "page",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "readReview",
@@ -8518,7 +8533,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "startQuizAttempt",
-    "description": "Starts an attempt, or continues the one in progress, and gives its questions.",
+    "description": "Starts an attempt, or continues the one in progress, and gives the page it opens on with its questions; the attempt's tab stays open for the next calls.",
     "params": [
       {
         "name": "activityId",

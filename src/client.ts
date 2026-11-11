@@ -62,7 +62,7 @@ import { enrolmentMethods, setEnrolmentMethod } from "./areas/participants/metho
 import { addNote, deleteNote, editNote, notes } from "./areas/participants/notes.js";
 import { addCourseCompetency, competencyFrameworks, competencyRating, courseCompetencies, rateCompetency, removeCourseCompetency, setActivityCompetencies } from "./areas/competencies/competencies.js";
 import { enrolUsers, potentialUsers, setUserRoles, unenrolUser } from "./areas/participants/enrolments.js";
-import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt, type Question } from "./areas/quizzes/attempts.js";
+import { answerQuizQuestions, finishQuizAttempt, quizInfo, readAttempt, readReview, setQuizOverride, startQuizAttempt } from "./areas/quizzes/attempts.js";
 import { quizResults } from "./areas/quizzes/results.js";
 import { quizStatistics } from "./areas/quizzes/statistics.js";
 import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
@@ -409,7 +409,7 @@ export interface Moodle extends MoodleMethods {
   activityContent(activity: { id: number; type: string }, options?: PaceOptions<(secondsRead: number) => void>): Promise<ActivityContent>;
   activityContent(activityId: number, type: ContentType, options?: PaceOptions<(secondsRead: number) => void>): Promise<ActivityContent>;
   /** `answerQuizQuestions`, at the object's `trail` unless given. */
-  answerQuizQuestions(attemptId: number, answers: Parameters<typeof answerQuizQuestions>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ changed: string; attemptId: number; questions: Question[] }>;
+  answerQuizQuestions(attemptId: number, answers: Parameters<typeof answerQuizQuestions>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): ReturnType<typeof answerQuizQuestions>;
   /** `answerLessonPage`, at the object's `trail` unless given. */
   answerLessonPage(activityId: number, answer: Parameters<typeof answerLessonPage>[3], options?: PaceOptions<(elapsed: number, total: number) => void>): Promise<{ changed: string; feedback?: LessonPage; page: LessonPage }>;
   /** `downloadFile`, into the object's `downloadDir` unless given a folder. */

@@ -441,7 +441,7 @@ moodle answer-lesson-page <activityId> <answer> [--options]
 
 ## answerQuizQuestions
 
-Saves answers in an attempt in progress without finishing it, and gives its questions afterwards. With the realistic trail, it first takes the time a reader needs for the questions and their options (ADR-005), calling `onProgress` with the seconds elapsed and the total.
+Saves answers in an attempt in progress without finishing it, page by page as "next" does, and gives where that leaves the attempt: the page after the last one saved, or its summary after the last page. With the realistic trail, it first takes the time a reader needs for each page's questions and their options (ADR-005), calling `onProgress` with the seconds elapsed and the total.
 
 ```bash
 moodle answer-quiz-questions <attemptId> <answers> [--options]
@@ -1879,7 +1879,7 @@ moodle feedback-templates <activityId>
 
 ## finishQuizAttempt
 
-Submits an attempt for grading, and gives its review when the quiz shows it.
+Submits an attempt for grading from its summary (where its tab is, or opened), and gives its review when the quiz shows it: the page Moodle leads to, all its questions at once when there are several pages.
 
 ```bash
 moodle finish-quiz-attempt <attemptId>
@@ -2692,15 +2692,16 @@ moodle rate-competency <courseId> <userId> <competencyId> --options
 
 ## readAttempt
 
-Every question of an attempt, page by page, with the page each is on.
+One page of an attempt in progress: `page` (from 0), or without it the page the attempt is on in its tab (page 0 when no tab is open). Loads nothing when the attempt's tab already shows it.
 
 ```bash
-moodle read-attempt <attemptId>
+moodle read-attempt <attemptId> [--options]
 ```
 
 | Argument | Type | Description |
 | --- | --- | --- |
 | `attemptId` | `number` |  |
+| `--page` | `number` |  |
 
 ## readReview
 
@@ -3303,7 +3304,7 @@ moodle start-discussion <activityId> <input>
 
 ## startQuizAttempt
 
-Starts an attempt, or continues the one in progress, and gives its questions.
+Starts an attempt, or continues the one in progress, and gives the page it opens on with its questions; the attempt's tab stays open for the next calls.
 
 ```bash
 moodle start-quiz-attempt <activityId>

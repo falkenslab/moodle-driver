@@ -23,6 +23,12 @@ type Trail = "realistic" | "fast";
 | `answerQuizQuestions()` | Each page of questions read before saving it | Saved at once |
 | `answerLessonPage()` | The page read before answering | Answered at once |
 
+## A quiz attempt's pages
+
+Each time a quiz attempt's page loads, Moodle logs an `attempt_viewed` event a teacher sees in the course's logs, whatever the trail: a burst of views in a couple of seconds gives a program away. So the attempt functions go through an attempt as a person does, one page at a time: `startQuizAttempt` gives the page the attempt opens on, `answerQuizQuestions` saves with "Next page" and gives the page that leads to, and `readAttempt` reads one page. The attempt's tab stays open between calls in the same program, so each page is viewed once, and a call that reads the page the tab already shows loads nothing (see [The attempt's tab](../areas/quizzes.md#the-attempts-tab)).
+
+On Moodle 5.2, a new attempt's first page shows two `attempt_viewed` entries in the logs for a single request: that's Moodle's own doing, not the driver's (confirmed empirically on the sandbox).
+
 ## Choosing it once
 
 A program usually wants one pace everywhere: give it to the object, `createMoodle({ …, trail: "fast" })`, and every student action uses it unless a call says otherwise (see [Defaults](calling-functions.md#defaults)). An `onProgress` given to the object reports the waits of every call.
