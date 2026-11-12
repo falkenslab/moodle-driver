@@ -314,6 +314,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // Calculating and overriding decide everyone's grades, and read them back.
   calculateWorkshopGrades: ["others-personal", "others-write"],
   overrideWorkshopGrade: ["others-personal", "others-write"],
+  // The assessment form is course content: what assessors are asked, read and set by the teacher.
+  workshopForm: CONTENT,
+  setWorkshopForm: CONTENT,
   // Everyone's grades, as Moodle exports them.
   exportGrades: PERSONAL,
   // Importing grades decides them; its preview shows the file, people and grades, as Moodle reads it.

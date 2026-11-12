@@ -1902,6 +1902,27 @@ export interface MoodleMethods {
    */
   setWorkflowState(activityId: number, userIds: number[], state: "inmarking" | "readyforreview" | "inreview" | "readyforrelease" | "released", options?: { notify?: boolean | undefined; }): Promise<{ changed: string; }>;
   /**
+   * Sets a workshop's assessment form, as its editing form does ("Assessment form" in the workshop's
+   * settings, then "Save and continue editing"): the aspects, assertions or criteria given, in order,
+   * replace those there. Each row keeps its place, so the first ones keep their ids; rows left over are
+   * deleted, as Moodle deletes a row whose description is emptied. The form must be for the workshop's
+   * grading strategy (chosen in its settings); a rubric's levels are written in their grades' order.
+   * Moodle offers a few blank rows at a time (two more aspects, two more levels, a mapping row per
+   * error of the saved weights), so the driver saves again until everything fits, as a teacher pressing
+   * its "Blanks for 2 more" buttons would (a rubric criterion of seven levels and a mapping set after
+   * new weights, confirmed empirically, Moodle 5.2). Moodle itself lets the form change once
+   * assessments exist (editform.php has no check, 5.2), and keeps their grades as they were given:
+   * the driver refuses then unless `evenIfAssessed`, counting
+   * the assessments graded in the workshop's report (in the course's current group) and the reference
+   * assessments of its examples. Returns a sentence of what changed and the form as `workshopForm`
+   * reads it. Throws `WorkshopError` for a form of another strategy (naming the workshop's), when
+   * assessments exist, when the person can't edit the form (`mod/workshop:editdimensions`) or a scale
+   * isn't the course's; `MoodleError` (`invalid-input`) for a form Moodle wouldn't take (no
+   * description, a rubric level's grade repeated, a weight above 16…), and `FormError` when Moodle
+   * refuses it (a maximum grade above the site's).
+   */
+  setWorkshopForm(activityId: number, input: import("./areas/workshops/form.js").WorkshopFormInput): Promise<{ changed: string; } & import("./areas/workshops/form.js").WorkshopForm>;
+  /**
    * Switches a workshop to a phase, as its page's phase links do, confirming Moodle's question (any
    * phase, forwards or back; Moodle allocates nothing and calculates no grades on its own when it
    * switches). Returns a sentence of what changed and the phase afterwards. Throws `WorkshopError` when
@@ -2099,6 +2120,16 @@ export interface MoodleMethods {
    * the page has no examples (examples off, or the capability missing), or the id isn't a workshop's.
    */
   workshopExamples(activityId: number): Promise<import("./areas/workshops/examples.js").WorkshopExample[]>;
+  /**
+   * A workshop's assessment form, as its editing form ("Assessment form" in the workshop's settings)
+   * has it: the grading strategy and its aspects (accumulative grading, comments), assertions (number
+   * of errors) or criteria (rubric) in order, each with its id and what the strategy gives it (a best
+   * grade or scale and a weight; a weight and the two words; levels), the number-of-errors grade
+   * mapping and the rubric's layout. Descriptions are HTML, as the editor holds them. Reading the
+   * editing form changes nothing. Throws `WorkshopError` when the id isn't a workshop's or the person
+   * can't edit its form (Moodle's `mod/workshop:editdimensions`, a teacher's).
+   */
+  workshopForm(activityId: number): Promise<import("./areas/workshops/form.js").WorkshopForm>;
   /**
    * A workshop's phase, and its report as the workshop's page shows it to a teacher: every submission
    * (its author, title, and grade once calculated) and every assessment (reviewer, the submission's

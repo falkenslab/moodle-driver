@@ -154,6 +154,7 @@ export { workshopAllocation, allocateReviewer, removeReviewer, allocateRandomly,
 export { workshopSubmission, saveWorkshopSubmission, type WorkshopSubmissionContent, type WorkshopSubmissionRef, type WorkshopSubmissionInput, type WorkshopAttachment } from "./areas/workshops/submissions.js";
 export { workshopExamples, addWorkshopExample, editWorkshopExample, deleteWorkshopExample, assessWorkshopExample, type WorkshopExample, type WorkshopExampleInput } from "./areas/workshops/examples.js";
 export { calculateWorkshopGrades, overrideWorkshopGrade, type WorkshopComparison, type WorkshopGradeOverride } from "./areas/workshops/evaluation.js";
+export { workshopForm, setWorkshopForm, type WorkshopStrategy, type WorkshopForm, type WorkshopFormCriterion, type WorkshopFormInput, type WorkshopFormCriterionInput, type WorkshopRubricLevel, type WorkshopGradeMapping } from "./areas/workshops/form.js";
 export { NotAForumError, ForumError } from "./areas/forums/discussions.js";
 export { forumDiscussions, discussion, replyToPost, startDiscussion, setDiscussionState, setDiscussionSubscription, editPost, deletePost, type ForumDiscussion, type ForumPost, type DiscussionPosts, type PostInput, type PostChanges } from "./areas/forums/posts.js";
 export { getSurvey, submitSurvey, SurveyError, type SurveyType, type SurveyField, type SurveyQuestion } from "./areas/surveys/surveys.js";

@@ -3426,6 +3426,23 @@ moodle set-workflow-state <activityId> <userIds> <state> [--options]
 | `state` | `"inmarking" \| "readyforreview" \| "inreview" \| "readyforrelease" \| "released"` |  |
 | `--notify` | `boolean` |  |
 
+## setWorkshopForm
+
+Sets a workshop's assessment form, as its editing form does ("Assessment form" in the workshop's settings, then "Save and continue editing"): the aspects, assertions or criteria given, in order, replace those there. Each row keeps its place, so the first ones keep their ids; rows left over are deleted, as Moodle deletes a row whose description is emptied. The form must be for the workshop's grading strategy (chosen in its settings); a rubric's levels are written in their grades' order. Moodle offers a few blank rows at a time (two more aspects, two more levels, a mapping row per error of the saved weights), so the driver saves again until everything fits, as a teacher pressing its "Blanks for 2 more" buttons would (a rubric criterion of seven levels and a mapping set after new weights, confirmed empirically, Moodle 5.2). Moodle itself lets the form change once assessments exist (editform.php has no check, 5.2), and keeps their grades as they were given: the driver refuses then unless `evenIfAssessed`, counting the assessments graded in the workshop's report (in the course's current group) and the reference assessments of its examples. Returns a sentence of what changed and the form as `workshopForm` reads it. Throws `WorkshopError` for a form of another strategy (naming the workshop's), when assessments exist, when the person can't edit the form (`mod/workshop:editdimensions`) or a scale isn't the course's; `MoodleError` (`invalid-input`) for a form Moodle wouldn't take (no description, a rubric level's grade repeated, a weight above 16…), and `FormError` when Moodle refuses it (a maximum grade above the site's).
+
+```bash
+moodle set-workshop-form <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--strategy` (required) | `WorkshopStrategy` | The strategy the workshop grades with (its settings choose it): a form for another one is refused. |
+| `--criteria` (required) | `WorkshopFormCriterionInput[]` |  |
+| `--grade-mapping` | `WorkshopGradeMapping[]` | Number of errors: the grade for each number of (weighted) errors, from 1 to the assertions' total weight; one not given gets Moodle's default, a share in proportion. All are cleared when left out. |
+| `--layout` | `"list" \| "grid"` | Rubric: how assessors see it, "list" (Moodle's default) or "grid"; left as it is when not given. |
+| `--even-if-assessed` | `boolean` | Change the form even when assessments made with it exist (their grades stay as they were given). |
+
 ## setWorkshopPhase
 
 Switches a workshop to a phase, as its page's phase links do, confirming Moodle's question (any phase, forwards or back; Moodle allocates nothing and calculates no grades on its own when it switches). Returns a sentence of what changed and the phase afterwards. Throws `WorkshopError` when the person can't switch the workshop's phases (Moodle's `mod/workshop:switchphase`, a teacher's) or the id isn't a workshop's.
@@ -3792,6 +3809,18 @@ A workshop's example submissions, as its page lists them to a teacher: each one'
 
 ```bash
 moodle workshop-examples <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+
+## workshopForm
+
+A workshop's assessment form, as its editing form ("Assessment form" in the workshop's settings) has it: the grading strategy and its aspects (accumulative grading, comments), assertions (number of errors) or criteria (rubric) in order, each with its id and what the strategy gives it (a best grade or scale and a weight; a weight and the two words; levels), the number-of-errors grade mapping and the rubric's layout. Descriptions are HTML, as the editor holds them. Reading the editing form changes nothing. Throws `WorkshopError` when the id isn't a workshop's or the person can't edit its form (Moodle's `mod/workshop:editdimensions`, a teacher's).
+
+```bash
+moodle workshop-form <activityId>
 ```
 
 | Argument | Type | Description |
