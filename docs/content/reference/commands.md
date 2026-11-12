@@ -59,6 +59,25 @@ moodle activity-settings <activityId>
 | --- | --- | --- |
 | `activityId` | `number` |  |
 
+## addAttendanceSessions
+
+Adds sessions to an Attendance activity through its add session form: one, or with `repeatOn` one on each of those weekdays from `start`'s week until `repeatUntil`, every `repeatEveryWeeks` weeks, all at `start`'s time of day (in the person's time zone in Moodle, which the form reads). With `groupIds`, one session for each group (the activity in group mode). The form's other settings (calendar event, students recording their own attendance…) stay as Moodle's defaults set them. Gives the new sessions. Throws `AttendanceError` when the person can't add sessions (mod/attendance:manageattendances, which editing teachers have), when the activity takes groups and none were given or the other way round, or when Moodle added none it lists (a repeat whose weekdays never fall in its dates, sessions before the course's start date); `FormError` with Moodle's messages when it refuses the form (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+
+```bash
+moodle add-attendance-sessions <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--start` (required) | `Date` | When the (first) session starts; its time of day is every repeated session's. |
+| `--duration-minutes` (required) | `number` | How long each lasts, in minutes; it must end the same day (Moodle takes a start and an end time). |
+| `--description` | `string` | A description, as HTML. |
+| `--group-ids` | `number[]` | The groups to add the sessions for, each its own session; none for all students. Only with the activity in group mode. |
+| `--repeat-on` | `AttendanceWeekday[]` | Repeat it weekly on these weekdays (with `repeatUntil`). |
+| `--repeat-until` | `Date` | The last day of the repeat. |
+| `--repeat-every-weeks` | `number` | Every how many weeks (1 by default, up to 36, as the form offers). |
+
 ## addBlock
 
 Adds a block to a course's page, as its "Add a block" does in editing mode (turned on for the work and back off after, when it was off): a text block (`html`) with its title and content (local images in `embed`), or another block by its type. Returns the block. Throws `BlockError` when the person can't edit the course's blocks (moodle/site:manageblocks), when the page doesn't offer the type (not installed or disabled, already there and allowed once, or the person lacks block/<type>:addinstance), or for a region the page doesn't have; `FormError` when the type's form has no title or content field.
@@ -509,6 +528,31 @@ moodle assignment-submissions <activityId> [--options]
 | `--user-ids` | `number[]` | Only these participants (their user ids). |
 | `--limit` | `number` | How many items to return (1 or more): with it, the list comes as a `ListPage`; without it, every item, as a plain list. |
 | `--offset` | `number` | How many items to skip first, in the function's own order: 0 unless given. |
+
+## attendanceReport
+
+An Attendance activity's report, as its summary view shows it: for each participant, how many of their taken sessions have each status (and that as a percentage of them), their points and percentage over taken sessions (what Moodle grades), over all sessions, and the most they can still reach; all of Moodle's pages of participants. Sessions before the course's start date don't count. Throws `AttendanceError` when the person can't see reports (mod/attendance:viewreports, which teachers have), `NotAnAttendanceError` when the activity isn't an Attendance activity (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+
+```bash
+moodle attendance-report <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--group-id` | `number` | Only this group's participants (the activity's group mode decides which groups the person sees). |
+
+## attendanceSessions
+
+An Attendance activity's sessions, by date: each one's id, start and duration, the group it's for, its description and whether attendance has been taken. What the sessions page shows: sessions from the course's start date on (Moodle hides earlier ones, and leaves them out of the report), of the groups the person sees. The exact start comes from each session's form, which only who can change sessions opens (mod/attendance:manageattendances); for the others `when` has Moodle's text alone. Throws `NotAnAttendanceError` when the activity isn't an Attendance activity, `AttendanceError` when the person can't take attendance in it (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2; on 4.5 the plugin's own 4.5 release is expected to render the same pages, not checked).
+
+```bash
+moodle attendance-sessions <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
 
 ## autoCreateGroups
 
@@ -1140,6 +1184,19 @@ moodle delete-activity <courseId> <activityId>
 | `courseId` | `number` |  |
 | `activityId` | `number` |  |
 
+## deleteAttendanceSession
+
+Deletes a session through its delete confirmation, as the sessions page's delete icon does; the attendance taken for it goes with it, and Moodle recalculates the activity's grades. Throws `AttendanceError` when the person can't change sessions (mod/attendance:manageattendances) or there's no such session (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+
+```bash
+moodle delete-attendance-session <activityId> <sessionId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `sessionId` | `number` |  |
+
 ## deleteBlock
 
 Deletes a block from the course's page, as its delete action does once confirmed. Throws `BlockError` when the page has no such block, or the person can't delete it (moodle/site:manageblocks, and block/<type>:addinstance for most types).
@@ -1490,6 +1547,22 @@ moodle edit-activity <courseId> <activityId> --options
 | `--visibility` | `"shown" \| "hidden" \| "stealth"` |  |
 | `--section-id` | `number` |  |
 | `--before-activity-id` | `number` |  |
+
+## editAttendanceSession
+
+Changes a session through its update form: its start, its duration, its description; only what's given, the rest as the form has it. Moodle doesn't move a session to another group. Gives the session afterwards. Throws `AttendanceError` when the person can't change sessions (mod/attendance:manageattendances) or there's no such session, `FormError` when Moodle refuses the form (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+
+```bash
+moodle edit-attendance-session <activityId> <sessionId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `sessionId` | `number` |  |
+| `--start` | `Date` |  |
+| `--duration-minutes` | `number` |  |
+| `--description` | `string` |  |
 
 ## editBookChapter
 
@@ -2916,6 +2989,19 @@ moodle send-message <userId> <text>
 | `userId` | `number` |  |
 | `text` | `string` |  |
 
+## sessionAttendance
+
+A session's attendance, as its take page shows it: the statuses of its status set (id, acronym, name; the ones the activity shows) and each participant the session is for (its group's, for a group session), with their status and remarks when marked; all of Moodle's pages of participants. Throws `AttendanceError` when the person can't take attendance (mod/attendance:takeattendances, which teachers have) or there's no such session, `NotAnAttendanceError` when the activity isn't an Attendance activity (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+
+```bash
+moodle session-attendance <activityId> <sessionId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `sessionId` | `number` |  |
+
 ## setActivityCompetencies
 
 Sets which of its course's competencies an activity is linked to (all of them at once: the ones not given are unlinked, `[]` unlinks them all), through the activity's settings form, its "Course competencies" field: Moodle has no service for it. Only competencies of the course can be linked (`addCourseCompetency` first). Returns the activity's competencies afterwards. Throws `CompetencyError` naming the capability when the person can't (moodle/competency:coursecompetencymanage) or for a competency that isn't the course's, `CompetenciesDisabledError` on a site with competencies off.
@@ -3361,6 +3447,20 @@ moodle survey-results <activityId> [--options]
 | --- | --- | --- |
 | `activityId` | `number` |  |
 | `--type` | `SurveyType` |  |
+
+## takeAttendance
+
+Takes attendance for a session through its take page: each participant given gets the status (from the session's own status set, read from the page) and, when given, the remarks; the others keep what they have. Every mark is checked before anything is saved: a status not in the set, a participant the session doesn't list or can't be marked, refuses the whole call. Moodle marks the session taken (and recalculates the activity's grade). Gives the session's attendance afterwards. Throws `AttendanceError` for a refused mark, when the person can't take attendance (mod/attendance:takeattendances; mod/attendance:changeattendances once taken) or there's no such session (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+
+```bash
+moodle take-attendance <activityId> <sessionId> <marks>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `sessionId` | `number` |  |
+| `marks` | `AttendanceMark[]` |  |
 
 ## unenrolUser
 
