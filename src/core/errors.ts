@@ -64,6 +64,8 @@ export type MoodleErrorCode =
   | "not-a-wiki"
   | "wiki"
   | "wiki-page-locked"
+  | "not-a-board"
+  | "board"
   | "badge"
   | "badges-disabled"
   | "note"

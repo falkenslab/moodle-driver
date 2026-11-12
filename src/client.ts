@@ -50,6 +50,7 @@ import { addGlossaryEntry, deleteGlossaryEntry, editGlossaryEntry, glossaryEntri
 import { addGlossaryCategory, glossaryCategories } from "./areas/glossaries/categories.js";
 import { exportGlossaryEntries, importGlossaryEntries } from "./areas/glossaries/transfer.js";
 import { createWikiPage, editWikiPage, wikiPage, wikiPages } from "./areas/wikis/wikis.js";
+import { addBoardColumn, boardColumns, editBoardColumn, removeBoardColumn, setBoardColumns } from "./areas/boards/boards.js";
 import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
@@ -131,6 +132,11 @@ const SITE_FUNCTIONS = {
   wikiPage,
   createWikiPage,
   editWikiPage,
+  boardColumns,
+  addBoardColumn,
+  editBoardColumn,
+  removeBoardColumn,
+  setBoardColumns,
   activityReport,
   activitySettings,
   addGradeCategory,

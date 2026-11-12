@@ -192,6 +192,45 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addBoardColumn",
+    "description": "Adds a column at the end of a board, as the board's \"+\" does, locked when asked. Gives its id and the board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when the person can't manage it (mod/board:manageboard).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "column",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": false,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its heading: up to 100 characters."
+        },
+        {
+          "name": "locked",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Locked, so participants can't add notes to it; left as it is (unlocked for a new one) unless given."
+        }
+      ]
+    }
+  },
+  {
     "name": "addBookChapter",
     "description": "Adds a chapter to a book through Moodle's chapter form, at the end or after another chapter, as a subchapter when asked, hidden when asked, with `embed`'s local files in its content. Gives the new chapter's id and the chapters afterwards. Throws `BookError` when the person can't edit the book or `afterChapterId` isn't in it.",
     "params": [
@@ -1805,6 +1844,45 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "boardColumns",
+    "description": "A board's columns, in the board's order: each one's id, heading, colour, whether it's locked and how many notes it has (every group's and every participant's when the person manages the board; with `groupId` or `ownerId`, that group's or that participant's). Reading the board's page logs a view of it, as opening it does. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when a single-user board has no participant to show.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "groupId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Only this group's notes, in a board with groups."
+        },
+        {
+          "name": "ownerId",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          },
+          "description": "Only this participant's notes, in a board in single-user mode (one board per participant)."
+        }
+      ]
+    }
   },
   {
     "name": "bookChapters",
@@ -3777,6 +3855,52 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "number",
           "value": {
             "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "editBoardColumn",
+    "description": "Renames a board's column, locks or unlocks it, as its menu does; what isn't given stays. Gives the board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when the column isn't in it or the person can't manage it (mod/board:manageboard).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "columnId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "changes",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "value": {
+            "kind": "string"
+          },
+          "description": "Its new heading: up to 100 characters."
+        },
+        {
+          "name": "locked",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
           }
         }
       ]
@@ -6983,6 +7107,44 @@ export const COMMANDS: readonly CommandSpec[] = [
     ]
   },
   {
+    "name": "removeBoardColumn",
+    "description": "Removes a board's column, as its menu does. A column with notes is refused unless `deleteNotes`: Moodle deletes its notes, their comments and ratings with it, and there's no undo. Gives the board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when the column isn't in it, has notes, or the person can't manage it (mod/board:manageboard).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "columnId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "deleteNotes",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Remove columns with notes too, their notes (and their comments and ratings) lost with them, as Moodle does; refused otherwise."
+        }
+      ]
+    }
+  },
+  {
     "name": "removeCourseCompetency",
     "description": "Removes a competency from a course (nothing when it isn't there); Moodle unlinks it from the course's activities too, and keeps the ratings already given. Returns the course's competencies afterwards. Throws `CompetencyError` naming the capability when the person can't (moodle/competency:coursecompetencymanage), `CompetenciesDisabledError` on a site with competencies off.",
     "params": [
@@ -7644,6 +7806,44 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       }
     ]
+  },
+  {
+    "name": "setBoardColumns",
+    "description": "Makes a board's columns these, in this order (a name, or a name and whether it's locked): the board's columns renamed in place, one by one, the missing ones added at the end, the extra ones removed from the end, as a teacher would do by hand. A new board comes with three columns titled \"Heading\", which this replaces. Removing a column with notes is refused before anything changes, unless `deleteNotes`; renaming keeps a column's notes. Gives the board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when a column to remove has notes or the person can't manage the board (mod/board:manageboard).",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "columns",
+        "optional": false,
+        "type": "(string | BoardColumnInput)[]",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "deleteNotes",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          },
+          "description": "Remove columns with notes too, their notes (and their comments and ratings) lost with them, as Moodle does; refused otherwise."
+        }
+      ]
+    }
   },
   {
     "name": "setBookChapterVisible",

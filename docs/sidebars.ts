@@ -101,6 +101,7 @@ const sidebars: SidebarsConfig = {
         "areas/databases",
         "areas/glossaries",
         "areas/wikis",
+        "areas/boards",
         "areas/grades-and-gradebook",
         "areas/completion",
         "areas/badges",
