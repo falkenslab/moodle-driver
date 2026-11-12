@@ -197,6 +197,10 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   removeQuizSlot: CONTENT,
   setQuizPages: CONTENT,
   addQuizSection: CONTENT,
+  // An offline quiz's groups, their questions and its printed forms.
+  offlineQuizGroups: CONTENT,
+  addQuestionsToOfflineQuiz: CONTENT,
+  createOfflineQuizForms: CONTENT,
 
   // Forums.
   forumDiscussions: PERSONAL,
@@ -225,6 +229,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   useFeedbackTemplate: CONTENT,
   saveFeedbackTemplate: CONTENT,
   deleteFeedbackTemplate: CONTENT,
+  // A questionnaire's teacher building its questions.
+  questionnaireQuestions: CONTENT,
+  addQuestionnaireQuestions: CONTENT,
 
   // Participants and groups.
   participants: PERSONAL,

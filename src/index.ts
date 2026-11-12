@@ -123,6 +123,7 @@ export {
 } from "./areas/quizzes/statistics.js";
 export { questionsToGrade, gradeQuizQuestion, type QuestionToGrade } from "./areas/quizzes/grading.js";
 export { quizStructure, addQuestionsToQuiz, editQuizSlot, removeQuizSlot, setQuizPages, addQuizSection, type QuizSlot, type QuizSection, type QuizChange } from "./areas/quizzes/structure.js";
+export { offlineQuizGroups, addQuestionsToOfflineQuiz, createOfflineQuizForms, type OfflineQuizGroup, type OfflineQuizGroups, type OfflineQuizForms } from "./areas/quizzes/offline.js";
 export {
   questionBanks,
   questions,
@@ -178,6 +179,16 @@ export {
   type FeedbackItemInput,
   type FeedbackTemplate,
 } from "./areas/surveys/items.js";
+export {
+  questionnaireQuestions,
+  addQuestionnaireQuestions,
+  QUESTIONNAIRE_QUESTION_TYPES,
+  type QuestionnaireQuestionType,
+  type QuestionnaireRateKind,
+  type QuestionnaireNamedDegree,
+  type QuestionnaireQuestion,
+  type QuestionnaireQuestionInput,
+} from "./areas/surveys/questionnaire.js";
 export { getChoice, answerChoice, choiceResults, ChoiceError, type Choice, type ChoiceResults, type ChoiceRespondent } from "./areas/surveys/choice.js";
 export { lessonPage, answerLessonPage, LessonError, type LessonField, type LessonPage } from "./areas/lessons/lessons.js";
 export {

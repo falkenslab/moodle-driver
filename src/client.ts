@@ -71,6 +71,7 @@ import { quizResults } from "./areas/quizzes/results.js";
 import { quizStatistics } from "./areas/quizzes/statistics.js";
 import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
 import { addQuestionsToQuiz, addQuizSection, editQuizSlot, quizStructure, removeQuizSlot, setQuizPages } from "./areas/quizzes/structure.js";
+import { addQuestionsToOfflineQuiz, createOfflineQuizForms, offlineQuizGroups } from "./areas/quizzes/offline.js";
 import { followPage, lastPageFollowed, logOut, openSitePage } from "./core/session.js";
 import { FOLLOWED_PAGES } from "./followed-pages.js";
 import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
@@ -80,6 +81,7 @@ import { saveSubmission, studentAssignment, submitForGrading } from "./areas/ass
 import { getSurvey, submitSurvey } from "./areas/surveys/surveys.js";
 import { surveyResults } from "./areas/surveys/results.js";
 import { addFeedbackItem, deleteFeedbackItem, deleteFeedbackTemplate, editFeedbackItem, feedbackItems, feedbackTemplates, moveFeedbackItem, saveFeedbackTemplate, useFeedbackTemplate } from "./areas/surveys/items.js";
+import { addQuestionnaireQuestions, questionnaireQuestions } from "./areas/surveys/questionnaire.js";
 import { courseAbilities, courseRoles, siteName, userById, whoAmI } from "./areas/site/users.js";
 import { moodleVersion } from "./core/version.js";
 import { BrowserLostError, MoodleError, isBrowserLost } from "./core/errors.js";
@@ -340,6 +342,11 @@ const SITE_FUNCTIONS = {
   useFeedbackTemplate,
   saveFeedbackTemplate,
   deleteFeedbackTemplate,
+  questionnaireQuestions,
+  addQuestionnaireQuestions,
+  offlineQuizGroups,
+  addQuestionsToOfflineQuiz,
+  createOfflineQuizForms,
   upcomingEvents,
   updateActivity,
   updateCourse,
