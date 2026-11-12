@@ -52,6 +52,11 @@ const workshop = (cmid: number) => `mod/workshop/view.php?id=${cmid}`;
 const workshopAllocationPage = (cmid: number, method?: "scheduled") => `mod/workshop/allocation.php?cmid=${cmid}${method ? `&method=${method}` : ""}`;
 const workshopSubmissionPage = (cmid: number, submissionId: number) => `mod/workshop/submission.php?cmid=${cmid}&id=${submissionId}`;
 const workshopExamplePage = (cmid: number, exampleId: number) => `mod/workshop/exsubmission.php?cmid=${cmid}&id=${exampleId}`;
+const workshopFormPage = (cmid: number) => `mod/workshop/editform.php?cmid=${cmid}`;
+const attendanceSessionsPage = (activityId: number) => `mod/attendance/manage.php?id=${activityId}`;
+const board = (activityId: number) => `mod/board/view.php?id=${activityId}`;
+const questionnaireQuestionsPage = (activityId: number) => `mod/questionnaire/questions.php?id=${activityId}`;
+const offlineQuizEdit = (activityId: number, group: number) => `mod/offlinequiz/edit.php?cmid=${activityId}&groupnumber=${group}`;
 
 const grader = (courseId: number) => `grade/report/grader/index.php?id=${courseId}`;
 const scales = (courseId: number) => `grade/edit/scale/index.php?id=${courseId}`;
@@ -379,6 +384,31 @@ export const FOLLOWED_PAGES: { readonly [K in Method]?: PageOf<K> } = {
   // Workshop submissions: the submission's page (the workshop's page when the person has none).
   workshopSubmission: ([activityId], submission) => (submission ? workshopSubmissionPage(activityId, submission.id) : workshop(activityId)),
   saveWorkshopSubmission: ([activityId], { submissionId }) => workshopSubmissionPage(activityId, submissionId),
+  // A workshop's assessment form: its edit page, the same for every grading strategy.
+  workshopForm: ([activityId]) => workshopFormPage(activityId),
+  setWorkshopForm: ([activityId]) => workshopFormPage(activityId),
+  // Attendance: the sessions page (its remembered view, left as the person had it); the report its summary.
+  // Taking attendance shows the sessions page too: a session's take page needs its group, which the call doesn't give.
+  attendanceSessions: ([activityId]) => attendanceSessionsPage(activityId),
+  addAttendanceSessions: ([activityId]) => attendanceSessionsPage(activityId),
+  editAttendanceSession: ([activityId]) => attendanceSessionsPage(activityId),
+  deleteAttendanceSession: ([activityId]) => attendanceSessionsPage(activityId),
+  sessionAttendance: ([activityId]) => attendanceSessionsPage(activityId),
+  takeAttendance: ([activityId]) => attendanceSessionsPage(activityId),
+  attendanceReport: ([activityId, options]) => `mod/attendance/report.php?id=${activityId}&view=7${options?.groupId ? `&group=${options.groupId}` : ""}`,
+  // A board's columns: the board itself.
+  boardColumns: ([activityId]) => board(activityId),
+  setBoardColumns: ([activityId]) => board(activityId),
+  addBoardColumn: ([activityId]) => board(activityId),
+  editBoardColumn: ([activityId]) => board(activityId),
+  removeBoardColumn: ([activityId]) => board(activityId),
+  // A questionnaire's questions: its questions page.
+  questionnaireQuestions: ([activityId]) => questionnaireQuestionsPage(activityId),
+  addQuestionnaireQuestions: ([activityId]) => questionnaireQuestionsPage(activityId),
+  // An offline quiz: a group's edit page (group A to read them all); its forms, the forms page.
+  offlineQuizGroups: ([activityId]) => offlineQuizEdit(activityId, 1),
+  addQuestionsToOfflineQuiz: ([activityId, { group }]) => offlineQuizEdit(activityId, group ?? 1),
+  createOfflineQuizForms: ([activityId]) => `mod/offlinequiz/createquiz.php?id=${activityId}&mode=createpdfs`,
 };
 
 /**
