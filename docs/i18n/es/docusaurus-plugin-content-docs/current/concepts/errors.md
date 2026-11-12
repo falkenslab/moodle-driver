@@ -106,6 +106,7 @@ Cada área tiene su propia clase para lo que le es específico: el id no es de e
 | `NotAGlossaryError`, `GlossaryError` | [Glosarios](../areas/glossaries.md): no es un glosario; falta una capacidad del glosario (nombrada), la entrada es de otra persona, se acabó el tiempo de edición, no existe esa entrada |
 | `NotAnAttendanceError`, `AttendanceError` | [Asistencia](../areas/attendance.md): no es una actividad de asistencia; falta una capacidad de asistencia (nombrada), no existe esa sesión, un estado o un participante que la sesión no tiene |
 | `NotAWikiError`, `WikiError`, `WikiPageLockedError` | [Wikis](../areas/wikis.md): no es una wiki; falta una capacidad de la wiki (nombrada), no existe esa página o sección, ya hay una página con ese título; otra persona está editando la página (vuelve a intentarlo más tarde) |
+| `NotABoardError`, `BoardError` | [Tableros](../areas/boards.md): no es un tablero; la persona no puede gestionarlo (mod/board:manageboard), no existe esa columna, una columna con notas que eliminar sin `deleteNotes` |
 | `NoGradeReportError`, `GradebookError` | [Calificaciones y libro de calificaciones](../areas/grades-and-gradebook.md) |
 | `CompletionError` | [Finalización](../areas/completion.md) |
 | `BadgeError`, `BadgesDisabledError` | [Insignias](../areas/badges.md): falta una capacidad de insignias (que se nombra), un criterio que Moodle no ofrece; un sitio con las insignias desactivadas |

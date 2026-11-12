@@ -52,6 +52,7 @@ import { exportGlossaryEntries, importGlossaryEntries } from "./areas/glossaries
 import { createWikiPage, editWikiPage, wikiPage, wikiPages } from "./areas/wikis/wikis.js";
 import { addAttendanceSessions, attendanceSessions, deleteAttendanceSession, editAttendanceSession } from "./areas/attendance/sessions.js";
 import { attendanceReport, sessionAttendance, takeAttendance } from "./areas/attendance/taking.js";
+import { addBoardColumn, boardColumns, editBoardColumn, removeBoardColumn, setBoardColumns } from "./areas/boards/boards.js";
 import { logIn, type LoginResult } from "./core/login.js";
 import { conversation, conversations, markNotificationsRead, messageParticipants, notifications, sendMessage } from "./areas/messages/messages.js";
 import { activitiesOverview, courseUpdates, deadlines } from "./areas/courses/overview.js";
@@ -140,6 +141,11 @@ const SITE_FUNCTIONS = {
   sessionAttendance,
   takeAttendance,
   attendanceReport,
+  boardColumns,
+  addBoardColumn,
+  editBoardColumn,
+  removeBoardColumn,
+  setBoardColumns,
   activityReport,
   activitySettings,
   addGradeCategory,

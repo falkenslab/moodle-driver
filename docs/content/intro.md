@@ -37,6 +37,7 @@ moodle-driver logs in the way the person does, in a browser window, once; it kee
 | Glossaries | Read, add, change and delete entries, approve them, add categories, export and import entries in Moodle's XML |
 | Wikis | Read a subwiki's pages, their content, links and history, create and edit pages (a section too), respecting Moodle's editing lock |
 | Attendance | Add an Attendance activity's sessions (weekly ones too), change and delete them, take attendance for a session, read the report with each participant's counts and percentages |
+| Boards | Read a board's columns (mod_board) with how many notes each has; set, add, rename, lock and remove them, a column with notes kept unless asked |
 | Lessons, H5P and SCORM | Go through a lesson page by page; read an H5P activity's type and attempts; list, upload, rename, download and delete a course's content bank; read a SCORM's attempts and SCOs, open its player, create one from a package |
 | External tools | List a course's LTI tools, add and delete the course's own, show them in the activity chooser, create an activity from one, give the person its launch URL |
 | BigBlueButton | Read a meeting's state, schedule and recordings, give the person's join URL; publish, unpublish and delete recordings |

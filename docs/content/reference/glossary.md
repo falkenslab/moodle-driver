@@ -41,6 +41,10 @@ An open-source web conferencing system; in a course it's a BigBlueButton activit
 
 A box in a region of a page beside its content (on a course page, Boost's block drawer, region `side-pre`): a text block (type `html`) with a teacher's welcome or links, upcoming events, recent activity… Each is an instance with an id, a region and a weight that orders it there; teachers add, configure, move, hide and delete them in editing mode. The driver reads a course's with `courseBlocks` (`CourseBlock`) and changes them with `addBlock`, `configureBlock`, `moveBlock` and `deleteBlock`. See [Blocks](../areas/blocks.md).
 
+### Board
+
+An activity of the Brickfield plugin mod_board (module `board`), which a site must have installed: a wall of columns where participants post notes (text, an image, a link or a video), rated and commented on as the board allows. One board for everyone, one per group, or one per participant in single-user mode; a teacher names its columns (three "Heading" ones at first), locks a column so nobody adds notes to it, and removes it, notes and all. The driver reads the columns with `boardColumns` (`BoardColumn`, with how many notes each has) and changes them with `setBoardColumns`, `addBoardColumn`, `editBoardColumn` and `removeBoardColumn`; its errors are `NotABoardError` and `BoardError`. See [Boards](../areas/boards.md).
+
 ### Calendar event
 
 An entry in Moodle's calendar: a course, group, user or site event, or one an activity creates for its dates (an assignment's due date, a quiz's close). The driver reads them as `CalendarEvent` (`id`, `type`, `start`, `courseId`, and for an activity's event `activity: { type, instance }`, with the [instance id](#instance-id)) with `upcomingEvents` (one with `calendarEvent`), creates course events with `createEvent`, changes one with `updateEvent` and removes one with `deleteEvent`; `deadlines` reads what the person has to do by a date from the same calendar. See [Calendar](../areas/calendar.md) and [Overview and deadlines](../areas/overview-and-deadlines.md).

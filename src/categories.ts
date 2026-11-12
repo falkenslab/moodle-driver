@@ -442,6 +442,13 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   sessionAttendance: PERSONAL,
   takeAttendance: ["others-personal", "others-write"],
   attendanceReport: PERSONAL,
+  // Boards: the columns are the teacher's; their note counts are about everyone's notes, naming no one.
+  boardColumns: ["course-content", "others-aggregate"],
+  addBoardColumn: CONTENT,
+  editBoardColumn: CONTENT,
+  // Removing a column with notes (when asked) deletes participants' notes.
+  removeBoardColumn: ["course-content", "others-write"],
+  setBoardColumns: ["course-content", "others-write"],
 
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],
@@ -468,6 +475,7 @@ const PARTICIPANT_MODULES = new Set([
   "forum",
   "glossary",
   "wiki",
+  "board",
   "data",
   "workshop",
   "chat",

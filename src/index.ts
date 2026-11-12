@@ -274,6 +274,22 @@ export {
   type AttendanceReportRow,
   type AttendanceReportOptions,
 } from "./areas/attendance/taking.js";
+export {
+  boardColumns,
+  addBoardColumn,
+  editBoardColumn,
+  removeBoardColumn,
+  setBoardColumns,
+  NotABoardError,
+  BoardError,
+  type BoardColumn,
+  type BoardColumnsOptions,
+  type BoardColumnInput,
+  type BoardColumnChanges,
+  type BoardColumnRemoval,
+  type BoardColumnChange,
+  type BoardColumnsChange,
+} from "./areas/boards/boards.js";
 
 // Grades, completion, participants, calendar, messages.
 export { myGrades, NoGradeReportError, type GradeRow } from "./areas/grades/user-report.js";

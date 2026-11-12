@@ -99,6 +99,20 @@ moodle add-block <courseId> --options
 | `--content` | `string` | A text block's content, HTML. |
 | `--embed` | `string[]` | Local files the content names (`<img src="shot.png">`), put in it as Moodle's editor does. |
 
+## addBoardColumn
+
+Adds a column at the end of a board, as the board's "+" does, locked when asked. Gives its id and the board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when the person can't manage it (mod/board:manageboard).
+
+```bash
+moodle add-board-column <activityId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--name` (required) | `string` | Its heading: up to 100 characters. |
+| `--locked` | `boolean` | Locked, so participants can't add notes to it; left as it is (unlocked for a new one) unless given. |
+
 ## addBookChapter
 
 Adds a chapter to a book through Moodle's chapter form, at the end or after another chapter, as a subchapter when asked, hidden when asked, with `embed`'s local files in its content. Gives the new chapter's id and the chapters afterwards. Throws `BookError` when the person can't edit the book or `afterChapterId` isn't in it.
@@ -653,6 +667,20 @@ moodle big-blue-button-join-url <activityId>
 | Argument | Type | Description |
 | --- | --- | --- |
 | `activityId` | `number` |  |
+
+## boardColumns
+
+A board's columns, in the board's order: each one's id, heading, colour, whether it's locked and how many notes it has (every group's and every participant's when the person manages the board; with `groupId` or `ownerId`, that group's or that participant's). Reading the board's page logs a view of it, as opening it does. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when a single-user board has no participant to show.
+
+```bash
+moodle board-columns <activityId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `--group-id` | `number` | Only this group's notes, in a board with groups. |
+| `--owner-id` | `number` | Only this participant's notes, in a board in single-user mode (one board per participant). |
 
 ## bookChapters
 
@@ -1568,6 +1596,21 @@ moodle edit-attendance-session <activityId> <sessionId> --options
 | `--start` | `Date` |  |
 | `--duration-minutes` | `number` |  |
 | `--description` | `string` |  |
+
+## editBoardColumn
+
+Renames a board's column, locks or unlocks it, as its menu does; what isn't given stays. Gives the board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when the column isn't in it or the person can't manage it (mod/board:manageboard).
+
+```bash
+moodle edit-board-column <activityId> <columnId> --options
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `columnId` | `number` |  |
+| `--name` | `string` | Its new heading: up to 100 characters. |
+| `--locked` | `boolean` |  |
 
 ## editBookChapter
 
@@ -2789,6 +2832,20 @@ moodle read-review <attemptId>
 | --- | --- | --- |
 | `attemptId` | `number` |  |
 
+## removeBoardColumn
+
+Removes a board's column, as its menu does. A column with notes is refused unless `deleteNotes`: Moodle deletes its notes, their comments and ratings with it, and there's no undo. Gives the board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when the column isn't in it, has notes, or the person can't manage it (mod/board:manageboard).
+
+```bash
+moodle remove-board-column <activityId> <columnId> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `columnId` | `number` |  |
+| `--delete-notes` | `boolean` | Remove columns with notes too, their notes (and their comments and ratings) lost with them, as Moodle does; refused otherwise. |
+
 ## removeCourseCompetency
 
 Removes a competency from a course (nothing when it isn't there); Moodle unlinks it from the course's activities too, and keeps the ratings already given. Returns the course's competencies afterwards. Throws `CompetencyError` naming the capability when the person can't (moodle/competency:coursecompetencymanage), `CompetenciesDisabledError` on a site with competencies off.
@@ -3048,6 +3105,20 @@ moodle set-badge-enabled <badgeId> <enabled>
 | --- | --- | --- |
 | `badgeId` | `number` |  |
 | `enabled` | `boolean` |  |
+
+## setBoardColumns
+
+Makes a board's columns these, in this order (a name, or a name and whether it's locked): the board's columns renamed in place, one by one, the missing ones added at the end, the extra ones removed from the end, as a teacher would do by hand. A new board comes with three columns titled "Heading", which this replaces. Removing a column with notes is refused before anything changes, unless `deleteNotes`; renaming keeps a column's notes. Gives the board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open, `BoardError` when a column to remove has notes or the person can't manage the board (mod/board:manageboard).
+
+```bash
+moodle set-board-columns <activityId> <columns> [--options]
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |
+| `columns` | `(string \| BoardColumnInput)[]` |  |
+| `--delete-notes` | `boolean` | Remove columns with notes too, their notes (and their comments and ratings) lost with them, as Moodle does; refused otherwise. |
 
 ## setBookChapterVisible
 

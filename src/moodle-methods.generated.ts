@@ -51,6 +51,12 @@ export interface MoodleMethods {
    */
   addBlock(courseId: number, block: import("./areas/courses/blocks.js").NewBlock): Promise<{ changed: string; block: import("./areas/courses/blocks.js").CourseBlock; }>;
   /**
+   * Adds a column at the end of a board, as the board's "+" does, locked when asked. Gives its id and the
+   * board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can
+   * open, `BoardError` when the person can't manage it (mod/board:manageboard).
+   */
+  addBoardColumn(activityId: number, column: import("./areas/boards/boards.js").BoardColumnInput): Promise<import("./areas/boards/boards.js").BoardColumnChange>;
+  /**
    * Adds a chapter to a book through Moodle's chapter form, at the end or after another chapter, as a
    * subchapter when asked, hidden when asked, with `embed`'s local files in its content. Gives the new
    * chapter's id and the chapters afterwards. Throws `BookError` when the person can't edit the book
@@ -402,6 +408,14 @@ export interface MoodleMethods {
    * closed, waiting for a moderator, full, or no mod/bigbluebuttonbn:join).
    */
   bigBlueButtonJoinUrl(activityId: number): Promise<string>;
+  /**
+   * A board's columns, in the board's order: each one's id, heading, colour, whether it's locked and how
+   * many notes it has (every group's and every participant's when the person manages the board; with
+   * `groupId` or `ownerId`, that group's or that participant's). Reading the board's page logs a view of
+   * it, as opening it does. Throws `NotABoardError` when the activity isn't a board the person can open,
+   * `BoardError` when a single-user board has no participant to show.
+   */
+  boardColumns(activityId: number, options?: import("./areas/boards/boards.js").BoardColumnsOptions): Promise<import("./areas/boards/boards.js").BoardColumn[]>;
   /**
    * A book's chapters in order: each one's id, title, whether it is a subchapter or hidden, and its
    * place; with `content`, its HTML and images too, each chapter's page read (Moodle logs a view of it).
@@ -909,6 +923,12 @@ export interface MoodleMethods {
    * form (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
    */
   editAttendanceSession(activityId: number, sessionId: number, changes: import("./areas/attendance/sessions.js").AttendanceSessionChanges): Promise<import("./areas/attendance/sessions.js").AttendanceSessionChange>;
+  /**
+   * Renames a board's column, locks or unlocks it, as its menu does; what isn't given stays. Gives the
+   * board's columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can
+   * open, `BoardError` when the column isn't in it or the person can't manage it (mod/board:manageboard).
+   */
+  editBoardColumn(activityId: number, columnId: number, changes: import("./areas/boards/boards.js").BoardColumnChanges): Promise<import("./areas/boards/boards.js").BoardColumnChange>;
   /**
    * Changes a chapter's title, content (with `embed`'s local files in it) or whether it is a
    * subchapter, through its form: only what's given changes. Throws `BookError` when the chapter isn't
@@ -1569,6 +1589,14 @@ export interface MoodleMethods {
   /** A finished attempt's review, as far as the quiz's review options let the person see it. */
   readReview(attemptId: number): Promise<{ summary: import("./areas/quizzes/attempts.js").Detail[]; questions: import("./areas/quizzes/attempts.js").Question[]; }>;
   /**
+   * Removes a board's column, as its menu does. A column with notes is refused unless `deleteNotes`:
+   * Moodle deletes its notes, their comments and ratings with it, and there's no undo. Gives the board's
+   * columns afterwards. Throws `NotABoardError` when the activity isn't a board the person can open,
+   * `BoardError` when the column isn't in it, has notes, or the person can't manage it
+   * (mod/board:manageboard).
+   */
+  removeBoardColumn(activityId: number, columnId: number, options?: import("./areas/boards/boards.js").BoardColumnRemoval): Promise<import("./areas/boards/boards.js").BoardColumnChange>;
+  /**
    * Removes a competency from a course (nothing when it isn't there); Moodle unlinks it from the
    * course's activities too, and keeps the ratings already given. Returns the course's competencies
    * afterwards. Throws `CompetencyError` naming the capability when the person can't
@@ -1712,6 +1740,16 @@ export interface MoodleMethods {
    * site with badges or course badges off.
    */
   setBadgeEnabled(badgeId: number, enabled: boolean): Promise<{ changed: string; badge: import("./areas/badges/badges.js").CourseBadge; }>;
+  /**
+   * Makes a board's columns these, in this order (a name, or a name and whether it's locked): the board's
+   * columns renamed in place, one by one, the missing ones added at the end, the extra ones removed from
+   * the end, as a teacher would do by hand. A new board comes with three columns titled "Heading", which
+   * this replaces. Removing a column with notes is refused before anything changes, unless
+   * `deleteNotes`; renaming keeps a column's notes. Gives the board's columns afterwards. Throws
+   * `NotABoardError` when the activity isn't a board the person can open, `BoardError` when a column to
+   * remove has notes or the person can't manage the board (mod/board:manageboard).
+   */
+  setBoardColumns(activityId: number, columns: (string | import("./areas/boards/boards.js").BoardColumnInput)[], options?: import("./areas/boards/boards.js").BoardColumnRemoval): Promise<import("./areas/boards/boards.js").BoardColumnsChange>;
   /**
    * Shows a chapter to students or hides it from them, as the table of contents' eye does: a chapter's
    * subchapters are shown or hidden with it, and a subchapter of a hidden chapter stays hidden. Throws
