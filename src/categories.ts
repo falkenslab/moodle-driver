@@ -225,6 +225,9 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   useFeedbackTemplate: CONTENT,
   saveFeedbackTemplate: CONTENT,
   deleteFeedbackTemplate: CONTENT,
+  // A questionnaire's teacher building its questions.
+  questionnaireQuestions: CONTENT,
+  addQuestionnaireQuestions: CONTENT,
 
   // Participants and groups.
   participants: PERSONAL,

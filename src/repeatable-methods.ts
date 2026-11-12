@@ -20,7 +20,7 @@ export const REPEATABLE_METHODS: ReadonlySet<string> = new Set([
   // Assignments and forums.
   "listAssignments", "rubric", "studentAssignment", "discussion", "forumDiscussions",
   // Other activities.
-  "bookChapters", "choiceResults", "getChoice", "getSurvey", "surveyResults", "feedbackItems", "feedbackTemplates", "contentBank", "h5pActivity", "h5pContentTypes", "externalTools", "courseBadges", "databaseFields", "databasePresets", "databaseTemplates", "glossaryCategories", "glossaryEntries", "lessonPages", "wikiPage", "wikiPages", "workshopAllocation", "workshopExamples", "workshopInfo", "workshopSubmission",
+  "bookChapters", "choiceResults", "getChoice", "getSurvey", "surveyResults", "feedbackItems", "feedbackTemplates", "questionnaireQuestions", "contentBank", "h5pActivity", "h5pContentTypes", "externalTools", "courseBadges", "databaseFields", "databasePresets", "databaseTemplates", "glossaryCategories", "glossaryEntries", "lessonPages", "wikiPage", "wikiPages", "workshopAllocation", "workshopExamples", "workshopInfo", "workshopSubmission",
   // Questions and quizzes.
   "questionBanks", "questionCategories", "questionTypes", "questions", "questionsToGrade", "quizInfo", "quizResults", "quizStatistics", "quizStructure", "readReview",
 ]);

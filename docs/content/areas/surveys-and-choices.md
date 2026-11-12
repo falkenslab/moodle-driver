@@ -1,6 +1,6 @@
 # Surveys and choices
 
-Answering surveys and choices as a student does: reading a survey's questions with their fields and filling it in page by page, and reading a choice's options and choosing one or several. Two survey modules are supported: Moodle's feedback (`feedback`) and the questionnaire plugin (`questionnaire`, mod_questionnaire). Moodle's older "survey" module (fixed instruments such as COLLES and ATTLS) isn't. A teacher can also read what everyone answered: `surveyResults` for a survey and `choiceResults` for a choice, from the reports Moodle shows teachers; and build a feedback's questions: `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, and its templates.
+Answering surveys and choices as a student does: reading a survey's questions with their fields and filling it in page by page, and reading a choice's options and choosing one or several. Two survey modules are supported: Moodle's feedback (`feedback`) and the questionnaire plugin (`questionnaire`, mod_questionnaire). Moodle's older "survey" module (fixed instruments such as COLLES and ATTLS) isn't. A teacher can also read what everyone answered: `surveyResults` for a survey and `choiceResults` for a choice, from the reports Moodle shows teachers; and build a feedback's questions: `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, and its templates; and a questionnaire's: `questionnaireQuestions`, `addQuestionnaireQuestions`.
 
 **Terms:** [survey](../reference/glossary.md#survey), [choice](../reference/glossary.md#choice), [feedback](../reference/glossary.md#feedback).
 
@@ -248,6 +248,103 @@ interface FeedbackTemplate {
 
 Saving and using go through Moodle's dynamic forms (the `core_form_dynamic_form` service), as their dialogs do. Each one throws `SurveyError` for a template the feedback can't use, for a feedback without items to save, and when Moodle refuses (the capability is in the error).
 
+## questionnaireQuestions
+
+A questionnaire's questions (the mod_questionnaire plugin) as its teacher builds them on its "Questions" page, in order and page by page, page breaks included.
+
+```ts
+function questionnaireQuestions(context: BrowserContext, siteUrl: string, activityId: number): Promise<QuestionnaireQuestion[]>;
+
+type QuestionnaireQuestionType = "yesno" | "text" | "essay" | "radio" | "check" | "drop" | "rate" | "date" | "numeric" | "slider" | "file" | "label" | "pagebreak";
+
+interface QuestionnaireQuestion {
+  id: number;
+  type: QuestionnaireQuestionType;
+  position: number;
+  page: number;
+  name: string;
+  question: string;
+  required: boolean;
+  choices?: string[];
+  horizontal?: boolean;
+  minChecked?: number;
+  maxChecked?: number;
+  width?: number;
+  maxLength?: number;
+  lines?: number;
+  editor?: boolean;
+  maxDigits?: number;
+  decimals?: number;
+  scale?: number;
+  rateKind?: "normal" | "na-column" | "no-duplicates" | "osgood";
+  namedDegrees?: { value: number; text: string }[];
+}
+```
+
+- `type`: the plugin's own names (`QUESTIONNAIRE_QUESTION_TYPES`), as `surveyResults` gives them: yes/no, text box, essay box, radio buttons, check boxes, dropdown box (`drop`), rate scale, date, numeric, slider, file, label (`label`, the plugin's "Label") and page break.
+- `id`: the question's id, the same `surveyResults` gives it; `position`: its place, from 1, page breaks counted; `page`: the page it's on, from 1 (a page break's is the page it starts).
+- `name`: the plugin's "Question name", a short name for reports and dependencies (empty when it has none); `question`: its text as HTML (a label's contents; empty for a page break).
+- `choices`: radio buttons', check boxes', dropdown boxes' and a rate question's rows, a line each as the plugin keeps them (`!other=Other:` adds an "Other" field with its label).
+- The settings of each type: `horizontal` (radio buttons side by side); `minChecked` and `maxChecked` (check boxes to tick, 0 for no limit); `width` and `maxLength` (a text box); `lines` and `editor` (an essay box's lines, and whether it's an HTML editor rather than plain text); `maxDigits` and `decimals` (a number); `scale`, `rateKind` and `namedDegrees` (a rate question's number of values, its kind: normal, with a "not applicable" column, without repeated values, or Osgood's, and texts shown instead of some values).
+
+Read from the "Questions" page and each question's form (one page each), which take `mod/questionnaire:editquestions` (editing teachers); throws `SurveyError` with Moodle's message without it, or when the id isn't a questionnaire.
+
+## addQuestionnaireQuestions
+
+Adds questions to a questionnaire after the ones it has, in the order given, each through its form as on the "Questions" page; page breaks among them start a new page.
+
+```ts
+function addQuestionnaireQuestions(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  questions: QuestionnaireQuestionInput[],
+  options?: { evenWithResponses?: boolean },
+): Promise<{ changed: string; questionIds: number[]; questions: QuestionnaireQuestion[] }>;
+
+interface QuestionnaireQuestionInput {
+  type: QuestionnaireQuestionType;
+  question?: string;
+  name?: string;
+  required?: boolean;
+  choices?: string[];
+  horizontal?: boolean;
+  minChecked?: number;
+  maxChecked?: number;
+  width?: number;
+  maxLength?: number;
+  lines?: number;
+  editor?: boolean;
+  maxDigits?: number;
+  decimals?: number;
+  scale?: number;
+  rateKind?: "normal" | "na-column" | "no-duplicates" | "osgood";
+  namedDegrees?: { value: number; text: string }[];
+  fields?: Record<string, FieldValue>;
+}
+```
+
+- `type`: any but `slider` and `file`, whose own settings the driver doesn't build yet; `{ type: "pagebreak" }` takes nothing else.
+- `question`: every type but a page break needs one (HTML; a label's contents). `required` defaults to false; labels can't be.
+- `choices`: what radio buttons, check boxes, dropdown boxes and rate questions need, one line each; the other settings as `questionnaireQuestions` reads them, each only on its type. An essay's `lines` is one its form offers (5 to 40, by fives).
+- `fields`: any other field of the question's form, by name.
+- Returns the new questions' ids in order (page breaks included) and every question afterwards.
+
+Everything is checked before anything is saved, and throws `SurveyError`: a type the driver doesn't add or the questionnaire's menu doesn't offer, a missing text or choices, a setting the type doesn't take, and page breaks the plugin would drop (first in the questionnaire, right after another one, or last). The plugin lets a questionnaire someone has answered change, its responses then lacking the new questions (confirmed empirically, plugin 5.0.3 on Moodle 5.2): this refuses it with `SurveyError` unless `evenWithResponses` is true. When Moodle doesn't add one, the error says which were added before it.
+
+```ts
+// Questionnaire 61: a first page about the person, a second one about the course.
+const { questions } = await moodle.addQuestionnaireQuestions(61, [
+  { type: "yesno", question: "<p>Is it your first course?</p>", name: "first", required: true },
+  { type: "drop", question: "<p>Age</p>", name: "age", choices: ["Under 30", "30 or over"] },
+  { type: "pagebreak" },
+  { type: "radio", question: "<p>The level was</p>", name: "level", choices: ["Low", "Right", "High"], horizontal: true },
+  { type: "rate", question: "<p>Rate them</p>", name: "rating", choices: ["Contents", "Activities"], scale: 5, namedDegrees: [{ value: 1, text: "Poor" }, { value: 5, text: "Great" }] },
+  { type: "essay", question: "<p>What would you change?</p>", name: "change", lines: 5 },
+]);
+for (const q of questions) console.log(`${q.position}. page ${q.page} ${q.type} ${q.name}`);
+```
+
 ## getChoice
 
 A choice activity, read on its page: its options with the ids answers take, whether it can be answered or changed, and the person's answer. Moodle's choice services aren't open to AJAX calls, so the page is the source.
@@ -393,6 +490,6 @@ await moodle.useFeedbackTemplate(35, templateId);
 - `getSurvey`, `getChoice`: `course-content` and `own` (the activity and the person's answer).
 - `submitSurvey`, `answerChoice`: `own`.
 - `surveyResults`, `choiceResults`: `course-content`, `others-aggregate` and `others-personal` (the activity, its counts, and everyone's answers with their names).
-- `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, `feedbackTemplates`, `saveFeedbackTemplate`, `useFeedbackTemplate`, `deleteFeedbackTemplate`: `course-content`.
+- `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, `feedbackTemplates`, `saveFeedbackTemplate`, `useFeedbackTemplate`, `deleteFeedbackTemplate`, `questionnaireQuestions`, `addQuestionnaireQuestions`: `course-content`.
 
 See [Data categories](../concepts/data-categories.md).

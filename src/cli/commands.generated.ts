@@ -840,6 +840,43 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addQuestionnaireQuestions",
+    "description": "Adds questions to a questionnaire, after the ones it has, in the order given: questions of its types with their text, name, whether they're required, their choices and their type's settings (`fields` for any other of the form's), and page breaks among them, which start a new page. Each goes through its form as on the questions page. Everything is checked before anything is saved: the types and their settings, and the page breaks (the plugin drops one first, one after another and one at the end, so they're refused). A questionnaire someone has answered keeps those responses without the new questions: the plugin lets it change anyway (confirmed empirically, plugin 5.0.3, Moodle 5.2), the driver refuses unless `evenWithResponses`. Returns the new questions' ids and every question afterwards.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      },
+      {
+        "name": "questions",
+        "optional": false,
+        "type": "QuestionnaireQuestionInput[]",
+        "value": {
+          "kind": "json"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": true,
+      "open": false,
+      "fields": [
+        {
+          "name": "evenWithResponses",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addQuestionsToQuiz",
     "description": "Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.",
     "params": [
@@ -6673,6 +6710,20 @@ export const COMMANDS: readonly CommandSpec[] = [
     "params": [
       {
         "name": "bankId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
+  },
+  {
+    "name": "questionnaireQuestions",
+    "description": "The questions of a questionnaire as its teacher builds them, in order and page by page: each one's id, type, position, page, name, text, whether it's required, its choices and its type's settings (a text box's width, an essay's lines, a rate's scale and named degrees…); page breaks are listed too. Read from the questions page and each question's form, which take `mod/questionnaire:editquestions`; throws `SurveyError` without it.",
+    "params": [
+      {
+        "name": "activityId",
         "optional": false,
         "type": "number",
         "value": {

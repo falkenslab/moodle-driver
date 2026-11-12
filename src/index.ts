@@ -177,6 +177,16 @@ export {
   type FeedbackItemInput,
   type FeedbackTemplate,
 } from "./areas/surveys/items.js";
+export {
+  questionnaireQuestions,
+  addQuestionnaireQuestions,
+  QUESTIONNAIRE_QUESTION_TYPES,
+  type QuestionnaireQuestionType,
+  type QuestionnaireRateKind,
+  type QuestionnaireNamedDegree,
+  type QuestionnaireQuestion,
+  type QuestionnaireQuestionInput,
+} from "./areas/surveys/questionnaire.js";
 export { getChoice, answerChoice, choiceResults, ChoiceError, type Choice, type ChoiceResults, type ChoiceRespondent } from "./areas/surveys/choice.js";
 export { lessonPage, answerLessonPage, LessonError, type LessonField, type LessonPage } from "./areas/lessons/lessons.js";
 export {

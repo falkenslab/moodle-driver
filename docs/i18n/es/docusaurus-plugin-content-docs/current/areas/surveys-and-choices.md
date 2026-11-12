@@ -1,6 +1,6 @@
 # Encuestas y consultas
 
-Responder encuestas y consultas como lo hace un estudiante: leer las preguntas de una encuesta con sus campos y rellenarla página a página, y leer las opciones de una consulta y elegir una o varias. Se admiten dos módulos de encuesta: el módulo Retroalimentación de Moodle (`feedback`) y el plugin Cuestionario (`questionnaire`, mod_questionnaire). El módulo "survey" más antiguo de Moodle (instrumentos fijos como COLLES y ATTLS) no. Un profesor también puede leer lo que respondieron todos: `surveyResults` para una encuesta y `choiceResults` para una consulta, de los informes que Moodle muestra a los profesores; y construir las preguntas de una retroalimentación: `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, y sus plantillas.
+Responder encuestas y consultas como lo hace un estudiante: leer las preguntas de una encuesta con sus campos y rellenarla página a página, y leer las opciones de una consulta y elegir una o varias. Se admiten dos módulos de encuesta: el módulo Retroalimentación de Moodle (`feedback`) y el plugin Cuestionario (`questionnaire`, mod_questionnaire). El módulo "survey" más antiguo de Moodle (instrumentos fijos como COLLES y ATTLS) no. Un profesor también puede leer lo que respondieron todos: `surveyResults` para una encuesta y `choiceResults` para una consulta, de los informes que Moodle muestra a los profesores; y construir las preguntas de una retroalimentación: `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, y sus plantillas; y las de un cuestionario: `questionnaireQuestions`, `addQuestionnaireQuestions`.
 
 **Términos:** [encuesta](../reference/glossary.md#survey), [consulta](../reference/glossary.md#choice), [retroalimentación](../reference/glossary.md#feedback).
 
@@ -248,6 +248,103 @@ interface FeedbackTemplate {
 
 Guardar y usar pasan por los formularios dinámicos de Moodle (el servicio `core_form_dynamic_form`), como sus diálogos. Cada una lanza `SurveyError` para una plantilla que la retroalimentación no puede usar, para una retroalimentación sin elementos que guardar y cuando Moodle lo rechaza (la capacidad está en el error).
 
+## questionnaireQuestions
+
+Las preguntas de un cuestionario (el plugin mod_questionnaire) tal como las construye su profesor en su página "Preguntas", en orden y página a página, con los saltos de página.
+
+```ts
+function questionnaireQuestions(context: BrowserContext, siteUrl: string, activityId: number): Promise<QuestionnaireQuestion[]>;
+
+type QuestionnaireQuestionType = "yesno" | "text" | "essay" | "radio" | "check" | "drop" | "rate" | "date" | "numeric" | "slider" | "file" | "label" | "pagebreak";
+
+interface QuestionnaireQuestion {
+  id: number;
+  type: QuestionnaireQuestionType;
+  position: number;
+  page: number;
+  name: string;
+  question: string;
+  required: boolean;
+  choices?: string[];
+  horizontal?: boolean;
+  minChecked?: number;
+  maxChecked?: number;
+  width?: number;
+  maxLength?: number;
+  lines?: number;
+  editor?: boolean;
+  maxDigits?: number;
+  decimals?: number;
+  scale?: number;
+  rateKind?: "normal" | "na-column" | "no-duplicates" | "osgood";
+  namedDegrees?: { value: number; text: string }[];
+}
+```
+
+- `type`: los nombres propios del plugin (`QUESTIONNAIRE_QUESTION_TYPES`), como los da `surveyResults`: sí/no, cuadro de texto, cuadro de ensayo, botones de opción, casillas de verificación, lista desplegable (`drop`), escala de valoración, fecha, numérica, deslizador, archivo, etiqueta (`label`, la "Etiqueta" del plugin) y salto de página.
+- `id`: el id de la pregunta, el mismo que le da `surveyResults`; `position`: su lugar, desde 1, contando los saltos de página; `page`: la página en la que está, desde 1 (la de un salto de página es la que empieza).
+- `name`: el "Nombre de la pregunta" del plugin, un nombre corto para los informes y las dependencias (vacío cuando no tiene); `question`: su texto en HTML (el contenido de una etiqueta; vacío en un salto de página).
+- `choices`: las opciones de los botones de opción, las casillas y las listas desplegables, y las filas de una pregunta de valoración, una línea cada una como las guarda el plugin (`!other=Otro:` añade un campo "Otro" con su etiqueta).
+- Los ajustes de cada tipo: `horizontal` (botones de opción uno al lado de otro); `minChecked` y `maxChecked` (casillas que marcar, 0 sin límite); `width` y `maxLength` (un cuadro de texto); `lines` y `editor` (las líneas de un cuadro de ensayo, y si es un editor HTML en vez de texto plano); `maxDigits` y `decimals` (un número); `scale`, `rateKind` y `namedDegrees` (el número de valores de una pregunta de valoración, su tipo: normal, con una columna "no aplicable", sin valores repetidos, o de Osgood, y los textos que se muestran en lugar de algunos valores).
+
+Se leen de la página "Preguntas" y del formulario de cada pregunta (una página cada una), que necesitan `mod/questionnaire:editquestions` (profesores con permiso de edición); sin ella lanza `SurveyError` con el mensaje de Moodle, igual que cuando el id no es un cuestionario.
+
+## addQuestionnaireQuestions
+
+Añade preguntas a un cuestionario después de las que tiene, en el orden dado, cada una mediante su formulario como en la página "Preguntas"; los saltos de página entre ellas empiezan una página nueva.
+
+```ts
+function addQuestionnaireQuestions(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  questions: QuestionnaireQuestionInput[],
+  options?: { evenWithResponses?: boolean },
+): Promise<{ changed: string; questionIds: number[]; questions: QuestionnaireQuestion[] }>;
+
+interface QuestionnaireQuestionInput {
+  type: QuestionnaireQuestionType;
+  question?: string;
+  name?: string;
+  required?: boolean;
+  choices?: string[];
+  horizontal?: boolean;
+  minChecked?: number;
+  maxChecked?: number;
+  width?: number;
+  maxLength?: number;
+  lines?: number;
+  editor?: boolean;
+  maxDigits?: number;
+  decimals?: number;
+  scale?: number;
+  rateKind?: "normal" | "na-column" | "no-duplicates" | "osgood";
+  namedDegrees?: { value: number; text: string }[];
+  fields?: Record<string, FieldValue>;
+}
+```
+
+- `type`: cualquiera salvo `slider` y `file`, cuyos ajustes propios el driver aún no construye; `{ type: "pagebreak" }` no lleva nada más.
+- `question`: todos los tipos salvo el salto de página la necesitan (HTML; el contenido de una etiqueta). `required` es false por defecto; una etiqueta no puede serlo.
+- `choices`: lo que necesitan los botones de opción, las casillas, las listas desplegables y las preguntas de valoración, una línea cada una; los demás ajustes como los lee `questionnaireQuestions`, cada uno solo en su tipo. Las `lines` de un cuadro de ensayo son unas que ofrezca su formulario (de 5 a 40, de cinco en cinco).
+- `fields`: cualquier otro campo del formulario de la pregunta, por su nombre.
+- Devuelve los ids de las preguntas nuevas en orden (con los saltos de página) y todas las preguntas después.
+
+Todo se comprueba antes de guardar nada, y lanza `SurveyError`: un tipo que el driver no añade o que el menú del cuestionario no ofrece, un texto o unas opciones que faltan, un ajuste que el tipo no admite, y los saltos de página que el plugin quitaría (el primero del cuestionario, uno justo después de otro o el último). El plugin deja cambiar un cuestionario que alguien ya ha respondido, y sus respuestas quedan sin las preguntas nuevas (confirmado empíricamente, plugin 5.0.3 en Moodle 5.2): esto lo rechaza con `SurveyError` salvo que `evenWithResponses` sea true. Cuando Moodle no añade una, el error dice cuáles se añadieron antes.
+
+```ts
+// Cuestionario 61: una primera página sobre la persona y una segunda sobre el curso.
+const { questions } = await moodle.addQuestionnaireQuestions(61, [
+  { type: "yesno", question: "<p>¿Es tu primer curso?</p>", name: "first", required: true },
+  { type: "drop", question: "<p>Edad</p>", name: "age", choices: ["Menos de 30", "30 o más"] },
+  { type: "pagebreak" },
+  { type: "radio", question: "<p>El nivel ha sido</p>", name: "level", choices: ["Bajo", "Adecuado", "Alto"], horizontal: true },
+  { type: "rate", question: "<p>Valóralos</p>", name: "rating", choices: ["Contenidos", "Actividades"], scale: 5, namedDegrees: [{ value: 1, text: "Mal" }, { value: 5, text: "Muy bien" }] },
+  { type: "essay", question: "<p>¿Qué cambiarías?</p>", name: "change", lines: 5 },
+]);
+for (const q of questions) console.log(`${q.position}. página ${q.page} ${q.type} ${q.name}`);
+```
+
 ## getChoice
 
 Una actividad de consulta, leída en su página: sus opciones con los ids que reciben las respuestas, si se puede responder o cambiar, y la respuesta de la persona. Los servicios de las consultas de Moodle no están abiertos a llamadas AJAX, así que la fuente es la página.
@@ -393,6 +490,6 @@ await moodle.useFeedbackTemplate(35, templateId);
 - `getSurvey`, `getChoice`: `course-content` y `own` (la actividad y la respuesta de la persona).
 - `submitSurvey`, `answerChoice`: `own`.
 - `surveyResults`, `choiceResults`: `course-content`, `others-aggregate` y `others-personal` (la actividad, sus recuentos y las respuestas de todos con sus nombres).
-- `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, `feedbackTemplates`, `saveFeedbackTemplate`, `useFeedbackTemplate`, `deleteFeedbackTemplate`: `course-content`.
+- `feedbackItems`, `addFeedbackItem`, `editFeedbackItem`, `moveFeedbackItem`, `deleteFeedbackItem`, `feedbackTemplates`, `saveFeedbackTemplate`, `useFeedbackTemplate`, `deleteFeedbackTemplate`, `questionnaireQuestions`, `addQuestionnaireQuestions`: `course-content`.
 
 Consulta [Categorías de datos](../concepts/data-categories.md).
