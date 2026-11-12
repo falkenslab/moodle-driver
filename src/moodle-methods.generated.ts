@@ -29,6 +29,19 @@ export interface MoodleMethods {
    */
   activitySettings(activityId: number): Promise<{ id: number; module: string; courseId: number; name: string; description: string; fields: import("./areas/activities/build.js").FormField[]; files: import("./core/forms.js").DraftFile[] | undefined; restrictions: import("./areas/activities/conditions.js").Restrictions | undefined; completion: import("./areas/activities/conditions.js").Completion | undefined; }>;
   /**
+   * Adds sessions to an Attendance activity through its add session form: one, or with `repeatOn` one
+   * on each of those weekdays from `start`'s week until `repeatUntil`, every `repeatEveryWeeks` weeks,
+   * all at `start`'s time of day (in the person's time zone in Moodle, which the form reads). With `groupIds`, one
+   * session for each group (the activity in group mode). The form's other settings (calendar event,
+   * students recording their own attendance…) stay as Moodle's defaults set them. Gives the new
+   * sessions. Throws `AttendanceError` when the person can't add sessions (mod/attendance:manageattendances,
+   * which editing teachers have), when the activity takes groups and none were given or the other way
+   * round, or when Moodle added none it lists (a repeat whose weekdays never fall in its dates,
+   * sessions before the course's start date); `FormError` with Moodle's messages when it refuses the
+   * form (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+   */
+  addAttendanceSessions(activityId: number, input: import("./areas/attendance/sessions.js").AttendanceSessionInput): Promise<import("./areas/attendance/sessions.js").AttendanceSessionsAdded>;
+  /**
    * Adds a block to a course's page, as its "Add a block" does in editing mode (turned on for the work and
    * back off after, when it was off): a text block (`html`) with its title and content (local images in
    * `embed`), or another block by its type. Returns the block. Throws `BlockError` when the person can't
@@ -280,6 +293,27 @@ export interface MoodleMethods {
    * cut to the page, and only the page's participants are read further (their dates, their panels).
    */
   assignmentSubmissions(activityId: number, options?: import("./areas/assignments/grading.js").SubmissionOptions): Promise<import("./areas/assignments/grading.js").Submission[] | import("./core/paging.js").ListPage<import("./areas/assignments/grading.js").Submission>>;
+  /**
+   * An Attendance activity's report, as its summary view shows it: for each participant, how many of
+   * their taken sessions have each status (and that as a percentage of them), their points and
+   * percentage over taken sessions (what Moodle grades), over all sessions, and the most they can still
+   * reach; all of Moodle's pages of participants. Sessions before the course's start date don't count.
+   * Throws `AttendanceError` when the person can't see reports (mod/attendance:viewreports, which
+   * teachers have), `NotAnAttendanceError` when the activity isn't an Attendance activity (confirmed
+   * empirically, mod_attendance 2026042102 on Moodle 5.2).
+   */
+  attendanceReport(activityId: number, options?: import("./areas/attendance/taking.js").AttendanceReportOptions): Promise<import("./areas/attendance/taking.js").AttendanceReportRow[]>;
+  /**
+   * An Attendance activity's sessions, by date: each one's id, start and duration, the group it's for,
+   * its description and whether attendance has been taken. What the sessions page shows: sessions from
+   * the course's start date on (Moodle hides earlier ones, and leaves them out of the report), of the
+   * groups the person sees. The exact start comes from each session's form, which only who can change
+   * sessions opens (mod/attendance:manageattendances); for the others `when` has Moodle's text alone.
+   * Throws `NotAnAttendanceError` when the activity isn't an Attendance activity, `AttendanceError` when
+   * the person can't take attendance in it (confirmed empirically, mod_attendance 2026042102 on Moodle
+   * 5.2; on 4.5 the plugin's own 4.5 release is expected to render the same pages, not checked).
+   */
+  attendanceSessions(activityId: number): Promise<import("./areas/attendance/sessions.js").AttendanceSession[]>;
   /**
    * Splits a course's participants into groups at once, as Moodle's "Auto-create groups" does: `count`
    * groups, or groups of `count` members, named by `naming`, filled at random or in name or ID number
@@ -716,6 +750,13 @@ export interface MoodleMethods {
   /** Deletes an activity, with its participants' data (submissions, posts, attempts); gives the course afterwards. */
   deleteActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
+   * Deletes a session through its delete confirmation, as the sessions page's delete icon does; the
+   * attendance taken for it goes with it, and Moodle recalculates the activity's grades. Throws
+   * `AttendanceError` when the person can't change sessions (mod/attendance:manageattendances) or there's
+   * no such session (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+   */
+  deleteAttendanceSession(activityId: number, sessionId: number): Promise<import("./areas/attendance/sessions.js").AttendanceSessionChange>;
+  /**
    * Deletes a block from the course's page, as its delete action does once confirmed. Throws
    * `BlockError` when the page has no such block, or the person can't delete it (moodle/site:manageblocks,
    * and block/<type>:addinstance for most types).
@@ -860,6 +901,14 @@ export interface MoodleMethods {
   duplicateActivity(courseId: number, activityId: number): Promise<import("./areas/activities/build.js").CourseChange>;
   /** Renames, shows or hides, or moves an activity (to a section's end, or before another one). */
   editActivity(courseId: number, activityId: number, options: { name?: string | undefined; visibility?: "shown" | "hidden" | "stealth" | undefined; sectionId?: number | undefined; beforeActivityId?: number | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  /**
+   * Changes a session through its update form: its start, its duration, its description; only what's
+   * given, the rest as the form has it. Moodle doesn't move a session to another group. Gives the
+   * session afterwards. Throws `AttendanceError` when the person can't change sessions
+   * (mod/attendance:manageattendances) or there's no such session, `FormError` when Moodle refuses the
+   * form (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+   */
+  editAttendanceSession(activityId: number, sessionId: number, changes: import("./areas/attendance/sessions.js").AttendanceSessionChanges): Promise<import("./areas/attendance/sessions.js").AttendanceSessionChange>;
   /**
    * Changes a chapter's title, content (with `embed`'s local files in it) or whether it is a
    * subchapter, through its form: only what's given changes. Throws `BookError` when the chapter isn't
@@ -1628,6 +1677,15 @@ export interface MoodleMethods {
   /** Sends a private message to a user, as the messaging drawer does; returns the message and its conversation. */
   sendMessage(userId: number, text: string): Promise<{ changed: string; messageId: number; conversationId?: number | undefined; }>;
   /**
+   * A session's attendance, as its take page shows it: the statuses of its status set (id, acronym,
+   * name; the ones the activity shows) and each participant the session is for (its group's, for a
+   * group session), with their status and remarks when marked; all of Moodle's pages of participants.
+   * Throws `AttendanceError` when the person can't take attendance (mod/attendance:takeattendances,
+   * which teachers have) or there's no such session, `NotAnAttendanceError` when the activity isn't an
+   * Attendance activity (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+   */
+  sessionAttendance(activityId: number, sessionId: number): Promise<import("./areas/attendance/taking.js").SessionAttendance>;
+  /**
    * Sets which of its course's competencies an activity is linked to (all of them at once: the ones
    * not given are unlinked, `[]` unlinks them all), through the activity's settings form, its
    * "Course competencies" field: Moodle has no service for it. Only competencies of the course can be
@@ -1858,6 +1916,17 @@ export interface MoodleMethods {
    * Throws `SurveyError` with Moodle's reason otherwise, or when the questionnaire plugin isn't installed.
    */
   surveyResults(activityId: number, options?: { type?: import("./areas/surveys/surveys.js").SurveyType | undefined; }): Promise<import("./areas/surveys/results.js").SurveyResults>;
+  /**
+   * Takes attendance for a session through its take page: each participant given gets the status
+   * (from the session's own status set, read from the page) and, when given, the remarks; the others
+   * keep what they have. Every mark is checked before anything is saved: a status not in the set, a
+   * participant the session doesn't list or can't be marked, refuses the whole call. Moodle marks the
+   * session taken (and recalculates the activity's grade). Gives the session's attendance afterwards.
+   * Throws `AttendanceError` for a refused mark, when the person can't take attendance
+   * (mod/attendance:takeattendances; mod/attendance:changeattendances once taken) or there's no such
+   * session (confirmed empirically, mod_attendance 2026042102 on Moodle 5.2).
+   */
+  takeAttendance(activityId: number, sessionId: number, marks: import("./areas/attendance/taking.js").AttendanceMark[]): Promise<import("./areas/attendance/taking.js").AttendanceTaken>;
   /**
    * Unenrols a user from a course: removes every enrolment of theirs the person may remove (its
    * unenrol link on the participants page), with their roles and group memberships in the course, as

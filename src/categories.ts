@@ -433,6 +433,16 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   createWikiPage: CONTENT,
   editWikiPage: CONTENT,
 
+  // Attendance: sessions are what teachers make (deleting one takes its marks with it); taking
+  // attendance decides about participants, and reading it shows each one's.
+  attendanceSessions: CONTENT,
+  addAttendanceSessions: CONTENT,
+  editAttendanceSession: CONTENT,
+  deleteAttendanceSession: ["course-content", "others-write"],
+  sessionAttendance: PERSONAL,
+  takeAttendance: ["others-personal", "others-write"],
+  attendanceReport: PERSONAL,
+
   // Choices: the person's own answer.
   getChoice: ["course-content", "own"],
   answerChoice: OWN,
@@ -461,6 +471,7 @@ const PARTICIPANT_MODULES = new Set([
   "data",
   "workshop",
   "chat",
+  "attendance",
 ]);
 
 /**

@@ -70,7 +70,9 @@ export type MoodleErrorCode =
   | "notes-disabled"
   | "external-tool"
   | "competency"
-  | "competencies-disabled";
+  | "competencies-disabled"
+  | "not-an-attendance"
+  | "attendance";
 
 /** Every error the driver throws on purpose: one class to catch, a stable `code` to tell them apart. */
 export class MoodleError extends Error {

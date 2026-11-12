@@ -248,6 +248,32 @@ export {
   type WikiPageChanges,
   type WikiPageChange,
 } from "./areas/wikis/wikis.js";
+export { NotAnAttendanceError, AttendanceError } from "./areas/attendance/attendance.js";
+export {
+  attendanceSessions,
+  addAttendanceSessions,
+  editAttendanceSession,
+  deleteAttendanceSession,
+  type AttendanceSession,
+  type AttendanceWeekday,
+  type AttendanceSessionInput,
+  type AttendanceSessionChanges,
+  type AttendanceSessionsAdded,
+  type AttendanceSessionChange,
+} from "./areas/attendance/sessions.js";
+export {
+  sessionAttendance,
+  takeAttendance,
+  attendanceReport,
+  type AttendanceStatus,
+  type SessionParticipant,
+  type SessionAttendance,
+  type AttendanceMark,
+  type AttendanceTaken,
+  type AttendancePoints,
+  type AttendanceReportRow,
+  type AttendanceReportOptions,
+} from "./areas/attendance/taking.js";
 
 // Grades, completion, participants, calendar, messages.
 export { myGrades, NoGradeReportError, type GradeRow } from "./areas/grades/user-report.js";
