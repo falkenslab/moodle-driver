@@ -123,6 +123,7 @@ export {
 } from "./areas/quizzes/statistics.js";
 export { questionsToGrade, gradeQuizQuestion, type QuestionToGrade } from "./areas/quizzes/grading.js";
 export { quizStructure, addQuestionsToQuiz, editQuizSlot, removeQuizSlot, setQuizPages, addQuizSection, type QuizSlot, type QuizSection, type QuizChange } from "./areas/quizzes/structure.js";
+export { offlineQuizGroups, addQuestionsToOfflineQuiz, createOfflineQuizForms, type OfflineQuizGroup, type OfflineQuizGroups, type OfflineQuizForms } from "./areas/quizzes/offline.js";
 export {
   questionBanks,
   questions,

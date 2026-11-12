@@ -877,6 +877,51 @@ export const COMMANDS: readonly CommandSpec[] = [
     }
   },
   {
+    "name": "addQuestionsToOfflineQuiz",
+    "description": "Adds bank questions (by id) to a group of an offline quiz (`group`, from 1: A is 1), at its end or on a page, as its edit page's \"from question bank\" action posts them. Returns the group afterwards. Once the offline quiz's forms exist, or it has results, its questions can't change: the plugin refuses, and so does this, with its notice.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ],
+    "options": {
+      "name": "options",
+      "optional": false,
+      "open": false,
+      "fields": [
+        {
+          "name": "questionIds",
+          "optional": false,
+          "type": "number[]",
+          "value": {
+            "kind": "numbers"
+          }
+        },
+        {
+          "name": "group",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        },
+        {
+          "name": "page",
+          "optional": true,
+          "type": "number",
+          "value": {
+            "kind": "number"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "addQuestionsToQuiz",
     "description": "Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz already attempted can't change its questions: Moodle refuses, and so does this.",
     "params": [
@@ -2759,6 +2804,20 @@ export const COMMANDS: readonly CommandSpec[] = [
         "type": "GroupingSettings & { name: string; }",
         "value": {
           "kind": "json"
+        }
+      }
+    ]
+  },
+  {
+    "name": "createOfflineQuizForms",
+    "description": "Creates an offline quiz's forms, as its \"Create forms\" button does: for every group, the question form, the answer form people fill in and the correction form, in the format the offline quiz is set to (PDF by default). From then on its questions are fixed (the plugin's rule: the forms are printed). Every group needs questions first: the plugin creates none otherwise, and this throws its notices. When the forms exist already, it gives them as they are. Returns each group's links, which `downloadFile` saves.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
         }
       }
     ]
@@ -6404,6 +6463,20 @@ export const COMMANDS: readonly CommandSpec[] = [
         }
       ]
     }
+  },
+  {
+    "name": "offlineQuizGroups",
+    "description": "An offline quiz's groups (A, B…) with their questions as each group's edit page lists them (slots with their page, question, type, name and mark, as `quizStructure` reads a quiz's), its maximum grade, and whether its forms exist and its questions can still change. Opening a group's edit page makes the group in Moodle if it had none yet, as the plugin does for the number of groups it's set to.",
+    "params": [
+      {
+        "name": "activityId",
+        "optional": false,
+        "type": "number",
+        "value": {
+          "kind": "number"
+        }
+      }
+    ]
   },
   {
     "name": "overrideCompletion",

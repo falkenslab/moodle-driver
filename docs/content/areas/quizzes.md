@@ -1,6 +1,6 @@
 # Quizzes
 
-Quizzes from both sides. A student reads a quiz's page, starts or continues an attempt, answers its questions page by page (at a person's pace by default) and finishes it, then reads the review. A teacher reads every attempt with its grade and marks per question (and the answers given), grades by hand what Moodle can't grade by itself (essays) or overrides a mark, reads which questions a quiz holds, adds questions from a bank (chosen or random), removes and moves them, sets their marks, pages and sections, and gives a student other dates, a time limit or more attempts with a user override. Quizzes are identified by their course module id (the `id` in `mod/quiz/view.php?id=`), attempts by Moodle's attempt id.
+Quizzes from both sides. A student reads a quiz's page, starts or continues an attempt, answers its questions page by page (at a person's pace by default) and finishes it, then reads the review. A teacher reads every attempt with its grade and marks per question (and the answers given), grades by hand what Moodle can't grade by itself (essays) or overrides a mark, reads which questions a quiz holds, adds questions from a bank (chosen or random), removes and moves them, sets their marks, pages and sections, and gives a student other dates, a time limit or more attempts with a user override. An offline quiz (the mod_offlinequiz plugin, a quiz on paper) gets its questions group by group and its forms created. Quizzes are identified by their course module id (the `id` in `mod/quiz/view.php?id=`), attempts by Moodle's attempt id.
 
 **Terms:** [quiz](../reference/glossary.md#quiz), [attempt](../reference/glossary.md#attempt), [slot](../reference/glossary.md#slot), [review](../reference/glossary.md#review), [override](../reference/glossary.md#override).
 
@@ -534,6 +534,84 @@ const { slots, sections } = await moodle.addQuizSection(49, { firstSlot: 3, head
 console.log(slots.map((s) => `${s.slot}. ${s.name} (page ${s.page}, ${s.mark})`), sections);
 ```
 
+## Offline quizzes
+
+An offline quiz (the mod_offlinequiz plugin) is a quiz printed on paper: its questions come from a question bank, in groups (A, B, C… as many as its "Number of groups" setting) that each have their own questions and their own forms, and people answer on an answer form that is scanned afterwards. A teacher reads its groups, adds bank questions to each, and creates the forms. Offline quizzes are identified by their course module id (the `id` in `mod/offlinequiz/view.php?id=`); errors are `QuizError`.
+
+### offlineQuizGroups
+
+Every group's questions, as the offline quiz's edit page lists them for each group, its maximum grade, and whether its questions can still change.
+
+```ts
+function offlineQuizGroups(context: BrowserContext, siteUrl: string, activityId: number): Promise<OfflineQuizGroups>;
+
+interface OfflineQuizGroups {
+  offlineQuiz: { id: number };
+  maxGrade?: string;
+  formsCreated: boolean;
+  editable: boolean;
+  groups: OfflineQuizGroup[];
+}
+
+interface OfflineQuizGroup {
+  number: number;
+  letter: string;
+  slots: QuizSlot[];
+  totalMarks?: string;
+}
+```
+
+- `groups`: in order; `number` from 1 (what `addQuestionsToOfflineQuiz` takes), `letter` as the forms name it (A for 1); `slots` as [`quizStructure`](#quizstructure) gives a quiz's (place, page, question id, type, name, mark); `totalMarks`: the sum of the group's marks as shown ("2.00").
+- `maxGrade`: the offline quiz's maximum grade as shown ("100.00").
+- `formsCreated`: its forms exist; `editable`: questions can be added (no forms and no results yet).
+
+Opening a group's edit page makes the group in Moodle if it had none yet, as the plugin does for the number of groups it's set to. Needs `mod/offlinequiz:manage` (editing teachers); throws `QuizError` with Moodle's reason otherwise, or when the id isn't an offline quiz.
+
+### addQuestionsToOfflineQuiz
+
+Adds bank questions to one group, as the edit page's "from question bank" action posts them.
+
+```ts
+function addQuestionsToOfflineQuiz(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  options: { questionIds: number[]; group?: number; page?: number },
+): Promise<{ changed: string; offlineQuiz: { id: number }; group: OfflineQuizGroup }>;
+```
+
+- `questionIds`: bank questions' ids, from [`questions`](question-banks.md).
+- `group` (default `1`, group A): the group's number.
+- `page` (default `0`): the page to add them to; `0` adds them at the end.
+- Returns the group afterwards.
+
+Once the offline quiz's forms exist, or it has results, its questions are fixed (they're on paper): the plugin's edit page then offers no add menu, and this throws `QuizError` with its notice ("Forms already created") before posting anything; the plugin lets its forms be deleted while nothing has been scanned. It also throws `QuizError` for a group the offline quiz doesn't have, no questions given, Moodle's error to the post, and when nothing was added (wrong ids, or questions the group has already).
+
+### createOfflineQuizForms
+
+Creates the offline quiz's forms, as its "Create forms" button does: for every group the question form, the answer form people fill in and the correction form, in the format the offline quiz is set to (PDF by default).
+
+```ts
+function createOfflineQuizForms(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string; offlineQuiz: { id: number }; forms: OfflineQuizForms[] }>;
+
+interface OfflineQuizForms {
+  group: string;
+  questionForm?: string;
+  answerForm?: string;
+  correctionForm?: string;
+}
+```
+
+Each group's forms are links to the site's files, which [`downloadFile`](files.md) saves. From then on the questions can't change. Every group needs questions first: the plugin creates no form otherwise, and this throws `QuizError` with its notices. When the forms exist already, it gives them as they are (its `changed` says so). Needs `mod/offlinequiz:createofflinequiz` (editing teachers).
+
+```ts
+// Offline quiz 51, two groups: the same questions in another order, then its forms.
+await moodle.addQuestionsToOfflineQuiz(51, { group: 1, questionIds: [22, 23, 24] });
+await moodle.addQuestionsToOfflineQuiz(51, { group: 2, questionIds: [24, 22, 23] });
+const { forms } = await moodle.createOfflineQuizForms(51);
+for (const form of forms) if (form.answerForm) console.log(form.group, (await moodle.downloadFile(form.answerForm)).path);
+```
+
 ## setQuizOverride
 
 Sets a user override on a quiz through its override form: other opening and closing dates, a time limit, or a number of attempts for one student. What isn't given stays the quiz's.
@@ -591,5 +669,6 @@ The single steps these are built on (starting an attempt, saving a page, finishi
 - `quizStructure`, `addQuestionsToQuiz`, `removeQuizSlot`, `setQuizPages`, `addQuizSection`: `course-content`.
 - `editQuizSlot`: `course-content` and `others-write` (a new maximum mark regrades the attempts already made).
 - `setQuizOverride`: `others-write`.
+- `offlineQuizGroups`, `addQuestionsToOfflineQuiz`, `createOfflineQuizForms`: `course-content`.
 
 See [Data categories](../concepts/data-categories.md).

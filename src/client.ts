@@ -67,6 +67,7 @@ import { quizResults } from "./areas/quizzes/results.js";
 import { quizStatistics } from "./areas/quizzes/statistics.js";
 import { gradeQuizQuestion, questionsToGrade } from "./areas/quizzes/grading.js";
 import { addQuestionsToQuiz, addQuizSection, editQuizSlot, quizStructure, removeQuizSlot, setQuizPages } from "./areas/quizzes/structure.js";
+import { addQuestionsToOfflineQuiz, createOfflineQuizForms, offlineQuizGroups } from "./areas/quizzes/offline.js";
 import { followPage, lastPageFollowed, logOut, openSitePage } from "./core/session.js";
 import { FOLLOWED_PAGES } from "./followed-pages.js";
 import { courseActivityTypes, publicSiteInfo } from "./areas/site/info.js";
@@ -325,6 +326,9 @@ const SITE_FUNCTIONS = {
   deleteFeedbackTemplate,
   questionnaireQuestions,
   addQuestionnaireQuestions,
+  offlineQuizGroups,
+  addQuestionsToOfflineQuiz,
+  createOfflineQuizForms,
   upcomingEvents,
   updateActivity,
   updateCourse,

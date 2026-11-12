@@ -1,6 +1,6 @@
 # Cuestionarios
 
-Cuestionarios desde los dos lados. Un estudiante lee la página de un cuestionario, empieza o continúa un intento, responde sus preguntas página a página (al ritmo de una persona por defecto) y lo termina, y después lee la revisión. Un profesor lee todos los intentos con su calificación y la puntuación de cada pregunta (y las respuestas dadas), califica a mano lo que Moodle no puede calificar por sí mismo (ensayos) o sobrescribe una puntuación, lee qué preguntas contiene un cuestionario, añade preguntas de un banco (elegidas o aleatorias), las quita y las mueve, fija sus puntuaciones, páginas y secciones, y da a un estudiante otras fechas, un límite de tiempo o más intentos con una excepción de usuario. Los cuestionarios se identifican por su id del módulo del curso (el `id` de `mod/quiz/view.php?id=`), y los intentos, por el id de intento de Moodle.
+Cuestionarios desde los dos lados. Un estudiante lee la página de un cuestionario, empieza o continúa un intento, responde sus preguntas página a página (al ritmo de una persona por defecto) y lo termina, y después lee la revisión. Un profesor lee todos los intentos con su calificación y la puntuación de cada pregunta (y las respuestas dadas), califica a mano lo que Moodle no puede calificar por sí mismo (ensayos) o sobrescribe una puntuación, lee qué preguntas contiene un cuestionario, añade preguntas de un banco (elegidas o aleatorias), las quita y las mueve, fija sus puntuaciones, páginas y secciones, y da a un estudiante otras fechas, un límite de tiempo o más intentos con una excepción de usuario. Un cuestionario offline (el plugin mod_offlinequiz, un cuestionario en papel) recibe sus preguntas grupo a grupo y se le crean los formularios. Los cuestionarios se identifican por su id del módulo del curso (el `id` de `mod/quiz/view.php?id=`), y los intentos, por el id de intento de Moodle.
 
 **Términos:** [cuestionario](../reference/glossary.md#quiz), [intento](../reference/glossary.md#attempt), [slot](../reference/glossary.md#slot), [revisión](../reference/glossary.md#review), [excepción](../reference/glossary.md#override).
 
@@ -534,6 +534,84 @@ const { slots, sections } = await moodle.addQuizSection(49, { firstSlot: 3, head
 console.log(slots.map((s) => `${s.slot}. ${s.name} (página ${s.page}, ${s.mark})`), sections);
 ```
 
+## Cuestionarios offline {#offline-quizzes}
+
+Un cuestionario offline (el plugin mod_offlinequiz) es un cuestionario impreso en papel: sus preguntas salen de un banco de preguntas, en grupos (A, B, C… tantos como diga su ajuste "Número de grupos") con sus propias preguntas y sus propios formularios, y las personas responden en una hoja de respuestas que se escanea después. Un profesor lee sus grupos, añade preguntas del banco a cada uno y crea los formularios. Los cuestionarios offline se identifican por su id del módulo del curso (el `id` de `mod/offlinequiz/view.php?id=`); los errores son `QuizError`.
+
+### offlineQuizGroups
+
+Las preguntas de cada grupo, tal como las lista la página de edición del cuestionario offline para cada grupo, su calificación máxima y si sus preguntas aún pueden cambiar.
+
+```ts
+function offlineQuizGroups(context: BrowserContext, siteUrl: string, activityId: number): Promise<OfflineQuizGroups>;
+
+interface OfflineQuizGroups {
+  offlineQuiz: { id: number };
+  maxGrade?: string;
+  formsCreated: boolean;
+  editable: boolean;
+  groups: OfflineQuizGroup[];
+}
+
+interface OfflineQuizGroup {
+  number: number;
+  letter: string;
+  slots: QuizSlot[];
+  totalMarks?: string;
+}
+```
+
+- `groups`: en orden; `number` desde 1 (lo que recibe `addQuestionsToOfflineQuiz`), `letter` como lo nombran los formularios (A para 1); `slots` como da [`quizStructure`](#quizstructure) los de un cuestionario (lugar, página, id de la pregunta, tipo, nombre, puntuación); `totalMarks`: la suma de las puntuaciones del grupo tal como se muestra ("2.00").
+- `maxGrade`: la calificación máxima del cuestionario offline tal como se muestra ("100.00").
+- `formsCreated`: sus formularios existen; `editable`: se pueden añadir preguntas (aún sin formularios ni resultados).
+
+Abrir la página de edición de un grupo crea el grupo en Moodle si aún no existía, como hace el plugin para el número de grupos que tiene configurado. Necesita `mod/offlinequiz:manage` (profesores con permiso de edición); si no, lanza `QuizError` con el motivo de Moodle, igual que cuando el id no es un cuestionario offline.
+
+### addQuestionsToOfflineQuiz
+
+Añade preguntas del banco a un grupo, tal como las envía la acción "del banco de preguntas" de la página de edición.
+
+```ts
+function addQuestionsToOfflineQuiz(
+  context: BrowserContext,
+  siteUrl: string,
+  activityId: number,
+  options: { questionIds: number[]; group?: number; page?: number },
+): Promise<{ changed: string; offlineQuiz: { id: number }; group: OfflineQuizGroup }>;
+```
+
+- `questionIds`: ids de preguntas del banco, de [`questions`](question-banks.md).
+- `group` (por defecto `1`, el grupo A): el número del grupo.
+- `page` (por defecto `0`): la página a la que añadirlas; `0` las añade al final.
+- Devuelve el grupo después.
+
+Una vez existen los formularios del cuestionario offline, o tiene resultados, sus preguntas quedan fijas (están en papel): la página de edición del plugin no ofrece entonces menú de añadir, y esto lanza `QuizError` con su aviso ("Forms already created") antes de enviar nada; el plugin deja borrar sus formularios mientras no se haya escaneado nada. También lanza `QuizError` para un grupo que el cuestionario offline no tiene, cuando no se indican preguntas, cuando Moodle responde al envío con un error y cuando no se añadió nada (ids incorrectos, o preguntas que el grupo ya tiene).
+
+### createOfflineQuizForms
+
+Crea los formularios del cuestionario offline, como hace su botón "Crear formularios": para cada grupo, el formulario de preguntas, la hoja de respuestas que se rellena y el formulario de corrección, en el formato que tiene configurado el cuestionario offline (PDF por defecto).
+
+```ts
+function createOfflineQuizForms(context: BrowserContext, siteUrl: string, activityId: number): Promise<{ changed: string; offlineQuiz: { id: number }; forms: OfflineQuizForms[] }>;
+
+interface OfflineQuizForms {
+  group: string;
+  questionForm?: string;
+  answerForm?: string;
+  correctionForm?: string;
+}
+```
+
+Los formularios de cada grupo son enlaces a archivos del sitio, que guarda [`downloadFile`](files.md). Desde entonces las preguntas no pueden cambiar. Cada grupo necesita preguntas antes: si no, el plugin no crea ningún formulario, y esto lanza `QuizError` con sus avisos. Cuando los formularios ya existen, los da tal como están (su `changed` lo dice). Necesita `mod/offlinequiz:createofflinequiz` (profesores con permiso de edición).
+
+```ts
+// Cuestionario offline 51, dos grupos: las mismas preguntas en otro orden, y después sus formularios.
+await moodle.addQuestionsToOfflineQuiz(51, { group: 1, questionIds: [22, 23, 24] });
+await moodle.addQuestionsToOfflineQuiz(51, { group: 2, questionIds: [24, 22, 23] });
+const { forms } = await moodle.createOfflineQuizForms(51);
+for (const form of forms) if (form.answerForm) console.log(form.group, (await moodle.downloadFile(form.answerForm)).path);
+```
+
 ## setQuizOverride
 
 Pone una excepción de usuario en un cuestionario mediante su formulario de excepciones: otras fechas de apertura y cierre, un límite de tiempo o un número de intentos para un estudiante. Lo que no se indica se queda como en el cuestionario.
@@ -591,5 +669,6 @@ Los pasos sueltos sobre los que se construyen estas funciones (empezar un intent
 - `quizStructure`, `addQuestionsToQuiz`, `removeQuizSlot`, `setQuizPages`, `addQuizSection`: `course-content`.
 - `editQuizSlot`: `course-content` y `others-write` (una nueva puntuación máxima recalifica los intentos ya hechos).
 - `setQuizOverride`: `others-write`.
+- `offlineQuizGroups`, `addQuestionsToOfflineQuiz`, `createOfflineQuizForms`: `course-content`.
 
 Consulta [Categorías de datos](../concepts/data-categories.md).

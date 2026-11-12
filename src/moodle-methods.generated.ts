@@ -151,6 +151,13 @@ export interface MoodleMethods {
    */
   addQuestionnaireQuestions(activityId: number, questions: import("./areas/surveys/questionnaire.js").QuestionnaireQuestionInput[], options?: { evenWithResponses?: boolean | undefined; }): Promise<{ changed: string; questionIds: number[]; questions: import("./areas/surveys/questionnaire.js").QuestionnaireQuestion[]; }>;
   /**
+   * Adds bank questions (by id) to a group of an offline quiz (`group`, from 1: A is 1), at its end or
+   * on a page, as its edit page's "from question bank" action posts them. Returns the group afterwards.
+   * Once the offline quiz's forms exist, or it has results, its questions can't change: the plugin
+   * refuses, and so does this, with its notice.
+   */
+  addQuestionsToOfflineQuiz(activityId: number, options: { questionIds: number[]; group?: number | undefined; page?: number | undefined; }): Promise<{ changed: string; offlineQuiz: { id: number; }; group: import("./areas/quizzes/offline.js").OfflineQuizGroup; }>;
+  /**
    * Adds bank questions to a quiz by id, and random questions from a bank category, at the end or on a
    * page, as the edit page's bank actions post them. Returns the quiz's structure afterwards. A quiz
    * already attempted can't change its questions: Moodle refuses, and so does this.
@@ -644,6 +651,15 @@ export interface MoodleMethods {
   createGroup(courseId: number, settings: import("./areas/participants/groups.js").GroupSettings & { name: string; }): Promise<{ changed: string; groupId: number; }>;
   /** Creates a grouping in a course with its form (`group/grouping.php`); add its groups with `setGroupingGroups`. */
   createGrouping(courseId: number, settings: import("./areas/participants/groups.js").GroupingSettings & { name: string; }): Promise<{ changed: string; groupingId: number; }>;
+  /**
+   * Creates an offline quiz's forms, as its "Create forms" button does: for every group, the question
+   * form, the answer form people fill in and the correction form, in the format the offline quiz is set
+   * to (PDF by default). From then on its questions are fixed (the plugin's rule: the forms are
+   * printed). Every group needs questions first: the plugin creates none otherwise, and this throws its
+   * notices. When the forms exist already, it gives them as they are. Returns each group's links, which
+   * `downloadFile` saves.
+   */
+  createOfflineQuizForms(activityId: number): Promise<{ changed: string; offlineQuiz: { id: number; }; forms: import("./areas/quizzes/offline.js").OfflineQuizForms[]; }>;
   /**
    * Creates one question in a bank through its type's edit form, of any type in `QUESTION_TYPES`;
    * returns its id. Each type's required inputs are checked before the form opens. Calculated types
@@ -1341,6 +1357,13 @@ export interface MoodleMethods {
    * unread ones, batches until the page is full (it has no unread filter).
    */
   notifications(options?: import("./areas/messages/messages.js").NotificationOptions): Promise<import("./areas/messages/messages.js").Notification[] | import("./core/paging.js").ListPage<import("./areas/messages/messages.js").Notification>>;
+  /**
+   * An offline quiz's groups (A, B…) with their questions as each group's edit page lists them (slots
+   * with their page, question, type, name and mark, as `quizStructure` reads a quiz's), its maximum
+   * grade, and whether its forms exist and its questions can still change. Opening a group's edit page
+   * makes the group in Moodle if it had none yet, as the plugin does for the number of groups it's set to.
+   */
+  offlineQuizGroups(activityId: number): Promise<import("./areas/quizzes/offline.js").OfflineQuizGroups>;
   /** Opens a Moodle form page and waits for its editors to be ready. */
   openForm(pathAndQuery: string): Promise<import("playwright-core").Page>;
   /**

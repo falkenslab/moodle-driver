@@ -1,10 +1,21 @@
-// Questions in the activity plugins with their own: a questionnaire (mod_questionnaire) built with
+// Questions in the activity plugins with their own: an offline quiz (mod_offlinequiz) filled from a
+// shared bank, group by group, and its forms created; a questionnaire (mod_questionnaire) built with
 // a question of each type the driver adds, on two pages, then answered by the student so that it
 // refuses changes. All in a scratch course, made by the teacher.
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { before, describe, it } from "node:test";
-import { SurveyError, type Moodle } from "../../src/index.js";
-import { as, scratchCourse, type ScratchCourse } from "./harness.js";
+import { QuizError, SurveyError, type Moodle } from "../../src/index.js";
+import { SERIES, as, scratchCourse, type ScratchCourse } from "./harness.js";
+
+const GIFT = `::Paper MC1:: Which number is even? {=4 ~3 ~5}
+
+::Paper MC2:: Which colour is a primary one? {=Red ~Green ~Purple}
+
+::Paper MC3:: Which is a planet? {=Mars ~The Moon ~The Sun}
+`;
 
 // The sandbox is shared and can be slow (a page in 20 s under load): every Moodle round trip gets time.
 const SLOW = { timeout: 1_200_000 };
@@ -16,6 +27,152 @@ describe("plugin questions", () => {
   before(async () => {
     course = await scratchCourse("plugin-questions");
     teacher = await as("teacher");
+  });
+
+  describe("offline quiz", () => {
+    let offlineQuizId: number;
+    let ids: number[];
+
+    before(async () => {
+      // A shared bank (Moodle 5's qbank activity), as for a quiz; on 4.x the course's own bank.
+      let bankId = course.id;
+      if (!SERIES.startsWith("4.")) {
+        await teacher.createActivity({
+          courseId: course.id,
+          sectionId: course.sectionId,
+          type: "qbank",
+          name: "Paper bank",
+        });
+        bankId = (await teacher.questionBanks(course.id)).find(
+          (b) => b.type === "qbank" && b.name === "Paper bank",
+        )!.id;
+      }
+      const { categories } = await teacher.questions(bankId);
+      const bank = (
+        await teacher.importQuestions(bankId, {
+          format: "gift",
+          text: GIFT,
+          categoryId: categories[1]!.id,
+        })
+      ).questions;
+      ids = ["Paper MC1", "Paper MC2", "Paper MC3"].map(
+        (name) => bank.find((q) => q.name === name)!.id,
+      );
+      offlineQuizId = (
+        await teacher.createActivity({
+          courseId: course.id,
+          sectionId: course.sectionId,
+          type: "offlinequiz",
+          name: "Paper quiz",
+          settings: { numgroups: "2" },
+        })
+      ).activityId!;
+    }, SLOW);
+
+    it(
+      "offlineQuizGroups: a new offline quiz's two groups, empty and editable",
+      SLOW,
+      async () => {
+        const groups = await teacher.offlineQuizGroups(offlineQuizId);
+        assert.equal(groups.formsCreated, false);
+        assert.equal(groups.editable, true);
+        assert.deepEqual(
+          groups.groups.map((g) => [g.number, g.letter, g.slots.length]),
+          [
+            [1, "A", 0],
+            [2, "B", 0],
+          ],
+        );
+      },
+    );
+
+    it(
+      "addQuestionsToOfflineQuiz: bank questions to group A, then group B in another order",
+      SLOW,
+      async () => {
+        const a = await teacher.addQuestionsToOfflineQuiz(offlineQuizId, {
+          questionIds: [ids[0]!, ids[1]!],
+        });
+        assert.match(a.changed, /Added 2 questions to group A/);
+        assert.deepEqual(
+          a.group.slots.map((s) => [s.questionId, s.name, s.type, s.page]),
+          [
+            [ids[0], "Paper MC1", "multichoice", 1],
+            [ids[1], "Paper MC2", "multichoice", 1],
+          ],
+        );
+        await teacher.addQuestionsToOfflineQuiz(offlineQuizId, {
+          group: 2,
+          questionIds: [ids[2]!],
+        });
+        const b = await teacher.addQuestionsToOfflineQuiz(offlineQuizId, {
+          group: 2,
+          questionIds: [ids[0]!],
+        });
+        assert.deepEqual(
+          b.group.slots.map((s) => s.questionId),
+          [ids[2], ids[0]],
+        );
+        const groups = await teacher.offlineQuizGroups(offlineQuizId);
+        assert.deepEqual(
+          groups.groups.map((g) => g.slots.map((s) => s.name)),
+          [
+            ["Paper MC1", "Paper MC2"],
+            ["Paper MC3", "Paper MC1"],
+          ],
+        );
+        assert.equal(groups.groups[0]!.totalMarks, "2.00");
+        await assert.rejects(
+          teacher.addQuestionsToOfflineQuiz(offlineQuizId, {
+            group: 3,
+            questionIds: [ids[0]!],
+          }),
+          QuizError,
+        );
+      },
+    );
+
+    it(
+      "createOfflineQuizForms: every group's question, answer and correction forms; then the questions are fixed",
+      SLOW,
+      async () => {
+        const { forms, changed } =
+          await teacher.createOfflineQuizForms(offlineQuizId);
+        assert.match(changed, /Created the forms/);
+        assert.deepEqual(
+          forms.map((f) => f.group),
+          ["A", "B"],
+        );
+        for (const form of forms) {
+          assert.match(
+            form.questionForm ?? "",
+            /\/pluginfile\.php\/\d+\/mod_offlinequiz\/pdfs\/0\/question_form_[AB]_/,
+          );
+          assert.match(form.answerForm ?? "", /answer_form_[AB]_/);
+          assert.match(form.correctionForm ?? "", /correction_form_[AB]_/);
+        }
+        const file = await teacher.downloadFile(
+          forms[0]!.questionForm!,
+          mkdtempSync(path.join(tmpdir(), "offline-forms-")),
+        );
+        assert.match(file.name, /\.pdf$/);
+        const groups = await teacher.offlineQuizGroups(offlineQuizId);
+        assert.equal(groups.formsCreated, true);
+        assert.equal(groups.editable, false);
+        await assert.rejects(
+          teacher.addQuestionsToOfflineQuiz(offlineQuizId, {
+            questionIds: [ids[2]!],
+          }),
+          (error: Error) =>
+            error instanceof QuizError &&
+            /can't change its questions/.test(error.message),
+        );
+        assert.match(
+          (await teacher.createOfflineQuizForms(offlineQuizId)).changed,
+          /had its forms already/,
+        );
+      },
+    );
   });
 
   describe("questionnaire", () => {

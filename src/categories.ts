@@ -197,6 +197,10 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   removeQuizSlot: CONTENT,
   setQuizPages: CONTENT,
   addQuizSection: CONTENT,
+  // An offline quiz's groups, their questions and its printed forms.
+  offlineQuizGroups: CONTENT,
+  addQuestionsToOfflineQuiz: CONTENT,
+  createOfflineQuizForms: CONTENT,
 
   // Forums.
   forumDiscussions: PERSONAL,
