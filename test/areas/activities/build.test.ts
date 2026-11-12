@@ -435,6 +435,27 @@ describe("course layout", { skip: !browser && "no system browser" }, () => {
     await context.close();
   });
 
+  it("adds a section hidden, hiding it before naming it", async () => {
+    const { state, renames } = fakeCourse();
+    // Each editor action, with how many renames came before it.
+    const calls: string[] = [];
+    const update = state.services!.core_courseformat_update_course!;
+    state.services!.core_courseformat_update_course = (args) => {
+      calls.push(`${String(args.action)}:${renames.length}`);
+      return update(args);
+    };
+    const context = await site(state);
+    const hidden = await addSection(context, SITE, 5, { name: "Unit 2", visible: false });
+    assert.equal(hidden.changed, 'Section 30 added hidden as "Unit 2".');
+    assert.equal(layout(hidden), "General:News | Unit 1:Notes,Task | Unit 2(h):");
+    // Hidden before it's renamed: it shows only between Moodle adding it and hiding it.
+    assert.deepEqual(calls, ["section_add:0", "section_hide:0"]);
+    // Visible, as without the option: nothing more is asked of Moodle.
+    assert.equal(layout(await addSection(context, SITE, 5, { visible: true })), "General:News | Unit 1:Notes,Task | Unit 2(h): | New section:");
+    assert.deepEqual(calls, ["section_add:0", "section_hide:0", "section_add:1"]);
+    await context.close();
+  });
+
   it("renames, hides and moves a section, deletes an activity and a section with its activities", async () => {
     const context = await site(fakeCourse().state);
     assert.equal(layout(await editSection(context, SITE, 5, 11, { name: "Unit A", visible: false, afterSectionId: 10 })), "General:News | Unit A(h):Notes,Task");

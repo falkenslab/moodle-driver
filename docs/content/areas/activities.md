@@ -238,7 +238,7 @@ function deleteActivity(context: BrowserContext, siteUrl: string, courseId: numb
 ## addSection, editSection and deleteSection
 
 ```ts
-function addSection(context: BrowserContext, siteUrl: string, courseId: number, options?: { name?: string; afterSectionId?: number; summary?: string; embed?: string[] }): Promise<CourseChange>;
+function addSection(context: BrowserContext, siteUrl: string, courseId: number, options?: { name?: string; afterSectionId?: number; summary?: string; embed?: string[]; visible?: boolean }): Promise<CourseChange>;
 function editSection(
   context: BrowserContext,
   siteUrl: string,
@@ -250,6 +250,7 @@ function deleteSection(context: BrowserContext, siteUrl: string, courseId: numbe
 ```
 
 - `addSection` adds a section after `afterSectionId`, or at the end without it; with `name` it renames it afterwards, and with `summary` it gives it a description. `sectionId` is the new section's id.
+- `visible: false` adds it hidden from students (visible by default). Moodle's course editor only adds visible sections (Moodle 4.5 and 5.x) and the new section's id is known only once it exists, so the driver hides it right after adding it, before naming or describing it: students may see it, empty and unnamed, for that moment (confirmed empirically, Moodle 5.2). `changed` says `added hidden`.
 - `editSection` renames, describes (`summary`), restricts (`restrictions`, see [Restrictions and completion](#restrictions-and-completion)), shows (`visible: true`) or hides it, or moves it after another section.
 - `summary` is the section's description, HTML as given (`""` removes it), shown on the course page under the section's name. No service changes it nor `restrictions`, so they're saved through the section's own form (`course/editsection.php`, its `summary_editor` and `availabilityconditionsjson`), in one save when both are given; the driver only takes a section of the given course: another course's is a `MoodleError` (`not-found`), and Moodle's refusals of the form a `FormError`. [courseStructure](courses.md) with `details` reads it back as `summary`.
 - `embed`: absolute local paths of images and files the `summary` names (`<img src="map.png">`), put in it as Moodle's editor does (see [Embedding files in rich text](files.md#embedding-files-in-rich-text)).

@@ -332,20 +332,26 @@ async function saveSectionForm(context: BrowserContext, siteUrl: string, courseI
 /**
  * Adds a section after another one (at the end without it), named when a name is given, with a
  * description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`).
+ * `visible: false` hides it: Moodle's course editor only adds visible sections (`section_add` takes
+ * no visibility, Moodle 4.5 and 5.2) and the new section's id is known only once it exists, so it is
+ * hidden right after, before naming or describing it: students may see it, empty and unnamed, for
+ * that moment (confirmed empirically, Moodle 5.2).
  */
 export async function addSection(
   context: BrowserContext,
   siteUrl: string,
   courseId: number,
-  { name, afterSectionId, summary, embed }: { name?: string; afterSectionId?: number; summary?: string; embed?: string[] } = {},
+  { name, afterSectionId, summary, embed, visible }: { name?: string; afterSectionId?: number; summary?: string; embed?: string[]; visible?: boolean } = {},
 ): Promise<CourseChange> {
   if (embed) await checkEmbeds([summary], embed);
   const before = new Set((await courseState(context, siteUrl, courseId)).section.map((s) => s.id));
   await editCourse(context, siteUrl, courseId, "section_add", [], { sectionId: afterSectionId });
   const added = (await courseState(context, siteUrl, courseId)).section.find((s) => !before.has(s.id));
+  // First of all, so it shows for as short a time as Moodle allows.
+  if (added && visible === false) await editCourse(context, siteUrl, courseId, "section_hide", [Number(added.id)]);
   if (added && name !== undefined) await renameSection(context, siteUrl, courseId, Number(added.id), name);
   if (added && summary !== undefined) await saveSectionForm(context, siteUrl, courseId, Number(added.id), { "summary_editor[text]": summary }, embed);
-  const extras = `${name !== undefined ? ` as "${name}"` : ""}${summary !== undefined ? " with a description" : ""}`;
+  const extras = `${visible === false ? " hidden" : ""}${name !== undefined ? ` as "${name}"` : ""}${summary !== undefined ? " with a description" : ""}`;
   return afterChange(context, siteUrl, courseId, `Section ${added?.id ?? "?"} added${extras}.`, { sectionId: added ? Number(added.id) : undefined });
 }
 

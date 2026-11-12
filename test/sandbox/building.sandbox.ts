@@ -248,6 +248,21 @@ describe("building a course", () => {
     await teacher.deleteSection(course.id, last.sectionId!);
   });
 
+  it("addSection: hidden, named and described", SLOW, async () => {
+    const teacher = await as("teacher");
+    const added = await teacher.addSection(course.id, { name: "Driver hidden section", summary: "<p>Not yet</p>", visible: false });
+    assert.ok(added.sectionId, added.changed);
+    assert.match(added.changed, /added hidden as "Driver hidden section"/);
+    const section = (await teacher.courseStructure(course.id, { details: true })).find((s) => s.id === added.sectionId)!;
+    assert.equal(section.visible, false);
+    assert.equal(section.title, "Driver hidden section");
+    assert.match(section.summary ?? "", /Not yet/);
+    // The student sees it as not visible, or not at all.
+    const seen = (await (await as("student")).courseStructure(course.id)).find((s) => s.id === added.sectionId);
+    assert.ok(!seen || !seen.visible);
+    await teacher.deleteSection(course.id, added.sectionId);
+  });
+
   it("editSection: renamed, described, restricted, hidden and moved", SLOW, async () => {
     const teacher = await as("teacher");
     await teacher.editSection(course.id, sectionId, { name: "Driver section (renamed)", summary: "<p>New description</p>", restrictions: { conditions: [{ type: "date", from: "2030-01-01T00:00:00Z" }] } });

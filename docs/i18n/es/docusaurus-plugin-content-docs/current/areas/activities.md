@@ -238,7 +238,7 @@ function deleteActivity(context: BrowserContext, siteUrl: string, courseId: numb
 ## addSection, editSection y deleteSection {#addsection-editsection-and-deletesection}
 
 ```ts
-function addSection(context: BrowserContext, siteUrl: string, courseId: number, options?: { name?: string; afterSectionId?: number; summary?: string; embed?: string[] }): Promise<CourseChange>;
+function addSection(context: BrowserContext, siteUrl: string, courseId: number, options?: { name?: string; afterSectionId?: number; summary?: string; embed?: string[]; visible?: boolean }): Promise<CourseChange>;
 function editSection(
   context: BrowserContext,
   siteUrl: string,
@@ -250,6 +250,7 @@ function deleteSection(context: BrowserContext, siteUrl: string, courseId: numbe
 ```
 
 - `addSection` añade una sección después de `afterSectionId`, o al final si no se indica; con `name` la renombra después, y con `summary` le da una descripción. `sectionId` es el id de la nueva sección.
+- `visible: false` la añade oculta para los estudiantes (visible por defecto). El editor del curso de Moodle solo añade secciones visibles (Moodle 4.5 y 5.x) y el id de la nueva sección solo se conoce cuando ya existe, así que el driver la oculta justo después de añadirla, antes de nombrarla o describirla: los estudiantes pueden verla, vacía y sin nombre, durante ese momento (confirmado empíricamente, Moodle 5.2). `changed` dice `added hidden`.
 - `editSection` la renombra, la describe (`summary`), la restringe (`restrictions`, consulta [Restricciones y finalización](#restrictions-and-completion)), la muestra (`visible: true`) o la oculta, o la mueve después de otra sección.
 - `summary` es la descripción de la sección, HTML tal como se indica (`""` la quita), que se muestra en la página del curso bajo el nombre de la sección. Ningún servicio la cambia, ni tampoco `restrictions`, así que se guardan mediante el propio formulario de la sección (`course/editsection.php`, sus `summary_editor` y `availabilityconditionsjson`), en un solo guardado cuando se indican ambos; el driver solo acepta una sección del curso indicado: la de otro curso es un `MoodleError` (`not-found`), y los rechazos del formulario por parte de Moodle, un `FormError`. [courseStructure](courses.md) con `details` la lee como `summary`.
 - `embed`: rutas locales absolutas de imágenes y archivos que nombra `summary` (`<img src="map.png">`), que se insertan en él como hace el editor de Moodle (consulta [Insertar archivos en texto enriquecido](files.md#embedding-files-in-rich-text)).

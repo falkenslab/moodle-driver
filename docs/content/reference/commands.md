@@ -321,7 +321,7 @@ moodle add-scale <courseId> <fields>
 
 ## addSection
 
-Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`).
+Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`). `visible: false` hides it: Moodle's course editor only adds visible sections (`section_add` takes no visibility, Moodle 4.5 and 5.2) and the new section's id is known only once it exists, so it is hidden right after, before naming or describing it: students may see it, empty and unnamed, for that moment (confirmed empirically, Moodle 5.2).
 
 ```bash
 moodle add-section <courseId> [--options]
@@ -334,6 +334,7 @@ moodle add-section <courseId> [--options]
 | `--after-section-id` | `number` |  |
 | `--summary` | `string` |  |
 | `--embed` | `string[]` |  |
+| `--visible` | `boolean` |  |
 
 ## addWorkshopExample
 
