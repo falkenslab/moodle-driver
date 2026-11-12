@@ -31,6 +31,7 @@ import { allocateRandomly, allocateReviewer, removeReviewer, scheduleAllocation,
 import { saveWorkshopSubmission, workshopSubmission } from "./areas/workshops/submissions.js";
 import { addWorkshopExample, assessWorkshopExample, deleteWorkshopExample, editWorkshopExample, workshopExamples } from "./areas/workshops/examples.js";
 import { calculateWorkshopGrades, overrideWorkshopGrade } from "./areas/workshops/evaluation.js";
+import { setWorkshopForm, workshopForm } from "./areas/workshops/form.js";
 import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
 import { importGrades } from "./areas/grades/import.js";
 import { addScale, courseScales, editScale, gradeLetters, setGradeLetters } from "./areas/grades/scales.js";
@@ -285,6 +286,8 @@ const SITE_FUNCTIONS = {
   assessWorkshopExample,
   calculateWorkshopGrades,
   overrideWorkshopGrade,
+  workshopForm,
+  setWorkshopForm,
   readAttempt,
   readReview,
   removeQuizSlot,

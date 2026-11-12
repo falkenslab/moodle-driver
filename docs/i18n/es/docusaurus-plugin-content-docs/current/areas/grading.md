@@ -1,6 +1,6 @@
 # Calificar
 
-El lado del profesor en una tarea, en los foros y en los talleres: las calificaciones de foro completo con `forumGrades` y `gradeForumUser`, las valoraciones de mensajes de foro, entradas de glosario y entradas de bases de datos con `rate`, y un taller de principio a fin: sus fases, la asignación y las evaluaciones con `workshopInfo`, `setWorkshopPhase`, `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly`, `scheduleAllocation` y `assessWorkshopSubmission`, la entrega de un participante con `workshopSubmission` y `saveWorkshopSubmission`, los envíos de ejemplo con `workshopExamples`, `addWorkshopExample`, `editWorkshopExample`, `deleteWorkshopExample` y `assessWorkshopExample`, y sus calificaciones con `calculateWorkshopGrades` y `overrideWorkshopGrade`. En una tarea: las entregas de todos con su contenido y sus fechas, calificar a un participante como lo hace el calificador de Moodle (una calificación simple o una escala, los niveles de una rúbrica, las puntuaciones de una guía de evaluación, observaciones y comentarios de retroalimentación), leer el método de calificación y sus criterios, definir una rúbrica o una guía de evaluación, y conceder ampliaciones del plazo; los archivos de retroalimentación van con la calificación. También se cubren las tareas con entregas en grupo y el flujo de trabajo de calificación: quién entrega por qué grupo, calificar a todo un grupo a la vez, los estados del flujo de trabajo, los evaluadores y la publicación de calificaciones. Necesita permisos de profesor en la tarea (las capacidades de calificación de Moodle); a un estudiante, Moodle se lo rechaza. Calificar pasa por el propio panel y servicio del calificador (`core_get_fragment` con el `gradingpanel` de `mod_assign`, y luego `mod_assign_submit_grading_form`), y los campos se encuentran por sus nombres en el formulario, así que funciona en cualquier idioma. El lado del estudiante está en [tareas](assignments.md); las excepciones de los cuestionarios, en [cuestionarios](quizzes.md).
+El lado del profesor en una tarea, en los foros y en los talleres: las calificaciones de foro completo con `forumGrades` y `gradeForumUser`, las valoraciones de mensajes de foro, entradas de glosario y entradas de bases de datos con `rate`, y un taller de principio a fin: sus fases, la asignación y las evaluaciones con `workshopInfo`, `setWorkshopPhase`, su formulario de evaluación con `workshopForm` y `setWorkshopForm`, `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly`, `scheduleAllocation` y `assessWorkshopSubmission`, la entrega de un participante con `workshopSubmission` y `saveWorkshopSubmission`, los envíos de ejemplo con `workshopExamples`, `addWorkshopExample`, `editWorkshopExample`, `deleteWorkshopExample` y `assessWorkshopExample`, y sus calificaciones con `calculateWorkshopGrades` y `overrideWorkshopGrade`. En una tarea: las entregas de todos con su contenido y sus fechas, calificar a un participante como lo hace el calificador de Moodle (una calificación simple o una escala, los niveles de una rúbrica, las puntuaciones de una guía de evaluación, observaciones y comentarios de retroalimentación), leer el método de calificación y sus criterios, definir una rúbrica o una guía de evaluación, y conceder ampliaciones del plazo; los archivos de retroalimentación van con la calificación. También se cubren las tareas con entregas en grupo y el flujo de trabajo de calificación: quién entrega por qué grupo, calificar a todo un grupo a la vez, los estados del flujo de trabajo, los evaluadores y la publicación de calificaciones. Necesita permisos de profesor en la tarea (las capacidades de calificación de Moodle); a un estudiante, Moodle se lo rechaza. Calificar pasa por el propio panel y servicio del calificador (`core_get_fragment` con el `gradingpanel` de `mod_assign`, y luego `mod_assign_submit_grading_form`), y los campos se encuentran por sus nombres en el formulario, así que funciona en cualquier idioma. El lado del estudiante está en [tareas](assignments.md); las excepciones de los cuestionarios, en [cuestionarios](quizzes.md).
 
 **Términos:** [tarea](../reference/glossary.md#assignment), [entrega](../reference/glossary.md#submission), [método de calificación](../reference/glossary.md#grading-method), [ampliación del plazo](../reference/glossary.md#extension), [escala](../reference/glossary.md#scale), [taller](../reference/glossary.md#workshop).
 
@@ -327,6 +327,100 @@ function setWorkshopPhase(context: BrowserContext, siteUrl: string, activityId: 
 ```
 
 Abre la confirmación de Moodle (`mod/workshop/switchphase.php`) y la confirma, y luego lee la fase de la página del taller a la que llega. Se puede elegir cualquier fase, hacia delante o hacia atrás. Cambiar de fase solo hace eso: las entregas se asignan a los revisores con las funciones de más abajo ("Asignar envíos" de Moodle), y las calificaciones se calculan con `calculateWorkshopGrades`. Lanza `WorkshopError` con el motivo de Moodle cuando la persona no puede cambiar de fase (un estudiante), y `MoodleError` (`invalid-input`) con una fase que no es una de las cinco.
+
+## workshopForm
+
+El formulario de evaluación de un taller, como lo tiene su formulario de edición ("Formulario de evaluación" en la configuración del taller).
+
+```ts
+function workshopForm(context: BrowserContext, siteUrl: string, activityId: number): Promise<WorkshopForm>;
+
+type WorkshopStrategy = "accumulative" | "comments" | "numerrors" | "rubric";
+
+interface WorkshopForm {
+  activityId: number;
+  strategy: WorkshopStrategy;
+  criteria: WorkshopFormCriterion[];
+  gradeMapping?: WorkshopGradeMapping[];
+  layout?: "list" | "grid";
+}
+
+interface WorkshopFormCriterion {
+  id: number;
+  description: string;
+  maxGrade?: number;
+  scaleId?: number;
+  scale?: string;
+  weight?: number;
+  errorWord?: string;
+  successWord?: string;
+  levels?: { id: number; grade: number; definition: string }[];
+}
+
+interface WorkshopGradeMapping {
+  errors: number;
+  grade: number;
+}
+```
+
+- `strategy`: la estrategia de calificación del taller, elegida en su configuración: calificación acumulativa, comentarios, número de errores o rúbrica.
+- `criteria`: los aspectos (calificación acumulativa, comentarios), afirmaciones (número de errores) o criterios (rúbrica) del formulario, en orden, cada uno con su id y su `description` (HTML, como lo tiene el editor). La calificación acumulativa da a cada uno su calificación máxima en puntos (`maxGrade`) o la escala con la que se califica (`scaleId`, `scale`), y su `weight`; número de errores, su `weight` y las palabras entre las que elige un revisor cuando la afirmación falla y cuando se cumple (`errorWord`, `successWord`); una rúbrica, sus `levels`, en el orden de sus calificaciones.
+- `gradeMapping`: solo en número de errores, la calificación (un porcentaje de la calificación del envío del taller) fijada para cada número de errores ponderados; los números que no aparecen siguen el valor por defecto de Moodle, una parte proporcional.
+- `layout`: solo en rúbrica, cómo la ven los evaluadores, como lista o como cuadrícula.
+
+Lee el formulario de edición (`mod/workshop/editform.php`) por los nombres de sus campos, así que funciona en cualquier idioma, y no cambia nada. Lanza `WorkshopError` cuando el id no es de un taller o la persona no puede editar su formulario (la capacidad de Moodle `mod/workshop:editdimensions`, la de un profesor; a un estudiante, Moodle se lo rechaza).
+
+## setWorkshopForm
+
+Fija el formulario de evaluación de un taller, como hacen su formulario de edición y "Guardar y continuar editando".
+
+```ts
+function setWorkshopForm(context: BrowserContext, siteUrl: string, activityId: number, input: WorkshopFormInput): Promise<{ changed: string } & WorkshopForm>;
+
+interface WorkshopFormInput {
+  strategy: WorkshopStrategy;
+  criteria: WorkshopFormCriterionInput[];
+  gradeMapping?: WorkshopGradeMapping[];
+  layout?: "list" | "grid";
+  evenIfAssessed?: boolean;
+}
+
+interface WorkshopFormCriterionInput {
+  description: string;
+  maxGrade?: number;
+  scaleId?: number;
+  weight?: number;
+  errorWord?: string;
+  successWord?: string;
+  levels?: { grade: number; definition: string }[];
+}
+```
+
+- `strategy`: la estrategia de calificación del taller. Un formulario de otra se rechaza, nombrando la del taller: la estrategia se cambia antes en la configuración del taller ([`updateActivity`](activities.md#updateactivity) con `settings: { strategy }`).
+- `criteria`: los aspectos, afirmaciones o criterios, en orden, uno como mínimo, cada uno con su `description` (HTML). Cada estrategia admite sus propios campos, y los de otra estrategia se rechazan. Calificación acumulativa: `maxGrade`, un número entero de puntos (10 por defecto, hasta la calificación máxima del sitio), o `scaleId`, una de las escalas del curso; `weight`, de 0 a 16 (1 por defecto). Comentarios: solo la descripción. Número de errores: `weight` (1 por defecto), `errorWord` y `successWord` ("No" y "Sí" de Moodle en una afirmación nueva; se quedan como están si no se dan). Rúbrica: `levels`, uno como mínimo, cada uno con su `grade`, un número entero de 0 a 100, único en el criterio, y su `definition`.
+- `gradeMapping`: solo en número de errores, la calificación (de 0 a 100 por ciento) para cada número de errores ponderados, de 1 al peso total de las afirmaciones. Las que no se dan se borran, así que siguen el valor por defecto de Moodle.
+- `layout`: solo en rúbrica, "list" o "grid"; se queda como está si no se da.
+- `evenIfAssessed`: cambia el formulario aunque haya evaluaciones hechas con él.
+
+Los criterios dados sustituyen a los del formulario: cada fila conserva su lugar, así que las primeras conservan sus ids, y las que sobran se borran, como borra Moodle una fila cuya descripción se vacía (también los niveles de un criterio de rúbrica). Los niveles de una rúbrica se escriben en el orden de sus calificaciones, el orden en que los lista Moodle. El formulario de Moodle ofrece unas pocas filas en blanco cada vez (dos aspectos más de los que hay, dos niveles más de los que tiene un criterio, cuatro como mínimo, y una fila de correspondencia por cada error de los pesos guardados), así que el driver vuelve a guardar hasta que cabe todo, como haría un profesor pulsando sus botones "Espacios en blanco para 2 más"; la correspondencia de número de errores se fija cuando ya están guardados los pesos nuevos. Devuelve una frase con lo que cambió y el formulario como lo lee [`workshopForm`](#workshopform) después.
+
+Moodle deja cambiar el formulario cuando ya hay evaluaciones hechas con él, y conserva sus calificaciones tal como se dieron, con el formulario como estaba. Por eso el driver lo rechaza con `WorkshopError` antes de cambiar nada cuando encuentra alguna: las evaluaciones con calificación en el informe del taller (en el grupo actual del curso) y, en la fase de configuración, las evaluaciones de referencia de los ejemplos; `evenIfAssessed` lo cambia de todos modos. Lanza también `WorkshopError` con un formulario de otra estrategia, con una escala que el curso no tiene (el error lista las que tiene) y cuando la persona no puede editar el formulario (`mod/workshop:editdimensions`); `MoodleError` (`invalid-input`) antes de abrir nada, con un formulario que Moodle no admitiría (sin criterios, una descripción vacía, un criterio de rúbrica sin niveles o con una calificación repetida, un peso mayor que 16, una correspondencia más allá del peso total); y `FormError` con los mensajes de Moodle cuando rechaza el formulario (una calificación máxima mayor que la del sitio).
+
+```ts
+// `moodle` es el objeto de createMoodle(), como en las páginas de primeros pasos.
+
+const form = await moodle.setWorkshopForm(58, {
+  strategy: "rubric",
+  criteria: [
+    { description: "<p>Explica un bucle</p>", levels: [{ grade: 0, definition: "No" }, { grade: 5, definition: "En parte" }, { grade: 10, definition: "Con claridad" }] },
+    { description: "<p>Da un ejemplo</p>", levels: [{ grade: 0, definition: "Ninguno" }, { grade: 10, definition: "Correcto" }] },
+  ],
+  layout: "grid",
+});
+console.log(form.changed);
+// Al evaluar después, el nivel de un criterio se elige por su posición o por su definición.
+console.log((await moodle.workshopForm(58)).criteria.map((c) => c.levels!.map((l) => l.definition)));
+```
 
 ## assessWorkshopSubmission
 
@@ -719,4 +813,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Categorías de datos {#data-categories}
 
-`assignmentSubmissions` es `others-personal`. `gradeSubmission` es `others-personal` y `others-write` (lee el panel y decide sobre alguien). `rubric` y `setGradingDefinition` son `course-content`, y `grantExtension`, `setWorkflowState` y `allocateMarker` son `others-write`. `forumGrades` es `others-personal`, `gradeForumUser`, `others-personal` y `others-write`, y `rate`, `others-write`. `workshopInfo` es `others-personal`, `setWorkshopPhase`, `others-write` (abre y cierra el trabajo de los participantes), y `assessWorkshopSubmission`, `others-personal` y `others-write`. `workshopAllocation` es `others-personal`; `allocateReviewer`, `removeReviewer` y `allocateRandomly`, `others-personal` y `others-write` (deciden quién evalúa el trabajo de quién), y `scheduleAllocation`, `others-write`. `workshopSubmission` es `own` y `others-personal` (también el trabajo de otro), y `saveWorkshopSubmission`, `own`; `workshopExamples`, `addWorkshopExample`, `editWorkshopExample` y `deleteWorkshopExample` son `course-content`, y `assessWorkshopExample`, `course-content` y `own` (la evaluación de referencia de un profesor, o la práctica de un participante); `calculateWorkshopGrades` y `overrideWorkshopGrade` son `others-personal` y `others-write`. Consulta [categorías de datos](../concepts/data-categories.md).
+`assignmentSubmissions` es `others-personal`. `gradeSubmission` es `others-personal` y `others-write` (lee el panel y decide sobre alguien). `rubric` y `setGradingDefinition` son `course-content`, y `grantExtension`, `setWorkflowState` y `allocateMarker` son `others-write`. `forumGrades` es `others-personal`, `gradeForumUser`, `others-personal` y `others-write`, y `rate`, `others-write`. `workshopInfo` es `others-personal`, `setWorkshopPhase`, `others-write` (abre y cierra el trabajo de los participantes); `workshopForm` y `setWorkshopForm`, `course-content`, y `assessWorkshopSubmission`, `others-personal` y `others-write`. `workshopAllocation` es `others-personal`; `allocateReviewer`, `removeReviewer` y `allocateRandomly`, `others-personal` y `others-write` (deciden quién evalúa el trabajo de quién), y `scheduleAllocation`, `others-write`. `workshopSubmission` es `own` y `others-personal` (también el trabajo de otro), y `saveWorkshopSubmission`, `own`; `workshopExamples`, `addWorkshopExample`, `editWorkshopExample` y `deleteWorkshopExample` son `course-content`, y `assessWorkshopExample`, `course-content` y `own` (la evaluación de referencia de un profesor, o la práctica de un participante); `calculateWorkshopGrades` y `overrideWorkshopGrade` son `others-personal` y `others-write`. Consulta [categorías de datos](../concepts/data-categories.md).

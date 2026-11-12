@@ -1,6 +1,6 @@
 # Grading
 
-The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop from start to end: its phases, allocation and assessments with `workshopInfo`, `setWorkshopPhase`, `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly`, `scheduleAllocation` and `assessWorkshopSubmission`, a participant's submission with `workshopSubmission` and `saveWorkshopSubmission`, example submissions with `workshopExamples`, `addWorkshopExample`, `editWorkshopExample`, `deleteWorkshopExample` and `assessWorkshopExample`, and its grades with `calculateWorkshopGrades` and `overrideWorkshopGrade`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, defining a rubric or a marking guide, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
+The teacher's side of an assignment, of forums and of workshops: whole-forum grades with `forumGrades` and `gradeForumUser`, ratings on forum posts, glossary entries and database records with `rate`, and a workshop from start to end: its phases, allocation and assessments with `workshopInfo`, `setWorkshopPhase`, its assessment form with `workshopForm` and `setWorkshopForm`, `workshopAllocation`, `allocateReviewer`, `removeReviewer`, `allocateRandomly`, `scheduleAllocation` and `assessWorkshopSubmission`, a participant's submission with `workshopSubmission` and `saveWorkshopSubmission`, example submissions with `workshopExamples`, `addWorkshopExample`, `editWorkshopExample`, `deleteWorkshopExample` and `assessWorkshopExample`, and its grades with `calculateWorkshopGrades` and `overrideWorkshopGrade`. For an assignment: everyone's submissions with their content and dates, grading a participant as Moodle's grader does (a simple grade or scale, a rubric's levels, a marking guide's scores, remarks and feedback comments), reading the grading method and its criteria, defining a rubric or a marking guide, and granting extensions; feedback files go with the grade. Assignments with group submissions and the marking workflow are covered too: who submits for which group, grading a group at once, workflow states, markers and releasing grades. It needs a teacher's rights in the assignment (Moodle's grading capabilities); for a student Moodle refuses. Grading goes through the grader's own panel and service (`core_get_fragment` with `mod_assign`'s `gradingpanel`, then `mod_assign_submit_grading_form`), and fields are found by their form names, so it works in any language. The student's side is in [assignments](assignments.md); quiz overrides are with [quizzes](quizzes.md).
 
 **Terms:** [assignment](../reference/glossary.md#assignment), [submission](../reference/glossary.md#submission), [grading method](../reference/glossary.md#grading-method), [extension](../reference/glossary.md#extension), [scale](../reference/glossary.md#scale), [workshop](../reference/glossary.md#workshop).
 
@@ -327,6 +327,100 @@ function setWorkshopPhase(context: BrowserContext, siteUrl: string, activityId: 
 ```
 
 It opens Moodle's confirmation (`mod/workshop/switchphase.php`) and confirms it, then reads the phase from the workshop's page it lands on. Any phase can be chosen, forwards or back. Switching does only that: submissions are allocated to reviewers with the functions below (Moodle's "Allocate submissions"), and grades are calculated with `calculateWorkshopGrades`. It throws `WorkshopError` with Moodle's reason when the person can't switch phases (a student), and `MoodleError` (`invalid-input`) for a phase that isn't one of the five.
+
+## workshopForm
+
+A workshop's assessment form, as its editing form ("Assessment form" in the workshop's settings) has it.
+
+```ts
+function workshopForm(context: BrowserContext, siteUrl: string, activityId: number): Promise<WorkshopForm>;
+
+type WorkshopStrategy = "accumulative" | "comments" | "numerrors" | "rubric";
+
+interface WorkshopForm {
+  activityId: number;
+  strategy: WorkshopStrategy;
+  criteria: WorkshopFormCriterion[];
+  gradeMapping?: WorkshopGradeMapping[];
+  layout?: "list" | "grid";
+}
+
+interface WorkshopFormCriterion {
+  id: number;
+  description: string;
+  maxGrade?: number;
+  scaleId?: number;
+  scale?: string;
+  weight?: number;
+  errorWord?: string;
+  successWord?: string;
+  levels?: { id: number; grade: number; definition: string }[];
+}
+
+interface WorkshopGradeMapping {
+  errors: number;
+  grade: number;
+}
+```
+
+- `strategy`: the workshop's grading strategy, chosen in its settings: accumulative grading, comments, number of errors or rubric.
+- `criteria`: the form's aspects (accumulative grading, comments), assertions (number of errors) or criteria (rubric), in order, each with its id and its `description` (HTML, as the editor holds it). Accumulative grading gives each one its best grade in points (`maxGrade`) or the scale it's graded on (`scaleId`, `scale`), and its `weight`; number of errors, its `weight` and the words a reviewer chooses between when the assertion fails and when it holds (`errorWord`, `successWord`); a rubric, its `levels`, in their grades' order.
+- `gradeMapping`: number of errors only, the grade (a percentage of the workshop's grade for submission) set for each number of weighted errors; the numbers not listed follow Moodle's default, a share in proportion.
+- `layout`: rubric only, how assessors see it, as a list or a grid.
+
+It reads the editing form (`mod/workshop/editform.php`) by its fields' names, so it works in any language, and changes nothing. It throws `WorkshopError` when the id isn't a workshop's or the person can't edit its form (Moodle's capability `mod/workshop:editdimensions`, a teacher's; for a student Moodle refuses).
+
+## setWorkshopForm
+
+Sets a workshop's assessment form, as its editing form and "Save and continue editing" do.
+
+```ts
+function setWorkshopForm(context: BrowserContext, siteUrl: string, activityId: number, input: WorkshopFormInput): Promise<{ changed: string } & WorkshopForm>;
+
+interface WorkshopFormInput {
+  strategy: WorkshopStrategy;
+  criteria: WorkshopFormCriterionInput[];
+  gradeMapping?: WorkshopGradeMapping[];
+  layout?: "list" | "grid";
+  evenIfAssessed?: boolean;
+}
+
+interface WorkshopFormCriterionInput {
+  description: string;
+  maxGrade?: number;
+  scaleId?: number;
+  weight?: number;
+  errorWord?: string;
+  successWord?: string;
+  levels?: { grade: number; definition: string }[];
+}
+```
+
+- `strategy`: the workshop's grading strategy. A form for another one is refused, naming the workshop's: the strategy is changed in the workshop's settings first ([`updateActivity`](activities.md#updateactivity) with `settings: { strategy }`).
+- `criteria`: the aspects, assertions or criteria, in order, one at least, each with its `description` (HTML). Each strategy takes its own fields, and those of another strategy are refused. Accumulative grading: `maxGrade`, a whole number of points (10 by default, up to the site's maximum grade), or `scaleId`, one of the course's scales; `weight`, 0 to 16 (1 by default). Comments: the description only. Number of errors: `weight` (1 by default), `errorWord` and `successWord` (Moodle's "No" and "Yes" for a new assertion; left as they are when not given). Rubric: `levels`, one at least, each with its `grade`, a whole number from 0 to 100, unique in the criterion, and its `definition`.
+- `gradeMapping`: number of errors only, the grade (0 to 100 percent) for each number of weighted errors, from 1 to the assertions' total weight. The mappings not given are cleared, so they follow Moodle's default.
+- `layout`: rubric only, "list" or "grid"; left as it is when not given.
+- `evenIfAssessed`: change the form even when assessments made with it exist.
+
+The criteria given replace the form's: each row keeps its place, so the first ones keep their ids, and the rows left over are deleted, as Moodle deletes a row whose description is emptied (a rubric criterion's levels too). A rubric's levels are written in their grades' order, the order Moodle lists them in. Moodle's form offers a few blank rows at a time (two more aspects than there are, two more levels than a criterion has, four at least, and one mapping row per error of the saved weights), so the driver saves again until everything fits, as a teacher pressing its "Blanks for 2 more" buttons would; a number-of-errors mapping is set once the new weights are saved. It returns a sentence of what changed and the form as [`workshopForm`](#workshopform) reads it afterwards.
+
+Moodle lets the form change once assessments are made with it, and keeps their grades as they were given, on the form as it was. So the driver refuses with `WorkshopError` before anything changes when it finds any: the assessments with a grade in the workshop's report (in the course's current group) and, in the setup phase, the examples' reference assessments; `evenIfAssessed` changes it anyway. It throws `WorkshopError` too for a form of another strategy, a scale the course doesn't have (the error lists those it has), and when the person can't edit the form (`mod/workshop:editdimensions`); `MoodleError` (`invalid-input`) before opening anything, for a form Moodle wouldn't take (no criteria, a description left empty, a rubric criterion without levels or with a grade repeated, a weight above 16, a mapping beyond the total weight); and `FormError` with Moodle's messages when it refuses the form (a maximum grade above the site's).
+
+```ts
+// `moodle` is the object from createMoodle(), as in the getting-started pages.
+
+const form = await moodle.setWorkshopForm(58, {
+  strategy: "rubric",
+  criteria: [
+    { description: "<p>Explains a loop</p>", levels: [{ grade: 0, definition: "No" }, { grade: 5, definition: "Partly" }, { grade: 10, definition: "Clearly" }] },
+    { description: "<p>Gives an example</p>", levels: [{ grade: 0, definition: "None" }, { grade: 10, definition: "Right" }] },
+  ],
+  layout: "grid",
+});
+console.log(form.changed);
+// Assessing it later, a criterion's level goes by its position or its definition.
+console.log((await moodle.workshopForm(58)).criteria.map((c) => c.levels!.map((l) => l.definition)));
+```
 
 ## assessWorkshopSubmission
 
@@ -719,4 +813,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), and `assessWorkshopSubmission` `others-personal` and `others-write`. `workshopAllocation` is `others-personal`, `allocateReviewer`, `removeReviewer` and `allocateRandomly` `others-personal` and `others-write` (they decide who assesses whose work), and `scheduleAllocation` `others-write`. `workshopSubmission` is `own` and `others-personal` (someone else's work too), `saveWorkshopSubmission` `own`; `workshopExamples`, `addWorkshopExample`, `editWorkshopExample` and `deleteWorkshopExample` are `course-content`, and `assessWorkshopExample` `course-content` and `own` (a teacher's reference assessment, or a participant's practice); `calculateWorkshopGrades` and `overrideWorkshopGrade` are `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), `workshopForm` and `setWorkshopForm` `course-content`, and `assessWorkshopSubmission` `others-personal` and `others-write`. `workshopAllocation` is `others-personal`, `allocateReviewer`, `removeReviewer` and `allocateRandomly` `others-personal` and `others-write` (they decide who assesses whose work), and `scheduleAllocation` `others-write`. `workshopSubmission` is `own` and `others-personal` (someone else's work too), `saveWorkshopSubmission` `own`; `workshopExamples`, `addWorkshopExample`, `editWorkshopExample` and `deleteWorkshopExample` are `course-content`, and `assessWorkshopExample` `course-content` and `own` (a teacher's reference assessment, or a participant's practice); `calculateWorkshopGrades` and `overrideWorkshopGrade` are `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).
