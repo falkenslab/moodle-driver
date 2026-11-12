@@ -160,8 +160,12 @@ export interface MoodleMethods {
   /**
    * Adds a section after another one (at the end without it), named when a name is given, with a
    * description (HTML) when `summary` is, and `embed`'s local files in it (`<img src="shot.png">`).
+   * `visible: false` hides it: Moodle's course editor only adds visible sections (`section_add` takes
+   * no visibility, Moodle 4.5 and 5.2) and the new section's id is known only once it exists, so it is
+   * hidden right after, before naming or describing it: students may see it, empty and unnamed, for
+   * that moment (confirmed empirically, Moodle 5.2).
    */
-  addSection(courseId: number, options?: { name?: string | undefined; afterSectionId?: number | undefined; summary?: string | undefined; embed?: string[] | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
+  addSection(courseId: number, options?: { name?: string | undefined; afterSectionId?: number | undefined; summary?: string | undefined; embed?: string[] | undefined; visible?: boolean | undefined; }): Promise<import("./areas/activities/build.js").CourseChange>;
   /**
    * Adds an example submission to a workshop, as "Add example submission" does, with the
    * submission's own form: a title, its text (HTML, with `embed`'s files) and attached files. Moodle

@@ -953,7 +953,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "addSection",
-    "description": "Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is, and `embed`'s local files in it (`<img src=\"shot.png\">`).",
+    "description": "Adds a section after another one (at the end without it), named when a name is given, with a description (HTML) when `summary` is, and `embed`'s local files in it (`<img src=\"shot.png\">`). `visible: false` hides it: Moodle's course editor only adds visible sections (`section_add` takes no visibility, Moodle 4.5 and 5.2) and the new section's id is known only once it exists, so it is hidden right after, before naming or describing it: students may see it, empty and unnamed, for that moment (confirmed empirically, Moodle 5.2).",
     "params": [
       {
         "name": "courseId",
@@ -999,6 +999,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "string[]",
           "value": {
             "kind": "strings"
+          }
+        },
+        {
+          "name": "visible",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
           }
         }
       ]
