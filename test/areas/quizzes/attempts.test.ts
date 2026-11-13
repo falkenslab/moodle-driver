@@ -39,6 +39,33 @@ describe("readQuestions", { skip: !browser && "no system browser" }, () => {
     assert.deepEqual(JSON.parse(JSON.stringify(q3?.fields[1])), { name: "q9:3_notes", kind: "text" });
     await page.close();
   });
+
+  it("reads a text written straight into the formulation (CodeRunner), without its answer area and controls", async () => {
+    const page = await browser!.newPage();
+    // Made up after qtype_coderunner's renderer: no .qtext, its examples table after the text.
+    await page.setContent(`<body><div id="question-9-4" class="que coderunner adaptive notyetanswered"><div class="content"><div class="formulation clearfix">
+<input type="hidden" name="q9:4_:sequencecheck" value="1"><p>Write <code>sqr(n)</code>, the square of n.</p>
+<div class="coderunner-examples">For example:<table class="coderunnerexamples"><thead><tr><th>Test</th><th>Result</th></tr></thead><tbody><tr><td><pre>print(sqr(3))</pre></td><td><pre>9</pre></td></tr></tbody></table></div>
+<div class="prompt">Answer:</div><div class="answer"><textarea name="q9:4_answer" id="q9:4_answer" class="coderunner-answer"></textarea></div>
+<div class="im-controls"><input type="submit" name="q9:4_-submit" value="Check" class="submit btn btn-secondary"></div></div></div></div></body>`);
+    const [q4] = await readQuestions(page);
+    assert.match(q4!.text, /^Write sqr\(n\), the square of n\.\n+For example:/);
+    assert.match(q4!.text, /print\(sqr\(3\)\)\s+9/);
+    assert.doesNotMatch(q4!.text, /Answer:|Check|q9:4_answer/);
+    assert.deepEqual(q4!.fields.map((f) => f.name), ["q9:4_answer"]);
+    await page.close();
+  });
+
+  it("marks each gap of a gap-fill text with its field's name, where it goes", async () => {
+    const page = await browser!.newPage();
+    await page.setContent(`<body><div id="question-9-5" class="que gapfill deferredfeedback notyetanswered"><div class="content"><div class="formulation clearfix"><div class="qtext">
+<div class="draggable answers"><span class="draggable">mat</span> <span class="draggable">cat</span></div>
+<p>The <input type="text" name="q9:5_p1" class="droptarget" size="4"> sat on the <input type="text" name="q9:5_p2" class="droptarget" size="4">.</p></div></div></div></div></body>`);
+    const [q5] = await readQuestions(page);
+    assert.match(q5!.text, /The \[q9:5_p1\] sat on the \[q9:5_p2\]\./);
+    assert.deepEqual(q5!.fields.map((f) => f.name), ["q9:5_p1", "q9:5_p2"]);
+    await page.close();
+  });
 });
 
 const NAV = `<div id="mod_quiz_navblock"><a class="qnbutton" id="quiznavbutton1" data-quiz-page="0"></a><a class="qnbutton" id="quiznavbutton2" data-quiz-page="0"></a><a class="qnbutton" id="quiznavbutton3" data-quiz-page="1"></a></div>`;

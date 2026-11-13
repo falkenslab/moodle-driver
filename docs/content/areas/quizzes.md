@@ -88,7 +88,7 @@ interface QuestionField {
 - `type`: Moodle's question type ("truefalse", "multichoice", "match", "shortanswer"...).
 - `state`: Moodle's state class ("notyetanswered", "answersaved", and in a review "correct", "incorrect", "partiallycorrect"...).
 - `mark`: the mark line as shown ("Marked out of 1.00").
-- `text`: the question's text, without what only screen readers get; `images` holds its images' URLs.
+- `text`: the question's text, without what only screen readers get; `images` holds its images' URLs. A field inside the text (a gap to fill) comes as its name in brackets where it goes: `"The [q9:3_p1] sat on the [q9:3_p2]."`. A question that writes its text without Moodle's text area (CodeRunner) gives the text it shows before the answer area, with its examples.
 - `feedback` and `rightAnswer`: in a review, when the quiz's review options show them.
 - `comment`: in a review, the teacher's comment from grading by hand, as the text of its paragraphs (without the page's "Comment:" label); a comment written without paragraphs comes with the label, as shown.
 
@@ -99,7 +99,7 @@ Each input of the question is a field with its form name, such as `q9:1_answer` 
 - `select`: a drop-down (matching questions' rows, labelled by the row's text); give one of `options[].value`.
 - `text`: a typed answer (short answer, numerical, essay); give the text.
 
-`value` is the current answer, so a program can see what's already saved.
+`value` is the current answer, so a program can see what's already saved. A question's buttons (adaptive mode's Check) aren't fields.
 
 ## Where an attempt is
 
@@ -169,7 +169,7 @@ The answers are grouped by the page their slot is on, and each page is filled an
 
 The result is where saving left the attempt, an [`AttemptPage`](#where-an-attempt-is): the page after the last one saved, with its questions, or the summary after the last page (`page` absent, `summary` with each question's status). The rest of the attempt isn't read again: `readAttempt` reads another page when a program needs it.
 
-Errors: `QuizError` when the attempt isn't open, or when a slot isn't in it (checked before anything is saved); `FormError` when a page has no field by a given name, in which case that page and the ones after it aren't saved (the pages before it already are).
+Errors: `QuizError` when the attempt isn't open, or when a slot isn't in it (checked before anything is saved); `FormError` when a page has no field by a given name, or when a question's own script sets a choice back as it's made (the field and what the script left), in which case that page and the ones after it aren't saved (the pages before it already are).
 
 ## finishQuizAttempt
 

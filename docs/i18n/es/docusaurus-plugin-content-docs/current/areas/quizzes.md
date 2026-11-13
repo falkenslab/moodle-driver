@@ -88,7 +88,7 @@ interface QuestionField {
 - `type`: el tipo de pregunta de Moodle ("truefalse", "multichoice", "match", "shortanswer"...).
 - `state`: la clase de estado de Moodle ("notyetanswered", "answersaved", y en una revisión "correct", "incorrect", "partiallycorrect"...).
 - `mark`: la línea de la puntuación tal como se muestra ("Se puntúa como 1,00 sobre 1,00").
-- `text`: el enunciado de la pregunta, sin lo que solo reciben los lectores de pantalla; `images` contiene las URL de sus imágenes.
+- `text`: el enunciado de la pregunta, sin lo que solo reciben los lectores de pantalla; `images` contiene las URL de sus imágenes. Un campo dentro del enunciado (un hueco que rellenar) aparece como su nombre entre corchetes, en su sitio: `"The [q9:3_p1] sat on the [q9:3_p2]."`. Una pregunta que escribe su enunciado fuera del área de texto de Moodle (CodeRunner) da el texto que muestra antes del área de respuesta, con sus ejemplos.
 - `feedback` y `rightAnswer`: en una revisión, cuando las opciones de revisión del cuestionario los muestran.
 - `comment`: en una revisión, el comentario del profesor al calificar a mano, como el texto de sus párrafos (sin la etiqueta "Comentario:" de la página); un comentario escrito sin párrafos viene con la etiqueta, tal como se muestra.
 
@@ -99,7 +99,7 @@ Cada entrada de la pregunta es un campo con su nombre en el formulario, como `q9
 - `select`: un desplegable (las filas de las preguntas de emparejamiento, etiquetadas con el texto de la fila); da uno de los `options[].value`.
 - `text`: una respuesta escrita (respuesta corta, numérica, ensayo); da el texto.
 
-`value` es la respuesta actual, para que un programa pueda ver lo que ya está guardado.
+`value` es la respuesta actual, para que un programa pueda ver lo que ya está guardado. Los botones de una pregunta (el Comprobar del modo adaptativo) no son campos.
 
 ## Dónde está un intento {#where-an-attempt-is}
 
@@ -169,7 +169,7 @@ Las respuestas se agrupan por la página en la que está su slot, y cada página
 
 El resultado es donde el guardado dejó el intento, un [`AttemptPage`](#where-an-attempt-is): la página siguiente a la última guardada, con sus preguntas, o el resumen después de la última página (`page` ausente, `summary` con el estado de cada pregunta). El resto del intento no se vuelve a leer: `readAttempt` lee otra página cuando un programa la necesita.
 
-Errores: `QuizError` cuando el intento no está abierto, o cuando un slot no está en él (se comprueba antes de guardar nada); `FormError` cuando una página no tiene ningún campo con un nombre indicado, en cuyo caso esa página y las siguientes no se guardan (las anteriores ya lo están).
+Errores: `QuizError` cuando el intento no está abierto, o cuando un slot no está en él (se comprueba antes de guardar nada); `FormError` cuando una página no tiene ningún campo con un nombre indicado, o cuando el propio script de una pregunta deshace una elección al hacerla (el campo y lo que dejó el script), en cuyo caso esa página y las siguientes no se guardan (las anteriores ya lo están).
 
 ## finishQuizAttempt
 

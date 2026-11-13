@@ -112,12 +112,15 @@ export function readQuestions(page: Page): Promise<Question[]> {
       closest(s: string): El | null;
       cloneNode(deep: boolean): El;
       remove(): void;
+      replaceWith(node: unknown): void;
     }
-    const doc = (globalThis as unknown as { document: El & { getElementById(id: string): El | null; body: El & { appendChild(c: El): void } } }).document;
-    // Text as the page shows it, without what only screen readers get ("Answer Question 4").
-    const text = (el: El | null | undefined) => {
+    const doc = (globalThis as unknown as { document: El & { getElementById(id: string): El | null; createTextNode(text: string): unknown; body: El & { appendChild(c: El): void } } }).document;
+    // Text as the page shows it, without what only screen readers get ("Answer Question 4"); `prepare`
+    // changes the copy read first.
+    const text = (el: El | null | undefined, prepare?: (copy: El) => void) => {
       if (!el) return "";
       const copy = el.cloneNode(true);
+      prepare?.(copy);
       for (const hidden of Array.from(copy.querySelectorAll(".accesshide, .visually-hidden, .sr-only"))) hidden.remove();
       doc.body.appendChild(copy);
       const shown = copy.innerText ?? "";
@@ -128,8 +131,25 @@ export function readQuestions(page: Page): Promise<Question[]> {
       const match = /^question-\d+-(\d+)$/.exec(q.id);
       if (!match) return [];
       const classes = q.className.split(/\s+/);
+      // The statement is the question's .qtext; a question that writes its text straight into its
+      // formulation has none (CodeRunner, with its examples table after it): there the answer area
+      // and the controls are left out. A field inside the text (a gap) reads as its name in brackets,
+      // `[q238:3_p1]`, where it goes; innerText would drop it.
+      const qtext = q.querySelector(".qtext");
+      const textEl = qtext ?? q.querySelector(".formulation");
+      const questionText = text(textEl, (copy) => {
+        if (!qtext) {
+          for (const control of Array.from(copy.querySelectorAll(".ablock, .answer, .prompt, .im-controls, .validationerror, .ace_editor, .ui_wrapper, label, button, input, select, textarea"))) control.remove();
+        }
+        for (const field of Array.from(copy.querySelectorAll("input:not([type=hidden]), select, textarea"))) {
+          if (field.name) field.replaceWith(doc.createTextNode(`[${field.name}]`));
+        }
+      })
+        .replace(/ *\n */g, "\n")
+        .replace(/\n{3,}/g, "\n\n");
       const fields: QuestionField[] = [];
-      const inputs = Array.from(q.querySelectorAll("input:not([type=hidden]), select, textarea")).filter((input) => !/:flagged$|_:sequencecheck$/.test(input.name) && input.name);
+      // A question's buttons (CodeRunner's and adaptive mode's Check, "q9:4_-submit") aren't answers.
+      const inputs = Array.from(q.querySelectorAll("input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea")).filter((input) => !/:flagged$|_:sequencecheck$/.test(input.name) && input.name);
       for (const input of inputs) {
         // An option's label, without its "a." numbering: the element named after the input, or its row.
         const labelEl = (doc.getElementById(`${input.id}_label`) ?? input.closest(".answer > div, label"))?.cloneNode(true);
@@ -174,8 +194,8 @@ export function readQuestions(page: Page): Promise<Question[]> {
           type: classes[1] ?? "",
           state: classes[3] ?? "",
           mark: text(q.querySelector(".info .grade")) || undefined,
-          text: text(q.querySelector(".qtext")),
-          images: Array.from(q.querySelectorAll(".qtext img")).map((img) => img.src),
+          text: questionText,
+          images: Array.from(textEl?.querySelectorAll("img") ?? []).map((img) => img.src),
           fields,
           feedback: [text(q.querySelector(".specificfeedback")), text(q.querySelector(".generalfeedback"))].filter(Boolean).join("\n") || undefined,
           rightAnswer: text(q.querySelector(".rightanswer")) || undefined,

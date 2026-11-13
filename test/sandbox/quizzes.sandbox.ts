@@ -24,6 +24,7 @@ describe("quizzes", () => {
   let student: Moodle;
   let bank: BankQuestion[];
   let categoryId: number;
+  let bankId: number;
   const id = (name: string) => bank.find((q) => q.name === name)!.id;
 
   before(async () => {
@@ -32,7 +33,7 @@ describe("quizzes", () => {
     student = await as("student");
     // A qbank isn't on the course page, so createActivity can't name it: the course's banks do.
     // Moodle 4.x has no qbank activities: the course's own bank, whose id is the course's.
-    let bankId = course.id;
+    bankId = course.id;
     if (!SERIES.startsWith("4.")) {
       await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "qbank", name: "Quiz bank" });
       bankId = (await teacher.questionBanks(course.id)).find((b) => b.type === "qbank" && b.name === "Quiz bank")!.id;
@@ -420,6 +421,69 @@ describe("quizzes", () => {
       const quizId = await quiz("Password quiz", { quizpassword: "driver-check" });
       await assert.rejects(student.startQuizAttempt(quizId), (error: unknown) => error instanceof QuizError && /password/.test(error.message));
       assert.deepEqual((await student.quizInfo(quizId)).attempts, []);
+    });
+  });
+
+  describe("plugin and drag-and-drop questions in an attempt (#108, #109)", () => {
+    let quizId: number;
+    let attemptId: number;
+    const questions: Question[] = [];
+    const slot = (n: number) => questions.find((q) => q.slot === n)!;
+    // The right option of a select, by the label it should have.
+    const pick = (field: Question["fields"][number], label: string) => field.options!.find((o) => o.label === label)!.value;
+
+    before(async () => {
+      const ids: number[] = [];
+      for (const input of [
+        {
+          type: "coderunner",
+          name: "Attempt coderunner",
+          text: "<p>Write a function double that returns twice its number.</p>",
+          coderunner: { type: "python3", answer: "def double(n):\n    return 2 * n\n", testCases: [{ code: "print(double(2))", expected: "4" }] },
+        },
+        { type: "gapfill", name: "Attempt gapfill", text: "<p>The [cat] sat on the [mat].</p>" },
+        { type: "ddmatch", name: "Attempt ddmatch", text: "<p>Match the capitals.</p>", pairs: [{ question: "France", answer: "Paris" }, { question: "Italy", answer: "Rome" }] },
+        { type: "gapselect", name: "Attempt gapselect", text: "<p>Water is [[1]] and fire is [[3]].</p>", choices: [{ text: "wet" }, { text: "dry" }, { text: "hot", group: 2 }, { text: "cold", group: 2 }] },
+        { type: "ddwtos", name: "Attempt ddwtos", text: "<p>The [[1]] sat on the [[2]].</p>", choices: [{ text: "cat" }, { text: "mat" }, { text: "dog" }] },
+      ] as const) {
+        ids.push((await teacher.createQuestion(bankId, input as Parameters<Moodle["createQuestion"]>[1])).questionId!);
+      }
+      quizId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "quiz", name: "Plugin questions quiz", visibility: "shown" })).activityId!;
+      await teacher.addQuestionsToQuiz(quizId, { questionIds: ids });
+    });
+
+    it("readAttempt: CodeRunner's statement without its answer area, gap-fill's gaps by their field names", SLOW, async () => {
+      const started = await student.startQuizAttempt(quizId);
+      attemptId = started.attemptId;
+      for (let page = 0; page < started.pages; page++) questions.push(...(await student.readAttempt(attemptId, { page })).questions);
+      assert.deepEqual(questions.map((q) => [q.slot, q.type]), [[1, "coderunner"], [2, "gapfill"], [3, "ddmatch"], [4, "gapselect"], [5, "ddwtos"]]);
+      assert.match(slot(1).text, /Write a function double that returns twice its number\./, slot(1).text);
+      assert.doesNotMatch(slot(1).text, /_answer\]|Check/, slot(1).text);
+      const gaps = slot(2).fields.map((f) => f.name);
+      assert.equal(gaps.length, 2, JSON.stringify(slot(2).fields));
+      assert.ok(slot(2).text.includes(`The [${gaps[0]}] sat on the [${gaps[1]}]`), slot(2).text);
+    });
+
+    it("answerQuizQuestions: ddmatch, gapselect and ddwtos answers saved, and graded right once finished", SLOW, async () => {
+      // ddmatch shuffles its rows: each by its label.
+      const row = (label: string) => slot(3).fields.find((f) => f.kind === "select" && f.label === label);
+      const [france, italy] = [row("France"), row("Italy")];
+      assert.ok(france && italy, JSON.stringify(slot(3).fields));
+      const [water, fire] = slot(4).fields.filter((f) => f.kind === "select");
+      // ddwtos's gaps are hidden fields its script fills: by name, with the choice's number.
+      const usage = /^(q\d+:)/.exec(france!.name)![1];
+      await student.answerQuizQuestions(
+        attemptId,
+        [
+          { slot: 3, responses: { [france!.name]: pick(france!, "Paris"), [italy!.name]: pick(italy!, "Rome") } },
+          { slot: 4, responses: { [water!.name]: pick(water!, "wet"), [fire!.name]: pick(fire!, "hot") } },
+          { slot: 5, responses: { [`${usage}5_p1`]: "1", [`${usage}5_p2`]: "2" } },
+        ],
+        { trail: "fast" },
+      );
+      assert.equal((await student.finishQuizAttempt(attemptId)).finished, true);
+      const review = await student.readReview(attemptId);
+      assert.deepEqual(review.questions.filter((q) => q.slot >= 3).map((q) => [q.slot, q.state]), [[3, "correct"], [4, "correct"], [5, "correct"]]);
     });
   });
 });
