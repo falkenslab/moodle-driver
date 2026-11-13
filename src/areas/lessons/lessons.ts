@@ -73,7 +73,13 @@ export function readLessonPage(page: Page): Promise<LessonPage> {
         const fields: LessonField[] = [];
         for (const input of Array.from(question.querySelectorAll("input:not([type=hidden]), select, textarea"))) {
           if (!input.name || input.type === "submit") continue;
-          const label = text(input.closest("label")) || undefined;
+          // A radio or checkbox comes wrapped in its label; a matching page's select is a form item,
+          // its label beside it (<label for="id_response_<id>">) in the item's label column.
+          const label =
+            text(input.closest("label")) ||
+            (input.id ? text(question.querySelector(`label[for="${input.id}"]`)) : "") ||
+            text(input.closest(".fitem")?.querySelector(".col-form-label label, .fitemtitle label, label")) ||
+            undefined;
           if (input.type === "radio") {
             let field = fields.find((f) => f.name === input.name);
             if (!field) {

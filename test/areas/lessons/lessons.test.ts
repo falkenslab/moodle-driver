@@ -107,4 +107,27 @@ describe("lessons", { skip: !browser && "no system browser" }, () => {
     assert.deepEqual([page.kind, page.title, page.buttons], ["content", "Welcome", [{ label: "Start", jumpTo: -1 }]]);
     await context.close();
   });
+
+  it("gives a matching page's selects the value each one is for, from the form item's label", async () => {
+    const context = await browser!.newContext();
+    await serveFakeMoodle(context, { user: { id: 5, fullName: "Ana Student" } });
+    // A matching page is a moodleform: each select's label sits in its item's label column, beside it.
+    const item = (id: number, value: string) =>
+      `<div id="fitem_id_response_${id}" class="mb-3 row fitem"><div class="col-md-3 col-form-label d-flex pb-0 pe-md-0"><label id="id_response_${id}_label" class="d-inline word-break" for="id_response_${id}">${value}</label></div>
+<div class="col-md-9 d-flex flex-wrap align-items-start felement"><select class="form-select" name="response[${id}]" id="id_response_${id}"><option value="0">Choose...</option><option value="1">Integer</option><option value="2">Text</option></select></div></div>`;
+    const main = `<h2>Types</h2><form class="mform" method="post" action="${SITE}mod/lesson/continue.php"><input type="hidden" name="pageid" value="8"><div class="contents"><p>Classify each value.</p></div>
+${item(31, "42")}${item(32, "\"hello\"")}<input type="submit" name="submitbutton" value="Submit"></form>`;
+    await context.route(`${SITE}mod/lesson/**`, (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/html", body: moodlePage({ userId: 5, bodyId: "page-mod-lesson-view", body: `<div id="region-main"><div role="main">${main}</div></div>` }) }),
+    );
+    const page = await lessonPage(context, SITE, 39);
+    assert.deepEqual(
+      page.fields?.map((field) => [field.name, field.kind, field.label]),
+      [
+        ["response[31]", "select", "42"],
+        ["response[32]", "select", '"hello"'],
+      ],
+    );
+    await context.close();
+  });
 });

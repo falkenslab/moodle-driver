@@ -36,7 +36,7 @@ interface LessonField {
 - `title`: el encabezado de la página, cuando tiene uno.
 - `text`: la página tal como se muestra: su contenido, la pregunta, los mensajes de Moodle o, al final, la puntuación ("Your score is 1 (out of 1)").
 - `buttons`: los botones de una página de contenido, cada uno con su etiqueta y la página a la que salta, con los códigos de salto de Moodle: un id de página, o `-1` para la página siguiente, `-9` para el final de la lección y otros códigos negativos para los demás saltos de Moodle.
-- `fields`: las entradas de una página de pregunta por nombre en el formulario: `choice` (botones de opción, da uno de los `options[].value`), `checkbox` (da `"1"` para marcarla), `select` (da el valor de una opción), `text` (respuesta escrita). Las preguntas de emparejamiento son desplegables; las de ensayo y respuesta corta son texto.
+- `fields`: las entradas de una página de pregunta por nombre en el formulario: `choice` (botones de opción, da uno de los `options[].value`), `checkbox` (da `"1"` para marcarla), `select` (da el valor de una opción), `text` (respuesta escrita). Las preguntas de emparejamiento son desplegables, cada uno etiquetado con el elemento al que corresponde; las de ensayo y respuesta corta son texto.
 - `feedback`: en una página de retroalimentación, si Moodle dio la respuesta por buena (`correct`, ausente cuando la página no lo dice) y la respuesta del profesor a esa respuesta.
 
 ## lessonPage

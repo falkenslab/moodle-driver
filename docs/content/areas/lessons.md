@@ -36,7 +36,7 @@ interface LessonField {
 - `title`: the page's heading, when it has one.
 - `text`: the page as shown: its content, the question, Moodle's messages, or at the end the score ("Your score is 1 (out of 1)").
 - `buttons`: a content page's buttons, each with its label and the page it jumps to, as Moodle's jump codes: a page id, or `-1` for the next page, `-9` for the end of the lesson, and other negative codes for Moodle's other jumps.
-- `fields`: a question page's inputs by form name: `choice` (radio buttons, give one of `options[].value`), `checkbox` (give `"1"` to tick), `select` (give an option's value), `text` (typed answer). Matching questions are drop-downs; essay and short answers are text.
+- `fields`: a question page's inputs by form name: `choice` (radio buttons, give one of `options[].value`), `checkbox` (give `"1"` to tick), `select` (give an option's value), `text` (typed answer). Matching questions are drop-downs, each labelled with the item it's for; essay and short answers are text.
 - `feedback`: on a feedback page, whether Moodle took the answer as right (`correct`, missing when the page doesn't say) and the teacher's response to that answer.
 
 ## lessonPage

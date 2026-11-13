@@ -265,6 +265,30 @@ describe("doing activities", () => {
     });
   });
 
+  describe("a lesson's matching page (#110)", () => {
+    let lessonId: number;
+
+    before(async () => {
+      const teacher = await as("teacher");
+      lessonId = (await teacher.createActivity({ courseId: course.id, sectionId: course.sectionId, type: "lesson", name: "Driver check lesson matching", visibility: "shown" })).activityId!;
+      // The first two rows are the responses to a right and a wrong match; the pairs follow.
+      await teacher.addLessonPage(lessonId, {
+        type: "matching",
+        title: "Types",
+        contents: "<p>Classify each value.</p>",
+        answers: [{ text: "<p>Right.</p>" }, { text: "<p>Not quite.</p>" }, { text: "<p>42</p>", response: "Integer" }, { text: "<p>hello</p>", response: "Text" }],
+      });
+    }, SETUP);
+
+    it("lessonPage: each select labelled with the value it classifies", SLOW, async () => {
+      const page = await (await as("student")).lessonPage(lessonId);
+      assert.equal(page.kind, "question");
+      const selects = page.fields!.filter((f) => f.kind === "select");
+      assert.deepEqual(selects.map((f) => f.label).sort(), ["42", "hello"], JSON.stringify(page.fields));
+      assert.deepEqual(selects[0]!.options!.map((o) => o.label).filter((l) => l === "Integer" || l === "Text").sort(), ["Integer", "Text"]);
+    });
+  });
+
   describe("feedback survey", () => {
     let feedbackId: number;
 
