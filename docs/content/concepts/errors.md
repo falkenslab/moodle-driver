@@ -75,7 +75,7 @@ Each class's code is its name in kebab case without `Error` (`NotLoggedInError` 
 | Error | When | What it carries |
 | --- | --- | --- |
 | `MoodleServiceError` | A Moodle AJAX service answered with an exception the driver doesn't translate | `methodname`, `errorcode` (Moodle's, e.g. `nopermissions`, `invalidrecord`), Moodle's message |
-| `FormError` | Moodle refused a form (its validation messages by field), a field to set isn't in the form, or it's disabled until another field enables it | `fields: { field, message }[]` |
+| `FormError` | Moodle refused a form (its validation messages by field), a field to set isn't in the form, it's disabled until another field enables it, or the page's script set it back | `fields: { field, message }[]` |
 
 A `FormError` for a disabled field happens where Moodle wouldn't save it: for example an assignment's maximum grade once grades exist, until `grade[modgrade_rescalegrades]` is chosen. Set the enabling field first, in the same call.
 

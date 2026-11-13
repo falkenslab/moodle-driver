@@ -79,6 +79,7 @@ export function formValue(page: Page, name: string): Promise<string | undefined>
 export async function setFields(page: Page, values: Record<string, FieldValue>, formSelector = "form.mform"): Promise<void> {
   const missing: string[] = [];
   const disabled: string[] = [];
+  const reset: { field: string; message: string }[] = [];
   // TinyMCE editors still starting can't take content: setContent throws inside a plugin (codesample's
   // "reading 'select'" in a forum reply, seen on the sandbox, 5.2, once its pages loaded fast). Moodle
   // starts a form's editors one after another: on a form with many (a lesson question page has one
@@ -104,7 +105,7 @@ export async function setFields(page: Page, values: Record<string, FieldValue>, 
   // One field at a time: Moodle enables dependent fields in handlers that run after the change event
   // (choosing whether to rescale enables a maximum grade, confirmed empirically, 5.2).
   for (const [name, value] of Object.entries(values)) {
-    let outcome = await setField(page, name, value, formSelector);
+    let outcome: Awaited<ReturnType<typeof setField>> = await setField(page, name, value, formSelector);
     // An editor that throws on taking content is tried again for a while: even ready by its flags,
     // one of a lesson page's editors threw inside TinyMCE ("reading 'parse'") right after the form
     // loaded (confirmed empirically, 5.2).
@@ -115,6 +116,7 @@ export async function setFields(page: Page, values: Record<string, FieldValue>, 
     if (outcome === "starting") throw new FormError("An editor of the form didn't take its content:", [{ field: name, message: "its editor kept failing; try again" }]);
     if (outcome === "missing") missing.push(name);
     if (outcome === "disabled") disabled.push(name);
+    if (typeof outcome === "object") reset.push({ field: name, message: `set to "${String(value)}", but the page's script put it back to "${outcome.reset}"` });
   }
   if (missing.length > 0) {
     throw new FormError("The form has no such field:", missing.map((field) => ({ field, message: "not in this form; check its name in Moodle's form" })));
@@ -122,9 +124,11 @@ export async function setFields(page: Page, values: Record<string, FieldValue>, 
   if (disabled.length > 0) {
     throw new FormError("The form has these fields disabled, so Moodle wouldn't save them:", disabled.map((field) => ({ field, message: "disabled; another field enables it (set that one first, in the same call)" })));
   }
+  if (reset.length > 0) throw new FormError("The page's scripts set these fields back, so Moodle wouldn't save them:", reset);
 }
 
-function setField(page: Page, name: string, value: FieldValue, formSelector: string): Promise<"set" | "missing" | "disabled" | "starting"> {
+/** Sets one field; `{ reset }` when a select's own script set it back in its change event (to the value given). */
+function setField(page: Page, name: string, value: FieldValue, formSelector: string): Promise<"set" | "missing" | "disabled" | "starting" | { reset: string }> {
   return page.evaluate(({ name, value, formSelector }) => {
     interface Field {
       type: string;
@@ -133,7 +137,8 @@ function setField(page: Page, name: string, value: FieldValue, formSelector: str
       checked: boolean;
       disabled: boolean;
       multiple?: boolean;
-      options?: ArrayLike<{ value: string; selected: boolean }>;
+      tagName: string;
+      options?: ArrayLike<{ value: string; selected: boolean; setAttribute(n: string, v: string): void; removeAttribute(n: string): void }>;
       dispatchEvent(event: unknown): void;
     }
     const g = globalThis as unknown as {
@@ -151,9 +156,27 @@ function setField(page: Page, name: string, value: FieldValue, formSelector: str
     for (const field of fields) {
       if (field.type === "checkbox") field.checked = value === true || value === 1 || value === "1";
       else if (field.type === "radio") field.checked = field.value === String(value);
-      else if (field.multiple && field.options) {
+      else if (field.tagName === "SELECT" && field.options) {
+        // The attribute moves too: a question's script (ddmatch's) reads the choice from the
+        // `selected` attribute in its change event and, finding it still on the first option, sets the
+        // select back to it (seen on the sandbox, 5.2).
         const wanted = (Array.isArray(value) ? value : [value]).map(String);
-        for (const option of Array.from(field.options)) option.selected = wanted.includes(option.value);
+        const options = Array.from(field.options);
+        const chosen = field.multiple ? options.filter((option) => wanted.includes(option.value)) : options.filter((option) => option.value === wanted[0]).slice(0, 1);
+        for (const option of options) {
+          option.selected = chosen.includes(option);
+          if (chosen.includes(option)) option.setAttribute("selected", "selected");
+          else option.removeAttribute("selected");
+        }
+        // A value the select doesn't offer is left to Moodle's own validation, as before.
+        if (chosen.length === 0 && !field.multiple) field.value = String(value);
+        field.dispatchEvent(new g.Event("change", { bubbles: true }));
+        // Read back: a script that set it back would leave Moodle saving something else, unnoticed.
+        const now = options.filter((option) => option.selected);
+        if (chosen.length > 0 && (now.length !== chosen.length || now.some((option) => !chosen.includes(option)))) {
+          return { reset: now.map((option) => option.value).join(", ") };
+        }
+        continue;
       } else {
         field.value = String(value);
         const editor = field.id ? g.tinymce?.get(field.id) : null;

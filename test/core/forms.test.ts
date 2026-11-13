@@ -36,6 +36,26 @@ describe("setFields", { skip: !browser && "no system browser" }, () => {
     assert.equal(await page.inputValue('[name="message[text]"]'), "<p>Late but set</p>");
     await page.close();
   });
+
+  it("moves a select's selected attribute, which a question's script reads, and refuses a choice a script sets back", async () => {
+    const page = await browser!.newPage();
+    // Made up after ddmatch's script: in the change event it takes the choice from the `selected`
+    // attribute, and sets the select back to the option that has it.
+    await page.setContent(`<form id="responseform"><select name="q1:4_sub0" id="m"><option value="0" selected>Choose...</option><option value="1">Frog</option><option value="2">Cat</option></select>
+<select name="q1:4_sub1" id="r"><option value="0" selected>Choose...</option><option value="1">Frog</option></select></form>
+<script>
+  for (const id of ["m", "r"]) document.getElementById(id).addEventListener("change", (e) => {
+    const marked = e.target.querySelector("option[selected]");
+    e.target.value = id === "r" ? "0" : marked.value;
+  });
+</script>`);
+    await setFields(page, { "q1:4_sub0": "2" }, "#responseform");
+    assert.equal(await page.inputValue("#m"), "2");
+    assert.equal(await page.getAttribute('#m option[value="2"]', "selected"), "selected");
+    assert.equal(await page.getAttribute('#m option[value="0"]', "selected"), null);
+    await assert.rejects(setFields(page, { "q1:4_sub1": "1" }, "#responseform"), (error: Error) => error instanceof FormError && /set these fields back.*q1:4_sub1.*put it back to "0"/.test(error.message));
+    await page.close();
+  });
 });
 
 describe("submitForm", { skip: !browser && "no system browser" }, () => {

@@ -75,7 +75,7 @@ El código de cada clase es su nombre en kebab-case sin `Error` (`NotLoggedInErr
 | Error | Cuándo | Qué lleva |
 | --- | --- | --- |
 | `MoodleServiceError` | Un servicio AJAX de Moodle respondió con una excepción que el driver no traduce | `methodname`, `errorcode` (el de Moodle, p. ej. `nopermissions`, `invalidrecord`), el mensaje de Moodle |
-| `FormError` | Moodle rechazó un formulario (sus mensajes de validación por campo), un campo que hay que fijar no está en el formulario, o está desactivado hasta que otro campo lo activa | `fields: { field, message }[]` |
+| `FormError` | Moodle rechazó un formulario (sus mensajes de validación por campo), un campo que hay que fijar no está en el formulario, está desactivado hasta que otro campo lo activa, o el script de la página lo devolvió a su valor anterior | `fields: { field, message }[]` |
 
 Un `FormError` por un campo desactivado ocurre donde Moodle no lo guardaría: por ejemplo, la calificación máxima de una tarea una vez que existen calificaciones, hasta que se elige `grade[modgrade_rescalegrades]`. Fija antes el campo que lo activa, en la misma llamada.
 
