@@ -3913,3 +3913,15 @@ moodle workshop-submission <activityId> [--options]
 | `activityId` | `number` |  |
 | `--submission-id` | `number` |  |
 | `--author-id` | `number` | The author's user id: their submission, found in the workshop's report (a teacher's). |
+
+## workshopView
+
+A workshop as its page shows it to the person, participant or teacher: the phase and their tasks in it, the instructions shown in this phase, their own submission, and the submissions allocated to them to assess (with their assessment's id, whether it's assessed and the grade it gives). While assessing is open, `form` is the assessment form as a reviewer gets it, read from one of the person's own assessments: its criteria in order, with the grades each takes as `assessWorkshopSubmission` takes them. A rubric's levels come without their points, which Moodle doesn't show reviewers (confirmed empirically, 5.2). `workshopInfo` reads the teacher's report, empty for a participant; this reads what any participant has. Opening the workshop's page logs that the person viewed it, as when they open it in Moodle; the pages of their assessments it reads (for a grade given, and for the form) are only read: nothing is saved, and no assessment is started. Throws `WorkshopError` for an activity that isn't a workshop the person can view.
+
+```bash
+moodle workshop-view <activityId>
+```
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| `activityId` | `number` |  |

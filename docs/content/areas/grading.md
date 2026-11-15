@@ -318,6 +318,70 @@ interface WorkshopAssessment {
 
 It reads the workshop's page (`mod/workshop/view.php`), every page of its report, by the phase list's and the report's classes and links, so it works in any language. Moodle shows the report from the submission phase on to those who can see every submission (a teacher), in the course's current group; for a student both lists are empty. Grades are numbers as Moodle shows them, with as many decimals as the workshop's settings say. The evaluation phase's grades are calculated with [`calculateWorkshopGrades`](#calculateworkshopgrades). It throws `WorkshopError` for an activity that isn't a workshop the person can view.
 
+## workshopView
+
+A workshop as its page shows it to the person, a participant or a teacher: the phase and their tasks, the instructions, their own submission, the submissions allocated to them to assess, and the assessment form a reviewer fills.
+
+```ts
+function workshopView(context: BrowserContext, siteUrl: string, activityId: number): Promise<WorkshopView>;
+
+interface WorkshopView {
+  activityId: number;
+  phase: WorkshopPhase;
+  tasks: WorkshopTask[];
+  instructions: { authors?: string; reviewers?: string };
+  ownSubmission?: { id: number; title: string };
+  toAssess: WorkshopSubmissionToAssess[];
+  form?: WorkshopReviewForm;
+}
+
+interface WorkshopTask {
+  title: string;
+  state: "done" | "todo" | "failed" | "info";
+  details: string[];
+}
+
+interface WorkshopSubmissionToAssess {
+  assessmentId: number;
+  submissionId: number;
+  title: string;
+  authorId?: number;
+  author?: string;
+  assessed: boolean;
+  grade?: number;
+  maxGrade?: number;
+}
+
+interface WorkshopReviewForm {
+  strategy: WorkshopStrategy;
+  criteria: WorkshopReviewCriterion[];
+  feedback: boolean;
+}
+
+interface WorkshopReviewCriterion {
+  description: string;
+  grades: { grade: number; label: string }[];
+  comment: boolean;
+}
+```
+
+- `tasks`: the person's tasks in the current phase, as the timeline lists them (in the site's language): "Submit your work", "Assess peers" with its details ("total: 2", "pending: 1"), a teacher's "Switch to the next phase"; `state` is Moodle's mark for each.
+- `instructions`: the instructions the page shows in this phase (HTML): for authors in the submission phase, for reviewers in the assessment phase.
+- `ownSubmission`: the person's submission, once they've submitted.
+- `toAssess`: the submissions allocated to the person, from the assessment phase on, each with the id of their assessment of it, its author (unless the workshop hides authors from reviewers), whether they've assessed it, and the grade they gave (out of `maxGrade`, the workshop's grade for submission).
+- `form`: while assessing is open, the assessment form as a reviewer gets it: the strategy, its criteria in order with their description (HTML), the grades each takes and whether it takes a comment, and whether the form has an overall feedback. Each grade is what [`assessWorkshopSubmission`](#assessworkshopsubmission) takes as `criteria[i].grade`, with its label: accumulative grading's points ("4 / 4") or scale items, number of errors' `1` and `-1` with the teacher's words, a rubric's levels by position with their definitions. Moodle doesn't show reviewers a rubric level's points; [`workshopForm`](#workshopform) gives them to a teacher.
+
+[`workshopInfo`](#workshopinfo) reads the teacher's report, empty for a participant; this reads what the workshop's page gives any participant. It reads `mod/workshop/view.php`, by the ids of its parts (Moodle's viewlets), the phase list's classes and the submissions' links, so it works in any language; then the page of each assessment the person has made, for the grade it gives, and while assessing is open the page of one of their assessments, for the form. Opening the workshop's page logs that the person viewed it, as when they open it in Moodle; the assessments' pages are only read: nothing is saved and no assessment is started (checked against the logs on Moodle 5.2 and 4.5). A teacher with no allocation gets their tasks and no form. It throws `WorkshopError` for an activity that isn't a workshop the person can view.
+
+```ts fragment
+const view = await moodle.workshopView(58);
+const next = view.toAssess.find((item) => !item.assessed);
+if (next && view.form) {
+  // The best level of each criterion of a rubric, as an example.
+  await moodle.assessWorkshopSubmission(58, next.submissionId, { criteria: view.form.criteria.map((c) => ({ grade: c.grades.at(-1)?.grade })) });
+}
+```
+
 ## setWorkshopPhase
 
 Switches a workshop to a phase, as the phase links on its page do.
@@ -813,4 +877,4 @@ await moodle.setWorkflowState(52, members, "released", { notify: true });
 
 ## Data categories
 
-`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `setWorkshopPhase` `others-write` (it opens and closes participants' work), `workshopForm` and `setWorkshopForm` `course-content`, and `assessWorkshopSubmission` `others-personal` and `others-write`. `workshopAllocation` is `others-personal`, `allocateReviewer`, `removeReviewer` and `allocateRandomly` `others-personal` and `others-write` (they decide who assesses whose work), and `scheduleAllocation` `others-write`. `workshopSubmission` is `own` and `others-personal` (someone else's work too), `saveWorkshopSubmission` `own`; `workshopExamples`, `addWorkshopExample`, `editWorkshopExample` and `deleteWorkshopExample` are `course-content`, and `assessWorkshopExample` `course-content` and `own` (a teacher's reference assessment, or a participant's practice); `calculateWorkshopGrades` and `overrideWorkshopGrade` are `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).
+`assignmentSubmissions` is `others-personal`. `gradeSubmission` is `others-personal` and `others-write` (it reads the panel and decides about someone). `rubric` and `setGradingDefinition` are `course-content`, and `grantExtension`, `setWorkflowState` and `allocateMarker` are `others-write`. `forumGrades` is `others-personal`, `gradeForumUser` `others-personal` and `others-write`, and `rate` `others-write`. `workshopInfo` is `others-personal`, `workshopView` `own`, `others-personal` and `course-content` (the person's own work, others' work allocated to them with its authors, the form), `setWorkshopPhase` `others-write` (it opens and closes participants' work), `workshopForm` and `setWorkshopForm` `course-content`, and `assessWorkshopSubmission` `others-personal` and `others-write`. `workshopAllocation` is `others-personal`, `allocateReviewer`, `removeReviewer` and `allocateRandomly` `others-personal` and `others-write` (they decide who assesses whose work), and `scheduleAllocation` `others-write`. `workshopSubmission` is `own` and `others-personal` (someone else's work too), `saveWorkshopSubmission` `own`; `workshopExamples`, `addWorkshopExample`, `editWorkshopExample` and `deleteWorkshopExample` are `course-content`, and `assessWorkshopExample` `course-content` and `own` (a teacher's reference assessment, or a participant's practice); `calculateWorkshopGrades` and `overrideWorkshopGrade` are `others-personal` and `others-write`. See [data categories](../concepts/data-categories.md).

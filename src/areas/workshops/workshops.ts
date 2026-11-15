@@ -290,8 +290,8 @@ interface GradeControl {
   options: { value: string; text: string }[];
 }
 
-/** The assessment form's grading strategy and its criteria's grade controls, by index. */
-function readAssessmentForm(page: Page): Promise<{ strategy: string; criteria: (GradeControl | undefined)[]; feedback: boolean }> {
+/** The assessment form's grading strategy and its criteria's grade controls, descriptions (HTML) and comment fields, by index. */
+export function readAssessmentForm(page: Page): Promise<{ strategy: string; criteria: (GradeControl | undefined)[]; descriptions: string[]; comments: boolean[]; feedback: boolean }> {
   return inPage(
     page,
     () => {
@@ -301,6 +301,7 @@ function readAssessmentForm(page: Page): Promise<{ strategy: string; criteria: (
         value: string;
         id: string;
         text: string;
+        innerHTML: string;
         textContent: string | null;
         tagName: string;
         closest(s: string): El | null;
@@ -309,10 +310,17 @@ function readAssessmentForm(page: Page): Promise<{ strategy: string; criteria: (
       }
       const doc = (globalThis as unknown as { document: El }).document;
       const form = doc.querySelector("form.assessmentform");
-      if (!form) return { strategy: "", criteria: [], feedback: false };
+      if (!form) return { strategy: "", criteria: [], descriptions: [], comments: [], feedback: false };
       const clean = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, " ").trim();
       const count = form.querySelectorAll('input[name^="dimensionid__idx_"]').length;
       const criteria: (GradeControl | undefined)[] = [];
+      // A criterion's description: its fieldset's, or its row's in a rubric's grid (confirmed empirically, 5.2).
+      const descriptions: string[] = [];
+      const comments: boolean[] = [];
+      for (let i = 0; i < count; i++) {
+        descriptions.push((form.querySelector(`#id_dimensionhdr__idx_${i} .description`) ?? form.querySelector(`table.rubric-grid tr.r${i} td.criterion`))?.innerHTML.trim() ?? "");
+        comments.push(form.querySelector(`[name="peercomment__idx_${i}"]`) !== null);
+      }
       for (let i = 0; i < count; i++) {
         const select = form.querySelector(`select[name="grade__idx_${i}"]`);
         if (select) {
@@ -332,7 +340,7 @@ function readAssessmentForm(page: Page): Promise<{ strategy: string; criteria: (
           options: radios.map((radio) => ({ value: radio.value, text: clean((radio.closest("label") ?? form.querySelector(`label[for="${radio.id}"]`))?.textContent) })),
         });
       }
-      return { strategy: form.querySelector('input[name="strategy"]')?.value ?? "", criteria, feedback: form.querySelector('[name="feedbackauthor_editor[text]"]') !== null };
+      return { strategy: form.querySelector('input[name="strategy"]')?.value ?? "", criteria, descriptions, comments, feedback: form.querySelector('[name="feedbackauthor_editor[text]"]') !== null };
     },
     undefined,
   );
@@ -399,7 +407,7 @@ async function ownAssessment(page: Page, activityId: number, submissionId: numbe
 }
 
 /** The person's assessment's grade and maximum, as its page's header shows them ("80.00 of 80.00"). */
-async function assessmentGrade(page: Page): Promise<{ grade?: number; maxGrade?: number }> {
+export async function assessmentGrade(page: Page): Promise<{ grade?: number; maxGrade?: number }> {
   const shown = await page.evaluate(() => {
     const box = (globalThis as unknown as { document: { querySelector(s: string): { textContent: string | null } | null } }).document.querySelector(".assessment-full .header .grade:not(.nograde)");
     return box?.textContent ?? "";

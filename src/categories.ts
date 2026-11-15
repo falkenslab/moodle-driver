@@ -324,6 +324,8 @@ export const DATA_CATEGORIES: Readonly<Record<string, readonly DataCategory[]>> 
   // The assessment form is course content: what assessors are asked, read and set by the teacher.
   workshopForm: CONTENT,
   setWorkshopForm: CONTENT,
+  // A participant's view: their own submission and tasks, the work of others allocated to them (with its authors), the form.
+  workshopView: ["own", "others-personal", "course-content"],
   // Everyone's grades, as Moodle exports them.
   exportGrades: PERSONAL,
   // Importing grades decides them; its preview shows the file, people and grades, as Moodle reads it.

@@ -32,6 +32,7 @@ import { saveWorkshopSubmission, workshopSubmission } from "./areas/workshops/su
 import { addWorkshopExample, assessWorkshopExample, deleteWorkshopExample, editWorkshopExample, workshopExamples } from "./areas/workshops/examples.js";
 import { calculateWorkshopGrades, overrideWorkshopGrade } from "./areas/workshops/evaluation.js";
 import { setWorkshopForm, workshopForm } from "./areas/workshops/form.js";
+import { workshopView } from "./areas/workshops/view.js";
 import { exportGrades, type ExportGradesOptions } from "./areas/grades/export.js";
 import { importGrades } from "./areas/grades/import.js";
 import { addScale, courseScales, editScale, gradeLetters, setGradeLetters } from "./areas/grades/scales.js";
@@ -305,6 +306,7 @@ const SITE_FUNCTIONS = {
   overrideWorkshopGrade,
   workshopForm,
   setWorkshopForm,
+  workshopView,
   readAttempt,
   readReview,
   removeQuizSlot,

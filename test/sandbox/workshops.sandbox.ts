@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { MoodleError, WorkshopError, type WorkshopForm, type WorkshopFormInput, type WorkshopStrategy } from "../../src/index.js";
-import { as, scratchCourse, type ScratchCourse } from "./harness.js";
+import { as, scratchCourse, userId, type ScratchCourse } from "./harness.js";
 
 /** Creates a workshop with a grading strategy on the scratch course as the teacher; its id. */
 async function newWorkshop(course: ScratchCourse, strategy: WorkshopStrategy): Promise<number> {
@@ -127,5 +127,98 @@ describe("workshop assessment forms on the scratch course", () => {
       changed.criteria.map((c) => c.description),
       ["<p>Is it clear enough?</p>"],
     );
+  });
+});
+
+// A participant's view (#111): the only student who can log in assesses the admin's submission (the
+// admin enrolled as a student in the scratch course, to have work to assess).
+describe("a workshop as a participant sees it (#111)", () => {
+  let course: ScratchCourse;
+  let workshopId: number;
+  let mine: number;
+  let theirs: number;
+  let assessmentId: number;
+
+  before(async () => {
+    course = await scratchCourse("workshopview");
+    const teacher = await as("teacher");
+    const admin = await as("admin");
+    await admin.enrolUsers(course.id, [await userId("admin")], { roleId: 5 });
+    workshopId = (
+      await teacher.createActivity({
+        courseId: course.id,
+        sectionId: course.sectionId,
+        type: "workshop",
+        name: "Driver check suite participant view",
+        visibility: "shown",
+        settings: { strategy: "rubric", "instructauthorseditor[text]": "<p>Authors: write it.</p>", "instructreviewerseditor[text]": "<p>Reviewers: be kind.</p>" },
+      })
+    ).activityId!;
+    await teacher.setWorkshopForm(workshopId, {
+      strategy: "rubric",
+      criteria: [
+        { description: "<p>Clarity</p>", levels: [{ grade: 0, definition: "Unclear" }, { grade: 5, definition: "Clear" }] },
+        { description: "<p>Content</p>", levels: [{ grade: 0, definition: "Missing" }, { grade: 3, definition: "Some" }, { grade: 6, definition: "All" }] },
+      ],
+    });
+    await teacher.setWorkshopPhase(workshopId, "submission");
+  }, { timeout: 600_000 });
+
+  it("workshopView: the submission phase, the instructions for authors, nothing submitted yet", { timeout: 300_000 }, async () => {
+    const view = await (await as("student")).workshopView(workshopId);
+    assert.equal(view.phase, "submission");
+    assert.equal(view.tasks.length, 1);
+    assert.equal(view.tasks[0]!.state, "todo");
+    assert.match(view.instructions.authors ?? "", /Authors: write it\./);
+    assert.deepEqual([view.ownSubmission, view.toAssess, view.form], [undefined, [], undefined]);
+  });
+
+  it("workshopView: in the assessment phase, the own submission, the admin's allocated with its ids and author, and the reviewer's form", { timeout: 600_000 }, async () => {
+    const teacher = await as("teacher");
+    const student = await as("student");
+    mine = (await student.saveWorkshopSubmission(workshopId, { title: "Driver check suite own work", content: "<p>Mine.</p>" })).submissionId;
+    theirs = (await (await as("admin")).saveWorkshopSubmission(workshopId, { title: "Driver check suite admin work", content: "<p>Theirs.</p>" })).submissionId;
+    assessmentId = (await teacher.allocateReviewer(workshopId, { submissionId: theirs, reviewerId: await userId("student") })).assessmentId;
+    await teacher.setWorkshopPhase(workshopId, "assessment");
+    const before = await teacher.courseLogs(course.id, { userId: await userId("student"), activityId: workshopId });
+    const view = await student.workshopView(workshopId);
+    assert.equal(view.phase, "assessment");
+    assert.deepEqual(view.ownSubmission, { id: mine, title: "Driver check suite own work" });
+    assert.match(view.instructions.reviewers ?? "", /Reviewers: be kind\./);
+    assert.deepEqual(view.toAssess, [{ assessmentId, submissionId: theirs, title: "Driver check suite admin work", authorId: await userId("admin"), author: view.toAssess[0]!.author, assessed: false }]);
+    assert.deepEqual(view.form, {
+      strategy: "rubric",
+      criteria: [
+        { description: view.form!.criteria[0]!.description, grades: [{ grade: 1, label: "Unclear" }, { grade: 2, label: "Clear" }], comment: false },
+        { description: view.form!.criteria[1]!.description, grades: [{ grade: 1, label: "Missing" }, { grade: 2, label: "Some" }, { grade: 3, label: "All" }], comment: false },
+      ],
+      feedback: view.form!.feedback,
+    });
+    assert.match(view.form!.criteria[0]!.description, /Clarity/);
+    // Reading logged only that the student viewed the workshop: no assessment started or saved.
+    const after = await teacher.courseLogs(course.id, { userId: await userId("student"), activityId: workshopId });
+    const added = after.slice(0, after.length - before.length);
+    assert.deepEqual(added.map((entry) => /viewed the 'workshop' activity/.test(entry.description)), [true], JSON.stringify(added.map((entry) => entry.description)));
+  });
+
+  it("workshopView: the form's grades taken by assessWorkshopSubmission, then the submission read back assessed with its grade", { timeout: 300_000 }, async () => {
+    const student = await as("student");
+    const { form } = await student.workshopView(workshopId);
+    const assessed = await student.assessWorkshopSubmission(workshopId, theirs, { criteria: form!.criteria.map((criterion) => ({ grade: criterion.grades.at(-1)!.grade })) });
+    assert.equal(assessed.assessmentId, assessmentId);
+    const view = await student.workshopView(workshopId);
+    assert.deepEqual(
+      view.toAssess.map((item) => [item.assessmentId, item.assessed, item.grade, item.maxGrade]),
+      [[assessmentId, true, assessed.grade, assessed.maxGrade]],
+    );
+    assert.equal(view.tasks[0]!.state, "done");
+  });
+
+  it("workshopView: the teacher has no allocation, and no form; an activity that isn't a workshop is refused", { timeout: 300_000 }, async () => {
+    const teacher = await as("teacher");
+    const view = await teacher.workshopView(workshopId);
+    assert.deepEqual([view.phase, view.toAssess, view.form, view.ownSubmission], ["assessment", [], undefined, undefined]);
+    const other = (await teacher.courseStructure(course.id)).flatMap((s) => s.activities).find((a) => a.type !== "workshop");
+    if (other) await assert.rejects(teacher.workshopView(other.id), WorkshopError);
   });
 });

@@ -363,6 +363,7 @@ export const FOLLOWED_PAGES: { readonly [K in Method]?: PageOf<K> } = {
   setQuizPages: ([activityId]) => quizEdit(activityId),
   // Workshops.
   workshopInfo: ([activityId]) => workshop(activityId),
+  workshopView: ([activityId]) => workshop(activityId),
   setWorkshopPhase: ([activityId]) => workshop(activityId),
   // The person's own assessment, on its page (assessment.php, where assessWorkshopSubmission fills it).
   assessWorkshopSubmission: (_, { assessmentId }) => `mod/workshop/assessment.php?asid=${assessmentId}`,
