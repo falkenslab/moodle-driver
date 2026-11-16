@@ -78,7 +78,7 @@ Estatus de la entrega: No se ha enviado nada en esta tarea
 Estatus de calificación: Sin calificar
 Tiempo restante: 6 días 12 horas
 
-Saved online text and 1 file in assignment 45's submission. Archivos: factorial.py
+Saved online text and 1 file in assignment 45's submission, a draft until it's submitted for grading. Archivos: factorial.py
 
 Submitting asks to accept this statement; call again with acceptStatement once the person agrees: Este trabajo es mío, excepto donde he reconocido el uso de las obras de otras personas.
 ¿Aceptas esta declaración? (sí/no) sí

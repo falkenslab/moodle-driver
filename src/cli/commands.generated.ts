@@ -7829,7 +7829,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "saveSubmission",
-    "description": "Saves the submission's online text and adds files, as \"Save changes\" on the edit page does; gives the assignment afterwards.",
+    "description": "Saves the submission's online text and adds files, as \"Save changes\" on the edit page does; gives the assignment afterwards. Without drafts saving is submitting, and the edit form may ask to accept the site's statement: `acceptStatement`, once the person agrees.",
     "params": [
       {
         "name": "activityId",
@@ -7859,6 +7859,14 @@ export const COMMANDS: readonly CommandSpec[] = [
           "type": "string[]",
           "value": {
             "kind": "strings"
+          }
+        },
+        {
+          "name": "acceptStatement",
+          "optional": true,
+          "type": "boolean",
+          "value": {
+            "kind": "boolean"
           }
         }
       ]
@@ -9179,7 +9187,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     "name": "studentAssignment",
-    "description": "An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, and whether it can be edited or submitted now.",
+    "description": "An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, whether it can be edited or submitted now, and whether saving leaves a draft and submitting asks to accept a statement, as far as the student's pages tell.",
     "params": [
       {
         "name": "activityId",

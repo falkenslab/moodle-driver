@@ -30,6 +30,21 @@ export interface StudentAssignment {
   canEdit: boolean;
   canSubmit: boolean;
   /**
+   * Whether saving leaves a draft that must then be submitted for grading (`submitForGrading`): the
+   * assignment's "Require students to click the submit button". Moodle tells a student only through
+   * the submit button, once a draft holds something, and through the statement in the edit form when
+   * there are no drafts; a submission submitted and still editable has none too (with drafts it would
+   * be locked). Absent when the pages don't tell, as before the first save without a statement.
+   */
+  drafts?: boolean;
+  /**
+   * The statement the student accepts when submitting (`acceptStatement`; when saving, without
+   * drafts), in the site's words. Read with `drafts`: when `drafts` is known and this is absent,
+   * there's none. `studentAssignment` opens the edit page (or the confirmation page, with a draft to
+   * submit) to read them, as the person would before saving or submitting.
+   */
+  statement?: string;
+  /**
    * With group submissions, the submission is the group's: its name, and its id where the
    * participants page shows the group to the person (`participants(courseId, { group: id })` gives
    * its members); only the name for Moodle's "Default group" (the person is in no group).
@@ -164,6 +179,9 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
         feedbackFiles: links('.feedback [class*="summary_assignfeedback_file_"] a[href*="pluginfile.php"]'),
         canEdit: actions.includes("editsubmission"),
         canSubmit: actions.includes("submit"),
+        // Moodle shows the submit button only with drafts, and locks a submission once submitted with
+        // them (mod_assign's show_submit_button and can_edit_submission, Moodle 5.2).
+        ...(actions.includes("submit") ? { drafts: true } : stateCell && /\bsubmissionstatussubmitted\b/.test(stateCell.className) && actions.includes("editsubmission") ? { drafts: false } : {}),
         ...(grading ? { grading } : {}),
       };
     },
@@ -171,8 +189,18 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
   );
 }
 
-/** An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, and whether it can be edited or submitted now. */
+/**
+ * An assignment as the student sees it: its description and files, dates, the submission's status
+ * and files, the feedback, whether it can be edited or submitted now, and whether saving leaves a
+ * draft and submitting asks to accept a statement, as far as the student's pages tell.
+ */
 export async function studentAssignment(context: BrowserContext, siteUrl: string, activityId: number): Promise<StudentAssignment> {
+  const assignment = await readAssignment(context, siteUrl, activityId);
+  return { ...assignment, ...(await submissionSettings(context, siteUrl, activityId, assignment)) };
+}
+
+/** The assignment's own page, without the pages `studentAssignment` opens for the statement. */
+async function readAssignment(context: BrowserContext, siteUrl: string, activityId: number): Promise<StudentAssignment> {
   const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${activityId}`);
   try {
     if ((await page.locator("body#page-mod-assign-view").count()) === 0) {
@@ -184,6 +212,32 @@ export async function studentAssignment(context: BrowserContext, siteUrl: string
   } finally {
     await page.close().catch(() => undefined);
   }
+}
+
+/**
+ * Whether there are drafts and the statement, from the page where Moodle asks for it: the
+ * confirmation page with a draft to submit, the edit form otherwise, which carries the statement
+ * only without drafts (mod_assign's add_submission_form_elements, Moodle 5.2). Neither changes
+ * anything; Moodle logs that the form was viewed, as when the person opens it.
+ */
+async function submissionSettings(context: BrowserContext, siteUrl: string, activityId: number, assignment: StudentAssignment): Promise<Pick<StudentAssignment, "drafts" | "statement">> {
+  if (!assignment.canSubmit && !assignment.canEdit) return {};
+  const page = await openSitePage(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=${assignment.canSubmit ? "submit" : "editsubmission"}`);
+  try {
+    const statement = await statementText(page);
+    if (statement !== undefined) return { drafts: assignment.canSubmit, statement };
+    return assignment.drafts !== undefined ? { drafts: assignment.drafts } : {};
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
+/** The statement to accept in the page's form, in the site's words, when it asks for one. */
+async function statementText(page: Page): Promise<string | undefined> {
+  const box = page.locator('form.mform [name="submissionstatement"][type="checkbox"]');
+  if ((await box.count()) === 0) return undefined;
+  const text = await box.first().evaluate((el) => (el as unknown as { closest(s: string): { textContent: string | null } | null }).closest(".form-check, .fitem")?.textContent ?? "");
+  return text.replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -213,12 +267,16 @@ async function submissionGroup(context: BrowserContext, siteUrl: string, page: P
   return group ? { id: group.id, name: group.name } : { name: first.value };
 }
 
-/** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */
+/**
+ * Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives
+ * the assignment afterwards. Without drafts saving is submitting, and the edit form may ask to accept
+ * the site's statement: `acceptStatement`, once the person agrees.
+ */
 export async function saveSubmission(
   context: BrowserContext,
   siteUrl: string,
   activityId: number,
-  input: { onlineText?: string; files?: string[] },
+  input: { onlineText?: string; files?: string[]; acceptStatement?: boolean },
 ): Promise<{ changed: string; assignment: StudentAssignment }> {
   if (input.onlineText === undefined && (!input.files || input.files.length === 0)) throw new SubmissionError("Give online text, files or both.");
   if (input.files) await checkLocalFiles(input.files);
@@ -226,13 +284,18 @@ export async function saveSubmission(
     if (isSessionOrBrowserFailure(error)) throw error;
     throw new SubmissionError(`You can't edit a submission to assignment ${activityId} now (submitted already, past its cut-off date, or not yours to submit).`);
   });
+  const values: Record<string, FieldValue> = {};
   try {
+    const statement = await statementText(page);
+    if (statement !== undefined) {
+      if (!input.acceptStatement) throw new SubmissionError(`Saving submits assignment ${activityId} and asks to accept this statement; call again with acceptStatement once the person agrees: ${statement}`);
+      values["submissionstatement"] = true;
+    }
     if (input.files && input.files.length > 0) {
       const draft = await formValue(page, "files_filemanager");
       if (!draft) throw new SubmissionError(`Assignment ${activityId} doesn't take file submissions.`);
       await uploadToDraft(page, draft, input.files);
     }
-    const values: Record<string, FieldValue> = {};
     if (input.onlineText !== undefined) {
       if ((await formValue(page, "onlinetext_editor[format]")) === undefined) throw new SubmissionError(`Assignment ${activityId} doesn't take online text.`);
       values["onlinetext_editor[text]"] = input.onlineText;
@@ -243,7 +306,9 @@ export async function saveSubmission(
     await page.close().catch(() => undefined);
   }
   const saved = [input.onlineText !== undefined ? "online text" : "", input.files?.length ? `${input.files.length} file${input.files.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
-  return { changed: `Saved ${saved} in assignment ${activityId}'s submission.`, assignment: await studentAssignment(context, siteUrl, activityId) };
+  const assignment = await readAssignment(context, siteUrl, activityId);
+  const then = assignment.canSubmit ? ", a draft until it's submitted for grading" : assignment.submissionState === "submitted" ? ", submitted for grading" : "";
+  return { changed: `Saved ${saved} in assignment ${activityId}'s submission${then}.`, assignment };
 }
 
 /**
@@ -261,23 +326,20 @@ export async function submitForGrading(
   const nothing = () => new SubmissionError(`Assignment ${activityId} has nothing to submit now (no draft, submitted already, or it doesn't ask students to click submit).`);
   // Moodle shows the confirmation whatever the submission's state (confirmed empirically on the sandbox,
   // 5.2): the assignment's own "Submit assignment" button says whether there's a draft to submit.
-  if (!(await studentAssignment(context, siteUrl, activityId)).canSubmit) throw nothing();
+  if (!(await readAssignment(context, siteUrl, activityId)).canSubmit) throw nothing();
   const page = await openForm(context, siteUrl, `mod/assign/view.php?id=${activityId}&action=submit`).catch((error: unknown) => {
     if (isSessionOrBrowserFailure(error)) throw error;
     throw nothing();
   });
   try {
-    const statement = page.locator('form.mform [name="submissionstatement"][type="checkbox"]');
-    if ((await statement.count()) > 0) {
-      if (!acceptStatement) {
-        const text = await statement.first().evaluate((box) => (box as unknown as { closest(s: string): { textContent: string | null } | null }).closest(".form-check, .fitem")?.textContent ?? "");
-        throw new SubmissionError(`Submitting asks to accept this statement; call again with acceptStatement once the person agrees: ${text.replace(/\s+/g, " ").trim()}`);
-      }
+    const statement = await statementText(page);
+    if (statement !== undefined) {
+      if (!acceptStatement) throw new SubmissionError(`Submitting asks to accept this statement; call again with acceptStatement once the person agrees: ${statement}`);
       await setFields(page, { submissionstatement: true });
     }
     await submitForm(page, "submitbutton");
   } finally {
     await page.close().catch(() => undefined);
   }
-  return { changed: `Submitted assignment ${activityId} for grading.`, assignment: await studentAssignment(context, siteUrl, activityId) };
+  return { changed: `Submitted assignment ${activityId} for grading.`, assignment: await readAssignment(context, siteUrl, activityId) };
 }

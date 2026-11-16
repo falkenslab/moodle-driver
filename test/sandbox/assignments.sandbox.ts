@@ -365,6 +365,35 @@ describe("assignments", () => {
       });
     });
 
+    it("studentAssignment: without drafts, the statement read before saving; saveSubmission asks to accept it (#113)", SLOW, async () => {
+      const student = await as("student");
+      const assignment = await createAssignment(course, "Driver check no drafts statement", { assignsubmission_onlinetext_enabled: true, submissiondrafts: 0, requiresubmissionstatement: 1 });
+      const before = await student.studentAssignment(assignment);
+      assert.equal(before.drafts, false);
+      assert.ok(before.statement, "the edit form asks to accept the statement");
+      await assert.rejects(student.saveSubmission(assignment, { onlineText: "<p>Driver check answer</p>" }), (error: unknown) => error instanceof SubmissionError && /Saving submits .* asks to accept this statement/.test(error.message));
+      const saved = await student.saveSubmission(assignment, { onlineText: "<p>Driver check answer</p>", acceptStatement: true });
+      assert.match(saved.changed, /, submitted for grading\.$/);
+      assert.deepEqual([saved.assignment.submissionState, saved.assignment.canEdit, saved.assignment.drafts], ["submitted", true, false]);
+      const after = await student.studentAssignment(assignment);
+      assert.deepEqual([after.drafts, after.statement], [false, before.statement]);
+    });
+
+    it("studentAssignment: with drafts, unknown before saving, then the statement from the confirmation page (#113)", SLOW, async () => {
+      const student = await as("student");
+      const assignment = await createAssignment(course, "Driver check drafts statement", { assignsubmission_onlinetext_enabled: true, submissiondrafts: 1, requiresubmissionstatement: 1 });
+      const before = await student.studentAssignment(assignment);
+      assert.deepEqual([before.drafts, before.statement], [undefined, undefined]);
+      const saved = await student.saveSubmission(assignment, { onlineText: "<p>Driver check draft</p>" });
+      assert.match(saved.changed, /, a draft until it's submitted for grading\.$/);
+      const draft = await student.studentAssignment(assignment);
+      assert.equal(draft.drafts, true);
+      assert.ok(draft.statement, "the confirmation page asks to accept the statement");
+      const submitted = await student.submitForGrading(assignment, { acceptStatement: true });
+      assert.equal(submitted.assignment.submissionState, "submitted");
+      assert.deepEqual([(await student.studentAssignment(assignment)).drafts], [undefined]);
+    });
+
     it("gradeSubmission: a workflow state refused without the marking workflow", SLOW, async () => {
       const teacher = await as("teacher");
       await assert.rejects(teacher.gradeSubmission(simple, studentId, { workflowState: "inmarking" }), GradingError);

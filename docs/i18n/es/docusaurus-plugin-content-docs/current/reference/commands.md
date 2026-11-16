@@ -3044,7 +3044,7 @@ moodle save-feedback-template <activityId> <name> [--options]
 
 ## saveSubmission
 
-Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards.
+Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. Without drafts saving is submitting, and the edit form may ask to accept the site's statement: `acceptStatement`, once the person agrees.
 
 ```bash
 moodle save-submission <activityId> --options
@@ -3055,6 +3055,7 @@ moodle save-submission <activityId> --options
 | `activityId` | `number` |  |
 | `--online-text` | `string` |  |
 | `--files` | `string[]` |  |
+| `--accept-statement` | `boolean` |  |
 
 ## saveWorkshopSubmission
 
@@ -3556,7 +3557,7 @@ moodle start-quiz-attempt <activityId>
 
 ## studentAssignment
 
-An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, and whether it can be edited or submitted now.
+An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, whether it can be edited or submitted now, and whether saving leaves a draft and submitting asks to accept a statement, as far as the student's pages tell.
 
 ```bash
 moodle student-assignment <activityId>

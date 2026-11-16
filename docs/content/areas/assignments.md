@@ -25,6 +25,8 @@ interface StudentAssignment {
   feedbackFiles: { name: string; url: string }[];
   canEdit: boolean;
   canSubmit: boolean;
+  drafts?: boolean;
+  statement?: string;
   group?: { id?: number; name: string };
   grading?: StudentGrading;
 }
@@ -57,10 +59,12 @@ interface StudentGradingCriterion {
 - `feedbackFiles`: the files the teacher attached to the feedback (a corrected PDF, an audio comment), `pluginfile.php` links for [downloadFile](files.md); read from the feedback files plugin's block, so links in the feedback comments aren't among them.
 - `canEdit`: the page offers to add or edit the submission now.
 - `canSubmit`: the page offers to submit it for grading now (a draft in an assignment that asks students to click submit).
+- `drafts`: whether saving leaves a draft the student must then submit (`submitForGrading`), the assignment's "Require students to click the submit button". Moodle tells a student only through the "Submit assignment" button, shown once a draft holds something, and through the statement in the edit form, which is there only without drafts; a submission submitted and still editable has none too, since with drafts Moodle locks it. Absent when the pages don't tell: before the first save in an assignment without a statement, or with drafts.
+- `statement`: the statement the student accepts with `acceptStatement` (when submitting, or when saving without drafts), in the site's words. It's read with `drafts`: when `drafts` is known and this is absent, there's none. To read both, `studentAssignment` opens the edit page, or the confirmation page when there's a draft to submit, as the person would before saving or submitting: nothing changes, and Moodle logs that the form was viewed.
 - `group`: present when the assignment takes group submissions, so the submission is the group's: what one member saves and submits is everyone's, and the teacher may grade them all at once. `name` is the group the page names; `id` comes from the course's participants page when it shows the group to the person; the members are others' data, which `participants(courseId, { group: id })` gives. For a student in no group, it's Moodle's "Default group", by name only.
 - `grading`: the assignment's rubric or marking guide, as the page shows it to the student: before grading, a rubric's criteria with every level and its points (`levels`, in order) or a guide's criteria with their maximum (`maxScore`) and their description for students (`details`); once graded, from the grade's breakdown, each criterion also with the level chosen (`levelId`) and its points, or the guide's score (`score`), and the marker's remark. The ids are the ones [`rubric`](grading.md#rubric) gives a teacher. Absent for a simple grade, and when Moodle shows the student no grading form (a rubric set not to be previewed, before it's graded).
 
-Labels and values are in the site's language; `submissionState`, `graded`, `canEdit`, `canSubmit` and `group` don't depend on it (the group's row has no class of its own, so its label is compared with Moodle's own string in the person's language, from `core_get_string`).
+Labels and values are in the site's language; `submissionState`, `graded`, `canEdit`, `canSubmit`, `drafts` and `group` don't depend on it (the group's row has no class of its own, so its label is compared with Moodle's own string in the person's language, from `core_get_string`).
 
 With the marking workflow, the grade and feedback appear in `feedback` (and `graded` turns true) only once the teacher releases them; until then the grading status says the workflow's state.
 
@@ -71,19 +75,21 @@ It throws `SubmissionError` when the id isn't an assignment the person can open 
 Saves the submission's online text and adds files, as "Save changes" on the edit page does, and returns what it saved (`changed`) and the assignment afterwards.
 
 ```ts
-function saveSubmission(context: BrowserContext, siteUrl: string, activityId: number, input: { onlineText?: string; files?: string[] }): Promise<{ changed: string; assignment: StudentAssignment }>;
+function saveSubmission(context: BrowserContext, siteUrl: string, activityId: number, input: { onlineText?: string; files?: string[]; acceptStatement?: boolean }): Promise<{ changed: string; assignment: StudentAssignment }>;
 ```
 
 - `onlineText`: HTML, which replaces the online text through its editor.
 - `files`: absolute local paths, uploaded to the submission's file area as the file picker does; the files already there stay (see [files](files.md)).
+- `acceptStatement`: accepts the site's statement when the edit form asks for it, once the person agrees; `false` by default.
 
-It saves a draft: in an assignment that asks students to click submit, the submission stays a draft until `submitForGrading`. In one that doesn't, Moodle takes the saved submission as submitted.
+It saves a draft: in an assignment that asks students to click submit, the submission stays a draft until `submitForGrading`. In one that doesn't, Moodle takes the saved submission as submitted, and the edit form carries the statement, if the assignment requires one. `changed` says which it was ("…, a draft until it's submitted for grading." or "…, submitted for grading.").
 
 Errors (`SubmissionError` unless said otherwise):
 
 - Neither online text nor files given.
 - The edit page can't be opened: submitted already, past its cut-off date, or not the person's to submit.
 - Files given to an assignment that doesn't take file submissions, or online text to one that doesn't take it; nothing is saved.
+- The edit form asks to accept a statement and `acceptStatement` isn't `true`: nothing is saved, and the message has the statement's text, to show the person before calling again.
 - A `MoodleError` (`invalid-input`, `not-found`) when a file path isn't absolute or doesn't exist, checked before opening anything.
 - `FormError` when the upload fails (the site has no upload repository enabled, a file too big or of a type the assignment doesn't accept) or Moodle refuses the form, with its messages by field.
 

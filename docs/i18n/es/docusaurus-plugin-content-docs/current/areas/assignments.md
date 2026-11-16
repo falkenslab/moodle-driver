@@ -25,6 +25,8 @@ interface StudentAssignment {
   feedbackFiles: { name: string; url: string }[];
   canEdit: boolean;
   canSubmit: boolean;
+  drafts?: boolean;
+  statement?: string;
   group?: { id?: number; name: string };
   grading?: StudentGrading;
 }
@@ -57,10 +59,12 @@ interface StudentGradingCriterion {
 - `feedbackFiles`: los archivos que el profesor adjuntó a la retroalimentación (un PDF corregido, un comentario de audio), enlaces `pluginfile.php` para [downloadFile](files.md); se leen del bloque del plugin de archivos de retroalimentación, así que los enlaces de los comentarios de retroalimentación no están entre ellos.
 - `canEdit`: la página ofrece añadir o editar la entrega ahora.
 - `canSubmit`: la página ofrece enviarla para calificar ahora (un borrador en una tarea que pide a los estudiantes pulsar el botón de enviar).
+- `drafts`: si guardar deja un borrador que el estudiante debe enviar después (`submitForGrading`): la opción de la tarea que pide a los estudiantes pulsar el botón de enviar. Moodle se lo dice a un estudiante solo con el botón "Enviar tarea", que aparece cuando un borrador tiene algo, y con la declaración en el formulario de edición, que está ahí solo sin borradores; una entrega enviada y todavía editable tampoco los tiene, porque con borradores Moodle la bloquea. Ausente cuando las páginas no lo dicen: antes de guardar por primera vez en una tarea sin declaración, o con borradores.
+- `statement`: la declaración que el estudiante acepta con `acceptStatement` (al enviar, o al guardar sin borradores), con las palabras del sitio. Se lee con `drafts`: cuando `drafts` se conoce y esto está ausente, no hay ninguna. Para leer las dos, `studentAssignment` abre la página de edición, o la de confirmación cuando hay un borrador que enviar, como haría la persona antes de guardar o enviar: no cambia nada, y Moodle registra que se vio el formulario.
 - `group`: presente cuando la tarea admite entregas en grupo, así que la entrega es del grupo: lo que un miembro guarda y envía es de todos, y el profesor puede calificarlos a todos a la vez. `name` es el grupo que nombra la página; `id` viene de la página de participantes del curso cuando le muestra el grupo a la persona; los miembros son datos de otros, que da `participants(courseId, { group: id })`. Para un estudiante sin grupo, es el "Grupo predeterminado" de Moodle, solo por nombre.
 - `grading`: la rúbrica o la guía de evaluación de la tarea, tal como la página se la muestra al estudiante: antes de calificar, los criterios de una rúbrica con todos sus niveles y sus puntos (`levels`, en orden) o los criterios de una guía con su máximo (`maxScore`) y su descripción para los estudiantes (`details`); una vez calificada, del desglose de la calificación, cada criterio también con el nivel elegido (`levelId`) y sus puntos, o la puntuación de la guía (`score`), y la observación del evaluador. Los ids son los que [`rubric`](grading.md#rubric) da a un profesor. Ausente con una calificación simple, y cuando Moodle no muestra al estudiante ningún formulario de calificación (una rúbrica configurada para no mostrarse antes de calificar).
 
-Las etiquetas y los valores están en el idioma del sitio; `submissionState`, `graded`, `canEdit`, `canSubmit` y `group` no dependen de él (la fila del grupo no tiene clase propia, así que su etiqueta se compara con la propia cadena de Moodle en el idioma de la persona, de `core_get_string`).
+Las etiquetas y los valores están en el idioma del sitio; `submissionState`, `graded`, `canEdit`, `canSubmit`, `drafts` y `group` no dependen de él (la fila del grupo no tiene clase propia, así que su etiqueta se compara con la propia cadena de Moodle en el idioma de la persona, de `core_get_string`).
 
 Con el flujo de trabajo de calificación, la calificación y la retroalimentación aparecen en `feedback` (y `graded` pasa a true) solo cuando el profesor las publica; hasta entonces el estado de la calificación dice el estado del flujo de trabajo.
 
@@ -71,19 +75,21 @@ Lanza `SubmissionError` cuando el id no es una tarea que la persona pueda abrir 
 Guarda el texto en línea de la entrega y añade archivos, como hace "Guardar cambios" en la página de edición, y devuelve lo que guardó (`changed`) y la tarea después.
 
 ```ts
-function saveSubmission(context: BrowserContext, siteUrl: string, activityId: number, input: { onlineText?: string; files?: string[] }): Promise<{ changed: string; assignment: StudentAssignment }>;
+function saveSubmission(context: BrowserContext, siteUrl: string, activityId: number, input: { onlineText?: string; files?: string[]; acceptStatement?: boolean }): Promise<{ changed: string; assignment: StudentAssignment }>;
 ```
 
 - `onlineText`: HTML, que sustituye el texto en línea mediante su editor.
 - `files`: rutas locales absolutas, subidas al área de archivos de la entrega como lo hace el selector de archivos; los archivos que ya hay se quedan (consulta [archivos](files.md)).
+- `acceptStatement`: acepta la declaración del sitio cuando el formulario de edición la pide, una vez que la persona está de acuerdo; `false` por defecto.
 
-Guarda un borrador: en una tarea que pide a los estudiantes pulsar el botón de enviar, la entrega sigue siendo un borrador hasta `submitForGrading`. En una que no lo pide, Moodle toma la entrega guardada como enviada.
+Guarda un borrador: en una tarea que pide a los estudiantes pulsar el botón de enviar, la entrega sigue siendo un borrador hasta `submitForGrading`. En una que no lo pide, Moodle toma la entrega guardada como enviada, y el formulario de edición lleva la declaración, si la tarea exige una. `changed` dice cuál fue ("…, a draft until it's submitted for grading." o "…, submitted for grading.").
 
 Errores (`SubmissionError` salvo que se diga otra cosa):
 
 - No se da ni texto en línea ni archivos.
 - La página de edición no se puede abrir: ya enviada, pasada su fecha límite, o no le corresponde entregarla a la persona.
 - Archivos dados a una tarea que no admite entregas de archivos, o texto en línea a una que no lo admite; no se guarda nada.
+- El formulario de edición pide aceptar una declaración y `acceptStatement` no es `true`: no se guarda nada, y el mensaje lleva el texto de la declaración, para mostrárselo a la persona antes de volver a llamar.
 - Un `MoodleError` (`invalid-input`, `not-found`) cuando la ruta de un archivo no es absoluta o no existe, comprobado antes de abrir nada.
 - `FormError` cuando la subida falla (el sitio no tiene activado ningún repositorio de subida, un archivo demasiado grande o de un tipo que la tarea no acepta) o Moodle rechaza el formulario, con sus mensajes por campo.
 

@@ -1714,8 +1714,12 @@ export interface MoodleMethods {
    * whole site (managers). Returns the new template's id.
    */
   saveFeedbackTemplate(activityId: number, name: string, options?: { public?: boolean | undefined; }): Promise<{ changed: string; templateId: number; }>;
-  /** Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives the assignment afterwards. */
-  saveSubmission(activityId: number, input: { onlineText?: string | undefined; files?: string[] | undefined; }): Promise<{ changed: string; assignment: import("./areas/assignments/student.js").StudentAssignment; }>;
+  /**
+   * Saves the submission's online text and adds files, as "Save changes" on the edit page does; gives
+   * the assignment afterwards. Without drafts saving is submitting, and the edit form may ask to accept
+   * the site's statement: `acceptStatement`, once the person agrees.
+   */
+  saveSubmission(activityId: number, input: { onlineText?: string | undefined; files?: string[] | undefined; acceptStatement?: boolean | undefined; }): Promise<{ changed: string; assignment: import("./areas/assignments/student.js").StudentAssignment; }>;
   /**
    * Adds the person's submission to a workshop, or changes the one they have, through Moodle's
    * submission form, as "Add submission" and "Edit submission" do: only what's given changes (a new
@@ -1985,7 +1989,11 @@ export interface MoodleMethods {
    * questions; the attempt's tab stays open for the next calls.
    */
   startQuizAttempt(activityId: number): Promise<{ changed: string; } & import("./areas/quizzes/attempts.js").AttemptPage>;
-  /** An assignment as the student sees it: its description and files, dates, the submission's status and files, the feedback, and whether it can be edited or submitted now. */
+  /**
+   * An assignment as the student sees it: its description and files, dates, the submission's status
+   * and files, the feedback, whether it can be edited or submitted now, and whether saving leaves a
+   * draft and submitting asks to accept a statement, as far as the student's pages tell.
+   */
   studentAssignment(activityId: number): Promise<import("./areas/assignments/student.js").StudentAssignment>;
   /**
    * Submits the saved submission for grading, accepting the site's statement when it asks for one

@@ -78,7 +78,7 @@ Submission status: No attempt
 Grading status: Not graded
 Time remaining: 6 days 12 hours
 
-Saved online text and 1 file in assignment 45's submission. Files: factorial.py
+Saved online text and 1 file in assignment 45's submission, a draft until it's submitted for grading. Files: factorial.py
 
 Submitting asks to accept this statement; call again with acceptStatement once the person agrees: This submission is my own work, except where I have acknowledged the use of the works of other people.
 Do you accept this statement? (yes/no) yes
