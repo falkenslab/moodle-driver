@@ -321,6 +321,50 @@ describe("assignments", () => {
       await assert.rejects((await as("student")).setGradingDefinition(assignment, another), GradingError);
     });
 
+    it("studentAssignment: a rubric apart from the status, every level with its points, then the chosen levels once graded (#112)", SLOW, async () => {
+      const teacher = await as("teacher");
+      const student = await as("student");
+      const assignment = await createAssignment(course, "Driver check student rubric", { assignsubmission_onlinetext_enabled: true, assignfeedback_comments_enabled: true });
+      const { criteria } = await teacher.setGradingDefinition(assignment, {
+        method: "rubric",
+        name: "Driver check student rubric",
+        criteria: [
+          { description: "Content", levels: [{ definition: "Poor", score: 0 }, { definition: "Good", score: 5 }, { definition: "Great", score: 10 }] },
+          { description: "Style", levels: [{ definition: "Plain", score: 0 }, { definition: "Clear", score: 2.5 }] },
+        ],
+      });
+      const before = await student.studentAssignment(assignment);
+      assert.ok(before.status.every((row) => row.label !== ""), JSON.stringify(before.status));
+      assert.deepEqual(before.grading, { method: "rubric", criteria: criteria.map((c) => ({ id: c.id, description: c.description, levels: c.levels })) });
+      const [content, style] = criteria;
+      await teacher.gradeSubmission(assignment, studentId, { rubric: { [content!.id]: content!.levels![1]!.id, [style!.id]: style!.levels![0]!.id }, remarks: { [content!.id]: "Driver check remark" }, feedback: "<p>Overall fine</p>", notify: false });
+      const after = await student.studentAssignment(assignment);
+      assert.ok(after.feedback.every((row) => row.label !== ""), JSON.stringify(after.feedback));
+      assert.deepEqual(
+        after.grading?.criteria.map((c) => [c.id, c.levelId, c.score, c.remark]),
+        [
+          [content!.id, content!.levels![1]!.id, 5, "Driver check remark"],
+          [style!.id, style!.levels![0]!.id, 0, undefined],
+        ],
+      );
+    });
+
+    it("studentAssignment: a marking guide's criteria with their maximum, then the scores once graded (#112)", SLOW, async () => {
+      const teacher = await as("teacher");
+      const assignment = await createAssignment(course, "Driver check student guide", { assignsubmission_onlinetext_enabled: true });
+      const { criteria } = await teacher.setGradingDefinition(assignment, { method: "guide", name: "Driver check student guide", criteria: [{ shortName: "Clarity", description: "Is it clear", maxScore: 4 }, { shortName: "Depth", maxScore: 6 }] });
+      const [clarity, depth] = criteria;
+      await teacher.gradeSubmission(assignment, studentId, { guide: { [clarity!.id]: 3, [depth!.id]: 5 }, remarks: { [clarity!.id]: "Mostly clear" }, notify: false });
+      const after = await (await as("student")).studentAssignment(assignment);
+      assert.deepEqual(after.grading, {
+        method: "guide",
+        criteria: [
+          { id: clarity!.id, description: "Clarity", details: "Is it clear", maxScore: 4, score: 3, remark: "Mostly clear" },
+          { id: depth!.id, description: "Depth", maxScore: 6, score: 5 },
+        ],
+      });
+    });
+
     it("gradeSubmission: a workflow state refused without the marking workflow", SLOW, async () => {
       const teacher = await as("teacher");
       await assert.rejects(teacher.gradeSubmission(simple, studentId, { workflowState: "inmarking" }), GradingError);

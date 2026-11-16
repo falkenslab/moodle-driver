@@ -26,21 +26,39 @@ interface StudentAssignment {
   canEdit: boolean;
   canSubmit: boolean;
   group?: { id?: number; name: string };
+  grading?: StudentGrading;
+}
+
+interface StudentGrading {
+  method: "rubric" | "guide";
+  criteria: StudentGradingCriterion[];
+}
+
+interface StudentGradingCriterion {
+  id: number;
+  description: string;
+  details?: string;
+  levels?: { id: number; definition: string; score: number }[];
+  maxScore?: number;
+  levelId?: number;
+  score?: number;
+  remark?: string;
 }
 ```
 
 - `description`: la descripción de la tarea como texto.
 - `descriptionFiles`: los archivos adjuntos a la descripción (enlaces `pluginfile.php`, para [downloadFile](files.md)).
 - `dates`: las fechas de la actividad tal como las muestra la página (`{ label: "Due", value: "Friday, 30 October 2026, 11:59 PM" }`).
-- `status`: la tabla de estado de la entrega, fila a fila (número de intento, estado de la entrega, estado de la calificación, tiempo restante, última modificación…), con etiquetas y valores tal como los muestra la página.
+- `status`: la tabla de estado de la entrega, fila a fila (número de intento, estado de la entrega, estado de la calificación, tiempo restante, última modificación…), con etiquetas y valores tal como los muestra la página. La rúbrica o la guía de evaluación que se muestra con ella no está entre sus filas: es `grading`.
 - `submissionState`: el estado de Moodle para la entrega, leído de la clase de la celda de estado en cualquier idioma: `"new"`, `"draft"`, `"submitted"`, `"reopened"`…; ausente cuando la página no tiene ninguno.
 - `graded`: el estado de la calificación dice que está calificada.
 - `submittedFiles`: los archivos de la entrega de la persona.
-- `feedback`: la tabla de retroalimentación, fila a fila (calificación, calificado el, calificado por, comentarios de retroalimentación), cuando hay retroalimentación.
+- `feedback`: la tabla de retroalimentación, fila a fila (calificación, calificado el, calificado por, comentarios de retroalimentación), cuando hay retroalimentación; el desglose de la calificación por rúbrica o guía de evaluación es `grading`.
 - `feedbackFiles`: los archivos que el profesor adjuntó a la retroalimentación (un PDF corregido, un comentario de audio), enlaces `pluginfile.php` para [downloadFile](files.md); se leen del bloque del plugin de archivos de retroalimentación, así que los enlaces de los comentarios de retroalimentación no están entre ellos.
 - `canEdit`: la página ofrece añadir o editar la entrega ahora.
 - `canSubmit`: la página ofrece enviarla para calificar ahora (un borrador en una tarea que pide a los estudiantes pulsar el botón de enviar).
 - `group`: presente cuando la tarea admite entregas en grupo, así que la entrega es del grupo: lo que un miembro guarda y envía es de todos, y el profesor puede calificarlos a todos a la vez. `name` es el grupo que nombra la página; `id` viene de la página de participantes del curso cuando le muestra el grupo a la persona; los miembros son datos de otros, que da `participants(courseId, { group: id })`. Para un estudiante sin grupo, es el "Grupo predeterminado" de Moodle, solo por nombre.
+- `grading`: la rúbrica o la guía de evaluación de la tarea, tal como la página se la muestra al estudiante: antes de calificar, los criterios de una rúbrica con todos sus niveles y sus puntos (`levels`, en orden) o los criterios de una guía con su máximo (`maxScore`) y su descripción para los estudiantes (`details`); una vez calificada, del desglose de la calificación, cada criterio también con el nivel elegido (`levelId`) y sus puntos, o la puntuación de la guía (`score`), y la observación del evaluador. Los ids son los que [`rubric`](grading.md#rubric) da a un profesor. Ausente con una calificación simple, y cuando Moodle no muestra al estudiante ningún formulario de calificación (una rúbrica configurada para no mostrarse antes de calificar).
 
 Las etiquetas y los valores están en el idioma del sitio; `submissionState`, `graded`, `canEdit`, `canSubmit` y `group` no dependen de él (la fila del grupo no tiene clase propia, así que su etiqueta se compara con la propia cadena de Moodle en el idioma de la persona, de `core_get_string`).
 

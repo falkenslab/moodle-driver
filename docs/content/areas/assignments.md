@@ -26,21 +26,39 @@ interface StudentAssignment {
   canEdit: boolean;
   canSubmit: boolean;
   group?: { id?: number; name: string };
+  grading?: StudentGrading;
+}
+
+interface StudentGrading {
+  method: "rubric" | "guide";
+  criteria: StudentGradingCriterion[];
+}
+
+interface StudentGradingCriterion {
+  id: number;
+  description: string;
+  details?: string;
+  levels?: { id: number; definition: string; score: number }[];
+  maxScore?: number;
+  levelId?: number;
+  score?: number;
+  remark?: string;
 }
 ```
 
 - `description`: the assignment's description as text.
 - `descriptionFiles`: files attached to the description (`pluginfile.php` links, for [downloadFile](files.md)).
 - `dates`: the activity's dates as the page shows them (`{ label: "Due", value: "Friday, 30 October 2026, 11:59 PM" }`).
-- `status`: the submission status table, row by row (attempt number, submission status, grading status, time remaining, last modified…), labels and values as the page shows them.
+- `status`: the submission status table, row by row (attempt number, submission status, grading status, time remaining, last modified…), labels and values as the page shows them. A rubric or marking guide shown with it isn't among its rows: it's `grading`.
 - `submissionState`: Moodle's state for the submission, read from the status cell's class in any language: `"new"`, `"draft"`, `"submitted"`, `"reopened"`…; absent when the page has none.
 - `graded`: the grading status says it's graded.
 - `submittedFiles`: the files in the person's submission.
-- `feedback`: the feedback table, row by row (grade, graded on, graded by, feedback comments), when there's feedback.
+- `feedback`: the feedback table, row by row (grade, graded on, graded by, feedback comments), when there's feedback; the grade's breakdown by rubric or marking guide is `grading`.
 - `feedbackFiles`: the files the teacher attached to the feedback (a corrected PDF, an audio comment), `pluginfile.php` links for [downloadFile](files.md); read from the feedback files plugin's block, so links in the feedback comments aren't among them.
 - `canEdit`: the page offers to add or edit the submission now.
 - `canSubmit`: the page offers to submit it for grading now (a draft in an assignment that asks students to click submit).
 - `group`: present when the assignment takes group submissions, so the submission is the group's: what one member saves and submits is everyone's, and the teacher may grade them all at once. `name` is the group the page names; `id` comes from the course's participants page when it shows the group to the person; the members are others' data, which `participants(courseId, { group: id })` gives. For a student in no group, it's Moodle's "Default group", by name only.
+- `grading`: the assignment's rubric or marking guide, as the page shows it to the student: before grading, a rubric's criteria with every level and its points (`levels`, in order) or a guide's criteria with their maximum (`maxScore`) and their description for students (`details`); once graded, from the grade's breakdown, each criterion also with the level chosen (`levelId`) and its points, or the guide's score (`score`), and the marker's remark. The ids are the ones [`rubric`](grading.md#rubric) gives a teacher. Absent for a simple grade, and when Moodle shows the student no grading form (a rubric set not to be previewed, before it's graded).
 
 Labels and values are in the site's language; `submissionState`, `graded`, `canEdit`, `canSubmit` and `group` don't depend on it (the group's row has no class of its own, so its label is compared with Moodle's own string in the person's language, from `core_get_string`).
 

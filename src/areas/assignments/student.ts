@@ -35,6 +35,38 @@ export interface StudentAssignment {
    * its members); only the name for Moodle's "Default group" (the person is in no group).
    */
   group?: { id?: number; name: string };
+  /**
+   * The assignment's advanced grading, as the page shows it to the student: a rubric's criteria with
+   * every level and its points, or a marking guide's with their maximum; once graded, the level chosen
+   * or the score given for each, with the marker's remark. Absent for a simple grade, and when Moodle
+   * shows the student no grading form (a rubric set not to be previewed, before it's graded).
+   */
+  grading?: StudentGrading;
+}
+
+/** An assignment's rubric or marking guide as its student sees it (`StudentAssignment.grading`). */
+export interface StudentGrading {
+  method: "rubric" | "guide";
+  criteria: StudentGradingCriterion[];
+}
+
+/** A criterion of the student's view of a rubric or marking guide; what's chosen comes once graded. */
+export interface StudentGradingCriterion {
+  id: number;
+  /** A rubric criterion's description; a guide criterion's short name. */
+  description: string;
+  /** A guide criterion's description for students. */
+  details?: string;
+  /** A rubric criterion's levels, in order, with their points. */
+  levels?: { id: number; definition: string; score: number }[];
+  /** A guide criterion's maximum score. */
+  maxScore?: number;
+  /** Once graded: a rubric's chosen level (its id in `levels`). */
+  levelId?: number;
+  /** Once graded: the score for the criterion (the chosen level's points, or a guide's score). */
+  score?: number;
+  /** Once graded: the marker's remark on the criterion, when there's one. */
+  remark?: string;
 }
 
 export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
@@ -42,12 +74,15 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
     page,
     () => {
       interface El {
+        id: string;
         innerText: string;
+        textContent: string | null;
         className: string;
         href: string;
         value: string;
         querySelector(s: string): El | null;
         querySelectorAll(s: string): ArrayLike<El>;
+        closest(s: string): El | null;
       }
       const doc = (globalThis as unknown as { document: El }).document;
       const text = (el: El | null | undefined) =>
@@ -56,7 +91,59 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
           .replace(/\n{3,}/g, "\n\n")
           .trim();
       const links = (selector: string) => Array.from(doc.querySelectorAll(selector)).map((a) => ({ name: text(a), url: a.href }));
-      const rows = (selector: string) => Array.from(doc.querySelectorAll(selector)).map((row) => ({ label: text(row.querySelector("th")), value: text(row.querySelector("td")) }));
+      // A rubric or marking guide is drawn inside the status and feedback blocks, as tables of its own
+      // (confirmed empirically, 5.2 and 4.5): their rows aren't the block's.
+      const rows = (selector: string) =>
+        Array.from(doc.querySelectorAll(selector))
+          .filter((row) => row.closest('[class*="gradingform_"]') === null)
+          .map((row) => ({ label: text(row.querySelector("th")), value: text(row.querySelector("td")) }));
+      const number = (shown: string) => {
+        const match = /-?\d+(?:[.,]\d+)?/.exec(shown);
+        return match ? Number(match[0].replace(",", ".")) : undefined;
+      };
+      const plain = (el: El | null | undefined) => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
+      // The grading form: its breakdown in the feedback once graded (with what was chosen), its preview
+      // in the status block before (by the form's own ids and classes, confirmed empirically, 5.2 and 4.5).
+      const form = doc.querySelector(".feedback .advancedgrade .gradingform_rubric, .feedback .advancedgrade .gradingform_guide") ?? doc.querySelector(".submissionstatustable .gradingform_rubric, .submissionstatustable .gradingform_guide");
+      let grading: StudentGrading | undefined;
+      if (form) {
+        const method = /\bgradingform_rubric\b/.test(form.className) ? "rubric" : "guide";
+        const criteria = Array.from(form.querySelectorAll("tr.criterion")).flatMap((row): StudentGradingCriterion[] => {
+          const id = Number(/-criteria-(\d+)$/.exec(row.id)?.[1]);
+          if (!id) return [];
+          const remarkCell = row.querySelector("td.remark");
+          // A guide's remark cell starts with a hidden label for screen readers.
+          const remark = plain(remarkCell?.querySelector(":scope > div:not(.hidden)") ?? remarkCell) || undefined;
+          if (method === "rubric") {
+            const cells = Array.from(row.querySelectorAll("td.level"));
+            const levels = cells.map((cell) => ({ id: Number(/-levels-(\d+)$/.exec(cell.id)?.[1]), definition: plain(cell.querySelector(".definition")), score: number(plain(cell.querySelector(".scorevalue"))) ?? 0 }));
+            const chosen = cells.findIndex((cell) => /\bchecked\b/.test(cell.className));
+            return [
+              {
+                id,
+                description: plain(row.querySelector("td.description")),
+                levels,
+                ...(chosen >= 0 ? { levelId: levels[chosen]!.id, score: levels[chosen]!.score } : {}),
+                ...(remark ? { remark } : {}),
+              },
+            ];
+          }
+          const details = plain(row.querySelector(".criteriondescription")) || undefined;
+          const maxScore = number(plain(row.querySelector(".criteriondescriptionscore")));
+          const score = row.querySelector("td.score") ? number(plain(row.querySelector("td.score"))) : undefined;
+          return [
+            {
+              id,
+              description: plain(row.querySelector(".criterionshortname")),
+              ...(details ? { details } : {}),
+              ...(maxScore !== undefined ? { maxScore } : {}),
+              ...(score !== undefined ? { score } : {}),
+              ...(remark ? { remark } : {}),
+            },
+          ];
+        });
+        grading = { method, criteria };
+      }
       const stateCell = Array.from(doc.querySelectorAll(".submissionstatustable td")).find((td) => /\bsubmissionstatus[a-z]+\b/.test(td.className));
       const actions = Array.from(doc.querySelectorAll('form input[name="action"]')).map((input) => input.value);
       return {
@@ -77,6 +164,7 @@ export function readStudentAssignment(page: Page): Promise<StudentAssignment> {
         feedbackFiles: links('.feedback [class*="summary_assignfeedback_file_"] a[href*="pluginfile.php"]'),
         canEdit: actions.includes("editsubmission"),
         canSubmit: actions.includes("submit"),
+        ...(grading ? { grading } : {}),
       };
     },
     null,

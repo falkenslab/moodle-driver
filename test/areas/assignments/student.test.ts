@@ -145,6 +145,82 @@ describe("studentAssignment, saveSubmission and submitForGrading", { skip: !brow
     await context.close();
   });
 
+  // Moodle 5.2's rubric and marking guide on a student's page, reduced: a preview under "Grading
+  // criteria" inside the status block before grading, the breakdown inside the feedback after.
+  const STATUS = `<tr><th>Submission status</th><td class="submissionstatusnew">No submissions have been made yet</td></tr><tr><th>Grading status</th><td class="submissionnotgraded">Not graded</td></tr>`;
+  const level = (prefix: string, criterion: number, id: number, definition: string, score: string, checked = false) =>
+    `<td id="${prefix}-criteria-${criterion}-levels-${id}" class="text-break level${checked ? " checked" : ""}" aria-label="Level ${definition}, ${score} points."><div class="level-wrapper"><div class="definition">${definition}</div><div class="score d-inline"><span class="scorevalue">${score}</span> points</div></div></td>`;
+  const rubricRow = (prefix: string, id: number, description: string, levels: string, remark?: string) =>
+    `<tr class="criterion" id="${prefix}-criteria-${id}"><td class="description">${description}</td><td class="levels"><table role="none"><tbody><tr role="list">${levels}</tr></tbody></table></td>${remark !== undefined ? `<td class="remark">${remark}</td>` : ""}</tr>`;
+  const rubricPreview = `<h4>Grading criteria</h4><div class="box py-3 gradingform_rubric-description"></div><div id="rubric-rubric" class="clearfix gradingform_rubric editor preview"><table class="criteria"><tbody>${
+    rubricRow("rubric", 173, "Content", level("rubric", 173, 558, "Poor", "0") + level("rubric", 173, 559, "Good", "5") + level("rubric", 173, 560, "Great", "10")) + rubricRow("rubric", 174, "Style", level("rubric", 174, 561, "Plain", "0") + level("rubric", 174, 562, "Clear", "2.5"))
+  }</tbody></table></div>`;
+  const rubricBreakdown = `<h4>Grade breakdown</h4><div class="advancedgrade"><div class="box py-3 gradingform_rubric-description"></div><div id="rubric-rubric0" class="clearfix gradingform_rubric view"><table class="criteria"><tbody>${
+    rubricRow("rubric0", 173, "Content", level("rubric0", 173, 558, "Poor", "0") + level("rubric0", 173, 559, "Good", "5", true) + level("rubric0", 173, 560, "Great", "10"), "Nice content") +
+    rubricRow("rubric0", 174, "Style", level("rubric0", 174, 561, "Plain", "0", true) + level("rubric0", 174, 562, "Clear", "2.5"), "")
+  }</tbody></table></div></div>`;
+  const page = (status: string, feedback = "") =>
+    `<div class="submissionstatustable"><h3>Submission status</h3><div class="box submissionsummarytable"><table class="generaltable"><tbody>${status}</tbody></table></div>${status === STATUS ? rubricPreview : ""}</div>${feedback}`;
+
+  it("gives a rubric apart from the status, every level with its points; once graded, the chosen levels and remarks, and the feedback without the rubric's rows (#112)", async () => {
+    const context = await browser!.newContext();
+    const state: FakeMoodleState = { user: { id: 4, fullName: "Student" }, serviceCalls: [], bodies: { "/mod/assign/view.php": page(STATUS) } };
+    await serveFakeMoodle(context, state);
+    const before = await studentAssignment(context, SITE, 32);
+    assert.deepEqual(before.status, [
+      { label: "Submission status", value: "No submissions have been made yet" },
+      { label: "Grading status", value: "Not graded" },
+    ]);
+    assert.deepEqual(before.grading, {
+      method: "rubric",
+      criteria: [
+        { id: 173, description: "Content", levels: [{ id: 558, definition: "Poor", score: 0 }, { id: 559, definition: "Good", score: 5 }, { id: 560, definition: "Great", score: 10 }] },
+        { id: 174, description: "Style", levels: [{ id: 561, definition: "Plain", score: 0 }, { id: 562, definition: "Clear", score: 2.5 }] },
+      ],
+    });
+    const graded = `<tr><th>Submission status</th><td class="submissionstatusnew">No submissions have been made yet</td></tr><tr><th>Grading status</th><td class="submissiongraded">Graded</td></tr>`;
+    state.bodies!["/mod/assign/view.php"] = page(graded, `<div class="feedback"><h3>Feedback</h3><div class="box feedbacktable"><table class="generaltable"><tbody><tr><th>Grade</th><td>40.00 / 100.00</td></tr><tr><th>Feedback comments</th><td><p>Overall fine</p></td></tr></tbody></table></div>${rubricBreakdown}</div>`);
+    const after = await studentAssignment(context, SITE, 32);
+    assert.deepEqual(after.feedback, [
+      { label: "Grade", value: "40.00 / 100.00" },
+      { label: "Feedback comments", value: "Overall fine" },
+    ]);
+    assert.deepEqual(
+      after.grading?.criteria.map((c) => [c.id, c.levelId, c.score, c.remark]),
+      [
+        [173, 559, 5, "Nice content"],
+        [174, 561, 0, undefined],
+      ],
+    );
+    await context.close();
+  });
+
+  it("gives a marking guide's criteria with their maximum, and once graded the scores and remarks (#112)", async () => {
+    const context = await browser!.newContext();
+    const criterion = (prefix: string, id: number, name: string, details: string, max: number, graded?: [string, string]) =>
+      `<tr class="criterion" id="${prefix}-criteria-${id}"><td class="description${graded ? "readonly" : ""}"><div class="criterionshortname">${name}</div><div class="criteriondescription">${details ? `<div class="text_to_html">${details}</div>` : ""}</div><label>Maximum score</label><div class="criteriondescriptionscore">${max}</div></td>${
+        graded ? `<td class="remark"><div class="hidden">${name} criterion remark</div><div>${graded[0]}</div></td><td class="score"><div>${graded[1]} / ${max}</div></td>` : ""
+      }</tr>`;
+    const guide = (prefix: string, rows: string) => `<div id="guide-${prefix}" class="clearfix gradingform_guide ${prefix === "guide" ? "editor preview" : "view"}"><div class="hidden">Marking guide</div><table class="criteria"><tbody>${rows}</tbody></table></div>`;
+    await serveFakeMoodle(context, {
+      user: { id: 4, fullName: "Student" },
+      bodies: {
+        "/mod/assign/view.php": `<div class="submissionstatustable"><table><tbody><tr><th>Grading status</th><td class="submissiongraded">Graded</td></tr></tbody></table><h4>Grading criteria</h4>${guide("guide", criterion("guide", 10, "Clarity", "Is it clear", 4) + criterion("guide", 11, "Depth", "", 6))}</div>
+<div class="feedback"><table><tbody><tr><th>Grade</th><td>80.00 / 100.00</td></tr></tbody></table><h4>Grade breakdown</h4><div class="advancedgrade">${guide("guide0", criterion("guide0", 10, "Clarity", "Is it clear", 4, ["Mostly clear", "3"]) + criterion("guide0", 11, "Depth", "", 6, ["", "5"]))}</div></div>`,
+      },
+    });
+    const assignment = await studentAssignment(context, SITE, 32);
+    assert.deepEqual(assignment.status, [{ label: "Grading status", value: "Graded" }]);
+    assert.deepEqual(assignment.grading, {
+      method: "guide",
+      criteria: [
+        { id: 10, description: "Clarity", details: "Is it clear", maxScore: 4, score: 3, remark: "Mostly clear" },
+        { id: 11, description: "Depth", maxScore: 6, score: 5 },
+      ],
+    });
+    await context.close();
+  });
+
   it("gives the feedback's files, not the other links in it", async () => {
     const context = await browser!.newContext();
     await serveFakeMoodle(context, {
